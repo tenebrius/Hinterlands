@@ -156,6 +156,9 @@ fn cmd_run(args: &Args) {
         founded_log,
         snap.tally.last_best_score
     );
+    if let Some(n) = args.str("detail") {
+        print_detail(&snap, &sim.terrain, n.parse().unwrap_or(10));
+    }
     if let Some(path) = args.str("png") {
         let layer = args.str("layer").unwrap_or("terrain");
         let img = render::render(&sim.terrain, Some(&snap), layer, 4, None);
@@ -166,6 +169,48 @@ fn cmd_run(args: &Args) {
     }
     if let Some(path) = args.str("truth") {
         truth::score(path, &sim.terrain, &snap);
+    }
+}
+
+/// The largest settlements' accounts, for diagnosing the model.
+fn print_detail(snap: &hinterlands_core::Snapshot, t: &hinterlands_core::Terrain, n: usize) {
+    let mut v: Vec<_> = snap.settlements.iter().collect();
+    v.sort_by(|a, b| b.pop.total_cmp(&a.pop));
+    println!(
+        "{:>4} {:>9} {:>7} {:>7} {:>7} {:>7} {:>7} {:>7} {:>5} {:>6} {}",
+        "id", "xy", "pop", "prod", "fd_in", "fd_out", "trade", "thru", "ratio", "fields", "site"
+    );
+    let show = |s: &&hinterlands_core::snapshot::SettlementView| {
+        let a = s.anchor as usize;
+        let site = format!(
+            "{}{}{}",
+            if t.touches(a, |j| t.is_nav(j)) {
+                "R"
+            } else {
+                ""
+            },
+            if t.is_coastal(a) { "C" } else { "" },
+            if snap.hub[a] { "H" } else { "" }
+        );
+        println!(
+            "{:>4} {:>9} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>5.2} {:>6} {}",
+            s.id,
+            format!("{:?}", t.grid.xy(a)),
+            s.pop,
+            s.food_prod,
+            s.food_in,
+            s.food_out,
+            s.trade_in,
+            s.through,
+            s.food_ratio,
+            s.fields,
+            site
+        );
+    };
+    v.iter().take(n).for_each(show);
+    if v.len() > n {
+        println!("  ...");
+        v.iter().rev().take(3).for_each(show);
     }
 }
 

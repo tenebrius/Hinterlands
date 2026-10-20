@@ -1,6 +1,6 @@
 //! Cultivation and fuel (von Thünen; VEP calorie-cost placement). Each settlement
-//! claims free cells in order of walking cost until produce covers need times the
-//! margin, and releases its farthest cells when produce exceeds the target by the
+//! claims free cells in order of walking cost until produce, less the marketed
+//! share, covers need times the margin, and releases its farthest cells when produce exceeds the target by the
 //! hysteresis share. Writes: owner, fields, forest, food_prod, resource_out.
 
 use crate::params::Params;
@@ -21,7 +21,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     } = state;
 
     for s in settlements.iter_mut() {
-        let target = s.need(p) * p.cult_margin;
+        // Enough to eat after the marketed share leaves, with the margin on top.
+        let target = s.need(p) * p.cult_margin / (1.0 - p.market_share).max(0.05);
         let mut produce: f32 = s
             .fields
             .iter()

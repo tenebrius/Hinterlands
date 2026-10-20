@@ -126,7 +126,7 @@ define_params! {
         cultivation_enabled: bool = true, [0, 1], "Run the cultivation system";
         food_per_person: f32 = 1.0, [0.5, 2], "Food units one person needs per year";
         people_per_prime_cell: f32 = 150.0, [50, 400], "People fed by one cell of prime land";
-        r_cult: f32 = 4.0, [1, 12], "Travel-cost radius of cultivation";
+        r_cult: f32 = 2.5, [1, 12], "Travel-cost radius of cultivation";
         cult_margin: f32 = 1.2, [1, 2], "Fields are claimed until produce covers need times this";
         release_hysteresis: f32 = 0.1, [0, 0.5], "Fields are released only when produce exceeds the target by this share";
         min_field_yield: f32 = 0.1, [0, 0.8], "Cells below this yield are never cultivated";
@@ -141,10 +141,13 @@ define_params! {
         trade_enabled: bool = true, [0, 1], "Run the trade system";
         c_max: f32 = 60.0, [10, 200], "Largest travel cost at which two settlements trade";
         alpha: f32 = 1.15, [0.5, 2], "Size exponent of the gravity attraction";
-        beta: f32 = 0.08, [0.005, 0.5], "Distance decay of trade per km-equivalent";
+        beta: f32 = 0.25, [0.005, 0.5], "Distance decay of trade per km-equivalent";
         transport_loss: f32 = 0.005, [0, 0.03], "Share of shipped food lost per unit cost";
         cost_refresh_years: u32 = 5, [1, 25], "Years between refreshes of travel costs and paths";
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
+        home_weight: f32 = 0.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
+        urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
+        market_share: f32 = 0.2, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
     }
     "Growth" => {
         growth_enabled: bool = true, [0, 1], "Run the growth system";
@@ -153,6 +156,8 @@ define_params! {
         food_cap: f32 = 1.2, [1, 2], "Food ratio above which surplus adds no natural growth";
         epsilon: f32 = 0.05, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
         k_maint: f32 = 1.0, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
+        through_weight: f32 = 0.0, [0, 2], "Weight of trade passing through and non-food trade in inflow";
+        fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
     }

@@ -1,8 +1,9 @@
-//! Gravity trade (Wilson 1970; Huff 1964; Barjamovic et al. 2019). Each
-//! settlement's surplus is split over its partners in proportion to
-//! `P_j^alpha * exp(-beta * c_ij)`; food surplus moves the same way, but only to
-//! settlements short of food. Flows are assigned to the stored least-cost paths,
-//! giving the load on each cell and the route junctions (hubs).
+//! Gravity trade (Wilson 1970; Huff 1964; Barjamovic et al. 2019), in the
+//! Rihll–Wilson form: each settlement sends a fixed marketed share of its harvest,
+//! plus its resource output, to markets in proportion to
+//! `W_j^alpha * exp(-beta * c_ij)`, where `W_j` is the non-farming population, its own market included with weight `home_weight` (D13).
+//! Food arrives less a loss per unit cost. Flows are assigned to the stored
+//! least-cost paths, giving the load on each cell and the route junctions (hubs).
 //! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through.
 
 use crate::cost::{back_dir, step_dir};
@@ -30,30 +31,33 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     for (i, s) in state.settlements.iter().enumerate() {
         idx_of[s.id as usize] = i as u32;
     }
+    // Market pull is the non-farming population (Rihll–Wilson's W): everyone
+    // beyond those fed by the settlement's own kept harvest, plus a small seed.
     let attract: Vec<f32> = state
         .settlements
         .iter()
-        .map(|s| libm::powf(s.pop.max(0.0), p.alpha))
-        .collect();
-    let mut deficit: Vec<f32> = state
-        .settlements
-        .iter()
-        .map(|s| (s.need(p) - s.food_prod).max(0.0))
+        .map(|s| {
+            let farmers = s.food_prod * (1.0 - p.market_share) / p.food_per_person;
+            libm::powf((s.pop - farmers).max(0.0) + p.urban_seed, p.alpha)
+        })
         .collect();
     let mut trade_in = vec![0f32; m];
     let mut food_in = vec![0f32; m];
     let mut food_out = vec![0f32; m];
     let mut flows = Vec::new();
+    // (destination index, partner index, weight, cost)
     let mut weights: Vec<(usize, u32, f32, f32)> = Vec::new();
 
     for i in 0..m {
         let s = &state.settlements[i];
-        let food_surplus = (s.food_prod - s.need(p)).max(0.0);
-        let out = food_surplus + s.resource_out;
+        let food = s.food_prod * p.market_share;
+        let out = food + s.resource_out;
         if out <= 0.0 {
             continue;
         }
         weights.clear();
+        // A home-market weight keeps grain at home when markets are far or small.
+        let mut total = attract[i] * p.home_weight;
         for (k, partner) in s.reach.partners.iter().enumerate() {
             let Some(&j) = idx_of.get(partner.id as usize) else {
                 continue;
@@ -62,49 +66,27 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 continue;
             }
             let w = attract[j as usize] * libm::expf(-p.beta * partner.cost);
+            total += w;
             weights.push((j as usize, k as u32, w, partner.cost));
         }
-        let total: f32 = weights.iter().map(|w| w.2).sum();
         if total <= 0.0 {
             continue;
         }
-        let first_flow = flows.len();
-        for &(j, k, w, _) in &weights {
-            let amount = out * w / total;
-            trade_in[j] += amount;
+        for &(j, k, w, c) in &weights {
+            let share = w / total;
+            let amount = out * share;
+            let sent = food * share;
+            let delivered = sent * (1.0 - p.transport_loss * c).max(0.0);
+            trade_in[j] += amount - sent;
+            food_out[i] += sent;
+            food_in[j] += delivered;
             flows.push(Flow {
                 from: s.id,
                 to: state.settlements[j].id,
                 amount,
-                food: 0.0,
+                food: sent,
                 partner_idx: k,
             });
-        }
-
-        // Food goes only where it is short, by the same gravity weights.
-        if food_surplus > 0.0 {
-            let food_total: f32 = weights
-                .iter()
-                .filter(|w| deficit[w.0] > 0.0)
-                .map(|w| w.2)
-                .sum();
-            if food_total > 0.0 {
-                for (n, &(j, _, w, c)) in weights.iter().enumerate() {
-                    if deficit[j] <= 0.0 {
-                        continue;
-                    }
-                    let keep = (1.0 - p.transport_loss * c).max(0.0);
-                    if keep <= 0.0 {
-                        continue;
-                    }
-                    let send = (food_surplus * w / food_total).min(deficit[j] / keep);
-                    let delivered = send * keep;
-                    deficit[j] -= delivered;
-                    food_in[j] += delivered;
-                    food_out[i] += send;
-                    flows[first_flow + n].food = send;
-                }
-            }
         }
     }
 

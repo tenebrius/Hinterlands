@@ -30,3 +30,14 @@ Each entry: what passed, the numbers, the seeds and params used, anything deferr
   - fields are cleared; released fields regrow at 2%/yr;
   - beside a navigable river, fields stay on the near bank and stretch along it.
 - Map 1, seed 1, food-only, 300 years: 10 villages plateau at about 5,500 each by year 150 (52,260 total), then hold exactly; forest within 5 km of the largest under 2%. Field rings visible around each anchor.
+
+## M3 — Trade and hierarchy
+
+- Trade reworked into the Rihll–Wilson form (D13): marketed share, non-farming population as the attractor, food delivered by gravity with loss.
+- Route rendering: per-segment flow summed over paths, width ∝ √flow, brown on land and pale blue on water; fields and roads layers.
+- Check, map 1, seed 1, founding/failure/roads off, 60 equal starting villages 5 km apart, β = 0.25, 300 years:
+  - a few places pull ahead: the coastal river port (16, 96) at 11,198, then inland market centres at 3,495, 3,276, 3,163 and 3,017, against a village median of about 2,000;
+  - the largest share is 0.087 (< 0.25);
+  - the leader is on a navigable river and the coast, and is a route hub.
+- The rank-size slope over the top 30 is −0.36 in this setup, because 55 of 60 places are land-capped villages of similar size. The slope depends on founding (settlements of different ages) and is checked from M4 on.
+- With β = 0.08 one port takes 19% of everything; with β = 0.4 no centre forms (largest 3.8%). The interesting range is 0.15–0.3.
