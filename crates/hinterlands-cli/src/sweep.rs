@@ -122,7 +122,7 @@ pub fn miss(r: &crate::validate::RunResult) -> f32 {
     let m = &r.m;
     out(m.count as f32, 150.0, 350.0)
         + out(m.over_2000 as f32, 5.0, 12.0)
-        + out(m.over_5000 as f32, 2.0, 5.0)
+        + out(m.over_5000 as f32, 1.0, 5.0)
         + out(m.largest_share, 0.0, 0.25)
         + out(m.rank_slope, -1.3, -0.8)
         + out(m.spacing_median_km, 8.0, 15.0)
@@ -223,7 +223,7 @@ pub fn cmd_search(raw: &[String], args: &Args) {
                         .unwrap_or(0);
                     let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
                     let mouth =
-                        g.iter().filter(|r| r.mouth_city).count() as f32 / g.len().max(1) as f32;
+                        g.iter().filter(|r| r.corridor_city).count() as f32 / g.len().max(1) as f32;
                     mean += ((0.3 - differs).max(0.0) / 0.3 + (0.8 - mouth).max(0.0) / 0.8)
                         / terrains.len() as f32;
                 }
@@ -252,8 +252,8 @@ pub fn cmd_search(raw: &[String], args: &Args) {
         );
         for (_, r) in results.iter().filter(|(k, _)| *k == c) {
             println!(
-                "    map {} seed {} mouth {}: n {} >2k {} >5k {} share {:.2} slope {:.2} space {:.1} sited {:.2} fail {:.2} forest {:.2} stab {:.3} total {:.0}",
-                r.map_seed, r.sim_seed, r.mouth_city as u8, r.m.count, r.m.over_2000, r.m.over_5000, r.m.largest_share, r.m.rank_slope,
+                "    map {} seed {} corridor {}: n {} >2k {} >5k {} share {:.2} slope {:.2} space {:.1} sited {:.2} fail {:.2} forest {:.2} stab {:.3} total {:.0}",
+                r.map_seed, r.sim_seed, r.corridor_city as u8, r.m.count, r.m.over_2000, r.m.over_5000, r.m.largest_share, r.m.rank_slope,
                 r.m.spacing_median_km, r.m.siting_share, r.m.failure_rate, r.m.forest_near_cities, r.max_change, r.m.total_pop
             );
         }

@@ -16,8 +16,10 @@ pub struct RunResult {
     /// Largest year-on-year change in total population after year 100.
     pub max_change: f32,
     pub largest_anchor: Option<usize>,
-    /// A settlement over 5,000 within 10 km of the main river mouth.
-    pub mouth_city: bool,
+    /// A settlement over 5,000 on the main river corridor or the coast within 15 km of it.
+    pub corridor_city: bool,
+    /// Distance of the largest settlement from the main river mouth, km (reported only).
+    pub largest_mouth_km: f32,
     pub ms_per_year: f64,
     pub hash: u64,
     pub median_pop: f32,
@@ -42,8 +44,8 @@ pub const CHECKS: &[Check] = &[
     },
     Check {
         name: "over 5,000",
-        target: "2-5",
-        ok: |r| (2..=5).contains(&r.m.over_5000),
+        target: "1-5",
+        ok: |r| (1..=5).contains(&r.m.over_5000),
     },
     Check {
         name: "largest share",
@@ -109,11 +111,11 @@ pub fn run_one(
         .iter()
         .max_by(|a, b| a.pop.total_cmp(&b.pop))
         .map(|s| s.anchor as usize);
-    let mouth_city = t.river_mouth.is_some_and(|mouth| {
-        snap.settlements
-            .iter()
-            .any(|s| s.pop > 5000.0 && t.grid.dist_km(s.anchor as usize, mouth as usize) <= 10.0)
-    });
+    let corridor_city = metrics::corridor_city(&snap, t, &metrics::main_river_corridor(t));
+    let largest_mouth_km = match (largest_anchor, t.river_mouth) {
+        (Some(a), Some(m)) => t.grid.dist_km(a, m as usize),
+        _ => f32::NAN,
+    };
     let mut pops: Vec<f32> = snap.settlements.iter().map(|s| s.pop).collect();
     pops.sort_by(|a, b| a.total_cmp(b));
     let median_pop = pops.get(pops.len() / 2).copied().unwrap_or(0.0);
@@ -123,7 +125,8 @@ pub fn run_one(
         m,
         max_change,
         largest_anchor,
-        mouth_city,
+        corridor_city,
+        largest_mouth_km,
         ms_per_year,
         hash: snap.hash(),
         median_pop,
@@ -236,24 +239,52 @@ pub fn cmd_validate(args: &Args) {
             .max()
             .unwrap_or(0);
         let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
-        let mouth = rs.iter().filter(|r| r.mouth_city).count() as f32 / rs.len().max(1) as f32;
-        let contingency_ok = differs >= 0.3 && mouth >= 0.8;
+        let corridor =
+            rs.iter().filter(|r| r.corridor_city).count() as f32 / rs.len().max(1) as f32;
+        let contingency_ok = differs >= 0.3 && corridor >= 0.8;
+        let mut over5: Vec<u32> = rs.iter().map(|r| r.m.over_5000).collect();
+        over5.sort();
+        let over5_median = over5.get(over5.len() / 2).copied().unwrap_or(0);
+        let over5_ok = over5_median >= 2;
+        let mut mouth_km: Vec<f32> = rs.iter().map(|r| r.largest_mouth_km).collect();
+        mouth_km.sort_by(|a, b| a.total_cmp(b));
         let ms = rs.iter().map(|r| r.ms_per_year).fold(0.0, f64::max);
         println!(
             "{:<20} {:>12} {:>10.2} {:>10.2} {:>10} {:>8}",
             "contingency",
-            ">=0.30 / >=0.80",
+            ">=.30/>=.80",
             differs,
-            mouth,
+            corridor,
             "",
             if contingency_ok { "ok" } else { "FAIL" }
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
+            "over 5,000 median",
+            ">=2",
+            "",
+            over5_median,
+            "",
+            if over5_ok { "ok" } else { "FAIL" }
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10.1} {:>10} {:>8}",
+            "largest to mouth km",
+            "(reported)",
+            "",
+            mouth_km
+                .get(mouth_km.len() / 2)
+                .copied()
+                .unwrap_or(f32::NAN),
+            "",
+            ""
         );
         println!(
             "runs passing every check: {full}/{}   slowest run {:.2} ms/year (native)",
             rs.len(),
             ms
         );
-        all_ok &= contingency_ok;
+        all_ok &= contingency_ok && over5_ok;
     }
     println!("\nvalidation {}", if all_ok { "PASSED" } else { "FAILED" });
     if !all_ok {

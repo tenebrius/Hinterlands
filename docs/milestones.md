@@ -72,3 +72,27 @@ Medians sit inside every per-run target; the failure rate sits on its 0.70 ceili
 **Open: the main-river-mouth check.** The largest cities form on the coast and on navigable rivers (siting 100%), but at the main mouth in only 30–40% of runs. With β ≈ 0.2–0.3 trade is regional: villages send their marketed grain to markets within a few km, so long river-to-sea trade, which is what historically made mouth cities, barely exists. With β = 0.08 (the specification's value) one coastal city takes most of the region. Making the mouth win needs a long-distance trade component (for example an external sea market, or a second trade tier with weak distance decay) — a shape change beyond v1's scope as written. Raised with the owner.
 
 Golden hash (map 1, seed 1, defaults, 500 years): `crates/hinterlands-cli/tests/golden.txt`.
+
+### M5 — after the revised checks (D20)
+
+Defaults retuned with `search` (3 maps × 4 seeds per sample): `found_threshold` 0.69, `shadow_drain` 0.015, `w_river` 1.65, `fail_low_years` 12, `fail_unfed_years` 17, `market_share` 0.49, `through_weight` 0.025; `shadow_weight` stays 3.85 (3.35 was tried and was worse on maps 2 and 3).
+
+`hinterlands validate --maps 3 --seeds 20`, seeds passing each check:
+
+| Check | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Settlements 150–350 | 20 | 20 | 20 |
+| Over 2,000: 5–12 | 20 | 19 | 19 |
+| Over 5,000: 1–5 (median 3 / 4 / 3) | 20 | 20 | 20 |
+| Largest share < 0.25 | 20 | 20 | 20 |
+| Rank-size slope (median −1.00 / −1.02 / −1.02) | 20 | 20 | 20 |
+| Market spacing 8–15 km | 17 | 18 | 17 |
+| Siting ≥ 0.70 | 20 | 20 | 20 |
+| Failure rate 0.40–0.70 (median 0.63 / 0.61 / 0.63) | 20 | 20 | 20 |
+| Forest near cities < 0.30 | 16 | 20 | 17 |
+| Stability < 5%/yr | 20 | 20 | 20 |
+| Contingency (a) / (b) corridor | 0.70 / 0.95 | 0.75 / 0.85 | 0.80 / 1.00 |
+| Runs passing every check | 14/20 | 17/20 | 15/20 |
+| Largest city to main mouth (median, reported) | 25.2 km | 24.3 km | 14.4 km |
+
+Every check passes in at least 80% of seeds on every map, and the corridor, median-over-5,000 and determinism checks pass on all maps. The one failure is the canonical run (map 1, seed 1), whose market spacing is 15.8 km against a 15 km ceiling. Raised with the owner: whether v1 is judged on the canonical seed, as the foundation says, or on pass rates over seeds.

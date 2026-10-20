@@ -61,6 +61,45 @@ fn median(mut v: Vec<f32>) -> f32 {
     }
 }
 
+/// The main river corridor: navigable cells of the river system that discharges
+/// at the main mouth (the mouth included).
+pub fn main_river_corridor(t: &Terrain) -> Vec<bool> {
+    let n = t.n();
+    let mut on = vec![false; n];
+    let Some(mouth) = t.river_mouth.map(|m| m as usize) else {
+        return on;
+    };
+    for i in 0..n {
+        if !t.is_nav(i) {
+            continue;
+        }
+        // Follow the navigable stretch downstream; it either reaches the main mouth or another.
+        let mut c = i;
+        for _ in 0..n {
+            if c == mouth {
+                on[i] = true;
+                break;
+            }
+            match t.downstream(c) {
+                Some(d) if t.is_nav(d) => c = d,
+                _ => break,
+            }
+        }
+    }
+    on
+}
+
+/// A settlement over 5,000 on the main river corridor (anchor on or next to it), or
+/// on the coast within 15 km of it.
+pub fn corridor_city(snap: &Snapshot, t: &Terrain, corridor: &[bool]) -> bool {
+    let cells: Vec<usize> = (0..t.n()).filter(|&i| corridor[i]).collect();
+    snap.settlements.iter().filter(|s| s.pop > 5000.0).any(|s| {
+        let a = s.anchor as usize;
+        t.touches(a, |j| corridor[j])
+            || (t.is_coastal(a) && cells.iter().any(|&c| t.grid.dist_km(a, c) <= 15.0))
+    })
+}
+
 /// A road cell where roads leave in three or more directions.
 pub fn is_road_crossing(snap: &Snapshot, t: &Terrain, cell: usize) -> bool {
     snap.road[cell]

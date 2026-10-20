@@ -57,7 +57,14 @@ impl Layer for RoutesLayer {
             }
             for dir in [0usize, 1, 2, 3] {
                 if let Some(j) = g.neighbor(i, dir) {
-                    if road[j] && v.terrain.is_land(j) {
+                    // A diagonal is drawn only where no orthogonal road cell already
+                    // joins the two, so road corners don't become triangles.
+                    let is_road =
+                        |c: Option<usize>| c.is_some_and(|c| road[c] && v.terrain.is_land(c));
+                    let corner = dir % 2 == 1
+                        && (is_road(g.neighbor(i, (dir + 7) % 8))
+                            || is_road(g.neighbor(i, (dir + 1) % 8)));
+                    if road[j] && v.terrain.is_land(j) && !corner {
                         d.painter.line_segment(
                             [
                                 d.camera.cell_center(d.rect, g.w, i),

@@ -91,3 +91,10 @@ Kind: cost-grid rule.
 ## D19 — Parameters are tuned by search
 `hinterlands search` samples parameter ranges and scores each sample by its distance from the validation targets over several maps and seeds; `hinterlands sweep` runs grids. Defaults come from these runs and are recorded with their numbers in `docs/milestones.md`.
 Kind: process.
+
+## D20 — Revised checks: river corridor instead of the mouth; at least one city over 5,000 (owner/designer decision)
+On the simulation designer's advice, accepted by the owner:
+1. Contingency (b) no longer asks for a city over 5,000 within 10 km of the main mouth. Big pre-industrial cities sat at the lowest bridging point or the head of sea navigation (London, Rouen and Paris, Hamburg, Bordeaux, Seville, Antwerp), not at marshy, exposed mouths, and the research cited separates coast access and navigable rivers as positives without a "mouth" term. The check now asks for a settlement over 5,000 on the main river system's navigable stretch, or on the coast within 15 km of it, in at least 80% of seeds. The largest city's distance from the main mouth is reported.
+2. Over 5,000 per run is 1–5, with the median over 20 seeds per map at least 2. A 16,000 km² region with one city over 5,000 is historically normal; 2–5 was scaled from all of England. The second city is not to be bought by pushing the failure rate over its ceiling.
+3. **Not built in v1:** a long-distance trade tier (an "outside world" reached by sea). This is the known limit of single-tier trade: one β cannot give both regional markets and long-distance transfer traffic. It is "sea trade between coasts", a Later (v5) item. After v1 passes, an optional experiment is allowed: one virtual settlement on a sea-edge cell with a fixed size and its own low β, behind a toggle that defaults off, to inform whether v2 or v5 should bring it forward.
+Kind: change to the acceptance test, by the owner.
