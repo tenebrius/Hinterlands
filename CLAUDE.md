@@ -10,7 +10,7 @@ Read `docs/foundation.md` (the brief and acceptance test) and `docs/decisions.md
 
 ## Hard rules
 - `hinterlands-core` has no I/O and no wasm deps. Viewer and CLI only read `Snapshot`.
-- Determinism: one `rand_chacha` Rng per run; no `HashMap`/`HashSet` iteration in core (use `BTreeMap` or sorted `Vec`); no wall-clock; transcendental maths via `libm`.
+- Determinism: one `rand_chacha` Rng per run; no `HashMap`/`HashSet` iteration in core (use `BTreeMap` or sorted `Vec`); no wall-clock; transcendental maths via `libm`; random draws over `u32`, never `usize` (D6). Check the browser with `?selftest=N` against `hinterlands hash --years N`.
 - Each system is a free function that writes only its own outputs and has an `enabled` flag in `Params`.
 - No cell size or map size is hard-coded; costs are per km, scaled by `cell_km`.
 - Nothing marked Later in the foundation is built before v1 passes validation.

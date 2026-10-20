@@ -1,0 +1,11 @@
+[package]
+name = "hinterlands-mapgen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+hinterlands-core.workspace = true
+serde.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+libm.workspace = true

@@ -24,3 +24,19 @@ Kind: implementation.
 - Gravity flows `T_ij` are computed over all pairs within `C_max` (route loads, inflow); physical food transfer goes only to settlements in deficit.
 - Map generation records the main river mouth cell in `Terrain` for the contingency check.
 Kind: interpretation of the spec.
+
+## D6 — Random draws never use `usize`
+`rand`'s `gen_range` over `usize` samples differently on 32-bit wasm and 64-bit native, which broke cross-platform determinism in the first browser self-test. All draws use `u32` ranges. Checked by `?selftest=N` in the browser against `hinterlands hash --years N`.
+Kind: implementation.
+
+## D7 — Stream-power incision lands early on the map track
+On a tilted-plane heightmap, D8 drainage gives parallel streams to the sea and no dominant river, which defeats the river and break-of-bulk behaviours. A simple stream-power incision pass (`fluvial_incision`, between thermal erosion and hydrology) produces dendritic networks with a few main rivers. The foundation lists hydraulic erosion as a later map pass and allows map passes to land early, since the systems never see how terrain was made.
+Kind: map generation pass, allowed by the map track rule.
+
+## D8 — Saves are replays
+A save file is `(map_seed, sim_seed, params, year)`. Loading regenerates the terrain and replays to the year; determinism makes the state identical, and the file stays tiny and readable.
+Kind: implementation.
+
+## D9 — The viewer reads snapshots in-process
+The viewer and the core are both Rust in one wasm module, so the snapshot is passed as a value through `SimHandle` rather than as bincode bytes over a JS boundary. The bincode form remains what the CLI writes and what tests hash.
+Kind: implementation.

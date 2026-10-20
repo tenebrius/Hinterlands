@@ -1,0 +1,39 @@
+//! Initial conditions: starting hamlets on the cells with the most free food
+//! within the cultivation radius, with water nearby, spaced apart.
+
+use crate::params::Params;
+use crate::state::{LogEntry, LogKind, State};
+use crate::systems::founding::free_food_near;
+use crate::terrain::Terrain;
+
+pub fn populate(state: &mut State, t: &Terrain, p: &Params) {
+    let mut cands: Vec<(f32, usize)> = Vec::new();
+    for cell in 0..t.n() {
+        if t.is_land(cell) && t.water_within(cell, p.water_radius_km) {
+            cands.push((free_food_near(state, t, p, cell), cell));
+        }
+    }
+    cands.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    let mut chosen: Vec<usize> = Vec::new();
+    for &(_, cell) in &cands {
+        if chosen.len() as u32 >= p.n_initial {
+            break;
+        }
+        if chosen
+            .iter()
+            .all(|&c| t.grid.dist_km(c, cell) >= p.initial_spacing_km)
+        {
+            chosen.push(cell);
+        }
+    }
+    for cell in chosen {
+        let id = state.add_settlement(t, p, cell as u32, p.initial_pop, true);
+        state.log.push(LogEntry {
+            year: 0,
+            settlement: id,
+            anchor: cell as u32,
+            pop: p.initial_pop,
+            kind: LogKind::Initial,
+        });
+    }
+}
