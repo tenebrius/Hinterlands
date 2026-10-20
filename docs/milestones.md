@@ -41,3 +41,34 @@ Each entry: what passed, the numbers, the seeds and params used, anything deferr
   - the leader is on a navigable river and the coast, and is a route hub.
 - The rank-size slope over the top 30 is −0.36 in this setup, because 55 of 60 places are land-capped villages of similar size. The slope depends on founding (settlements of different ages) and is checked from M4 on.
 - With β = 0.08 one port takes 19% of everything; with β = 0.4 no centre forms (largest 3.8%). The interesting range is 0.15–0.3.
+
+## M4 — Founding, failure and roads (passed) and M5 — Tuning (stopped for owner input)
+
+Model changes on the way: D15 (growth split into rural demography and Rihll–Wilson town growth fed by migration), D16 (urban shadow drains small neighbours), D17 (performance), D18 (break of bulk at river mouths). Tuned with `hinterlands search` and `sweep` (D19). Viewer: site-score overlay, chronicle, inspector, charts, generated parameter sliders, footprints with ruins, animated trade dots, save and load.
+
+Performance: 17–20 ms per simulated year native; **19.4 ms per year in the release wasm build** in headless Chromium (budget 50 ms). The browser and native hashes match after 500 years.
+
+Validation, defaults as committed, `hinterlands validate --maps 3 --seeds 20` (pass count over 20 seeds per map):
+
+| Check | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Determinism | ok | | |
+| Settlements 150–350 | 17 | 15 | 15 |
+| Over 2,000: 5–12 | 17 | 16 | 15 |
+| Over 5,000: 2–5 | 15 | 10 | 12 |
+| Largest share < 0.25 | 20 | 20 | 20 |
+| Rank-size slope −1.3..−0.8 | 19 | 20 | 19 |
+| Market spacing 8–15 km | 17 | 20 | 18 |
+| Siting ≥ 0.70 | 20 | 20 | 20 |
+| Failure rate 0.40–0.70 | 11 | 8 | 7 |
+| Forest near cities < 0.30 | 15 | 19 | 20 |
+| Stability < 5%/yr | 20 | 20 | 20 |
+| Contingency (a) largest differs ≥ 0.30 | 0.70 | 0.70 | 0.75 |
+| Contingency (b) city > 5,000 within 10 km of main mouth ≥ 0.80 | **0.30** | **0.35** | **0.40** |
+| Runs passing every per-run check | 4/20 | 4/20 | 4/20 |
+
+Medians sit inside every per-run target; the failure rate sits on its 0.70 ceiling, and settlement count and the over-5,000 count sit near their floors, so a fifth to a half of seeds fall just outside.
+
+**Open: the main-river-mouth check.** The largest cities form on the coast and on navigable rivers (siting 100%), but at the main mouth in only 30–40% of runs. With β ≈ 0.2–0.3 trade is regional: villages send their marketed grain to markets within a few km, so long river-to-sea trade, which is what historically made mouth cities, barely exists. With β = 0.08 (the specification's value) one coastal city takes most of the region. Making the mouth win needs a long-distance trade component (for example an external sea market, or a second trade tier with weak distance decay) — a shape change beyond v1's scope as written. Raised with the owner.
+
+Golden hash (map 1, seed 1, defaults, 500 years): `crates/hinterlands-cli/tests/golden.txt`.

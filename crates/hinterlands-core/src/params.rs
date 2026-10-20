@@ -141,8 +141,8 @@ define_params! {
     "Trade" => {
         trade_enabled: bool = true, [0, 1], "Run the trade system";
         c_max: f32 = 30.0, [10, 200], "Largest travel cost at which two settlements trade";
-        alpha: f32 = 1.15, [0.5, 2], "Size exponent of the gravity attraction";
-        beta: f32 = 0.31, [0.005, 0.5], "Distance decay of trade per km-equivalent";
+        alpha: f32 = 1.1, [0.5, 2], "Size exponent of the gravity attraction";
+        beta: f32 = 0.2, [0.005, 0.5], "Distance decay of trade per km-equivalent";
         transport_loss: f32 = 0.005, [0, 0.03], "Share of shipped food lost per unit cost";
         cost_refresh_years: u32 = 5, [1, 25], "Years between refreshes of travel costs and paths";
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
@@ -179,7 +179,7 @@ define_params! {
         access_decay: f32 = 0.05, [0, 0.5], "Decay of market access per unit cost";
         noise: f32 = 0.9, [0, 2], "Upper bound of the uniform noise term";
         found_threshold: f32 = 0.75, [0, 10], "Least score for a new settlement";
-        max_found_per_step: u32 = 8, [0, 30], "Most settlements founded per founding step";
+        max_found_per_step: u32 = 6, [0, 30], "Most settlements founded per founding step";
         min_spacing_km: f32 = 3.0, [1, 20], "No founding within this distance of a settlement, km";
         water_radius_km: f32 = 1.0, [0, 5], "Founding sites need water within this distance, km";
         found_pop: f32 = 30.0, [5, 200], "Population of a new hamlet";

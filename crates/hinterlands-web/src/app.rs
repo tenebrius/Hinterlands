@@ -88,9 +88,11 @@ impl App {
         if let Some(years) = selftest_years() {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
             let mut probe = SimHandle::new(1, 1, Params::default());
+            let start = web_time_now();
             probe.step(years);
+            let ms = (web_time_now() - start) / years.max(1) as f64;
             let line = format!(
-                "selftest map 1 seed 1 years {years} hash {:016x}",
+                "selftest map 1 seed 1 years {years} hash {:016x} {ms:.1} ms/year",
                 probe.snapshot().hash()
             );
             log::warn!("{line}");
