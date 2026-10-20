@@ -12,6 +12,20 @@ pub fn refresh_all(state: &mut State, t: &Terrain, p: &Params) {
     }
 }
 
+/// Refresh the share of settlements due this year. Each settlement is refreshed
+/// every `cost_refresh_years`, staggered by id so the work is spread evenly.
+pub fn refresh_due(state: &mut State, t: &Terrain, p: &Params) {
+    let k = p.cost_refresh_years.max(1);
+    if state.year == 0 {
+        return;
+    }
+    for idx in 0..state.settlements.len() {
+        if state.settlements[idx].id % k == state.year % k {
+            refresh_one(state, t, p, idx);
+        }
+    }
+}
+
 pub fn refresh_one(state: &mut State, t: &Terrain, p: &Params, idx: usize) {
     let n = t.n();
     let mut dj = std::mem::take(&mut state.scratch);

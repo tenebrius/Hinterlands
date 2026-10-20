@@ -1,8 +1,12 @@
 //! Side panels. A panel reads `ViewState` and returns messages; it never touches
 //! the simulation or another panel. Adding one is a new file and a line in `all()`.
 
+mod charts;
+mod chronicle;
 mod controls;
+mod inspector;
 mod layers;
+mod params;
 
 use crate::view::{Msg, ViewState};
 
@@ -22,6 +26,10 @@ pub trait Panel {
 pub fn all() -> Vec<Box<dyn Panel>> {
     vec![
         Box::new(controls::Controls::default()),
+        Box::new(inspector::Inspector),
         Box::new(layers::Layers),
+        Box::new(charts::Charts),
+        Box::new(chronicle::Chronicle),
+        Box::new(params::ParamsPanel),
     ]
 }

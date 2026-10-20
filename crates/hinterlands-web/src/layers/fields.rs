@@ -24,7 +24,7 @@ impl Layer for FieldsLayer {
         if self.tex.is_none() || self.key != key {
             let px = (0..t.n())
                 .map(|i| {
-                    if v.snapshot.owner[i] != NONE {
+                    if v.snapshot.owner[i] != NONE && v.snapshot.built[i] == NONE {
                         Color32::from_rgba_unmultiplied(236, 206, 96, 150)
                     } else {
                         Color32::TRANSPARENT

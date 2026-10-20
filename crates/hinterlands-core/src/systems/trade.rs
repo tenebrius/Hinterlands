@@ -12,6 +12,11 @@ use crate::state::{Flow, State};
 use crate::terrain::Terrain;
 use crate::Rng;
 
+/// People beyond those the settlement's own harvest feeds: Rihll–Wilson's W.
+pub fn urban_pop(s: &crate::state::Settlement, p: &Params) -> f32 {
+    (s.pop - s.food_prod / p.food_per_person).max(0.0)
+}
+
 pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     for s in state.settlements.iter_mut() {
         s.trade_in = 0.0;
@@ -32,14 +37,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         idx_of[s.id as usize] = i as u32;
     }
     // Market pull is the non-farming population (Rihll–Wilson's W): everyone
-    // beyond those fed by the settlement's own kept harvest, plus a small seed.
+    // beyond those its own harvest feeds, plus a small seed.
     let attract: Vec<f32> = state
         .settlements
         .iter()
-        .map(|s| {
-            let farmers = s.food_prod * (1.0 - p.market_share) / p.food_per_person;
-            libm::powf((s.pop - farmers).max(0.0) + p.urban_seed, p.alpha)
-        })
+        .map(|s| libm::powf(urban_pop(s, p) + p.urban_seed, p.alpha))
         .collect();
     let mut trade_in = vec![0f32; m];
     let mut food_in = vec![0f32; m];

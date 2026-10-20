@@ -119,6 +119,7 @@ define_params! {
         cost_river_cross: f32 = 5.0, [0, 20], "Fixed cost to cross a navigable river away from a ford";
         cost_stream_cross: f32 = 1.0, [0, 10], "Fixed cost to cross a stream away from a ford";
         cost_transship: f32 = 3.0, [0, 20], "Fixed cost to step between land and boat at a harbour or river";
+        cost_river_sea_transship: f32 = 3.8, [0, 20], "Fixed cost to move cargo between river barge and sea ship at a mouth";
         open_coast_factor: f32 = 2.0, [1, 5], "Transshipment multiplier on open (non-harbour) coast";
         tobler: bool = true, [0, 1], "Scale land costs by Tobler's slope factor";
     }
@@ -126,39 +127,42 @@ define_params! {
         cultivation_enabled: bool = true, [0, 1], "Run the cultivation system";
         food_per_person: f32 = 1.0, [0.5, 2], "Food units one person needs per year";
         people_per_prime_cell: f32 = 150.0, [50, 400], "People fed by one cell of prime land";
-        r_cult: f32 = 2.5, [1, 12], "Travel-cost radius of cultivation";
+        r_cult: f32 = 1.3, [1, 12], "Travel-cost radius of cultivation";
         cult_margin: f32 = 1.2, [1, 2], "Fields are claimed until produce covers need times this";
         release_hysteresis: f32 = 0.1, [0, 0.5], "Fields are released only when produce exceeds the target by this share";
         min_field_yield: f32 = 0.1, [0, 0.8], "Cells below this yield are never cultivated";
         clear_rate: f32 = 0.2, [0, 1], "Forest lost per year on a cultivated cell";
         regrow_rate: f32 = 0.02, [0, 0.2], "Forest regained per year on an uncultivated cell";
-        fuel_per_capita: f32 = 0.00015, [0, 0.002], "Forest cover (cell units) burned per person per year";
+        fuel_per_capita: f32 = 0.0004, [0, 0.002], "Forest cover (cell units) burned per person per year";
         r_fuel: f32 = 8.0, [1, 20], "Travel-cost radius of fuel cutting";
         max_fuel_take: f32 = 0.1, [0.01, 1], "Most forest cover cut from one cell per year";
         resource_output: f32 = 50.0, [0, 500], "Trade output of an owned resource cell per year";
     }
     "Trade" => {
         trade_enabled: bool = true, [0, 1], "Run the trade system";
-        c_max: f32 = 60.0, [10, 200], "Largest travel cost at which two settlements trade";
+        c_max: f32 = 30.0, [10, 200], "Largest travel cost at which two settlements trade";
         alpha: f32 = 1.15, [0.5, 2], "Size exponent of the gravity attraction";
-        beta: f32 = 0.25, [0.005, 0.5], "Distance decay of trade per km-equivalent";
+        beta: f32 = 0.31, [0.005, 0.5], "Distance decay of trade per km-equivalent";
         transport_loss: f32 = 0.005, [0, 0.03], "Share of shipped food lost per unit cost";
         cost_refresh_years: u32 = 5, [1, 25], "Years between refreshes of travel costs and paths";
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
         home_weight: f32 = 0.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
-        market_share: f32 = 0.2, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
+        market_share: f32 = 0.45, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
     }
     "Growth" => {
         growth_enabled: bool = true, [0, 1], "Run the growth system";
-        r_grow: f32 = 0.02, [0, 0.1], "Yearly natural growth at a full food surplus";
+        r_grow: f32 = 0.027, [0, 0.1], "Yearly natural growth at a full food surplus";
         r_shrink: f32 = 0.02, [0, 0.2], "Yearly decline per unit of food shortfall";
         food_cap: f32 = 1.2, [1, 2], "Food ratio above which surplus adds no natural growth";
-        epsilon: f32 = 0.05, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
+        epsilon: f32 = 0.3, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
         k_maint: f32 = 1.0, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
-        through_weight: f32 = 0.0, [0, 2], "Weight of trade passing through and non-food trade in inflow";
+        through_weight: f32 = 0.1, [0, 2], "Weight of trade passing through and non-food trade in inflow";
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
+        migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
+        shadow_drain: f32 = 0.025, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
+        shadow_size_ratio: f32 = 3.0, [1, 20], "A neighbour drains only if this many times larger";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
     }
     "Founding" => {
@@ -169,13 +173,13 @@ define_params! {
         w_coast: f32 = 0.6, [0, 5], "Score weight of the coast";
         w_road: f32 = 0.35, [0, 5], "Score weight of a road";
         w_food: f32 = 0.2, [0, 5], "Score weight of free food within the cultivation radius";
-        shadow_weight: f32 = 1.5, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
+        shadow_weight: f32 = 3.85, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
         shadow_radius: f32 = 10.0, [0, 40], "Travel cost within which a settlement casts a shadow";
         access_weight: f32 = 0.3, [0, 5], "Market access per 1,000 people beyond the shadow radius";
         access_decay: f32 = 0.05, [0, 0.5], "Decay of market access per unit cost";
-        noise: f32 = 0.3, [0, 2], "Upper bound of the uniform noise term";
-        found_threshold: f32 = 1.0, [0, 10], "Least score for a new settlement";
-        max_found_per_step: u32 = 3, [0, 30], "Most settlements founded per founding step";
+        noise: f32 = 0.9, [0, 2], "Upper bound of the uniform noise term";
+        found_threshold: f32 = 0.75, [0, 10], "Least score for a new settlement";
+        max_found_per_step: u32 = 8, [0, 30], "Most settlements founded per founding step";
         min_spacing_km: f32 = 3.0, [1, 20], "No founding within this distance of a settlement, km";
         water_radius_km: f32 = 1.0, [0, 5], "Founding sites need water within this distance, km";
         found_pop: f32 = 30.0, [5, 200], "Population of a new hamlet";
@@ -186,6 +190,10 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 10, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 20, [1, 100], "Years unfed before removal";
+    }
+    "View" => {
+        density_per_cell: f32 = 1500.0, [100, 20000], "People per built-up cell in the drawn footprint (rendering only)";
+        ruin_years: u32 = 60, [0, 255], "Years an abandoned built-up cell stays visible as a ruin";
     }
     "Roads" => {
         roads_enabled: bool = true, [0, 1], "Run the roads system";

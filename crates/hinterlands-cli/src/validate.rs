@@ -20,6 +20,7 @@ pub struct RunResult {
     pub mouth_city: bool,
     pub ms_per_year: f64,
     pub hash: u64,
+    pub median_pop: f32,
 }
 
 pub struct Check {
@@ -113,6 +114,9 @@ pub fn run_one(
             .iter()
             .any(|s| s.pop > 5000.0 && t.grid.dist_km(s.anchor as usize, mouth as usize) <= 10.0)
     });
+    let mut pops: Vec<f32> = snap.settlements.iter().map(|s| s.pop).collect();
+    pops.sort_by(|a, b| a.total_cmp(b));
+    let median_pop = pops.get(pops.len() / 2).copied().unwrap_or(0.0);
     RunResult {
         map_seed,
         sim_seed,
@@ -122,6 +126,7 @@ pub fn run_one(
         mouth_city,
         ms_per_year,
         hash: snap.hash(),
+        median_pop,
     }
 }
 

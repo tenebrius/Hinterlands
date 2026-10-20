@@ -1,8 +1,10 @@
 //! Map layers, drawn in order. A layer reads the snapshot and terrain and never
 //! touches the simulation; adding one is a new file and a line in `all()`.
 
+mod dots;
 mod fields;
-mod overlay_cost;
+pub mod overlay_cost;
+mod overlay_score;
 mod routes;
 mod settlements;
 pub mod terrain;
@@ -36,7 +38,9 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(terrain::TerrainLayer::default()),
         Box::new(fields::FieldsLayer::default()),
         Box::new(overlay_cost::CostOverlay::default()),
+        Box::new(overlay_score::ScoreOverlay::default()),
         Box::new(routes::RoutesLayer::default()),
-        Box::new(settlements::SettlementsLayer),
+        Box::new(settlements::SettlementsLayer::default()),
+        Box::new(dots::DotsLayer::default()),
     ]
 }

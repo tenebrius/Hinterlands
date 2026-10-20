@@ -204,6 +204,10 @@ pub struct State {
     /// Owning settlement id of a cultivated cell, or `NONE`.
     pub owner: Vec<u32>,
     pub road: Vec<bool>,
+    /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
+    pub built: Vec<u32>,
+    /// Years a ruin remains visible.
+    pub ruin: Vec<u8>,
     /// Political domain per cell; unused in v1.
     pub domain: Vec<u16>,
     pub transport: Transport,
@@ -238,6 +242,8 @@ impl State {
             forest: t.forest0.clone(),
             owner: vec![NONE; n],
             road,
+            built: vec![NONE; n],
+            ruin: vec![0; n],
             domain: vec![0; n],
             transport,
             cost,

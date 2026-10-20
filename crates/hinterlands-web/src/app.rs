@@ -183,6 +183,9 @@ impl eframe::App for App {
             ctx.request_repaint();
         }
 
+        if let Some(bytes) = PENDING_LOAD.with(|p| p.borrow_mut().take()) {
+            self.apply(vec![Msg::Load(bytes)]);
+        }
         let layer_names: Vec<(&'static str, &'static str)> =
             self.layers.iter().map(|l| (l.id(), l.name())).collect();
         let mut msgs = Vec::new();
@@ -208,6 +211,60 @@ impl eframe::App for App {
             msgs.extend(self.map_ui(ui));
         });
         self.apply(msgs);
+    }
+}
+
+thread_local! {
+    /// Bytes of a save file the user picked, waiting to be loaded next frame.
+    static PENDING_LOAD: std::cell::RefCell<Option<Vec<u8>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Ask the user for a save file; its bytes arrive in `PENDING_LOAD`.
+pub fn pick_save_file() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::closure::Closure;
+        use wasm_bindgen::JsCast;
+        let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
+            return;
+        };
+        let Ok(input) = doc
+            .create_element("input")
+            .map(|e| e.unchecked_into::<web_sys::HtmlInputElement>())
+        else {
+            return;
+        };
+        input.set_type("file");
+        input.set_accept(".json");
+        let inp = input.clone();
+        let on_change = Closure::once(move || {
+            let Some(file) = inp.files().and_then(|f| f.get(0)) else {
+                return;
+            };
+            let Ok(reader) = web_sys::FileReader::new() else {
+                return;
+            };
+            let r = reader.clone();
+            let on_load = Closure::once(move || {
+                if let Ok(text) = r.result() {
+                    if let Some(s) = text.as_string() {
+                        PENDING_LOAD.with(|p| *p.borrow_mut() = Some(s.into_bytes()));
+                    }
+                }
+            });
+            reader.set_onload(Some(on_load.as_ref().unchecked_ref()));
+            on_load.forget();
+            let _ = reader.read_as_text(&file);
+        });
+        input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
+        on_change.forget();
+        input.click();
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if let Ok(bytes) = std::fs::read("hinterlands-save.json") {
+            PENDING_LOAD.with(|p| *p.borrow_mut() = Some(bytes));
+        }
     }
 }
 

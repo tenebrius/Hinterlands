@@ -3,10 +3,12 @@
 
 pub mod cost;
 pub mod event;
+pub mod footprint;
 pub mod grid;
 pub mod init;
 pub mod metrics;
 pub mod params;
+pub mod query;
 pub mod reach;
 pub mod snapshot;
 pub mod state;
@@ -43,15 +45,14 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
         e.apply(state, t);
     }
     state.log.clear();
-    if state.year > 0 && state.year % p.cost_refresh_years.max(1) == 0 {
-        reach::refresh_all(state, t, p);
-    }
+    reach::refresh_due(state, t, p);
     systems::cultivation::run(state, t, p, rng);
     systems::trade::run(state, t, p, rng);
     systems::growth::run(state, t, p, rng);
     systems::founding::run(state, t, p, rng);
     systems::failure::run(state, t, p, rng);
     systems::roads::run(state, t, p, rng);
+    footprint::update(state, t, p);
     state.year += 1;
 }
 

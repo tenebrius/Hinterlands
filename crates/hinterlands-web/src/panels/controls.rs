@@ -62,6 +62,22 @@ impl Panel for Controls {
                 out.push(Msg::Reset(*sim_seed));
             }
         });
+        ui.horizontal(|ui| {
+            if ui
+                .button("Save")
+                .on_hover_text("Download the run (seeds, parameters, year)")
+                .clicked()
+            {
+                out.push(Msg::Save);
+            }
+            if ui
+                .button("Load")
+                .on_hover_text("Replay a saved run to its year")
+                .clicked()
+            {
+                crate::app::pick_save_file();
+            }
+        });
         out
     }
 }

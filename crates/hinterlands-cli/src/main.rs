@@ -2,6 +2,7 @@
 
 mod png;
 mod render;
+mod sweep;
 mod truth;
 mod validate;
 
@@ -21,6 +22,8 @@ commands:
   render    --map-seed N --png out.png [--seed N --years N] [--layer terrain|yield|forest|score|cost]
   bench     [--map-seed N] [--seed N] [--years 500]
   hash      [--map-seed N] [--seed N] [--years 500]   print the final snapshot hash
+  sweep     --set name=a,b [--set name2=c,d] [--seeds 2] [--maps 1] [--years 500] [--params p.json]
+  search    --range name=lo:hi [...] [--n 40] [--seeds 1] [--maps 1] [--best-out p.json]
   params    print the parameter table as Markdown
 ";
 
@@ -156,6 +159,62 @@ fn cmd_run(args: &Args) {
         founded_log,
         snap.tally.last_best_score
     );
+    if let Some(mouth) = sim
+        .terrain
+        .river_mouth
+        .filter(|_| args.str("mouth").is_some())
+    {
+        let t = &sim.terrain;
+        println!(
+            "main river mouth {:?}, drainage {:.0} km²",
+            t.grid.xy(mouth as usize),
+            t.flux[mouth as usize]
+        );
+        let mut near: Vec<_> = snap
+            .settlements
+            .iter()
+            .map(|s| (t.grid.dist_km(s.anchor as usize, mouth as usize), s))
+            .filter(|x| x.0 <= 15.0)
+            .collect();
+        near.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (d, s) in near {
+            println!(
+                "  #{} at {:?}, {:.1} km: pop {:.0}, through {:.0}, food in {:.0}",
+                s.id,
+                t.grid.xy(s.anchor as usize),
+                d,
+                s.pop,
+                s.through,
+                s.food_in
+            );
+        }
+    }
+    if args.str("young").is_some() {
+        // Settlements founded during the run: size, fields and food ratio by age.
+        let mut v: Vec<_> = snap.settlements.iter().filter(|s| !s.initial).collect();
+        v.sort_by_key(|s| s.founded);
+        let bands = [(0u32, 50u32), (50, 100), (100, 200), (200, 500)];
+        for (lo, hi) in bands {
+            let g: Vec<_> = v
+                .iter()
+                .filter(|s| (lo..hi).contains(&(snap.year - s.founded)))
+                .collect();
+            if g.is_empty() {
+                continue;
+            }
+            let mut pops: Vec<f32> = g.iter().map(|s| s.pop).collect();
+            pops.sort_by(|a, b| a.total_cmp(b));
+            let nofield = g.iter().filter(|s| s.fields == 0).count();
+            let hub = g.iter().filter(|s| snap.hub[s.anchor as usize]).count();
+            println!(
+                "age {lo:>3}-{hi:<3}: {:>3} alive, median pop {:>6.0}, p90 {:>6.0}, no fields {nofield}, on hub {hub}, mean ratio {:.2}",
+                g.len(),
+                pops[pops.len() / 2],
+                pops[pops.len() * 9 / 10],
+                g.iter().map(|s| s.food_ratio).sum::<f32>() / g.len() as f32
+            );
+        }
+    }
     if let Some(n) = args.str("detail") {
         print_detail(&snap, &sim.terrain, n.parse().unwrap_or(10));
     }
@@ -245,14 +304,40 @@ fn cmd_render(args: &Args) {
 }
 
 fn cmd_bench(args: &Args) {
+    use hinterlands_core::{reach, systems};
     let years = args.u64("years", 500) as u32;
     let mut sim = make_sim(args);
+    let names = [
+        "refresh",
+        "cultivation",
+        "trade",
+        "growth",
+        "founding",
+        "failure",
+        "roads",
+    ];
+    let mut spent = [0f64; 7];
     let mut worst = 0f64;
     let t0 = Instant::now();
     for _ in 0..years {
-        let t = Instant::now();
-        sim.step(1);
-        worst = worst.max(t.elapsed().as_secs_f64() * 1000.0);
+        let ty = Instant::now();
+        let (st, t, p, rng) = (&mut sim.state, &sim.terrain, &sim.params, &mut sim.rng);
+        // Mirrors `step_year`, timing each phase.
+        st.log.clear();
+        let mut lap = |k: usize, f: &mut dyn FnMut()| {
+            let s = Instant::now();
+            f();
+            spent[k] += s.elapsed().as_secs_f64() * 1000.0;
+        };
+        lap(0, &mut || reach::refresh_due(st, t, p));
+        lap(1, &mut || systems::cultivation::run(st, t, p, rng));
+        lap(2, &mut || systems::trade::run(st, t, p, rng));
+        lap(3, &mut || systems::growth::run(st, t, p, rng));
+        lap(4, &mut || systems::founding::run(st, t, p, rng));
+        lap(5, &mut || systems::failure::run(st, t, p, rng));
+        lap(6, &mut || systems::roads::run(st, t, p, rng));
+        st.year += 1;
+        worst = worst.max(ty.elapsed().as_secs_f64() * 1000.0);
     }
     let mean = t0.elapsed().as_secs_f64() * 1000.0 / years as f64;
     println!(
@@ -262,6 +347,9 @@ fn cmd_bench(args: &Args) {
         mean,
         worst
     );
+    for (k, name) in names.iter().enumerate() {
+        println!("  {:<12} {:>8.2} ms/year", name, spent[k] / years as f64);
+    }
 }
 
 fn cmd_hash(args: &Args) {
@@ -298,6 +386,8 @@ fn main() {
     match cmd.as_str() {
         "run" => cmd_run(&args),
         "validate" => validate::cmd_validate(&args),
+        "sweep" => sweep::cmd_sweep(&argv[1..], &args),
+        "search" => sweep::cmd_search(&argv[1..], &args),
         "render" => cmd_render(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),

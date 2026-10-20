@@ -29,6 +29,7 @@ pub struct Transport {
     pub river_cross: f32,
     pub stream_cross: f32,
     pub transship: f32,
+    pub river_sea_transship: f32,
     pub open_coast_factor: f32,
     pub tobler: bool,
 }
@@ -44,6 +45,7 @@ impl Transport {
             river_cross: p.cost_river_cross,
             stream_cross: p.cost_stream_cross,
             transship: p.cost_transship,
+            river_sea_transship: p.cost_river_sea_transship,
             open_coast_factor: p.open_coast_factor,
             tobler: p.tobler,
         }
@@ -75,6 +77,12 @@ pub struct CostGrid {
     pub alight: Vec<[f32; 8]>,
     /// Neighbour index offset per direction.
     offs: [isize; 8],
+    /// Compact adjacency of every finite edge: node `u`'s edges are
+    /// `adj[adj_start[u]..adj_start[u + 1]]`, as (target node, cost).
+    adj_start: Vec<u32>,
+    adj: Vec<(u32, f32)>,
+    /// Cheapest edge in the graph; the bucket width of the bucket queue.
+    min_edge: f32,
 }
 
 #[inline]
@@ -158,13 +166,19 @@ impl CostGrid {
                         if t.is_sea(j) {
                             water[i][d] = tr.sea * km;
                         } else if t.is_nav(j) && t.downstream(j) == Some(i) {
-                            water[i][d] = tr.river_up * km;
+                            // Sea ship to river barge: break of bulk at the mouth.
+                            water[i][d] = tr.river_up * km + tr.river_sea_transship;
                         } else {
                             water[i][d] = tr.sea * km + coast_ts(j);
                             water_to_land[i] |= 1 << d;
                         }
                     } else if t.downstream(i) == Some(j) && has_water_node(t, j) {
-                        water[i][d] = tr.river_down * km;
+                        let bulk = if t.is_sea(j) {
+                            tr.river_sea_transship
+                        } else {
+                            0.0
+                        };
+                        water[i][d] = tr.river_down * km + bulk;
                     } else if t.is_nav(j) && t.downstream(j) == Some(i) {
                         water[i][d] = tr.river_up * km;
                     }
@@ -186,7 +200,26 @@ impl CostGrid {
             board,
             alight,
             offs,
+            adj_start: Vec::new(),
+            adj: Vec::new(),
+            min_edge: 0.0,
         }
+        .with_adjacency()
+    }
+
+    fn with_adjacency(mut self) -> Self {
+        let nodes = 2 * self.n;
+        let mut start = Vec::with_capacity(nodes + 1);
+        let mut adj = Vec::new();
+        for u in 0..nodes as u32 {
+            start.push(adj.len() as u32);
+            self.for_each_edge_scan(u, |v, c| adj.push((v, c)));
+        }
+        start.push(adj.len() as u32);
+        self.min_edge = adj.iter().map(|e| e.1).fold(INF, f32::min);
+        self.adj_start = start;
+        self.adj = adj;
+        self
     }
 
     #[inline]
@@ -204,9 +237,23 @@ impl CostGrid {
         node as usize >= self.n
     }
 
+    /// Outgoing edges of `node` as (target node, cost).
+    #[inline]
+    pub fn edges(&self, node: u32) -> &[(u32, f32)] {
+        let u = node as usize;
+        &self.adj[self.adj_start[u] as usize..self.adj_start[u + 1] as usize]
+    }
+
     /// Visit every outgoing edge of `node` as (target node, cost).
     #[inline]
     pub fn for_each_edge(&self, node: u32, mut f: impl FnMut(u32, f32)) {
+        for &(v, c) in self.edges(node) {
+            f(v, c);
+        }
+    }
+
+    /// Derive a node's edges from the per-direction arrays.
+    fn for_each_edge_scan(&self, node: u32, mut f: impl FnMut(u32, f32)) {
         let n = self.n;
         let u = node as usize;
         if u < n {
@@ -263,6 +310,7 @@ pub struct Dijkstra {
     pub pred: Vec<u32>,
     touched: Vec<u32>,
     heap: BinaryHeap<Reverse<(u32, u32)>>,
+    buckets: Vec<Vec<(u32, f32)>>,
 }
 
 impl Dijkstra {
@@ -272,6 +320,7 @@ impl Dijkstra {
             pred: vec![NO_NODE; 2 * cells],
             touched: Vec::new(),
             heap: BinaryHeap::new(),
+            buckets: Vec::new(),
         }
     }
 
@@ -297,6 +346,62 @@ impl Dijkstra {
         self.reset();
         self.dist[src as usize] = 0.0;
         self.touched.push(src);
+        let width = g.min_edge;
+        if width >= 1e-3 && cap.is_finite() && cap / width < 200_000.0 {
+            self.run_buckets(g, cap, land_only, width, src);
+        } else {
+            self.run_heap(g, cap, land_only, src);
+        }
+    }
+
+    /// Dial's algorithm: with buckets no wider than the cheapest edge, nodes in
+    /// one bucket cannot improve each other, so the result is exact.
+    fn run_buckets(&mut self, g: &CostGrid, cap: f32, land_only: bool, width: f32, src: u32) {
+        let nb = (cap / width) as usize + 2;
+        if self.buckets.len() < nb {
+            self.buckets.resize_with(nb, Vec::new);
+        }
+        let n = g.n as u32;
+        let inv = 1.0 / width;
+        self.buckets[0].push((src, 0.0));
+        let mut b = 0;
+        let mut pending = 1usize;
+        let mut cur: Vec<(u32, f32)> = Vec::new();
+        while pending > 0 && b < nb {
+            std::mem::swap(&mut cur, &mut self.buckets[b]);
+            pending -= cur.len();
+            for &(u, du) in &cur {
+                if du != self.dist[u as usize] {
+                    continue;
+                }
+                for &(v, c) in g.edges(u) {
+                    if land_only && v >= n {
+                        continue;
+                    }
+                    let nd = du + c;
+                    let dv = &mut self.dist[v as usize];
+                    if nd <= cap && nd < *dv {
+                        if *dv == INF {
+                            self.touched.push(v);
+                        }
+                        *dv = nd;
+                        self.pred[v as usize] = u;
+                        // Rounding can place `nd` in the current bucket; defer it by one.
+                        let k = ((nd * inv) as usize).max(b + 1).min(nb - 1);
+                        self.buckets[k].push((v, nd));
+                        pending += 1;
+                    }
+                }
+            }
+            cur.clear();
+            b += 1;
+        }
+        for bucket in self.buckets.iter_mut().take(nb) {
+            bucket.clear();
+        }
+    }
+
+    fn run_heap(&mut self, g: &CostGrid, cap: f32, land_only: bool, src: u32) {
         // Non-negative f32 costs order the same as their bit patterns.
         self.heap.push(Reverse((0f32.to_bits(), src)));
         let n = g.n as u32;
@@ -305,24 +410,21 @@ impl Dijkstra {
             if du > self.dist[u as usize] {
                 continue;
             }
-            let dist = &mut self.dist;
-            let pred = &mut self.pred;
-            let touched = &mut self.touched;
-            let heap = &mut self.heap;
-            g.for_each_edge(u, |v, c| {
+            for &(v, c) in g.edges(u) {
                 if land_only && v >= n {
-                    return;
+                    continue;
                 }
                 let nd = du + c;
-                if nd <= cap && nd < dist[v as usize] {
-                    if dist[v as usize] == INF {
-                        touched.push(v);
+                let dv = &mut self.dist[v as usize];
+                if nd <= cap && nd < *dv {
+                    if *dv == INF {
+                        self.touched.push(v);
                     }
-                    dist[v as usize] = nd;
-                    pred[v as usize] = u;
-                    heap.push(Reverse((nd.to_bits(), v)));
+                    *dv = nd;
+                    self.pred[v as usize] = u;
+                    self.heap.push(Reverse((nd.to_bits(), v)));
                 }
-            });
+            }
         }
     }
 
@@ -435,9 +537,10 @@ mod tests {
         let (c, path) = cost(&t, from, to);
         let n = t.n() as u32;
         let layer_changes = path.windows(2).filter(|w| (w[0] < n) != (w[1] < n)).count();
-        assert_eq!(layer_changes, 1, "{path:?}");
-        // Board from the bank (transship + one step), sail down, reach the sea.
-        let expected = 3.0 + 1.0 + 0.2 * 38.0;
+        assert_eq!(layer_changes, 1, "boards once: {path:?}");
+        // Board from the bank (transship + one step), sail down, transfer to a
+        // sea ship at the mouth.
+        let expected = 3.0 + 1.0 + 0.2 * 38.0 + Params::default().cost_river_sea_transship;
         assert!(
             (c - expected).abs() < 0.3,
             "cost {c}, expected about {expected}"
@@ -493,6 +596,31 @@ mod tests {
             (harbour - (3.0 + 0.08)).abs() < 1e-4 && (open - (6.0 + 0.08)).abs() < 1e-4,
             "{harbour} {open}"
         );
+    }
+
+    #[test]
+    fn bucket_queue_matches_heap() {
+        let mut t = coast_with_river(30, 12, 5);
+        for i in 0..t.n() {
+            let (x, y) = t.grid.xy(i);
+            if t.is_land(i) {
+                t.elevation[i] = 10.0 + ((x * 37 + y * 91) % 23) as f32 * 7.0;
+            }
+        }
+        let g = CostGrid::build(&t, &vec![false; t.n()], &tr());
+        let (mut a, mut b) = (Dijkstra::new(t.n()), Dijkstra::new(t.n()));
+        a.run(&g, 40, 50.0, false);
+        b.reset();
+        b.dist[40] = 0.0;
+        b.touched.push(40);
+        b.run_heap(&g, 50.0, false, 40);
+        for i in 0..2 * t.n() {
+            assert!(
+                (a.dist[i] - b.dist[i]).abs() < 1e-4
+                    || (a.dist[i].is_infinite() && b.dist[i].is_infinite()),
+                "node {i}"
+            );
+        }
     }
 
     #[test]

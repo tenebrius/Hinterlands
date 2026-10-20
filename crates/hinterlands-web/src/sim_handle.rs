@@ -50,8 +50,4 @@ impl SimHandle {
     pub fn new_map(&mut self, map_seed: u64) {
         *self = Self::new(map_seed, self.sim.sim_seed, self.sim.params.clone());
     }
-
-    pub fn state(&self) -> &hinterlands_core::State {
-        &self.sim.state
-    }
 }

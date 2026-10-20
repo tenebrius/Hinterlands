@@ -31,7 +31,6 @@ pub struct YearStats {
     pub year: u32,
     pub total: f32,
     pub largest: f32,
-    pub count: u32,
 }
 
 pub struct ViewState {
@@ -92,7 +91,6 @@ impl ViewState {
             year: s.year,
             total: s.total_pop(),
             largest: s.settlements.iter().map(|x| x.pop).fold(0.0, f32::max),
-            count: s.settlements.len() as u32,
         });
         self.chronicle.extend(s.log.iter().cloned());
         if self.chronicle.len() > 2000 {
