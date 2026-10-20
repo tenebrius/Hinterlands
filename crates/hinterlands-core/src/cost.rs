@@ -69,6 +69,10 @@ pub struct CostGrid {
     pub water_to_land: Vec<u8>,
     /// Cost between a cell's own land and water nodes (river quays).
     pub transship: Vec<f32>,
+    /// From a land node onto the boat of a neighbouring navigable river cell.
+    pub board: Vec<[f32; 8]>,
+    /// From a river boat onto the bank of a neighbouring land cell.
+    pub alight: Vec<[f32; 8]>,
     /// Neighbour index offset per direction.
     offs: [isize; 8],
 }
@@ -87,6 +91,8 @@ impl CostGrid {
         let mut land_to_water = vec![0u8; n];
         let mut water_to_land = vec![0u8; n];
         let mut transship = vec![INF; n];
+        let mut board = vec![[INF; 8]; n];
+        let mut alight = vec![[INF; 8]; n];
         let coast_ts = |i: usize| {
             if t.harbour[i] {
                 tr.transship
@@ -139,7 +145,13 @@ impl CostGrid {
                             }
                         }
                         land[i][d] = c;
+                        if t.is_nav(j) {
+                            board[i][d] = tr.transship + tr.land * km;
+                        }
                     }
+                }
+                if t.is_nav(i) && t.is_land(j) && !t.is_nav(j) {
+                    alight[i][d] = tr.transship + tr.land * km;
                 }
                 if has_water_node(t, i) {
                     if t.is_sea(i) {
@@ -171,6 +183,8 @@ impl CostGrid {
             land_to_water,
             water_to_land,
             transship,
+            board,
+            alight,
             offs,
         }
     }
@@ -210,6 +224,12 @@ impl CostGrid {
             if ts < INF {
                 f((n + u) as u32, ts);
             }
+            for d in 0..8 {
+                let c = self.board[u][d];
+                if c < INF {
+                    f((n as isize + u as isize + self.offs[d]) as u32, c);
+                }
+            }
         } else {
             let i = u - n;
             let costs = &self.water[i];
@@ -225,6 +245,12 @@ impl CostGrid {
             let ts = self.transship[i];
             if ts < INF {
                 f(i as u32, ts);
+            }
+            for d in 0..8 {
+                let c = self.alight[i][d];
+                if c < INF {
+                    f((i as isize + self.offs[d]) as u32, c);
+                }
             }
         }
     }
@@ -341,5 +367,141 @@ pub fn back_dir(d: usize) -> usize {
         8
     } else {
         opposite(d)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::grid::Grid;
+    use crate::terrain::Terrain;
+
+    fn tr() -> Transport {
+        Transport::from_params(&Params::default())
+    }
+
+    fn cost(t: &Terrain, from: usize, to: u32) -> (f32, Vec<u32>) {
+        let g = CostGrid::build(t, &vec![false; t.n()], &tr());
+        let mut dj = Dijkstra::new(t.n());
+        dj.run(&g, from as u32, 1000.0, false);
+        (dj.dist[to as usize], dj.path_to(to))
+    }
+
+    /// Sea in column 0; a navigable river along row `ry` flowing west into it.
+    fn coast_with_river(w: u32, h: u32, ry: i32) -> Terrain {
+        let mut t = Terrain::flat(w, h, 1.0);
+        let g = t.grid;
+        for y in 0..h as i32 {
+            let i = g.idx(0, y);
+            t.water[i] = Water::Sea;
+            t.elevation[i] = -10.0;
+        }
+        for x in 1..w as i32 {
+            let i = g.idx(x, ry);
+            t.water[i] = Water::NavigableRiver;
+            t.flow_dir[i] = 4; // west
+        }
+        t
+    }
+
+    #[test]
+    fn flat_land_costs_one_per_km() {
+        let t = Terrain::flat(10, 3, 1.0);
+        let g = t.grid;
+        let (c, _) = cost(&t, g.idx(0, 1), g.idx(9, 1) as u32);
+        assert!((c - 9.0).abs() < 1e-4, "{c}");
+        let t2 = Terrain::flat(10, 3, 2.0);
+        let (c2, _) = cost(&t2, g.idx(0, 1), g.idx(9, 1) as u32);
+        assert!((c2 - 18.0).abs() < 1e-4, "costs scale with cell_km: {c2}");
+    }
+
+    #[test]
+    fn tobler_makes_uphill_dearer_than_downhill() {
+        let mut t = Terrain::flat(10, 1, 1.0);
+        for x in 0..10 {
+            t.elevation[x] = 50.0 * x as f32;
+        }
+        let up = cost(&t, 0, 9).0;
+        let down = cost(&t, 9, 0).0;
+        assert!(up > down && down < 9.0 && up > 9.0, "up {up} down {down}");
+    }
+
+    #[test]
+    fn inland_to_coast_prefers_river_and_transships_once() {
+        let t = coast_with_river(40, 5, 2);
+        let g = t.grid;
+        let from = g.idx(38, 1);
+        let to = (t.n() + g.idx(0, 2)) as u32; // the sea at the river mouth
+        let (c, path) = cost(&t, from, to);
+        let n = t.n() as u32;
+        let layer_changes = path.windows(2).filter(|w| (w[0] < n) != (w[1] < n)).count();
+        assert_eq!(layer_changes, 1, "{path:?}");
+        // Board from the bank (transship + one step), sail down, reach the sea.
+        let expected = 3.0 + 1.0 + 0.2 * 38.0;
+        assert!(
+            (c - expected).abs() < 0.3,
+            "cost {c}, expected about {expected}"
+        );
+        assert!(c < 38.0, "the river must beat walking");
+    }
+
+    #[test]
+    fn upstream_costs_double_downstream() {
+        let t = coast_with_river(40, 5, 2);
+        let g = t.grid;
+        let n = t.n();
+        let a = (n + g.idx(30, 2)) as u32;
+        let b = (n + g.idx(10, 2)) as u32;
+        let gr = CostGrid::build(&t, &vec![false; n], &tr());
+        let mut dj = Dijkstra::new(n);
+        dj.run(&gr, a, 1000.0, false);
+        let down = dj.dist[b as usize];
+        dj.run(&gr, b, 1000.0, false);
+        let up = dj.dist[a as usize];
+        assert!(
+            (down - 4.0).abs() < 1e-3 && (up - 8.0).abs() < 1e-3,
+            "down {down} up {up}"
+        );
+    }
+
+    #[test]
+    fn crossing_a_river_costs_unless_at_a_ford() {
+        let mut t = coast_with_river(12, 5, 2);
+        let g = t.grid;
+        let (from, to) = (g.idx(6, 0), g.idx(6, 4) as u32);
+        let walk = cost(&t, from, to).0;
+        assert!(walk > 4.0 + 4.0, "crossing pays the fixed cost: {walk}");
+        t.ford[g.idx(6, 2)] = true;
+        let ford = cost(&t, from, to).0;
+        assert!((ford - 4.0).abs() < 1e-3, "free at a ford: {ford}");
+    }
+
+    #[test]
+    fn harbours_transship_cheaper_than_open_coast() {
+        let mut t = Terrain::flat(6, 3, 1.0);
+        let g = t.grid;
+        for y in 0..3 {
+            let i = g.idx(0, y);
+            t.water[i] = Water::Sea;
+        }
+        let from = g.idx(1, 1);
+        let to = (t.n() + g.idx(0, 1)) as u32;
+        let open = cost(&t, from, to).0;
+        t.harbour[from] = true;
+        let harbour = cost(&t, from, to).0;
+        assert!(
+            (harbour - (3.0 + 0.08)).abs() < 1e-4 && (open - (6.0 + 0.08)).abs() < 1e-4,
+            "{harbour} {open}"
+        );
+    }
+
+    #[test]
+    fn dijkstra_respects_the_cap() {
+        let t = Terrain::flat(50, 1, 1.0);
+        let gr = CostGrid::build(&t, &vec![false; t.n()], &tr());
+        let mut dj = Dijkstra::new(t.n());
+        dj.run(&gr, 0, 10.0, false);
+        assert!(dj.dist[10] <= 10.0 && dj.dist[11].is_infinite());
+        let _ = Grid::new(1, 1, 1.0);
     }
 }

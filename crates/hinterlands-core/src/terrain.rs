@@ -46,6 +46,26 @@ pub struct Terrain {
 }
 
 impl Terrain {
+    /// Flat, dry, prime land with no forest: a base for hand-built test maps.
+    pub fn flat(w: u32, h: u32, cell_km: f32) -> Self {
+        let grid = Grid::new(w, h, cell_km);
+        let n = grid.n();
+        Self {
+            grid,
+            elevation: vec![10.0; n],
+            slope: vec![0.0; n],
+            water: vec![Water::None; n],
+            flux: vec![1.0; n],
+            flow_dir: vec![NO_DIR; n],
+            food_yield: vec![1.0; n],
+            forest0: vec![0.0; n],
+            resource: vec![Resource::None; n],
+            harbour: vec![false; n],
+            ford: vec![false; n],
+            river_mouth: None,
+        }
+    }
+
     pub fn n(&self) -> usize {
         self.grid.n()
     }

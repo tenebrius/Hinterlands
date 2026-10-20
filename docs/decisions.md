@@ -40,3 +40,11 @@ Kind: implementation.
 ## D9 — The viewer reads snapshots in-process
 The viewer and the core are both Rust in one wasm module, so the snapshot is passed as a value through `SimHandle` rather than as bincode bytes over a JS boundary. The bincode form remains what the CLI writes and what tests hash.
 Kind: implementation.
+
+## D10 — Boarding and alighting from the bank
+Boats are boarded from a bank cell next to a navigable river (transshipment plus one land step) and left the same way, rather than by first crossing onto the river cell. Without this, every boarding also paid the river-crossing cost and inland settlements could not use rivers.
+Kind: interpretation of the cost table.
+
+## D11 — Longer navigable rivers
+Navigability now needs 200 km² of drainage and a gradient under 1% (was 300 km² and 0.4%), giving main rivers navigable 40–60 km inland on a 128 km map, as on medieval lowland rivers. Map parameters, not model parameters.
+Kind: parameter.

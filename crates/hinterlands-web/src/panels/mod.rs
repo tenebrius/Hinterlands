@@ -2,6 +2,7 @@
 //! the simulation or another panel. Adding one is a new file and a line in `all()`.
 
 mod controls;
+mod layers;
 
 use crate::view::{Msg, ViewState};
 
@@ -19,5 +20,8 @@ pub trait Panel {
 }
 
 pub fn all() -> Vec<Box<dyn Panel>> {
-    vec![Box::new(controls::Controls::default())]
+    vec![
+        Box::new(controls::Controls::default()),
+        Box::new(layers::Layers),
+    ]
 }

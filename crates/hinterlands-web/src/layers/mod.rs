@@ -1,8 +1,9 @@
 //! Map layers, drawn in order. A layer reads the snapshot and terrain and never
 //! touches the simulation; adding one is a new file and a line in `all()`.
 
+mod overlay_cost;
 mod settlements;
-mod terrain;
+pub mod terrain;
 
 use crate::camera::Camera;
 use crate::view::ViewState;
@@ -31,6 +32,7 @@ pub trait Layer {
 pub fn all() -> Vec<Box<dyn Layer>> {
     vec![
         Box::new(terrain::TerrainLayer::default()),
+        Box::new(overlay_cost::CostOverlay::default()),
         Box::new(settlements::SettlementsLayer),
     ]
 }

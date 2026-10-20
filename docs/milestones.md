@@ -11,3 +11,11 @@ Each entry: what passed, the numbers, the seeds and params used, anything deferr
 - Checks: `just test` passes (same seed → same snapshot; map generation deterministic; golden hash). Browser self-test (`?selftest=200`) matches the native hash `44e95a4b8f197a6e` after fixing D6.
 - The systems were written alongside the skeleton; they are checked one at a time in M1–M4.
 - Golden hash (map 1, seed 1, defaults, 500 years): see `crates/hinterlands-cli/tests/golden.txt`.
+
+## M1 — Map and cost grid
+
+- Map pipeline: heightmap (sea edge, basins, hills, mountain belt) → thermal erosion → stream-power incision (D7) → hydrology (priority-flood fill, D8 flow, drainage area, streams, navigable reaches grown up from the sea, fords, main river mouth) → land cover (yield, natural forest, resources, harbours).
+- Maps 1–3: 13,000–14,000 land cells, 160–200 navigable river cells, about 400 fords, 60–95 harbours, mean yield about 0.38.
+- Two-layer cost graph: land (Tobler slope, roads, river and stream crossings, fords) and water (sea, river downstream/upstream along flow links), with transshipment at quays, harbours (×1) and open coast (×2), boarding from banks (D10). Bounded Dijkstra with reusable buffers.
+- Unit tests on hand-built maps (all pass): flat land costs 1/km and scales with `cell_km`; uphill costs more than downhill; inland to coast takes the river and transships exactly once at 3 + 1 + 0.2/km; upstream costs twice downstream; crossing a river costs 5 except at a ford; harbours transship at half the open-coast cost; Dijkstra respects its cap.
+- Viewer: layers panel and travel-cost overlay from a clicked cell. On map 1 the isochrones stretch along the navigable river and the sea beyond the port is one cheap band; heads of navigation and ports show as cost minima.
