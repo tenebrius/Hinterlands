@@ -19,3 +19,14 @@ Each entry: what passed, the numbers, the seeds and params used, anything deferr
 - Two-layer cost graph: land (Tobler slope, roads, river and stream crossings, fords) and water (sea, river downstream/upstream along flow links), with transshipment at quays, harbours (×1) and open coast (×2), boarding from banks (D10). Bounded Dijkstra with reusable buffers.
 - Unit tests on hand-built maps (all pass): flat land costs 1/km and scales with `cell_km`; uphill costs more than downhill; inland to coast takes the river and transships exactly once at 3 + 1 + 0.2/km; upstream costs twice downstream; crossing a river costs 5 except at a ford; harbours transship at half the open-coast cost; Dijkstra respects its cap.
 - Viewer: layers panel and travel-cost overlay from a clicked cell. On map 1 the isochrones stretch along the navigable river and the sea beyond the port is one cheap band; heads of navigation and ports show as cost minima.
+
+## M2 — Villages and cultivation
+
+- Cultivation claims free cells in walking-cost order up to `need × cult_margin` within `r_cult`, releases the farthest cells with 10% hysteresis, clears forest at 0.2/yr on fields, regrows 0.02/yr elsewhere, and cuts fuel nearest-first (`fuel_per_capita` 0.00015 cell-units per person per year, up to 0.1 per cell per year).
+- Growth as D12.
+- Tests (`crates/hinterlands-core/tests/cultivation.rs`, all pass, trade/founding/failure/roads off):
+  - a lone village on prime land claims everything within `r_cult` and settles at 150 ± 10 people per cell, with < 1% change over its last 50 years;
+  - on yield-0.2 land it reaches under 30% of the prime-land size;
+  - fields are cleared; released fields regrow at 2%/yr;
+  - beside a navigable river, fields stay on the near bank and stretch along it.
+- Map 1, seed 1, food-only, 300 years: 10 villages plateau at about 5,500 each by year 150 (52,260 total), then hold exactly; forest within 5 km of the largest under 2%. Field rings visible around each anchor.
