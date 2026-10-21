@@ -447,3 +447,12 @@ Kind: model mechanism (designer's specification).
 - **Kent.** `data/real/kent/map-outside.json` is `map-resources.json` plus `outside_file`.
 - **Watling Street mask.** `tools/real/watling.py` writes `watling.asc`: the Roman road cells within 2 km of the line London – Rochester – Canterbury – Dover, 157 cells. `hinterlands roads --mask` reports the share still road.
 Kind: rendering and tooling.
+
+## D68 — Rendering R8 merged (hover card, fuller chronicle)
+- **What.** The graphics session's R8 (branch `claude/elegant-ride-g0sr1h`) is merged into v5 under the owner's standing permission for frontend-only merges: a hover card at the cursor, and a chronicle with filters, growth notes and fly-to.
+- **Conflicts.** R8 was branched before v2, so its conflicts were with the v4/v5 view work:
+  - the chronicle keeps R8's structure, and adds an "Events" filter and the lines for famine, plague, silting, planted towns and ships, in calendar years;
+  - `view.rs` keeps both the event marks and R8's notes;
+  - the panel list keeps the events and goods panels, with the chronicle second as R8 has it.
+- **Check.** The model is unchanged: `?selftest=500` gives `4ce58fae34550933` (27.4 ms/year).
+Kind: rendering (frontend merge).

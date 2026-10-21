@@ -28,11 +28,11 @@ pub trait Panel {
 pub fn all() -> Vec<Box<dyn Panel>> {
     vec![
         Box::new(controls::Controls::default()),
+        Box::new(chronicle::Chronicle::default()),
         Box::new(inspector::Inspector),
         Box::new(layers::Layers),
         Box::new(charts::Charts),
         Box::new(events::EventsPanel),
-        Box::new(chronicle::Chronicle),
         Box::new(goods::GoodsPanel),
         Box::new(params::ParamsPanel),
     ]

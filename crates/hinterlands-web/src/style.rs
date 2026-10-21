@@ -75,5 +75,8 @@ pub fn install(ctx: &egui::Context) {
     ctx.all_styles_mut(|s| {
         s.visuals = v.clone();
         s.text_styles.insert(TextStyle::Heading, serif(22.0));
+        // The map's hover card should come up quickly and follow the cursor.
+        s.interaction.tooltip_delay = 0.15;
+        s.interaction.show_tooltips_only_when_still = false;
     });
 }

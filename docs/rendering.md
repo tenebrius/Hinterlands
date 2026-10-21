@@ -8,12 +8,18 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 This section describes what is waiting to be merged; it is rewritten each time.
 
-- **Steps: R6 (footpaths, parish boundaries and quays as smoothed lines) and R7 (lettering and panel theme).** Branch `claude/elegant-ride-g0sr1h`, from `main` at `5b5792f`. Done together in one batch at the owner's request, so they merge together.
-- **Files touched.** All in `crates/hinterlands-web/`:
-  - R6, in `src/layers/`: `lines.rs` gains `chains` (edges to pin-to-pin chains), and `routes.rs` now uses it with unchanged output. `parish.rs` draws footpaths and boundaries as smoothed dashed lines. `relief.frag` draws sea quays on the smoothed shore, and `relief.rs` gives the town texture's fourth value on built cells the town-or-larger flag. `rivers.rs` embanks rivers through towns, and `buildings.rs` skips the cell-edge quays while the shader runs.
-  - R7: new `src/style.rs` (fonts and theme), installed from `app.rs`, registered in `main.rs`. New `assets/fonts/` holds EB Garamond Medium and Medium Italic (Latin subsets, about 50 KB each) and the font's `OFL.txt`. `layers/labels.rs` and the legend in `layers/mod.rs` use the serif. `app.rs` gives panel titles the serif and a new map surround colour.
-  - Docs and screenshots: this file, a README line and `docs/screenshots/overhaul/8-*`, `9-*`.
-- **New files carry a licence.** The fonts are under the SIL Open Font License 1.1, which allows bundling. `OFL.txt` sits beside them. The wasm grows by about 130 KB (5.09 to 5.23 MB).
+- **Step: R8 (hover card and a fuller chronicle).** Branch `claude/elegant-ride-g0sr1h`, from `main` at `6e170c3`.
+- **Files touched.** All in `crates/hinterlands-web/src/`:
+  - new `hover.rs` (the card);
+  - new `layers/selection.rs` (the ring round the selected place);
+  - `layers/mod.rs` (registers the selection layer and the hover card's toggle);
+  - `app.rs` (shows the card at the cursor);
+  - `main.rs` (registers `hover`);
+  - `view.rs` (`Note`, `NoteKind` and the milestones noticed between years: new `ViewState` fields `notes`, `best_rank`, `leader`, `road_km`);
+  - `panels/chronicle.rs` (merged notes, filters, click to fly to a place);
+  - `panels/mod.rs` (the chronicle opens by default, under Time);
+  - `style.rs` (a short tooltip delay).
+- **Also touched.** This file and `docs/screenshots/overhaul/10-*`.
 - **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
 - **No new dependencies.**
 - **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
@@ -108,6 +114,32 @@ Kind: rendering.
 
 Kind: rendering.
 
+## R8 — Hover card and a fuller chronicle
+
+So that someone watching can tell what is happening without opening the inspector.
+
+- **Hover card.** It follows the cursor over the map (after 0.15 s) and lists what lies there, from the top down, for the layers that are on:
+  - the settlement: size and rank, growing or shrinking over 50 years, short of food, how much of its food it buys, whether trade passes through, and when it was founded;
+  - else the houses of a town, or ruins;
+  - the fields and whose they are, since when, whether hedged and whether still being cleared;
+  - else pasture, coppice or abandoned fields, with the year last farmed;
+  - woodland cover;
+  - the ground: kind, height and yield;
+  - named features there;
+  - a road, and the largest trade passing;
+  - the site score, with that overlay on.
+
+  It has its own toggle among the layers, "Hover card", and the inspector still holds the full detail of a pinned cell.
+- **Chronicle.** It opens by default, under Time. The viewer now adds three kinds of event the core's log does not hold, noticed between years:
+  - a place growing into a village, town or city, noted once at the largest size it reaches;
+  - a new largest place, which must lead by 2% so near-ties do not flicker;
+  - new roads, with the km built.
+
+  Filters choose Growth, Roads, Foundings and Failures. Hamlets that were founded and failed without ever growing are hidden unless "Hamlets" is ticked; there are hundreds of them, and they buried the story. Clicking an entry selects the place, brings it into view and marks it with a ring.
+- **View only.** Nothing feeds back.
+
+Kind: rendering (viewer).
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -116,6 +148,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R4, on v2 G2: `6-roads` (the same view as `4-fields`, roads and routes before and after).
 - R5, on v2 G3: `7-town` (Langden, a walled city, at full zoom; before is the per-cell view).
 - R7: `8-lettering` (the whole map and panels). R6: `9-port` (Wenenford: quays on the smoothed shore, smoothed footpaths).
+- R8: `10-hover-town` (the card over Langden, the filtered chronicle) and `10-hover-land` (the card over pasture by a road, with Dareswood selected).
 
 ## Possible next steps
 
