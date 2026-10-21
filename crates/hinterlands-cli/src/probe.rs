@@ -215,6 +215,7 @@ pub fn cmd_goods(args: &Args) {
         let st = &sim.state;
         let land: Vec<usize> = (0..t.n()).filter(|&i| t.is_land(i)).collect();
         let land_mean = land.iter().map(|&i| st.forest[i]).sum::<f32>() / land.len().max(1) as f32;
+        flow_summary(map, seed, y, &sim);
         for s in &st.sites {
             let (x, yy) = t.grid.xy(s.cell as usize);
             let near: Vec<usize> = t
@@ -236,4 +237,57 @@ pub fn cmd_goods(args: &Args) {
             );
         }
     }
+}
+
+/// Payments against goods received, and the amount-weighted median route cost
+/// of each kind of flow (G2 check).
+fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
+    let st = &sim.state;
+    let p = &sim.params;
+    let cost_of = |f: &hinterlands_core::state::Flow| {
+        st.get(f.from)
+            .map_or(f32::NAN, |s| s.reach.partners[f.partner_idx as usize].cost)
+    };
+    let (mut goods_value, mut paid, mut arrived) = (0.0f64, 0.0f64, 0.0f64);
+    let mut classes: std::collections::BTreeMap<&str, Vec<(f32, f32)>> = Default::default();
+    for f in &st.flows {
+        let c = cost_of(f);
+        let class = match (f.good, f.payment) {
+            (Some(hinterlands_core::state::Good::Salt), _) => "salt",
+            (Some(hinterlands_core::state::Good::Iron), _) => "iron",
+            (Some(hinterlands_core::state::Good::Stone), _) => "stone",
+            (None, true) => "payment",
+            (None, false) => "grain",
+        };
+        if f.good.is_some() {
+            goods_value += f.amount as f64;
+        }
+        if f.payment {
+            paid += f.amount as f64;
+            arrived += (f.amount * (1.0 - p.transport_loss * c).max(0.0)) as f64;
+        }
+        if f.amount > 0.0 && c.is_finite() {
+            classes.entry(class).or_default().push((c, f.amount));
+        }
+    }
+    let median = |v: &mut Vec<(f32, f32)>| {
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let half = v.iter().map(|x| x.1).sum::<f32>() / 2.0;
+        let mut acc = 0.0;
+        for &(c, a) in v.iter() {
+            acc += a;
+            if acc >= half {
+                return c;
+            }
+        }
+        f32::NAN
+    };
+    let mut line = format!(
+        "flows {map} {seed} {y} goods_value {goods_value:.0} paid {paid:.0} arrived {arrived:.0}"
+    );
+    for (k, v) in classes.iter_mut() {
+        let total: f32 = v.iter().map(|x| x.1).sum();
+        line += &format!(" {k}:{:.2}@{total:.0}", median(v));
+    }
+    println!("{line}");
 }

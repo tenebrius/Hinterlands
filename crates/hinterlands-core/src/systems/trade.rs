@@ -13,7 +13,7 @@
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
-use crate::state::{Flow, State, OUTSIDE};
+use crate::state::{Flow, Good, State, OUTSIDE};
 use crate::terrain::Terrain;
 use crate::Rng;
 
@@ -68,6 +68,23 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Imports from the outside: (settlement index, partner index, weight).
     let mut imports: Vec<(usize, u32, f32)> = Vec::new();
 
+    // Goods (v2, D39): each site's output goes to consumers in proportion to
+    // demand × exp(−β_g c), and they pay for it in grain out of their marketed
+    // share, which travels to the producer as an ordinary food flow.
+    let paid = if p.goods_enabled {
+        goods(
+            state,
+            p,
+            &idx_of,
+            &mut food_in,
+            &mut food_out,
+            &mut market_in,
+            &mut flows,
+        )
+    } else {
+        vec![0f32; m]
+    };
+
     for i in 0..m {
         let s = &state.settlements[i];
         if p.outside_enabled {
@@ -76,7 +93,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 imports.push((i, k as u32, attract[i] * libm::expf(-p.outside_beta * c)));
             }
         }
-        let food = s.food_prod * p.market_share;
+        // What is left of the marketed share after paying for goods.
+        let food = (s.food_prod * p.market_share - paid[i]).max(0.0);
         let out = food + s.resource_out;
         if out <= 0.0 {
             continue;
@@ -121,6 +139,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                     amount,
                     food: sent,
                     partner_idx: k,
+                    good: None,
+                    payment: false,
                 });
                 continue;
             }
@@ -135,6 +155,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 amount,
                 food: sent,
                 partner_idx: k,
+                good: None,
+                payment: false,
             });
         }
     }
@@ -152,6 +174,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 amount,
                 food: 0.0,
                 partner_idx: k,
+                good: None,
+                payment: false,
             });
         }
     }
@@ -203,4 +227,148 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .sum::<f32>();
     }
     state.flows = flows;
+}
+
+/// Value of one unit of a good in grain.
+pub fn value(p: &Params, g: Good) -> f32 {
+    match g {
+        Good::Salt => p.value_salt,
+        Good::Iron => p.value_iron,
+        Good::Stone => p.value_stone,
+    }
+}
+
+/// Distance decay of a good: `β / ρ_g` (a good worth more per tonne travels
+/// farther for the same cost).
+pub fn beta(p: &Params, g: Good) -> f32 {
+    let rho = match g {
+        Good::Salt => p.rho_salt,
+        Good::Iron => p.rho_iron,
+        Good::Stone => p.rho_stone,
+    };
+    p.beta / rho.max(1e-6)
+}
+
+/// Yearly demand of a settlement for a good, grain units: salt and iron per
+/// person, stone per market person.
+pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
+    match g {
+        Good::Salt => p.demand_salt * s.pop,
+        Good::Iron => p.demand_iron * s.pop,
+        Good::Stone => {
+            let w = if p.market_state {
+                s.market.max(0.0)
+            } else {
+                urban_pop(s, p)
+            };
+            p.demand_stone * w
+        }
+    }
+}
+
+/// Production-constrained gravity for goods, with grain payment. Returns the
+/// grain each settlement paid. A buyer pays `value × quantity`, capped at its
+/// marketed share; the payment reaches the producer less the usual loss and
+/// counts in its gross market inflow. Goods consumed by the holder itself are
+/// not paid for and do not travel.
+fn goods(
+    state: &State,
+    p: &Params,
+    idx_of: &[u32],
+    food_in: &mut [f32],
+    food_out: &mut [f32],
+    market_in: &mut [f32],
+    flows: &mut Vec<Flow>,
+) -> Vec<f32> {
+    let m = state.settlements.len();
+    // (producer, buyer, good, quantity, cost, producer's partner index)
+    let mut shipments: Vec<(usize, usize, Good, f32, f32, u32)> = Vec::new();
+    for site in &state.sites {
+        if site.output <= 0.0 {
+            continue;
+        }
+        let Some(&j) = idx_of.get(site.holder as usize) else {
+            continue;
+        };
+        if j == u32::MAX {
+            continue;
+        }
+        let j = j as usize;
+        let s = &state.settlements[j];
+        let b = beta(p, site.good);
+        let home = demand(s, p, site.good);
+        let mut total = home;
+        let mut ws: Vec<(usize, f32, f32, u32)> = Vec::new();
+        for (k, q) in s.reach.partners.iter().enumerate() {
+            let Some(&i) = idx_of.get(q.id as usize) else {
+                continue;
+            };
+            if i == u32::MAX {
+                continue;
+            }
+            let w = demand(&state.settlements[i as usize], p, site.good) * libm::expf(-b * q.cost);
+            total += w;
+            ws.push((i as usize, w, q.cost, k as u32));
+        }
+        if total <= 0.0 {
+            continue;
+        }
+        for (i, w, c, k) in ws {
+            shipments.push((j, i, site.good, site.output * w / total, c, k));
+        }
+    }
+    // What each buyer owes, and the share of it its marketed grain can pay.
+    let mut bill = vec![0f32; m];
+    for &(_, i, g, q, _, _) in &shipments {
+        bill[i] += value(p, g) * q;
+    }
+    let scale: Vec<f32> = (0..m)
+        .map(|i| {
+            let budget = state.settlements[i].food_prod * p.market_share;
+            if bill[i] > budget {
+                budget / bill[i]
+            } else {
+                1.0
+            }
+        })
+        .collect();
+    let mut paid = vec![0f32; m];
+    for &(j, i, g, q, c, k) in &shipments {
+        let (pj, pi) = (&state.settlements[j], &state.settlements[i]);
+        let worth = value(p, g) * q;
+        flows.push(Flow {
+            from: pj.id,
+            to: pi.id,
+            amount: worth,
+            food: 0.0,
+            partner_idx: k,
+            good: Some(g),
+            payment: false,
+        });
+        let pay = worth * scale[i];
+        if pay <= 0.0 {
+            continue;
+        }
+        paid[i] += pay;
+        food_out[i] += pay;
+        let delivered = pay * (1.0 - p.transport_loss * c).max(0.0);
+        food_in[j] += delivered;
+        market_in[j] += delivered;
+        // The payment travels on the buyer's own path to the producer when it
+        // has one, else on the producer's path the other way.
+        let (from, to, idx) = match pi.reach.partners.iter().position(|q| q.id == pj.id) {
+            Some(back) => (pi.id, pj.id, back as u32),
+            None => (pj.id, pi.id, k),
+        };
+        flows.push(Flow {
+            from,
+            to,
+            amount: pay,
+            food: pay,
+            partner_idx: idx,
+            good: None,
+            payment: true,
+        });
+    }
+    paid
 }

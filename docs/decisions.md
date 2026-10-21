@@ -185,3 +185,10 @@ Two values the specification leaves open, chosen here:
 - `fuel_per_iron` is 0.1 forest cell-units per unit. At 0.01 a mine's draw was below the regrowth of its woods; at 0.1 every working iron site's woods fall below the land mean by year 200.
 With goods off, the golden hash is unchanged.
 Kind: model mechanism behind a switch (v2 specification).
+
+## D39 — v2 goods trade with grain payment (G2, behind `goods_enabled`)
+Each site's output goes to the settlements within trading reach in proportion to `demand_k × exp(−β_g c)`, with `β_g = β / ρ_g`. The holder's own demand takes its share without travelling or payment. Demand is per person for salt and iron and per market person for stone. A buyer pays `v_g` grain per unit out of its marketed share, capped at that share. The payment reaches the producer less the usual loss per unit cost, counts in the producer's gross market inflow, and travels as an ordinary grain flow on the buyer's path. The rest of the marketed share goes to markets as before. Goods and payments load the routes, so handling and transshipment income (D27) apply to them at their value. Flows carry `good` and `payment` markers, left out of the snapshot bytes when absent, so the golden hash is unchanged with goods off.
+Check (3 maps × 6 seeds, years 200 and 500):
+- payments balance: goods worth 53,226 received, 52,405 paid (the difference is buyers capped at their marketed share), 48,253 arrived after loss;
+- amount-weighted median route cost: iron 19.7, salt 14.5, grain 13.3, stone 9.0; the full order holds in 22 of 24 runs that trade all four.
+Kind: model mechanism behind a switch (v2 specification).

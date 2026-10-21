@@ -220,6 +220,10 @@ pub struct Flow {
     pub food: f32,
     /// Index of the path in the exporter's partner list.
     pub partner_idx: u32,
+    /// The good carried, for goods flows (v2); `None` for grain.
+    pub good: Option<Good>,
+    /// Grain paid for goods (v2), travelling from the buyer to the producer.
+    pub payment: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

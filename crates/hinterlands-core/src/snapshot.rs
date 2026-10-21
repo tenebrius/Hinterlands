@@ -36,6 +36,12 @@ pub struct FlowView {
     pub amount: f32,
     pub food: f32,
     pub path: Vec<u32>,
+    /// The good carried (v2); absent for grain, and left out of the bytes then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub good: Option<crate::state::Good>,
+    /// Grain paid for goods (v2).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub payment: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -95,6 +101,8 @@ impl Snapshot {
                     amount: f.amount,
                     food: f.food,
                     path: s.reach.partners[f.partner_idx as usize].path.clone(),
+                    good: f.good,
+                    payment: f.payment,
                 })
             })
             .collect();
