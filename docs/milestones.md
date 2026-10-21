@@ -217,3 +217,23 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - Lowland AUC is 0.49 / 0.53 / 0.46, and inland towns found 34%.
   - The largest city is at Gravesend in 10 seeds and Faversham in 10.
   - Details are in `docs/real-terrain-experiments.md`.
+
+## v3(b) — Roads follow traffic (D54); v3(a) dropped (D52, D53)
+- **v3(a), the shadow in km.** Dropped after two tuning attempts failed validation on market spacing (D53). `shadow_km` stays in the code, off.
+- **v3(b), traffic roads,** on by default: road cells carry a condition that fades where traffic falls. `road_keep_load` is 800, `road_decay` 0.05 a step, and `road_interval` 10.
+- **`just validate`, 20 seeds a map: PASSED.**
+  - Settlements: median 307 / 318 / 306.
+  - Over 2,000: 7 / 8 / 6.
+  - Over 5,000: 4 / 4 / 3.
+  - Rank-size slope: −1.17 / −1.19 / −1.17.
+  - Market spacing: 10.9 / 12.0 / 11.7 km.
+  - Failure rate: 0.48 / 0.48 / 0.48.
+  - Every check passes in at least 17/20 seeds per map.
+  - Runs passing every check: 18 / 20 / 17.
+  - Over-5,000 median (reported): 4 / 4 / 3.
+- **Road length** changes 300→500 by a median of 2.5% / 3.6% / 2.3%; the gate is under 10% per run. Road cells abandoned: 0.41 / 0.40 / 0.40.
+- **Determinism:**
+  - golden `0b590b3b017b63d0`;
+  - the release wasm build gives the same hash (`?selftest=500`, 25.6 ms/year);
+  - `data/real/experiments/v21.json` gives v2.1's `f67bf8565c500fda`.
+- **Kent:** in progress; it is reported in `docs/real-terrain-experiments.md`.

@@ -6,5 +6,6 @@
   "epsilon": 0.14509128,
   "k_maint": 3.5032141,
   "demand_stone": 0.03,
-  "shadow_km": false
+  "shadow_km": false,
+  "traffic_roads": false
 }

@@ -6,5 +6,6 @@
   "found_threshold": 0.4413028,
   "noise": 0.47511095,
   "epsilon": 0.123899415,
-  "k_maint": 3.1675544
+  "k_maint": 3.1675544,
+  "traffic_roads": false
 }

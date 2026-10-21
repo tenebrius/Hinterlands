@@ -242,11 +242,9 @@ define_params! {
         roads_enabled: bool = true, [0, 1], "Run the roads system";
         road_interval: u32 = 10, [1, 50], "Years between road building steps";
         road_pairs: u32 = 20, [0, 100], "Trading pairs given a road per step (without traffic_roads)";
-        traffic_roads: bool = false, [0, 1], "Roads follow traffic: an edge is built where its load is high and decays where it falls (D54)";
-        road_load_years: f32 = 20.0, [1, 200], "Years over which an edge's traffic load is averaged";
-        road_build_load: f32 = 40.0, [0, 10000], "Average yearly trade value over an edge at which a road is built";
-        road_keep_load: f32 = 10.0, [0, 10000], "Average load below which a road decays";
-        road_decay_years: f32 = 150.0, [1, 2000], "Years an unused road takes to disappear";
+        traffic_roads: bool = true, [0, 1], "Roads follow traffic: road cells carry a condition that fades where traffic falls (D54)";
+        road_keep_load: f32 = 800.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
+        road_decay: f32 = 0.05, [0, 1], "Condition a little-used road cell loses each road step";
     }
 }
 

@@ -25,5 +25,6 @@
   "w_water_near": 0.2,
   "shed_unfed": false,
   "goods_enabled": false,
-  "shadow_km": false
+  "shadow_km": false,
+  "traffic_roads": false
 }

@@ -274,3 +274,16 @@ Kind: model mechanism behind a switch (designer's specification); the default aw
 - **Controlled check.** The best single-radius candidate (`v3a-candidate.json`, radius 15.2 km) was re-run with only `drain_radius_km` changed, at 8, 10 and 12 km, on 3 seeds a map. Map 1 spacing is 6.3–8.5 km in every case, and map 3 is 5.0–10.6 km. A shorter drain lets more mid-sized places survive close together, so spacing falls. In the km form, the drain is what spaces the markets, and a short drain cannot do it.
 - **Outcome, by the designer's rule.** v3(a) is dropped. `shadow_km` stays in the code, off by default, with `drain_radius_km` beside it; the golden is unchanged (`f67bf8565c500fda`). v3(b) goes ahead with the cost shadow.
 Kind: designer decision (scope); no change to the defaults.
+
+## D54 — v3(b): roads follow traffic (designer's specification)
+- Each road cell has a condition `q` (`road_q`). Every `road_interval` the top `road_pairs` trading pairs' paths are raised to `q` = 1, as before.
+- Every other road cell whose trade load that step is below `road_keep_load` loses `road_decay` (0.05). The load is the yearly trade value of all flows whose path crosses the cell. A cell below 0.1 stops being road, and the road edges that touch it go with it.
+- Initial roads start at `q` = 1 and follow the same rule.
+- Moving between two road cells costs `land + q × (cost_road − land)` per km, with `q` the lower of the two. At `q` = 1 the cost is `cost_road` exactly, so older versions keep their hashes. The cost grid is rebuilt at road steps only.
+- **Tuning.** `road_keep_load` is the only value tuned: 800, chosen so that the network settles (10 gave +33% road length between years 300 and 500, 200 gave +16%, 800 gave +2.5%). No model value was re-tuned.
+- **Validation** (20 seeds a map): PASSED. Every v2.1 check holds. Road length changes 300→500 by a median of 2.5% / 3.6% / 2.3%, gated under 10% per run (20/20 on every map). The share of road cells abandoned during the run is 0.41 / 0.40 / 0.40.
+- **Validation tooling.** `validate` gains the road-length check, which passes trivially with `traffic_roads` off, and the abandoned share as a reported line. `hinterlands roads` reports road cells, condition, initial roads kept, and cells abandoned.
+- **Viewer.** The snapshot does not carry `road_q`. The viewer's cost overlay treats every road cell as full condition.
+- **Reproducibility.** The earlier experiment files pin `traffic_roads` off. `data/real/experiments/v21.json` reproduces v2.1's `f67bf8565c500fda`.
+Golden hash: `0b590b3b017b63d0`, native and in the browser.
+Kind: model mechanism (designer's specification), on by default.

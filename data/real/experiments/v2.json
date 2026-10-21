@@ -1,4 +1,5 @@
 {
   "coppice": false,
-  "shadow_km": false
+  "shadow_km": false,
+  "traffic_roads": false
 }

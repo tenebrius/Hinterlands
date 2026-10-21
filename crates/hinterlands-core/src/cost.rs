@@ -92,6 +92,14 @@ fn has_water_node(t: &Terrain, i: usize) -> bool {
 
 impl CostGrid {
     pub fn build(t: &Terrain, road: &[bool], tr: &Transport) -> Self {
+        let q: Vec<f32> = road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
+        Self::build_with_condition(t, &q, tr)
+    }
+
+    /// As `build`, with a road condition per cell (D54): a step between two
+    /// road cells costs `land + q × (road − land)` per km, `q` the lower of the
+    /// two conditions; a cell with `q` 0 has no road.
+    pub fn build_with_condition(t: &Terrain, road_q: &[f32], tr: &Transport) -> Self {
         let g = t.grid;
         let n = g.n();
         let mut land = vec![[INF; 8]; n];
@@ -132,7 +140,14 @@ impl CostGrid {
                         land[i][d] = coast_ts(i) + tr.sea * km;
                         land_to_water[i] |= 1 << d;
                     } else {
-                        let base = if road[i] && road[j] { tr.road } else { tr.land };
+                        let q = road_q[i].min(road_q[j]);
+                        let base = if q >= 1.0 {
+                            tr.road
+                        } else if q > 0.0 {
+                            tr.land + q * (tr.road - tr.land)
+                        } else {
+                            tr.land
+                        };
                         let mut c = base * km;
                         if tr.tobler {
                             let s =

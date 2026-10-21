@@ -29,6 +29,11 @@ pub struct RunResult {
     pub median_pop: f32,
     /// v2 (goods on; neutral values with goods off).
     pub goods: GoodsResult,
+    /// v3 (traffic roads, D54): change in road length from year 300 to the
+    /// last year, as a share; NaN with traffic roads off.
+    pub road_change: f32,
+    /// Share of cells ever road that are no longer road at the end.
+    pub road_abandoned: f32,
 }
 
 /// The v2 gate's measures at the final year.
@@ -195,6 +200,12 @@ pub const CHECKS: &[Check] = &[
         target: "true",
         ok: |r| !r.goods.largest_specialist,
     },
+    // v3 gate (D54; passes trivially with traffic roads off).
+    Check {
+        name: "road length 300-500",
+        target: "<10%",
+        ok: |r| r.road_change.is_nan() || r.road_change < 0.10,
+    },
 ];
 
 pub fn run_one(
@@ -208,8 +219,17 @@ pub fn run_one(
     let t0 = Instant::now();
     let mut prev = sim.state.total_pop();
     let mut max_change = 0f32;
+    let mut ever = sim.state.road.clone();
+    let mut road_300 = f32::NAN;
+    let road_len = |s: &Sim| s.state.road.iter().filter(|&&r| r).count() as f32;
     for _ in 0..years {
         sim.step(1);
+        for (e, &r) in ever.iter_mut().zip(&sim.state.road) {
+            *e |= r;
+        }
+        if sim.state.year == 300 {
+            road_300 = road_len(&sim);
+        }
         let tot = sim.state.total_pop();
         if sim.state.year > 100 && prev > 0.0 {
             max_change = max_change.max((tot - prev).abs() / prev);
@@ -248,6 +268,20 @@ pub fn run_one(
         hash: snap.hash(),
         median_pop,
         goods: goods_result(&sim),
+        road_change: if params.traffic_roads {
+            (road_len(&sim) - road_300).abs() / road_300.max(1.0)
+        } else {
+            f32::NAN
+        },
+        road_abandoned: {
+            let ever_n = ever.iter().filter(|&&e| e).count();
+            let gone = ever
+                .iter()
+                .zip(&sim.state.road)
+                .filter(|(&e, &r)| e && !r)
+                .count();
+            gone as f32 / ever_n.max(1) as f32
+        },
     }
 }
 
@@ -333,6 +367,7 @@ pub fn cmd_validate(args: &Args) {
                             1.0
                         }
                     }
+                    "road length 300-500" => r.road_change,
                     _ => r.max_change,
                 }
             };
@@ -448,6 +483,17 @@ pub fn cmd_validate(args: &Args) {
                 med(rs.iter().map(|r| r.goods.iron_forest.0).collect()),
                 med(rs.iter().map(|r| r.goods.iron_forest.1).collect()),
                 med(rs.iter().map(|r| r.goods.goods_route_share).collect())
+            );
+        }
+        if rs.iter().any(|r| !r.road_change.is_nan()) {
+            let mut v: Vec<f32> = rs.iter().map(|r| r.road_abandoned).collect();
+            v.sort_by(|a, b| a.total_cmp(b));
+            println!(
+                "{:<20} {:>12} share of road cells abandoned: median {:.2}, max {:.2}",
+                "v3 roads (reported)",
+                "",
+                v[v.len() / 2],
+                v[v.len() - 1]
             );
         }
         println!(

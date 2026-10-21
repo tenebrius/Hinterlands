@@ -307,8 +307,8 @@ fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
 }
 
 /// Roads report (v3): at each year in `--at`, the road cells and edges, the
-/// share of land that is road, the initial road cells still road, and with `traffic_roads` the edge load
-/// quantiles over edges that carry any traffic.
+/// share of land that is road, the initial road cells still road, the road
+/// condition (p10, p50), and the cells ever road and since abandoned.
 pub fn cmd_roads(args: &Args) {
     let mut sim = make_sim(args);
     let at: Vec<u32> = args
@@ -320,8 +320,12 @@ pub fn cmd_roads(args: &Args) {
     let years = *at.iter().max().unwrap_or(&500);
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
+    let mut ever = sim.state.road.clone();
     while sim.state.year < years {
         sim.step(1);
+        for (e, &r) in ever.iter_mut().zip(&sim.state.road) {
+            *e |= r;
+        }
         let y = sim.state.year;
         if !at.contains(&y) {
             continue;
@@ -330,11 +334,13 @@ pub fn cmd_roads(args: &Args) {
         let st = &sim.state;
         let land = (0..t.n()).filter(|&i| t.is_land(i)).count().max(1);
         let cells = st.road.iter().filter(|&&r| r).count();
-        let mut loads: Vec<f32> = st.road_load.values().copied().collect();
-        loads.sort_by(f32::total_cmp);
+        let mut qs: Vec<f32> = (0..t.n())
+            .filter(|&i| st.road[i])
+            .map(|i| st.road_q.get(i).copied().unwrap_or(1.0))
+            .collect();
+        qs.sort_by(f32::total_cmp);
         let q = |f: f32| {
-            loads
-                .get(((loads.len() as f32 - 1.0) * f) as usize)
+            qs.get(((qs.len() as f32 - 1.0) * f) as usize)
                 .copied()
                 .unwrap_or(0.0)
         };
@@ -343,14 +349,13 @@ pub fn cmd_roads(args: &Args) {
             .filter(|&i| t.initial_road.get(i) == Some(&true) && st.road[i])
             .count();
         println!(
-            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} loaded {} load p50 {:.1} p90 {:.1} p99 {:.1} max {:.1}",
+            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {}",
             cells as f32 / land as f32,
             st.road_edges.len(),
-            loads.len(),
+            q(0.1),
             q(0.5),
-            q(0.9),
-            q(0.99),
-            loads.last().copied().unwrap_or(0.0)
+            ever.iter().filter(|&&e| e).count(),
+            (0..t.n()).filter(|&i| ever[i] && !st.road[i]).count()
         );
     }
 }

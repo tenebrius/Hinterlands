@@ -297,10 +297,9 @@ pub struct State {
     pub road: Vec<bool>,
     /// Cell pairs a road runs between, sorted; for drawing only (costs use `road`).
     pub road_edges: Vec<(u32, u32)>,
-    /// With `traffic_roads` (D54): the averaged trade load on each land edge
-    /// that has carried any, and the condition (0..1] of each road edge.
-    pub road_load: std::collections::BTreeMap<(u32, u32), f32>,
-    pub road_cond: std::collections::BTreeMap<(u32, u32), f32>,
+    /// With `traffic_roads` (D54): each cell's road condition, 0 where there is
+    /// no road; empty otherwise.
+    pub road_q: Vec<f32>,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -375,21 +374,26 @@ impl State {
     pub fn empty(t: &Terrain, p: &Params) -> Self {
         let n = t.n();
         // Roads given as input (D32) are there from the first year.
-        let road = if t.initial_road.len() == n {
+        let road: Vec<bool> = if t.initial_road.len() == n {
             t.initial_road.clone()
         } else {
             vec![false; n]
         };
         let transport = Transport::from_params(p);
         let cost = CostGrid::build(t, &road, &transport);
+        // With traffic roads (D54), initial roads start at full condition.
+        let road_q = if p.traffic_roads {
+            road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect()
+        } else {
+            Vec::new()
+        };
         Self {
             year: 0,
             forest: t.forest0.clone(),
             owner: vec![NONE; n],
             road,
             road_edges: Vec::new(),
-            road_load: Default::default(),
-            road_cond: Default::default(),
+            road_q,
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],
@@ -443,7 +447,11 @@ impl State {
     }
 
     pub fn rebuild_costs(&mut self, t: &Terrain) {
-        self.cost = CostGrid::build(t, &self.road, &self.transport);
+        self.cost = if self.road_q.is_empty() {
+            CostGrid::build(t, &self.road, &self.transport)
+        } else {
+            CostGrid::build_with_condition(t, &self.road_q, &self.transport)
+        };
     }
 
     /// Add a settlement and compute its reach immediately.
