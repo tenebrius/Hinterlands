@@ -6,14 +6,10 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 ## Handover: merging into `main`
 
-This section describes the steps waiting to be merged; it is rewritten each time.
+This section describes what is waiting to be merged; it is rewritten each time.
 
-- **Steps: R3 (the farmed countryside in the shader), R4 (smoothed roads, routes and trade dots) and R5 (settlement footprints and city walls in the shader).** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`, with `main` merged in since. Each step is one commit and they can be merged together.
-- **Files touched.** All in `crates/hinterlands-web/src/layers/`:
-  - R3: `relief.rs` and `relief.frag` get two per-year textures (land use; plots) and the countryside and season drawing. `countryside.rs`: the strip-direction rule is now the shared function `strip_orientation`, and the strips and pasture tint are skipped while the shader draws them. `fields.rs`, `history.rs` and `seasons.rs` each skip their per-cell drawing while the shader draws it.
-  - R4: new `lines.rs` (the shared Chaikin smoothing); `routes.rs` rewritten around chains; `dots.rs` moves along smoothed paths; `rivers.rs` uses `lines.rs`, with unchanged output; `mod.rs` registers `lines`. `routes::segments` keeps its signature for `buildings.rs`.
-  - R5: `relief.rs` and `relief.frag` get a per-year town texture and the footprint, ruin and wall drawing. `settlements.rs` keeps only its markers, and `buildings.rs` skips walls and towers, while the shader draws them.
-  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*` to `7-*`.
+- **Step: R5 (settlement footprints and city walls in the shader).** Branch `claude/elegant-ride-g0sr1h`, with `main` merged in after R3 and R4 landed. One commit.
+- **Files touched.** All in `crates/hinterlands-web/src/layers/`: `relief.rs` and `relief.frag` get a per-year town texture and the footprint, ruin and wall drawing. `settlements.rs` keeps only its markers, and `buildings.rs` skips walls and towers, while the shader draws them. Docs and screenshots: this file and `docs/screenshots/overhaul/7-*`.
 - **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
 - **No new dependencies.**
 - **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
