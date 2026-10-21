@@ -533,6 +533,10 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
 - **Added to the report:** the median town price per good, which should be within 0.5–3 for each.
 - **Re-run the S1 gate once.** If it passes, make `market_goods` the default and report. If not, stop and report.
 
+**S1 second gate (cabdac6) and the designer's decision.** With `demand_iron` at 0.0013 (pooled median town price about 1.2), spacing and every other check pass. Map 2 has less iron and prices it at 5.6–6.9; no single value puts every map within 1–3, and 0.0013 is accepted. The new failure is sites producing, 14/17/14 of 20: at a fifteenth of the old iron demand, remote iron sites no longer pass the specialist founding test (D40), which counts demand in quantity.
+- **Decided (D72): option 1.** Under `market_goods`, the founding test counts the value of demand in reach: `Σ_k p_k q_k exp(−β_g c)`, using each buyer's price for the good from the year before. Where no working site reaches a buyer, its price counts as 1. This is the consistent reading of D40 once goods have prices. It is also the market signal the equilibrium exists to give: dear iron draws new mines. Options 2 and 3 are declined.
+- **Re-run the S1 gate once,** with the per-map iron price reported. If it passes, make `market_goods` the default and report. If not, stop and report.
+
 
 ## Future versions
 
