@@ -154,6 +154,26 @@ define_params! {
         outside_beta: f32 = 0.05, [0.005, 0.5], "Distance decay of trade with the outside world";
         outside_out: f32 = 2000.0, [0, 50000], "Goods the outside world sends into the region per year";
     }
+    "Goods" => {
+        goods_enabled: bool = false, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";
+        value_salt: f32 = 1.0, [0.1, 10], "Grain paid per unit of salt";
+        value_iron: f32 = 1.0, [0.1, 10], "Grain paid per unit of iron";
+        value_stone: f32 = 1.0, [0.1, 10], "Grain paid per unit of stone";
+        rho_salt: f32 = 3.0, [0.1, 20], "Value density of salt relative to grain; its distance decay is beta / rho";
+        rho_iron: f32 = 8.0, [0.1, 20], "Value density of iron relative to grain";
+        rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
+        demand_salt: f32 = 0.02, [0, 0.2], "Salt wanted per person a year, grain units";
+        demand_iron: f32 = 0.02, [0, 0.2], "Iron wanted per person a year, grain units";
+        demand_stone: f32 = 0.03, [0, 0.3], "Stone wanted per market person a year, grain units";
+        prod_salt: f32 = 2.0, [0, 20], "Salt output per worker a year, grain units";
+        prod_iron: f32 = 2.0, [0, 20], "Iron output per worker a year, grain units";
+        prod_stone: f32 = 2.0, [0, 20], "Stone output per worker a year, grain units";
+        site_crew: f32 = 10.0, [0, 100], "Workers at a held site besides the holder's market people";
+        cap_salt: f32 = 1000.0, [0, 10000], "Most output of one salt site a year";
+        cap_iron: f32 = 1000.0, [0, 10000], "Most output of one iron site a year";
+        cap_stone: f32 = 1000.0, [0, 10000], "Most output of one stone site a year";
+        fuel_per_iron: f32 = 0.1, [0, 1], "Forest (cell units) burned per unit of iron";
+    }
     "Growth" => {
         growth_enabled: bool = true, [0, 1], "Run the growth system";
         r_grow: f32 = 0.027, [0, 0.1], "Yearly natural growth at a full food surplus";

@@ -459,6 +459,7 @@ fn main() {
         "render" => cmd_render(&args),
         "probe" => probe::cmd_probe(&args),
         "failures" => probe::cmd_failures(&args),
+        "goods" => probe::cmd_goods(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),
         "params" => cmd_params(),

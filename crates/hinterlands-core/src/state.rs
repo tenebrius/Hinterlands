@@ -17,6 +17,53 @@ pub const COST_UNREACHED: u16 = u16::MAX;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Kind {
     Agrarian,
+    /// Specialists at a resource site (v2, D40).
+    Mine,
+    Saltern,
+    Quarry,
+}
+
+/// The traded goods besides grain (v2, D38).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Good {
+    Salt,
+    Iron,
+    Stone,
+}
+
+impl Good {
+    pub const ALL: [Good; 3] = [Good::Salt, Good::Iron, Good::Stone];
+
+    pub fn of(r: crate::terrain::Resource) -> Option<Good> {
+        match r {
+            crate::terrain::Resource::Salt => Some(Good::Salt),
+            crate::terrain::Resource::Ore => Some(Good::Iron),
+            crate::terrain::Resource::Stone => Some(Good::Stone),
+            crate::terrain::Resource::None => None,
+        }
+    }
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
+}
+
+/// A resource site and what it produced this year (v2, D38). Production writes
+/// holder, potential, output and fuel_want; cultivation writes fuel_got.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Site {
+    pub cell: u32,
+    pub good: Good,
+    /// The settlement working the site, or `NONE`.
+    pub holder: u32,
+    /// Output the site's workers could reach this year, grain units.
+    pub potential: f32,
+    /// Output this year, grain units.
+    pub output: f32,
+    /// Fuel the site asks of the holder's woods for next year (iron only).
+    pub fuel_want: f32,
+    /// Fuel cut for the site this year.
+    pub fuel_got: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -173,6 +220,10 @@ pub struct Flow {
     pub food: f32,
     /// Index of the path in the exporter's partner list.
     pub partner_idx: u32,
+    /// The good carried, for goods flows (v2); `None` for grain.
+    pub good: Option<Good>,
+    /// Grain paid for goods (v2), travelling from the buyer to the producer.
+    pub payment: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -249,6 +300,9 @@ pub struct State {
     /// nearest the main river mouth (D25). Used only when `outside_enabled`.
     #[serde(default)]
     pub outside: Option<u32>,
+    /// Resource sites, in cell order (v2).
+    #[serde(default)]
+    pub sites: Vec<Site>,
     #[serde(skip)]
     pub scratch: Dijkstra,
     /// Founding's cache of free food near each cell (NaN = stale), with the
@@ -322,6 +376,19 @@ impl State {
             tally: Tally::default(),
             events: Vec::new(),
             outside: outside_node(t),
+            sites: (0..n)
+                .filter_map(|i| {
+                    Good::of(t.resource[i]).map(|good| Site {
+                        cell: i as u32,
+                        good,
+                        holder: NONE,
+                        potential: 0.0,
+                        output: 0.0,
+                        fuel_want: 0.0,
+                        fuel_got: 0.0,
+                    })
+                })
+                .collect(),
             scratch: Dijkstra::new(n),
             food_cache: FoodCache::default(),
         }

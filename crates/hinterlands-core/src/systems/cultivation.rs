@@ -1,7 +1,9 @@
 //! Cultivation and fuel (von Thünen; VEP calorie-cost placement). Each settlement
 //! claims free cells in order of walking cost until produce, less the marketed
 //! share, covers need times the margin, and releases its farthest cells when produce exceeds the target by the
-//! hysteresis share. Writes: owner, fields, forest, food_prod, resource_out.
+//! hysteresis share. Fuel is cut nearest first, for households and, under v2, for
+//! the iron sites a settlement holds (D38). Writes: owner, fields, forest,
+//! food_prod, resource_out, sites' fuel_got.
 
 use crate::params::Params;
 use crate::state::{State, NONE};
@@ -17,6 +19,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         settlements,
         owner,
         forest,
+        sites,
         ..
     } = state;
 
@@ -53,11 +56,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             }
         }
         s.food_prod = produce;
-        s.resource_out = s
-            .fields
-            .iter()
-            .filter(|&&c| t.resource[c as usize] != Resource::None)
-            .count() as f32
+        // Under v2 resource sites produce through `production`; the flat
+        // resource output is retired.
+        s.resource_out = if p.goods_enabled { 0.0 } else { 1.0 }
+            * s.fields
+                .iter()
+                .filter(|&&c| t.resource[c as usize] != Resource::None)
+                .count() as f32
             * p.resource_output;
     }
 
@@ -85,5 +90,28 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             forest[ci] -= take;
             demand -= take;
         }
+    }
+
+    // Iron sites burn charcoal from their holder's woods (Weber: smelting sits
+    // at the fuel).
+    for site in sites.iter_mut() {
+        site.fuel_got = 0.0;
+        if !p.goods_enabled || site.fuel_want <= 0.0 {
+            continue;
+        }
+        let Ok(k) = settlements.binary_search_by_key(&site.holder, |s| s.id) else {
+            continue;
+        };
+        let mut demand = site.fuel_want;
+        for &c in &settlements[k].reach.fuel_order {
+            if demand <= 0.0 {
+                break;
+            }
+            let ci = c as usize;
+            let take = forest[ci].min(p.max_fuel_take).min(demand);
+            forest[ci] -= take;
+            demand -= take;
+        }
+        site.fuel_got = site.fuel_want - demand;
     }
 }

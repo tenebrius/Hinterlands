@@ -48,6 +48,7 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     state.log.clear();
     reach::refresh_due(state, t, p);
     systems::cultivation::run(state, t, p, rng);
+    systems::production::run(state, t, p, rng);
     systems::trade::run(state, t, p, rng);
     systems::growth::run(state, t, p, rng);
     systems::founding::run(state, t, p, rng);
