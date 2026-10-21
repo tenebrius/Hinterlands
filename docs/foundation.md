@@ -379,6 +379,44 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
 
 **Tuning.** The goods parameters above are starting values and are the implementer's to tune. The v1.2 parameters are re-tuned only if a v1.2 check fails with goods on, as the over-5,000 median on map 3 does now (goods payments take about 3% of marketed grain away from the market towns). Every change goes in the milestone note. Kent has no resource layer, so its regression should not change. Placing Kent's Wealden iron, ragstone and estuary salt as data is a later option, not part of v2.
 
+## v4 specification: shocks
+
+Written by the designer on 21 October 2026, after v3 passed validation (D55–D56, golden `171ec4461a912a1d`). v4 puts the event queue to use. A region that has filled in is struck by famine and plague and has harbours silt up. Lords plant towns in it. Each shock is answered by the existing rules: shedding, founding, failure, trade and roads. Nothing here changes `Terrain`.
+
+**Calendar.** `events_mode` is `Off`, `Historical` or `Random`. `Historical` sets year 0 = 1100 and is the default in the viewer and in validation:
+- the Great Famine in years 215–217 (1315–17);
+- the Black Death in year 248 (1348);
+- two lesser recurrences, in 261 and 269, at a third of the first mortality (1361, 1369).
+
+`Random` draws the same kinds of event from the run's one `Rng`, at mean intervals set in `Params`, for open-ended play. `Off` reproduces v3 exactly, with golden `171ec4461a912a1d`.
+
+**Events** (a new `events` system at the start of `step_year`, writing only through `Event::apply`):
+1. **Famine.** Every cell's yield is multiplied by `1 − famine_loss` (0.4) for the event's years. The existing rules then do the work: hungry places shed people and marginal hamlets fail. (Jordan 1996: yields fell by a third to a half in 1315–17.)
+2. **Plague.** Each settlement loses a share `m` of its people, with the same share taken from market size W, spread over two years. `m` is drawn per settlement around `plague_mortality` (0.4), uniform within ±0.1. Land is left over afterwards, so the survivors are better fed and recover by the ordinary growth rules. (Benedictow 2004: 35–50% mortality in England.)
+3. **Harbour silting.** At each event, the busiest port whose harbour faces a river mouth or shallow coast silts up. Its land–water stepping cost rises permanently by `silt_cost` (3), so its trade moves elsewhere. This is the history of Sandwich, New Romney and Winchelsea. In `Historical` mode there is one silting, at a random port between years 250 and 400; in `Random` mode it is drawn at a rate. Cost changes are in `State`, so `Terrain` stays fixed.
+4. **Planted towns.** Every `plant_interval` years (50), a lord plants a town: a cell on a road or navigable river with the highest market access, at least 10.7 km (Bracton's 6⅔ miles) from any place over 500. It starts with `plant_pop` (200) people and market size at five times `W_0`. It survives only if trade supports it. (Beresford 1967: many planted towns failed.)
+
+**Gate.** Pass rates over 20 seeds on each of the three maps, 75% per check, with `Historical` events.
+- **Gated:**
+  - every v3 check at year 500, meaning the region recovers within 250 years of the plague;
+  - determinism with events, natively and in the browser;
+  - total population falls by at least 25% within five years of year 248;
+  - total population at year 500 is at least 90% of its peak before year 248;
+  - places in the lowest-yield quarter fail between years 248 and 300 at a higher rate than places in the highest quarter (the deserted villages; Beresford 1954, Dyer);
+  - the top-10 overlap between a run with events and the same seed without them is at least 0.5, so the old hierarchy comes back, mostly;
+  - one year under 50 ms in release wasm.
+- **Reported:**
+  - the silted port's rank 100 years after silting against its rank before;
+  - the share of planted towns alive 100 years after planting (expected 30–70%);
+  - the depth and length of the famine dip;
+  - the Kent regression.
+
+**Stages.** Each stage is built and checked alone, then reported. The next stage starts without waiting unless a check fails or the spec is unclear.
+1. **E1** The event queue, calendar, famine and plague. Check: the contraction, recovery and desertion checks.
+2. **E2** Harbour silting. Check: the silted port loses rank (reported); the gate still holds.
+3. **E3** Planted towns. Check: the survival share (reported); the gate still holds.
+4. **E4** View and milestone. The chronicle gets plain lines ("1348. The pestilence came; Harthorpe lost 4,100 of its people.", "1290. The harbour at Wenenford silted.", "1250. Lord's town planted at Newport."). The map gets a brief plague tint, a silted-harbour mark and a planted-town symbol. A timeline strip of events goes under the population chart. All of it goes in new layer and panel files, as in v2.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
@@ -442,13 +480,7 @@ The simulation lane runs left to right through its gates; the map generation tra
 
 
    Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
-3. **v4 Shocks.** The event queue comes into use:
-   - **plague** on the Black Death pattern (a third to a half of the people lost, then recovery);
-   - **famine years** on the 1315–17 pattern (yield down about 40% region-wide for one to three years);
-   - **a river shifting** or a route cut;
-   - **lords planting towns** at chosen sites, which survive only if the market logic supports them (charter evidence).
-
-   Borders, tolls and politics are dropped, because the evidence is too weak to model. The gate: after a plague, the map contracts and recovers to about its old hierarchy, with marginal places deserted (deserted medieval villages).
+3. **v4 Shocks.** Specified below, in "v4 specification: shocks".
 4. **v5 World** will be decided after v4. The outside world as a seller, tried in D25 without effect, is folded into v5's sea trade and not done before it.
 
 **Map generation track.** v1 ships noise, thermal erosion, hydrology and yield. Later passes, in order of effect on realism: hydraulic erosion with floodplains and deltas as the best land; lakes and marshes; coastline detail; a rain-shadow climate with biomes from temperature and moisture; resources placed by geology; tectonic plates giving ranges a direction. Each is a new pass in the pipeline and changes nothing else.
