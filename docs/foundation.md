@@ -496,6 +496,38 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
   - one map of shadow prices in a normal year and in 1316.
 - **Stop** and report. If S0 alone breaks the time budget, v6 waits for a cheaper solver, and nothing else is changed to make room.
 
+**S0 result (D69, `docs/market/s0.md`) and the designer's reading.**
+- **The solver works.** 8 warm-started Furness passes with a price-level step, deterministic natively and in wasm.
+- **The cost is real:** 15 ms a year in wasm (29.9 → 44.9 ms). Most of that is grain, which every settlement both sells and buys.
+- **Clark:** `b_P` 0.98–1.15 and R² 0.66–0.98 are in range. `b_Y` is not identified, because the model has no local weather: a place's yield per cell barely moves except in the regional famine. Prices are nearly uniform across the region (1310 median 0.69, 1316 median 1.40). That fits Clark's integration finding, but the test is empty until local harvests vary.
+- **The year after the famine** converges poorly (residual 0.3–0.5). This must be fixed before grain trades by price (S2).
+
+**Decisions after S0.**
+1. **S1 approved** (goods by equilibrium, below).
+2. **W1, local harvests, is added before S2.** A yearly yield multiplier with spatial correlation, as a smooth noise field at about 15 km with a standard deviation of about 15%, drawn from the run's `Rng` and behind a switch. Medieval manor yields varied from year to year and place to place (Clark's 65 manors). Without that variation there is no local dearth for S2 to relieve and no `b_Y` to test. It also makes runs livelier: a bad harvest in one valley, a good one in the next. W1 is briefed after S1 reports.
+3. **The S2 gates stand,** with `b_Y` measured with W1 on. If `b_Y` is still unidentified then, the range is revisited.
+4. **The import elasticity of 1.0** (implementer's choice) is accepted.
+
+**S1 brief (goods by equilibrium).**
+- **Switch.** `market_goods`, off until S1 passes, then on by default with a new golden hash.
+- **Scope.** Salt, iron, stone and imports trade by the entropy equilibrium (the S0 form), replacing the shopping model of D41. Grain is the numeraire at price 1 everywhere in S1, and grain trade is unchanged. So the grain solve is not run in S1, and `market_shadow` stays available for reports.
+- **Demand** at price 1 is the current demand per head (or per market person for stone and imports). It responds to price with elasticities: salt 0.2, iron 0.5, stone 1.0, imports 1.0. **Supply** is up to the site's capacity, as now, with the supply price clearing it.
+- **Payment.** The buyer pays the delivered price `p_j × q` out of its marketed share `O_i`, capped at `O_i`. The producer receives the supply price `p_i × q` as an ordinary grain flow. The transport part `t × q` is spent on carriage and lost, as transport loss is now. Goods and payments load routes and earn handling income as now.
+- **Gate:**
+  - every v5 check;
+  - determinism;
+  - at most 45 ms a year in wasm, so that S2 keeps some room;
+  - outside trade still within 3–20%;
+  - no specialist is the largest place.
+- **Reported:**
+  - goods prices at sites and in towns;
+  - unmet demand by good;
+  - price gaps against transport on trading arcs;
+  - specialist sizes against v5;
+  - one goods-price map.
+- **Stop.** Report and stop.
+
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
