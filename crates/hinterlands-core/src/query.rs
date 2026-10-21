@@ -137,7 +137,7 @@ pub fn site_report(snap: &Snapshot, t: &Terrain, p: &Params, cell: usize) -> Sit
         if nearest.is_none_or(|n| c < n.1) {
             nearest = Some((s.id, c));
         }
-        if c <= p.shadow_radius {
+        if crate::systems::founding::in_shadow(t, p, s.anchor as usize, cell, c) {
             shadow += p.shadow_weight * s.pop / 1000.0;
         } else {
             access += p.access_weight * s.pop / 1000.0 * libm::expf(-p.access_decay * c);

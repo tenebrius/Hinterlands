@@ -23,7 +23,7 @@ use crate::state::State;
 use crate::terrain::Terrain;
 use crate::Rng;
 
-pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
+pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let year = state.year;
     let m = state.settlements.len();
     // Pass 1: food ratios, natural change, and each place's Rihll–Wilson pull.
@@ -144,24 +144,36 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
     let mut delta = natural;
     // Urban shadow (Bosker & Buringh 2017; Christaller 1933): a place near a much
     // larger one loses people to it, more the larger and closer the neighbour.
+    // Only trade partners drain, so the neighbour must also be within reach.
     if p.growth_enabled && p.shadow_drain > 0.0 {
         for i in 0..m {
             let si = &state.settlements[i];
             let mut lost = 0.0;
             let mut takers: Vec<(usize, f32)> = Vec::new();
             for q in &si.reach.partners {
-                if q.cost > p.shadow_radius {
-                    continue;
-                }
                 let Some(&k) = idx_of.get(q.id as usize) else {
                     continue;
                 };
                 if k == u32::MAX {
                     continue;
                 }
-                let pk = state.settlements[k as usize].pop;
+                let sk = &state.settlements[k as usize];
+                // Distance into the shadow: straight-line km with `shadow_km`
+                // (D52), else travel cost.
+                let (d, radius) = if p.shadow_km {
+                    (
+                        t.grid.dist_km(si.anchor as usize, sk.anchor as usize),
+                        p.shadow_radius_km,
+                    )
+                } else {
+                    (q.cost, p.shadow_radius)
+                };
+                if d > radius {
+                    continue;
+                }
+                let pk = sk.pop;
                 if pk >= p.shadow_size_ratio * si.pop {
-                    let rate = p.shadow_drain * pk / 1000.0 * (1.0 - q.cost / p.shadow_radius);
+                    let rate = p.shadow_drain * pk / 1000.0 * (1.0 - d / radius);
                     takers.push((k as usize, rate));
                     lost += rate;
                 }

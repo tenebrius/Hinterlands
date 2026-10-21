@@ -170,13 +170,24 @@ pub fn site_parts(state: &State, t: &Terrain, p: &Params, cell: usize, food: f32
     let mut parts = site_parts_without_neighbours(state, t, p, cell, food);
     for s in &state.settlements {
         let c = s.reach.cost_to_cell(cell);
-        if c <= p.shadow_radius {
+        if in_shadow(t, p, s.anchor as usize, cell, c) {
             parts.shadow += p.shadow_weight * s.pop / 1000.0;
         } else if c <= p.c_max {
             parts.access += p.access_weight * s.pop / 1000.0 * libm::expf(-p.access_decay * c);
         }
     }
     parts
+}
+
+/// Whether a settlement at `anchor`, `cost` away, shadows `cell`: within
+/// `shadow_radius_km` in a straight line with `shadow_km` (D52), else within
+/// `shadow_radius` of travel cost. Access is counted only outside the shadow.
+pub fn in_shadow(t: &Terrain, p: &Params, anchor: usize, cell: usize, cost: f32) -> bool {
+    if p.shadow_km {
+        t.grid.dist_km(anchor, cell) <= p.shadow_radius_km
+    } else {
+        cost <= p.shadow_radius
+    }
 }
 
 /// Score parts that do not depend on other settlements (shadow and access 0).
@@ -235,7 +246,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     for st in &state.settlements {
         for (k, &cell) in cells.iter().enumerate() {
             let c = st.reach.cost_to_cell(cell);
-            if c <= p.shadow_radius {
+            if in_shadow(t, p, st.anchor as usize, cell, c) {
                 shadow[k] += p.shadow_weight * st.pop / 1000.0;
             } else if c <= p.c_max {
                 access[k] += p.access_weight * st.pop / 1000.0 * libm::expf(-p.access_decay * c);

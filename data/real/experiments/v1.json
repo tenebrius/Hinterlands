@@ -24,5 +24,6 @@
   "w_water_cell": 0.5,
   "w_water_near": 0.2,
   "shed_unfed": false,
-  "goods_enabled": false
+  "goods_enabled": false,
+  "shadow_km": false
 }

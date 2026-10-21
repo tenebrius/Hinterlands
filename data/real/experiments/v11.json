@@ -1,1 +1,4 @@
-{ "shed_unfed": false }
+{
+  "shed_unfed": false,
+  "shadow_km": false
+}
