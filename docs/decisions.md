@@ -513,3 +513,14 @@ Kind: model mechanism behind a switch (designer's brief); stopped for the design
 - **State.** `market_goods` stays off, and the golden is unchanged.
 - **Reporting fix.** A good no working supply reaches is recorded as unreached (price 0), not at the solver's floor.
 Kind: stopped for the designer.
+
+## D72 — The specialist founding test counts demand by value under `market_goods` (designer decision). Gate still short on map 1
+- **Rule.** Under `market_goods` the works test (D40) sums `p_k · q_k · exp(−β_g c)` over buyers, at each buyer's latest price for the good (this year's, set by the trade that runs before founding), or 1 where no working site reaches the buyer.
+- **Gate** (Historical, 20 seeds a map, `demand_iron` 0.0013): **FAILED, sites producing 14/20 on map 1.** Maps 2 and 3 now pass, at 20/20 and 17/20.
+  - **Every other check holds:** spacing 17 / 20 / 18, largest not a specialist 20/20 everywhere, outside trade 4.7–5.4%.
+  - **Specialists:** medians 132 / 44 / 91, maximum 545.
+  - **Runs passing every check:** 10 / 19 / 14.
+- **Iron at year 450,** median town price, 3 seeds a map: **map 1 1.15 / 1.19 / 1.35, map 2 2.71 / 3.26 / 9.61, map 3 0.90 / 1.16 / 1.87.**
+- **Why map 1 is still short.** Its iron is only mildly dear, so valuing demand barely raises it. The same remote eastern sites stay unheld in most seeds: iron at (102,49) and (86,25), stone at (90,54) and (79,46). Under the v2 demand they were reached.
+- **State.** `market_goods` stays off; the golden is unchanged. Stopped for the designer.
+Kind: model mechanism (designer decision); stopped.
