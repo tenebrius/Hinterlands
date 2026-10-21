@@ -158,3 +158,7 @@ Kind: input data (owner/designer decision).
 ## D33 — Bridges as input data
 `Terrain.bridge` marks river and stream cells with a bridge (empty on generated maps, and left out of the serialised terrain when empty). A crossing costs 0 at a ford or a bridge (`free_crossing`). With `MapParams.road_bridges`, the importer puts a bridge wherever an initial road crosses a river or stream; Kent has 52 (30 on navigable rivers). The pre-registered test (a place of 1,000+ within 3 km of Rochester in at least 5 of 20 seeds) failed at 1 of 20. Golden unchanged.
 Kind: input data (owner/designer decision).
+
+## D34 — Underfed places shed people instead of being deleted (switch `shed_unfed`, default off)
+The failure rule removed any settlement unfed for `fail_unfed_years`, at any size. In v1.1 it deletes about 170 settlements per generated run that had peaked at 1,000 or more. Under `shed_unfed`, an underfed place loses a third of `(1 − ratio) × P` a year (the leavers are lost), and only the low-population rule removes. Results: every per-seed check improves (runs passing every check 19/20/18 against 7/13/14), but the gated "largest city varies" check fails on maps 2 and 3 (0.20, 0.00). On Kent the Rochester expectation fails (1/20), because the bridge towns still starve, now by shrinking. Golden unchanged. Making it the default is the designer's decision (design authority delegated by the owner).
+Kind: model mechanism behind a switch (designer decision); default pending.

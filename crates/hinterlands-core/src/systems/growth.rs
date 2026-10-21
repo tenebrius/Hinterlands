@@ -45,13 +45,25 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             0.0
         };
-        let loss = if ratio < 1.0 {
-            p.r_shrink * (1.0 - ratio) * s.pop
+        if p.shed_unfed {
+            // D34: an underfed place sheds a third of the people its food does
+            // not feed each year; the leavers are lost.
+            let loss = if ratio < 1.0 {
+                (1.0 - ratio) * s.pop / 3.0
+            } else {
+                0.0
+            };
+            s.smoothed_loss = loss;
+            natural[i] = gain * s.pop - loss;
         } else {
-            0.0
-        };
-        s.smoothed_loss += (loss - s.smoothed_loss) / p.loss_years.max(1.0);
-        natural[i] = gain * s.pop - s.smoothed_loss;
+            let loss = if ratio < 1.0 {
+                p.r_shrink * (1.0 - ratio) * s.pop
+            } else {
+                0.0
+            };
+            s.smoothed_loss += (loss - s.smoothed_loss) / p.loss_years.max(1.0);
+            natural[i] = gain * s.pop - s.smoothed_loss;
+        }
 
         let urban = if p.market_state {
             s.market.max(p.market_floor)

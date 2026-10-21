@@ -458,6 +458,7 @@ fn main() {
         "search" => sweep::cmd_search(&argv[1..], &args),
         "render" => cmd_render(&args),
         "probe" => probe::cmd_probe(&args),
+        "failures" => probe::cmd_failures(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),
         "params" => cmd_params(),

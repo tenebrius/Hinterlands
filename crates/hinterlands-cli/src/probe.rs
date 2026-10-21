@@ -159,3 +159,34 @@ fn score_report(sim: &hinterlands_core::Sim, cells: &[usize], seed: u64) {
         );
     }
 }
+
+/// Every removal in a run: `fail seed year cause peak final`, where peak is
+/// the settlement's largest population over its life.
+pub fn cmd_failures(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let mut peak: std::collections::BTreeMap<u32, f32> = sim
+        .state
+        .settlements
+        .iter()
+        .map(|s| (s.id, s.pop))
+        .collect();
+    while sim.state.year < years {
+        sim.step(1);
+        for e in &sim.state.log {
+            if let LogKind::Failed { cause, .. } = &e.kind {
+                let pk = peak.remove(&e.settlement).unwrap_or(e.pop).max(e.pop);
+                println!(
+                    "fail {map} {seed} {} {cause:?} {pk:.0} {:.0}",
+                    e.year, e.pop
+                );
+            }
+        }
+        for s in &sim.state.settlements {
+            let v = peak.entry(s.id).or_insert(s.pop);
+            *v = v.max(s.pop);
+        }
+    }
+}

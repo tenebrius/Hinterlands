@@ -402,3 +402,64 @@ Written by the designer and committed before any run.
 **Expectation (the designer's).** On Kent with roads + bridges, a place of 1,000 or more within 3 km of Rochester in at least 5 of 20 seeds. On the generated maps, the failure rate stays within 40–70%, since most failures are hamlets that fall below 20. The count of inland places over 500 on Kent rises toward the real 29.
 
 **Stop.** Run once, then stop and report. Nothing is tuned. Making `shed_unfed` the default, and any re-tune it needs, is then the designer's decision (design authority delegated by Divish on 2026-10-21).
+
+### Results (run once, nothing tuned)
+
+`shed_unfed` is implemented as pre-registered. With it on, an underfed place loses `(1 − ratio) × P / 3` a year, in place of the smoothed `r_shrink` loss, and the unfed rule removes nothing. With it off, the golden hash is still `68beae826cf800cd`. Parameters: `data/real/experiments/shed-unfed.json`. A new read-only `hinterlands failures` command lists every removal with its cause and the settlement's peak population.
+
+**1. Scale check, v1.1 unchanged: removals by cause and peak population.**
+
+| Runs | Cause | Peak < 100 | 100–499 | 500–999 | 1,000+ | Total |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Generated maps, 3 × 20 | Depopulated | 3,243 | 890 | 70 | 49 | 4,252 |
+| | Starved | 4,382 | 903 | 2,360 | **10,334** | 17,979 |
+| Kent, 20 (uniform soil, no roads) | Depopulated | 1,802 | 233 | 20 | 18 | 2,073 |
+| | Starved | 0 | 54 | 841 | **3,551** | 4,446 |
+
+**The defect is general, not a Kent effect.** On the generated maps, v1.1 deletes about 170 settlements per run that had peaked at 1,000 or more, by the unfed rule, nearly all after year 250. In map 1, seed 1, one of them peaked at 5,608. Towns grow beyond what their food supports, starve and are removed, and new places grow in their place. The validation checks did not catch this: they look at year 500 and at the share of founded places that failed, not at what size the failures were.
+
+**2. Generated maps with `shed_unfed` on (20 seeds per map): validation FAILED on one aggregate.**
+
+| Check | v1.1, maps 1 / 2 / 3 | `shed_unfed`, maps 1 / 2 / 3 |
+| --- | --- | --- |
+| Settlements (median) | 20/20/20 (198/217/197) | 20/20/20 (240/242/239) |
+| Over 2,000 | 16/18/19 | 20/20/20 |
+| Over 5,000 (median) | 19/20/20 (2/2/2) | 20/20/20 (2/2/2) |
+| Largest share | 20/20/20 | 20/20/20 |
+| Rank-size slope (median) | 19/15/20 (−0.91/−0.91/−0.94) | 20/20/20 (−0.98/−1.03/−1.00) |
+| Market spacing | 15/18/17 | 19/20/18 |
+| Siting | 20/20/20 | 20/20/20 |
+| Failure rate (median) | 16/20/17 (0.66/0.62/0.66) | 20/20/20 (0.59/0.55/0.58) |
+| Forest near cities | 19/20/20 | 20/20/20 |
+| Stability | 20/20/20 | 20/20/20 |
+| **Largest varies (≥ 0.30, gated)** | 0.75/0.45/0.55 | 0.30/**0.20**/**0.00** |
+| River-corridor share (reported) | 0.35/0.40/0.45 | 0.00/0.45/0.20 |
+| Runs passing every check | 7/13/14 | **19/20/18** |
+| Slowest run, native | 30.6 ms/year | 30.4 ms/year |
+
+Every per-seed check improves, and the failure rate stays within 40–70%, as expected. **The gated contingency check fails on maps 2 and 3.** With towns no longer deleted, the same place becomes the largest city in nearly every seed. On map 3 it is the same cluster in all 20 seeds. In v1.1, much of the variation between seeds came from big towns being deleted and replaced.
+
+**3. Kent with `shed_unfed` on (20 seeds).**
+
+| Run | Lowland AUC: all / ≥1,000 / <1,000 | Inland towns found | Places on rivers | Inland >500: count, spacing | On or next to a road (all / ≥1,000) | Rochester | Canterbury | Maidstone | Largest city near (seeds) | Largest share |
+| --- | --- | ---: | ---: | --- | --- | ---: | ---: | ---: | --- | ---: |
+| v1.1 | 0.44 / 0.54 / 0.37 | 31% | 32% | 20, 9.1 km | 26% / 26% | 1/20 | 1/20 | 3/20 | Gravesend 15 | 0.30 |
+| v1.1 + roads + bridges | 0.46 / 0.41 / 0.49 | 26% | 29% | 20, 8.6 km | 20% / 22% | 1/20 | 1/20 | 1/20 | Gravesend 8 | 0.27 |
+| `shed_unfed` | 0.45 / 0.49 / 0.42 | 34% | 49% | 27, 7.2 km | 28% / 30% | 0/20 | 0/20 | 0/20 | Gravesend 16 | 0.33 |
+| `shed_unfed` + roads + bridges | 0.49 / 0.53 / 0.46 | 39% | 44% | 32, 6.2 km | 21% / **53%** | **1/20** | 0/20 | 4/20 | Gravesend 10, Faversham 4 | 0.30 |
+| Real | | | 26% | 29, 10.6 km | 47% of towns; 32% of land | | | | London | ≈0.3 |
+
+**Against the expectation:**
+- **Rochester fails** at 1 of 20 against a bar of 5.
+- **The failure rate holds** (0.55–0.59).
+- **Kent's inland places over 500 rise toward 29:** 27 without roads and 32 with roads + bridges, but closer together than the real ones (6.2–7.2 km against 10.6).
+
+Other effects:
+- With roads + bridges, **53% of places of 1,000+ sit on or next to a Roman road**, against 47% of real towns and 32% of land; in v1.1 it was 22%.
+- That run has the highest small-town lowland AUC so far (0.46) and the highest inland find rate (39%).
+
+**Why Rochester still misses.** The probe on the same configuration (read-only, stepping exactly as the run does) shows:
+- Places are still founded at the bridge early: 21 places in 13 of 20 seeds, 7 of which reach 1,000 or more.
+- They still starve. Two that peaked at 2,846 and 4,280 shrink to below 20 and are removed as depopulated in year 279. Three shrink to 822–914, just under the bar. One holds at 1,216.
+
+So `shed_unfed` changes how a starving town ends, but the town at the bridge still loses the food that supported it. What drains it was not measured in this round. Nothing else was tried.
