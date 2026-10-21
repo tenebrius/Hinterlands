@@ -363,3 +363,25 @@ Kind: model mechanism (designer decision).
 - **At 1.0:** the gate **PASSED**. Every check holds. Map 1 spacing is 16/20, and runs passing every check are 14 / 15 / 17.
 - **Reported:** the port silts in 20/20 runs on every map. Its rank 100 years later is a median 4 / 5 / 1 (from 1), and it loses rank in 13 / 15 / **0** of 20 runs. On map 3 the largest city keeps its place: its land trade carries it.
 Kind: event value tuned (implementer, as the brief allows).
+
+## D62 — Silting leaves out the largest settlement (designer decision)
+- **Rule.** The silting target is the busiest qualifying port other than the largest settlement: the Sandwich and Winchelsea pattern, since the capitals did not silt. `silt_cost` is back to 3.
+- **Result.** Gated with E3 in one run (see D63): PASSED at `silt_cost` 3.
+- **Reported:**
+  - the port silts in 20/20 runs on every map;
+  - its median rank goes from 5 to 12 / 11 / 10 a century later;
+  - it loses rank in 18 / 18 / 19 of 20 runs.
+Kind: model mechanism (designer decision).
+
+## D63 — v4 E3: planted towns
+- **Rule.** With events on, every `plant_interval` (50) years from `plant_from` a lord plants a town of `plant_pop` (200) people, with market size `plant_market` × `market_w0` (5×). The site is a founding candidate on or next to a road or navigable river, at least `plant_spacing_km` (10.7) from any place over 500, with the highest market access: Σ pop/1000 × exp(−`access_decay` × cost) over settlements within `c_max`.
+- **Mechanics.** The planted town counts as founded and carries a `planted` flag. Its people come from outside the region.
+- **Stability.** The planting year is left out of the stability check like the other events (D58). Early in a run, 200 people is a 6% jump in the total.
+- **`plant_from` = 150 (1250), tuned.** Planting from year 50 pulled the top-10 overlap with Off down to 0.3–0.4 (gate 0.5). This happened whatever the size of the planted town (100 people at 1× W₀ gave the same), because a town planted while the region is filling redirects all later growth. From year 150 the overlap is 0.70; from 200, 0.80. 1250 still falls in the main period of English plantation (Beresford: c. 1150–1300).
+- **Combined E2 + E3 gate** (Historical, 20 seeds a map): **PASSED**.
+  - Every check holds. Top-10 against Off is 17 / 18 / 16 of 20, poor land deserted 20/20, and market spacing 18 / 18 / 20.
+  - Runs passing every check: 15 / 14 / 16.
+- **Reported:**
+  - **Planted towns alive 100 years after planting: 0.82 / 0.70 / 0.57**, 100 judged a map. Two maps are above the brief's expected 30–70%. Planted at the best-access cells, most are supported by trade.
+  - Plague drop 0.37; the pre-plague total regained in 44–47 years; total at 500 against Off 1.03–1.04.
+Kind: model mechanism (designer's specification); `plant_from` tuned by the implementer.
