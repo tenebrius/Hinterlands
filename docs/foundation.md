@@ -1,6 +1,6 @@
 # Hinterlands — Foundation Document
 
-Oct 21, 2026 · @Divish Shamloll
+Foundation document for the implementer. Owner: Divish Shamloll. Last revised 21 October 2026, after the Kent real-terrain corrections (D23–D31).
 
 ## Purpose and scope
 
@@ -48,10 +48,12 @@ The map updates once per simulated year at the chosen speed. Everything drawn is
 - Fields: cultivated cells tinted; the ring grows around a settlement as it grows and stretches along rivers. Forest cleared for fields is visibly lost around larger towns. Abandoned fields revert to scrub, then forest.
 - Settlements: a built-up footprint of cells, not a circle. Each settlement has one canonical anchor cell used for all distances, scoring and trade. The footprint is `population / density_per_cell` cells filled outward from the anchor by a fixed attractiveness (flat, next to water, along a road); built cells stay built, so the town grows by accretion, and shrinks from its least attractive edge, leaving ruins for a while. Footprint cells are never cultivated. The footprint is rendering only and feeds nothing back.
 - Routes: roads brown, water routes blue, thickness proportional to the yearly trade flow on the segment. Trade is animated as moving dots: yearly flow divided by cargo per trip (about 1 t per cart, 20–30 t per barge, more per ship) gives trips per year, and the renderer spawns dots at that rate along the stored path at the mode’s speed. Dots are capped per route with cargo per dot scaled up when flows are large. The simulation never sees the dots.
+- Names: every settlement gets a generated name at founding, kept for its life and reused in the log and inspector. Map generation names the rivers, mountain ranges, seas, bays and larger forests. Labels are a view layer with a toggle per class (settlements, water, relief), sized by rank so hamlets only show when zoomed in. Plain generated names are enough for v1; site-based suffixes (-ford, -mouth, -minster) are the 1.x refinement.
+- Legend: a panel listing every colour and symbol currently on screen (terrain classes, water, fields and their states, settlement ranks, route types, overlays), built from the active layers so it stays correct as layers are toggled.
 - Controls: play, pause, speed, year counter, seed. Panels: a live rank-size chart and a log of foundings and failures with year and cause.
 - Overlays: site-score heat map (where the next settlement would appear), travel cost from a clicked cell, cultivation catchments.
 - Sliders for the parameters that matter: transport cost ratios, growth exponent, trade distance decay, market spacing.
-- Hover: settlement (population, rank, year founded, food produced vs needed, main trading partners, 50-year trend); cell (terrain, yield, owner settlement, travel cost to nearest town, site score and its reasons); route (endpoints, mode, flow).
+- Hover: settlement (name, population, rank, year founded, food produced vs needed, main trading partners, 50-year trend); cell (terrain, yield, owner settlement, travel cost to nearest town, site score and its reasons); route (endpoints, mode, flow).
 
 **1.x derived layers**, in rough order of effort, none required for v1:
 
@@ -83,13 +85,13 @@ v1 rests on six models, each decades old, published, and reproduced by others. E
 | Gravity model of spatial interaction (Wilson 1970; Huff 1964) | Flow between places rises with both sizes and falls with travel cost | Yearly trade flows, food redistribution, route thickness | Estimated on Bronze Age merchant records with a distance elasticity close to modern trade (Barjamovic et al. 2019) |
 | Rihll–Wilson urban dynamics (Rihll & Wilson 1987; Harris & Wilson 1978) | Settlement size grows with inflow and decays with maintenance cost; with increasing returns a few sites dominate | The growth rule and the emergence of hierarchy | Regenerated Athens, Corinth and Argos from 109 equal sites; results sensitive to the decay function (Evans & Rivers 2017) |
 | Central place spacing (Christaller 1933) and the New Economic Geography urban shadow (Krugman 1991; Bosker & Buringh 2017) | New settlements are suppressed near an existing larger one and favoured at a middle distance; markets about a half-day walk apart | The founding score: shadow and access terms, minimum spacing | Spacing documented in English market law (Bracton, 6⅔ miles) and measured for 259,776 European locations 800–1800 |
-| First-nature site factors (Bosker & Buringh 2017; Bleakley & Lin 2012) | Relative weights for water, river, coast and route crossings in founding; persistence of towns after their advantage is gone | The founding score weights, population inertia | Regression on all 1,588 European cities over 1,000 years; portage-site persistence in the US |
+| First-nature site factors (Bosker & Buringh 2017; Bleakley & Lin 2012) | Relative weights for water, river, coast and route crossings in founding; persistence of towns after their advantage is gone | Which villages become towns, through growth on market inflow and handling income; population inertia. Not founding: the Kent test showed these weights are city-scale, and hamlets are scored on food and water | Regression on all 1,588 European cities over 1,000 years; portage-site persistence in the US |
 
 Two results shape the design rather than any single mechanism. First, founding is common and failure is the norm: only 39% of English places with market rights by 1300 were still market towns around 1600, so the model must found often and cull hard. Second, outcomes are partly contingent: the same geography can produce a different regional centre on a different seed, and that is correct behaviour, not a bug.
 
 ## Model specification
 
-v1 is a grid of cells, a list of settlements, one cost grid, and a yearly tick of six steps. All numbers below are defaults for a 128 × 128 map of 1 km cells; every one of them is a parameter.
+v1 is a grid of cells, a list of settlements, one cost grid, and a yearly tick of six steps. All numbers below are defaults for a 128 × 128 map of 1 km cells; every one of them is a parameter. This specification was corrected after the Kent real-terrain test (D23–D29): market size is now its own state, as in the published Rihll–Wilson model; places earn income from trade they handle; hamlet founding no longer scores transport; and water supply is brook-scale. The earlier forms are kept in the decisions log, not here.
 
 **World (static after generation)**
 
@@ -118,7 +120,8 @@ Edge costs, in km-equivalents, computed once and recomputed only when a road or 
 | Field | Meaning |
 | --- | --- |
 | anchor | the canonical cell; all distances use it |
-| P | population, f32 |
+| P | population, f32: farmers plus market people |
+| W | market size, f32: the Rihll–Wilson attractiveness, a state of its own, never derived from P or from land shortage; starts at a common small value `W_0` and has a floor so it cannot reach zero |
 | founded, last\_fed | years; `last_fed` is the last year food covered need |
 | fields | the set of cultivated cells it owns |
 | cost\_to | travel cost to every other settlement, from a bounded Dijkstra, refreshed every 5 years |
@@ -131,31 +134,31 @@ Rank is derived from P: hamlet < 100, village < 500, town < 2,000, city above.
 2. **Trade flows.** For every pair within cost `C_max = 60`:
 
 ```latex
-T_{ij} = O_i \, \frac{P_j^{\alpha} e^{-\beta c_{ij}}}{\sum_k P_k^{\alpha} e^{-\beta c_{ik}}}
+T_{ij} = O_i \, \frac{W_j^{\alpha} e^{-\beta c_{ij}}}{\sum_k W_k^{\alpha} e^{-\beta c_{ik}}}
 ```
 
-`O_i` is i’s surplus, `max(F_i − need_i, 0)` plus the output of any resource cells it owns. `α = 1.15`, `β = 0.08` per km-equivalent. Food surplus moves along `T_ij` to settlements in deficit, less a loss of `0.5% × c_ij`. Each flow is assigned to the stored least-cost path between the pair; summing per edge gives route load.
+`O_i` is what i sends to market: a fixed share `market_share` (0.49) of its produce plus the output of any resource cells it owns, sent whether or not any market needs it. The attraction is the market size `W_j`, not population; `α = 1.1`, `β` per the params file (0.2–0.3 on the generated maps). The sum includes j = i, so a place's own market takes its share. Food delivered to a market is first used to feed that market's own deficit, and the rest is redistributed to its sending settlements in deficit, less a loss of `0.5% × c_ij`. Each flow is assigned to the stored least-cost path between the pair; summing per edge gives route load. Gross market inflow `D_j` is everything delivered to j, including its own share.
 
-3. **Growth.** Inflow `I_j` is received trade plus route load passing through j’s anchor cell plus own produce. Then:
+3. **Growth.** Two equations, one for the market and one for the people. The market size follows the published Rihll–Wilson dynamic:
 
 ```latex
-P_j \leftarrow P_j \Big(1 + r \cdot \min\big(\tfrac{\text{food}_j}{\text{need}_j}, 1.2\big) - r\Big) + \varepsilon \,(I_j - K P_j)
+W_j \leftarrow \max\big(W_{\min},\; W_j + \varepsilon\,(D_j + H_j - K\,W_j)\big)
 ```
 
-`r = 0.02` (natural growth when fed), `ε = 0.05`, `K` tuned so an isolated fed village neither grows nor shrinks from the second term. The food ratio is capped so a surplus cannot drive runaway growth; trade inflow can. A settlement whose food ratio is below 1 shrinks at `r × (1 − ratio)`, with the loss spread over 3 years for inertia.
+`D_j` is gross market inflow from the trade step. `H_j` is handling income: a margin `handling_margin` on goods that pass j's anchor on a stored path or are transshipped there (land–water or water–land at j), counted as food-equivalent. `ε = 0.05`; `K` is tuned per map set (3.5 on the generated maps) so an isolated fed village's market neither grows nor shrinks; `W_min` is a small floor. All places start at the same `W_0`, so hierarchy comes from competition, not from the starting state. Then population: farmers are fed by the fields; market people are fed by `D_j + H_j`; `P_j` grows at `r = 0.02` a year toward what both can feed, capped at 5% growth a year, and shrinks at `r × (1 − ratio)` when underfed, with the loss spread over 3 years for inertia. Newcomers to a market join the market people rather than becoming farmers, so an inland market no longer erases its own W by claiming more fields.
 
-4. **Founding.** Every 5 years, score every free land cell with water within 1 km and no settlement within 3 km:
+4. **Founding.** Every 5 years, score every free land cell that has a brook of at least 5 km² drainage or the coast within 3 km and no settlement within 3 km. At 1 km cells this admits nearly all land; dry ridge tops are kept out by the food term, not by the water filter. Hamlets are scored on food and water only; transport decides which villages become towns, through growth, not founding:
 
 ```latex
-S(x) = 6\,\text{hub} + 1.0\,\text{river} + 0.6\,\text{coast} + 0.35\,\text{road} + 0.2\,\text{food}_{4\text{km}} - \text{shadow} + \text{access} + \eta
+S(x) = \text{food}_{4\text{km}} + w_{w1}\,\text{water}_{0} + w_{w2}\,\text{water}_{1} - \text{shadow} + \text{access} + \eta
 ```
 
-`hub` = 1 if two or more route load paths cross the cell; `river`, `coast`, `road` are 0/1 adjacency flags; `food_4km` is reachable yield within 4 km as a share of the maximum; `shadow = 1.5 × Σ (P_k / 1000)` over settlements within 10 km cost; `access = 0.3 × Σ (P_k / 1000) e^{−0.05 c}` over settlements at 10–60 km; `η` is uniform noise in \[0, 0.3\]. Found one hamlet of 30 people at the best cell if its score exceeds 1.0, then at most two more per 5-year step. Migrants come from the nearest settlement with a food ratio above 1.1.
+`food_4km` is reachable yield within 4 km as a share of the maximum; `water_0` = 1 if a stream, river or coast is in the cell, `water_1` = 1 if within 1 km, with weights `w_w1`, `w_w2` per the params file; `shadow = 1.5 × Σ (P_k / 1000)` over settlements within 10 km cost; `access = 0.3 × Σ (P_k / 1000) e^{−0.05 c}` over settlements at 10–60 km; `η` is uniform noise in \[0, 0.3\]. There are no transport flags (hub, river, coast, road) in founding: Bosker & Buringh's weights are for cities, and villages followed farmland and water. Found one hamlet of 30 people at the best cell if its score exceeds the founding threshold, then at most two more per 5-year step. Migrants come from the nearest settlement with a food ratio above 1.1.
 
 5. **Failure.** A settlement with P below 20 for 10 consecutive years, or not fed for 20, is removed; its fields are released and its people move to the nearest fed settlement.
 6. **Roads.** Every 10 years, take the 20 pairs with the largest `T_ij` whose path is not already a road and mark that path as road. Roads never decay in v1. Recompute edge costs and `cost_to`.
 
-**Initial conditions.** Eight to twelve hamlets of 50 people, placed at the highest `food_4km` cells with water, at least 8 km apart. Run length 500 years.
+**Initial conditions.** Eight to twelve hamlets of 50 people, placed at the highest `food_4km` cells that pass the water rule, at least 8 km apart. Run length 500 years.
 
 **Determinism.** One seed drives map generation and the noise term `η`. Two runs with the same seed and parameters must produce identical state; this is the basis of every test.
 
@@ -179,13 +182,14 @@ What makes this different from a project that stalls: there is no agent layer, n
 
 ## Validation targets
 
-v1 is done when a 500-year headless run on the default map passes every check below. They run as assertions in the CLI, so a parameter change that breaks one is caught by seed. The ranges are scaled from medieval England to a 16,000 km² map and are deliberately wide; the point is to catch the two failure modes (one city eats the map, or nothing happens), not to match a number.
+v1 is done when the checks below pass on three generated maps, judged by pass rate across seeds, not by a single run: each check must pass in at least 75% of 20 seeds on every map, and the seed-aggregate checks (contingency, median counts) are computed over the same 20. A single seed lands on a range edge by chance; pass rates measure the model. The default run (map 1, seed 1) is still the golden snapshot for the determinism test. The checks run as assertions in the CLI, so a parameter change that breaks one is caught by seed. Ranges are scaled from medieval England to a 16,000 km² map and are deliberately wide; the point is to catch the two failure modes (one city eats the map, or nothing happens), not to match a number.
 
 | Check | Target | Catches |
 | --- | --- | --- |
 | Determinism | Same seed and params give an identical final snapshot hash | Hidden nondeterminism |
 | Settlement count at year 500 | 150–350 | Founding too weak or too strong |
-| Settlements over 2,000 | 5–12; over 5,000: 2–5 | Hierarchy absent or runaway |
+| Settlements over 2,000 | 5–12 | Hierarchy absent or runaway |
+| Settlements over 5,000 | at least 1 and at most 5 per run; median over 20 seeds at least 2 | Hierarchy absent or runaway; a region with one city over 5,000 is historically normal |
 | Largest settlement’s share of total population | under 25% | One city eats the map |
 | Rank-size slope (log size vs log rank, top 30) | between −0.8 and −1.3 | Flat scatter or primacy |
 | Market-town spacing (nearest neighbour among settlements over 500) | median 8–15 km | Spacing rule wrong |
@@ -193,16 +197,31 @@ v1 is done when a 500-year headless run on the default map passes every check be
 | Failure rate | 40–70% of settlements founded during the run are gone by year 500 | Culling too soft or too hard |
 | Forest near cities | under 30% cover within 5 km of any settlement over 5,000 | Fuel ring not clearing |
 | Stability | total population changes less than 5% year on year after year 100 | Oscillation |
-| Contingency | over 20 seeds on the same terrain, the largest city’s anchor differs in at least 30% of runs, but a settlement over 5,000 sits within 10 km of the main river mouth in at least 80% | Too deterministic, or geography ignored |
+| Contingency | over 20 seeds on the same terrain, the largest city’s anchor differs in at least 30% of runs (gated). Reported, not gated: the share of seeds with a settlement over 5,000 on the largest river system’s navigable stretch or the coast within 15 km of it, and the distance from the largest city to the main river mouth. With a populated middle tier, which river gets the big city is largely contingent; the per-seed siting check above carries the transport claim | Too deterministic, or geography ignored |
 | Performance | one year under 50 ms in release WASM | Budget |
 
-The real-terrain check (run on a DEM of a documented region and compare with its medieval towns) is not a v1 gate, but the CLI accepts the ground-truth file from the start.
+**Real-terrain tests** (a DEM of a documented region, scored against its medieval towns) are not a v1 gate, but the CLI accepts the ground-truth file from the start. The standing rule, from the Kent test (D23–D31): judge placement only where the inputs carry signal, and judge count and spacing where they do not. On Kent, terrain and soil hold no information about where the small inland towns sat (feature scores 0.20–0.48 against real sites, 0.5 being none); their sites came from roads, market spacing and lordship. So for towns under about 1,000 the yardstick is count and nearest-neighbour spacing (real Kent: 29 inland places over 500, 10.6 km apart), and placement is judged for ports, river towns and towns over 1,000, using AUC against lowland cells, which cannot be fooled by “towns sit low”. Second-nature inputs such as an initial road network are data in `Terrain`, not model changes, and are the next source of placement signal.
 
 ## Architecture and technical constraints
 
 The Cargo workspace is \`hinterlands\`, with crates \`hinterlands-core\`, \`hinterlands-mapgen\`, \`hinterlands-web\` and \`hinterlands-cli\`, referred to below by their short names. The design has one load-bearing decision: the simulation is a pure Rust library with no I/O, and everything else reads from a read-only snapshot of it. That boundary is what keeps v1 small and lets 1.x add goods, events and view layers without touching the core.
 
-&#91;embedded content: architecture · three crates, one snapshot boundary\]
+```text
+Params + seed ──▶ core crate (pure Rust, no I/O) ──▶ Snapshot (read-only, serde, per year)
+   (JSON; mapgen        World = Terrain (static) + State (dynamic)           │
+    or DEM)             systems, each step(&mut State, &Terrain, &Params):   │
+       │                cultivation · trade flows · growth ·                  ▼
+       │                founding · failure · roads + costs           web crate (wasm, egui)
+       │                              │                              reads Snapshot only:
+       └──────────────────────────────▼                              terrain, water, forest ·
+                            cli crate (headless):                    fields and catchments ·
+                            run N years, metrics,                    settlement footprints ·
+                            determinism tests                        routes and trade dots ·
+                                                                     overlays, hover, panels
+                                                                     (layers never write back)
+```
+
+*Architecture: three crates, one snapshot boundary.*
 
 Params and a seed go into the core; the core produces a Snapshot each year; the viewer and the CLI only ever read snapshots.
 
@@ -305,7 +324,26 @@ The implementer works autonomously from M0 to M6 without approval between milest
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
 
-&#91;embedded content: roadmap · five versions and the map generation track\]
+```text
+Simulation lane (each gate must pass before the next version starts)
+
+  v1 Region        v2 Goods         v3 Landscape      v4 Shocks         v5 World
+  four systems  ◆  3–5 goods,    ◆  roads from     ◆  events, plague ◆  joined regions
+  one good      │  Weber,        │  traffic,       │  lords and      │  sea trade,
+                │  specialist    │  bridges,       │  borders        │  technology
+                │  sites         │  1.x layers     │                 │
+          validation       goods tuned       roads stable    events deterministic
+            passes
+
+Map generation track (any pass can land early; real DEM import at any point)
+
+  Noise            Water and soil   Climate           Tectonics         Real terrain
+  heightmap,       hydraulic        rain shadow,      plates, ranges,   SRTM import,
+  rivers, yield    erosion, flood-  biome, geology,   aligned valleys   history
+  from slope       plains, lakes    resources                           validation
+```
+
+*Roadmap: five versions and the map generation track.*
 
 The simulation lane runs left to right through its gates; the map generation track runs in parallel and any of its passes can land early, since generation is a pure function the systems never see.
 

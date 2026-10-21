@@ -246,3 +246,17 @@ None points toward the small towns. Within the lowlands they sit *higher* than a
 **What this means.** With the first-nature data available, the lowland AUC for small towns has a ceiling near 0.5, whatever the model does. Their siting at the scale of a few km is second-nature: roads, the spacing of markets, lordship and charters. The model's 0.37–0.44 for small towns is therefore partly a property of the data. The number to judge small towns by is their count and spacing, where v1.1 has moved toward the real pattern: 20 inland places over 500 at 9.1 km, against 14 in v1 and 29 at 10.6 km in reality. The location AUC remains the right test for towns of 1,000 or more, and there the model stays at 0.51–0.55, about where the valley-floor feature alone gets (0.62).
 
 **Recommendation.** Keep uniform soil as the Kent default for now, and keep the soil and valley inputs as options (`data/real/kent/map-soil*.json`, `map-tpi.json`). The next gains for Kent are not soil. They are second-nature inputs: Roman roads as a given network at the start (Watling Street and Stane Street, which several missed towns sit on), or the outside world as a seller, now that B makes the tidal Thames the gateway.
+
+## Roman roads as an initial road network (pre-registered, before running)
+
+Written and committed before any run with roads.
+
+**Change.** Roman roads become input data: an initial road set in `Terrain`, rasterised from published road lines, the same kind of input as the DEM. The model is unchanged. Roads present at the start cost `cost_road` per km like any other road, and the road step adds to them as before. Research footing: Dalgaard et al. 2022 on the persistence of Roman roads.
+
+**Expectation (the designer's).** Towns form at the crossings of Watling Street with the Medway and the Stour, that is, at Rochester and at Canterbury. If they appear, the model has reproduced the two best-documented town sites in the region from roads plus rivers alone.
+
+**How it will be scored.**
+1. Primary: the share of the 20 seeds with a model place of 1,000 or more within 3 km of Rochester, and the same for Canterbury, against v1.1 without roads, run on the same seeds.
+2. The usual table: lowland AUC for towns of 1,000 or more; count and spacing of inland places over 500; the largest city; and the share of settlements on or next to a Roman road, against the share of land that is.
+
+No parameter is re-tuned for this run.

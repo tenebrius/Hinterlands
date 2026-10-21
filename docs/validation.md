@@ -28,3 +28,7 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 - determinism passes. Map 1 seed 1 is the determinism golden; it is not otherwise special.
 
 The "seed 1" column is shown for reference only.
+
+## Real-terrain tests
+
+Not a release gate. The standing rule (foundation, after D23–D31): judge placement only where the inputs carry signal, and judge count and spacing where they do not. On Kent, terrain and soil hold no signal for towns under about 1,000 (feature AUCs 0.20–0.48 against lowland cells), so they are judged by count and nearest-neighbour spacing of inland places over 500 (real: 29 at 10.6 km). Ports, river towns and towns of 1,000 or more are judged by AUC against lowland cells. `just real` produces the table.
