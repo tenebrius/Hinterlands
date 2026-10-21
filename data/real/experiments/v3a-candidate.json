@@ -9,5 +9,6 @@
   "k_maint": 3.1675544,
   "traffic_roads": false,
   "traffic_bridges": false,
-  "mills": false
+  "mills": false,
+  "events_mode": 0
 }

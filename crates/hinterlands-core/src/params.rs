@@ -235,7 +235,7 @@ define_params! {
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Events" => {
-        events_mode: u32 = 0, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";
+        events_mode: u32 = 1, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";
         famine_year: u32 = 215, [0, 2000], "Year the Great Famine begins (historical; 1315)";
         famine_years: u32 = 3, [1, 10], "Years a famine lasts";
         famine_loss: f32 = 0.4, [0, 1], "Share of every cell's yield lost in a famine year";

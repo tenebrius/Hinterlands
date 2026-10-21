@@ -1,4 +1,5 @@
 {
   "traffic_bridges": false,
-  "mills": false
+  "mills": false,
+  "events_mode": 0
 }

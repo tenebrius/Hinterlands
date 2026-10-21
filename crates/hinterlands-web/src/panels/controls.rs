@@ -21,9 +21,18 @@ impl Panel for Controls {
     ) -> Vec<Msg> {
         let mut out = Vec::new();
         let time = ui.input(|i| i.time);
+        // In historical mode the calendar year follows the run year (v4, D57).
+        let year = if v.params.events_mode == 1 {
+            format!(
+                "{} ({})",
+                hinterlands_core::event::shown_year(&v.params, v.snapshot.year),
+                v.snapshot.year
+            )
+        } else {
+            v.snapshot.year.to_string()
+        };
         ui.heading(format!(
-            "Year {} · {}",
-            v.snapshot.year,
+            "Year {year} · {}",
             crate::view::SEASONS[v.season_index(time)]
         ));
         ui.horizontal(|ui| {
