@@ -303,3 +303,20 @@ Kind: model mechanism (designer's specification), on by default.
 - **Note.** On the generated maps (1 km cells), a stream needs a flux of at least `stream_area` (60 cells, 60 km²), so `mill_area` at 20 km² never binds: every stream field gives a mill. It would bind on finer grids or with a higher threshold.
 - Share of settlements with a mill: 0.41 / 0.41 / 0.38.
 Kind: model mechanism (designer's specification), on by default.
+
+## D57 — v4 E1: the event queue, the historical calendar, famine and plague
+- A new `events` system runs first in each year. It queues the events that fall due, and `Event::apply` makes every change.
+- **`events_mode`:** 0 Off, 1 Historical, 2 Random. Off draws nothing and reproduces `171ec4461a912a1d`.
+  - In Historical mode (year 0 = 1100), the famine starts at `famine_year` 215 for `famine_years` 3, and plague strikes at `plague_year` 248, with recurrences at 261 and 269 at `plague_recur_share` (1/3) of its mortality.
+  - In Random mode each kind is drawn yearly from the run's `Rng`, at `famine_interval` 120 and `plague_interval` 150 years.
+- **Famine.** Cultivation cuts each settlement's produce by `famine_loss` (0.4) after its fields are chosen: a failed harvest cannot be made up by ploughing more in the same year.
+- **Plague.** Each settlement's share `m` is drawn when the plague strikes: uniform within `plague_mortality` ± `plague_spread` (0.4 ± 0.1), scaled down for a recurrence, and clamped to [0, 0.95]. It is taken in equal yearly parts over `plague_years` (2): `1 − (1 − m)^(1/2)` a year, of both people and market size W. The event queues its own second year.
+- **Log.** It gains `Famine` and `Plague { lost }` entries, one per settlement struck. The log is now cleared before the events run, so their entries are kept for the year.
+- For now `events_mode` defaults to Off, so the golden stays fixed through E1–E3; the gate runs in Historical mode.
+Kind: model mechanism (designer's specification), behind a switch.
+
+## D58 — v4 gate measures (implementer's reading)
+- **Stability with events.** The v1 stability check (under 5% a year) leaves out the years of each event and the one after: famine years 215–219, and plague years 248–251, 261–264 and 269–272. A plague is meant to break steady state.
+- **Desertion.** "Places in the lowest-yield quarter" is read as the *local* yield: the mean yield of land within 3 km of the anchor, among the settlements alive at the plague year. The quarters are within each run. A place's own fields are its best cells and hide how poor its surroundings are: by field yield the check held in 5 of 12 trial runs, by local yield in 10 of 12.
+- **Top-10 against Off.** The share of a run's top ten within 5 km of the same seed's top ten with events off.
+Kind: reading of the acceptance test (implementer); the designer to confirm.

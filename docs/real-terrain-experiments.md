@@ -686,3 +686,33 @@ Kent was run with the v3 defaults on `map-resources.json`, 20 seeds. Against v3(
 - 21% of settlements have a mill, against about 40% on the generated maps. Kent has fewer stream cells inside fields.
 - Lowland AUC is 0.52 / 0.53 / 0.51.
 - Largest city: Gravesend 10, Faversham 9.
+
+## v4 E1: famine and plague. Stopped on the desertion check (map 3)
+Validation was run with `events_mode` 1 (Historical), 20 seeds a map. Each seed also ran with events off, for the overlap.
+
+| Map | Plague drop | Recovery by 500 | Poor land deserted (low > high) | Top-10 against Off | v3 checks |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 0.37, 20/20 | 1.74, 20/20 | 16/20 (low 0.22, high 0.11) | 0.80, 19/20 | all pass |
+| 2 | 0.37, 20/20 | 1.66, 20/20 | 20/20 (0.21, 0.10) | 0.80, 20/20 | all pass |
+| 3 | 0.36, 20/20 | 1.80, 20/20 | **10/20** (0.18, 0.16) | 0.80, 20/20 | all pass |
+
+- The famine dip is 0.23–0.24, regained in 15 years.
+- The slowest run took 26.8 ms a year natively.
+
+**Why map 3 fails.** The desertion probe (`hinterlands desertion`) was run on maps 1 and 3, 6 seeds each. It splits the failures by the distance to the nearest place over 2,000:
+
+| Quarter of local yield | Map 1, within 8 km of a city | Map 1, farther | Map 3, within 8 km | Map 3, farther |
+| --- | --- | --- | --- | --- |
+| lowest | — (0 places) | 0.21 | — (0) | 0.19 |
+| 2 | — (0) | 0.18 | 0.44 (16) | 0.09 |
+| 3 | 0.50 (4) | 0.14 | 0.14 (7) | 0.18 |
+| highest | 0.36 (22) | 0.10 | 0.44 (18) | 0.13 |
+
+Away from cities, poor land is deserted more than good land on both maps: 0.21 against 0.10, and 0.19 against 0.13. Cities stand on good land, though, and the small places within 8 km of them fail at 0.36–0.44, drained by the urban shadow after the plague. On map 3 that pulls the highest quarter's rate up close to the lowest's, and the per-seed check falls to 10/20.
+
+The event parameters cannot reach this. The check covers years 248–300, after the famine, and plague mortality does not depend on yield.
+
+**Options for the designer:**
+1. Measure desertion among places beyond the urban shadow, more than 8 km from any place over 2,000. City-shadow losses are their own mechanism.
+2. Make it a model change: after a plague, people leave poor-land places for vacant good land nearby (Dyer: holdings were taken up on better land). This is a new rule.
+3. Pool the rate over each map's 20 seeds. Map 3 pooled is 0.18 against 0.16, a pass but a narrow one.

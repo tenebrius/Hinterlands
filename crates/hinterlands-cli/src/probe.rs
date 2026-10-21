@@ -367,7 +367,8 @@ pub fn cmd_roads(args: &Args) {
 /// Desertion report (v4): for each settlement alive the year before the
 /// plague, `place seed id pop fields field_yield local_yield failed cause`,
 /// where local yield is the mean over land within 3 km of the anchor and
-/// failed is the year it was removed before `plague_year + 52`, or 0.
+/// failed is the year it was removed before `plague_year + 52`, or 0; last,
+/// the distance in km to the nearest place over 2,000.
 pub fn cmd_desertion(args: &Args) {
     let mut sim = make_sim(args);
     let seed = sim.sim_seed;
@@ -377,7 +378,14 @@ pub fn cmd_desertion(args: &Args) {
         sim.step(1);
     }
     let t = sim.terrain.clone();
-    let rows: Vec<(u32, f32, usize, f32, f32)> = sim
+    let big: Vec<usize> = sim
+        .state
+        .settlements
+        .iter()
+        .filter(|s| s.pop > 2000.0)
+        .map(|s| s.anchor as usize)
+        .collect();
+    let rows: Vec<(u32, f32, usize, f32, f32, f32)> = sim
         .state
         .settlements
         .iter()
@@ -393,7 +401,12 @@ pub fn cmd_desertion(args: &Args) {
                 .filter(|&j| t.is_land(j))
                 .collect();
             let ly = near.iter().map(|&j| t.food_yield[j]).sum::<f32>() / near.len().max(1) as f32;
-            (s.id, s.pop, s.fields.len(), fy, ly)
+            let d = big
+                .iter()
+                .filter(|&&b| b != s.anchor as usize)
+                .map(|&b| t.grid.dist_km(b, s.anchor as usize))
+                .fold(f32::INFINITY, f32::min);
+            (s.id, s.pop, s.fields.len(), fy, ly, d)
         })
         .collect();
     let mut failed: std::collections::BTreeMap<u32, (u32, FailCause)> = Default::default();
@@ -405,10 +418,10 @@ pub fn cmd_desertion(args: &Args) {
             }
         }
     }
-    for (id, pop, nf, fy, ly) in rows {
+    for (id, pop, nf, fy, ly, d) in rows {
         let (y, c) = failed
             .get(&id)
             .map_or((0, String::from("-")), |(y, c)| (*y, format!("{c:?}")));
-        println!("place {map} {seed} {id} {pop:.0} {nf} {fy:.3} {ly:.3} {y} {c}");
+        println!("place {map} {seed} {id} {pop:.0} {nf} {fy:.3} {ly:.3} {y} {c} {d:.1}");
     }
 }
