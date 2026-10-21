@@ -251,6 +251,21 @@ pub struct State {
     pub outside: Option<u32>,
     #[serde(skip)]
     pub scratch: Dijkstra,
+    /// Founding's cache of free food near each cell (NaN = stale), with the
+    /// owners, roads and costs it was computed under.
+    #[serde(skip)]
+    pub food_cache: FoodCache,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FoodCache {
+    pub value: Vec<f32>,
+    pub owner: Vec<u32>,
+    pub road: Vec<bool>,
+    pub transport: Option<Transport>,
+    pub key: (u32, u32),
+    /// Least walking cost per km in the graph it was computed on.
+    pub min_per_km: f32,
 }
 
 /// The map-edge sea cell nearest the main river mouth (or the map centre),
@@ -303,6 +318,7 @@ impl State {
             events: Vec::new(),
             outside: outside_node(t),
             scratch: Dijkstra::new(n),
+            food_cache: FoodCache::default(),
         }
     }
 

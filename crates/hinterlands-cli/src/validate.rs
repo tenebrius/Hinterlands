@@ -244,7 +244,10 @@ pub fn cmd_validate(args: &Args) {
         let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
         let corridor =
             rs.iter().filter(|r| r.corridor_city).count() as f32 / rs.len().max(1) as f32;
-        let contingency_ok = differs >= 0.3 && corridor >= 0.8;
+        // Only the varying largest city is gated; the river-corridor share is
+        // reported (D30): with a populated middle tier, which river gets the
+        // city is partly contingent, and siting carries the transport claim.
+        let contingency_ok = differs >= 0.3;
         let mut over5: Vec<u32> = rs.iter().map(|r| r.m.over_5000).collect();
         over5.sort();
         let over5_median = over5.get(over5.len() / 2).copied().unwrap_or(0);
@@ -253,13 +256,17 @@ pub fn cmd_validate(args: &Args) {
         mouth_km.sort_by(|a, b| a.total_cmp(b));
         let ms = rs.iter().map(|r| r.ms_per_year).fold(0.0, f64::max);
         println!(
-            "{:<20} {:>12} {:>10.2} {:>10.2} {:>10} {:>8}",
-            "contingency",
-            ">=.30/>=.80",
+            "{:<20} {:>12} {:>10} {:>10.2} {:>10} {:>8}",
+            "largest varies",
+            ">=.30",
+            "",
             differs,
-            corridor,
             "",
             if contingency_ok { "ok" } else { "FAIL" }
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10.2} {:>10} {:>8}",
+            "river corridor city", "(reported)", "", corridor, "", ""
         );
         println!(
             "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",

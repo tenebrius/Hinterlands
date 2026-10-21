@@ -202,7 +202,7 @@ pub fn cmd_search(raw: &[String], args: &Args) {
         .map(|c| {
             let rs: Vec<_> = results.iter().filter(|(k, _)| *k == c).collect();
             let mut mean = rs.iter().map(|(_, r)| miss(r)).sum::<f32>() / rs.len().max(1) as f32;
-            // Contingency per map, when there are enough seeds to judge it.
+            // The varying largest city per map, when there are enough seeds to judge it.
             if seeds >= 3 {
                 for (ms, t) in &terrains {
                     let g: Vec<_> = rs
@@ -222,10 +222,8 @@ pub fn cmd_search(raw: &[String], args: &Args) {
                         .max()
                         .unwrap_or(0);
                     let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
-                    let mouth =
-                        g.iter().filter(|r| r.corridor_city).count() as f32 / g.len().max(1) as f32;
-                    mean += ((0.3 - differs).max(0.0) / 0.3 + (0.8 - mouth).max(0.0) / 0.8)
-                        / terrains.len() as f32;
+                    // The river-corridor share is reported, not gated (D30).
+                    mean += (0.3 - differs).max(0.0) / 0.3 / terrains.len() as f32;
                 }
             }
             let passes = rs

@@ -96,18 +96,97 @@ pub fn free_food_near(state: &mut State, t: &Terrain, p: &Params, cell: usize) -
     total
 }
 
+/// Least cost per km of any walking edge (land to land) in the cost graph.
+fn min_walk_per_km(state: &State, t: &Terrain) -> f32 {
+    let g = t.grid;
+    let n = t.n();
+    let mut best = f32::INFINITY;
+    for u in 0..n {
+        for &(v, c) in state.cost.edges(u as u32) {
+            if (v as usize) < n && v as usize != u {
+                let km = g.dist_km(u, v as usize).max(1e-6);
+                best = best.min(c / km);
+            }
+        }
+    }
+    best
+}
+
+/// Bring the free-food cache up to date before a founding step. A cell's value
+/// depends on owners and walking costs within `r_cult`; a walking path costs at
+/// least its length times the cheapest walking cost per km, so a changed owner
+/// or road only stales cells within `r_cult / min_per_km` of it. Anything else
+/// that changes costs clears the cache. Cached values are exact, so results are
+/// identical to computing every cell afresh.
+fn refresh_food_cache(state: &mut State, t: &Terrain, p: &Params) {
+    let n = t.n();
+    let key = (p.r_cult.to_bits(), p.min_field_yield.to_bits());
+    let fc = &state.food_cache;
+    if fc.value.len() != n || fc.transport != Some(state.transport) || fc.key != key {
+        let min_per_km = min_walk_per_km(state, t);
+        state.food_cache = crate::state::FoodCache {
+            value: vec![f32::NAN; n],
+            owner: state.owner.clone(),
+            road: state.road.clone(),
+            transport: Some(state.transport),
+            key,
+            min_per_km,
+        };
+        return;
+    }
+    let roads_changed = (0..n).any(|i| state.road[i] != fc.road[i]);
+    let mut min_per_km = fc.min_per_km;
+    if roads_changed {
+        min_per_km = min_per_km.min(min_walk_per_km(state, t));
+    }
+    let radius = p.r_cult / min_per_km.max(1e-6) + t.grid.cell_km;
+    let changed: Vec<usize> = (0..n)
+        .filter(|&i| state.owner[i] != fc.owner[i] || state.road[i] != fc.road[i])
+        .collect();
+    let fc = &mut state.food_cache;
+    for &x in &changed {
+        for j in t.grid.disk(x, radius) {
+            fc.value[j] = f32::NAN;
+        }
+    }
+    fc.owner.copy_from_slice(&state.owner);
+    fc.road.copy_from_slice(&state.road);
+    fc.min_per_km = min_per_km;
+}
+
+/// Free food near a cell, from the cache when it is current.
+fn cached_food(state: &mut State, t: &Terrain, p: &Params, cell: usize) -> f32 {
+    let v = state.food_cache.value[cell];
+    if !v.is_nan() {
+        return v;
+    }
+    let v = free_food_near(state, t, p, cell);
+    state.food_cache.value[cell] = v;
+    v
+}
+
 /// Score parts for one cell; `food` is left unnormalised.
 pub fn site_parts(state: &State, t: &Terrain, p: &Params, cell: usize, food: f32) -> SiteParts {
-    let mut shadow = 0.0;
-    let mut access = 0.0;
+    let mut parts = site_parts_without_neighbours(state, t, p, cell, food);
     for s in &state.settlements {
         let c = s.reach.cost_to_cell(cell);
         if c <= p.shadow_radius {
-            shadow += p.shadow_weight * s.pop / 1000.0;
+            parts.shadow += p.shadow_weight * s.pop / 1000.0;
         } else if c <= p.c_max {
-            access += p.access_weight * s.pop / 1000.0 * libm::expf(-p.access_decay * c);
+            parts.access += p.access_weight * s.pop / 1000.0 * libm::expf(-p.access_decay * c);
         }
     }
+    parts
+}
+
+/// Score parts that do not depend on other settlements (shadow and access 0).
+fn site_parts_without_neighbours(
+    state: &State,
+    t: &Terrain,
+    p: &Params,
+    cell: usize,
+    food: f32,
+) -> SiteParts {
     SiteParts {
         hub: if state.hub[cell] { 1.0 } else { 0.0 },
         river: if t.touches(cell, |j| t.is_nav(j)) {
@@ -122,8 +201,8 @@ pub fn site_parts(state: &State, t: &Terrain, p: &Params, cell: usize, food: f32
             0.0
         },
         food,
-        shadow,
-        access,
+        shadow: 0.0,
+        access: 0.0,
         water: water_bonus(t, p, cell),
     }
 }
@@ -133,12 +212,43 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
         return;
     }
     let n = t.n();
-    let mut cands: Vec<(usize, SiteParts)> = Vec::new();
-    for cell in 0..n {
-        if is_candidate(state, t, p, cell) {
-            let food = free_food_near(state, t, p, cell);
-            cands.push((cell, site_parts(state, t, p, cell, food)));
+    refresh_food_cache(state, t, p);
+    // Cells too close to a settlement, stamped once (same test as `is_candidate`).
+    let mut crowded = vec![false; n];
+    for st in &state.settlements {
+        let a = st.anchor as usize;
+        for j in t.grid.disk(a, p.min_spacing_km) {
+            if t.grid.dist_km(a, j) < p.min_spacing_km {
+                crowded[j] = true;
+            }
         }
+    }
+    let cells: Vec<usize> = (0..n)
+        .filter(|&c| {
+            !crowded[c] && t.is_land(c) && state.owner[c] == NONE && has_water_supply(t, p, c)
+        })
+        .collect();
+    // Shadow and access with settlements outermost; each cell still sums its
+    // settlements in the same order as `site_parts`, so the results are identical.
+    let mut shadow = vec![0f32; cells.len()];
+    let mut access = vec![0f32; cells.len()];
+    for st in &state.settlements {
+        for (k, &cell) in cells.iter().enumerate() {
+            let c = st.reach.cost_to_cell(cell);
+            if c <= p.shadow_radius {
+                shadow[k] += p.shadow_weight * st.pop / 1000.0;
+            } else if c <= p.c_max {
+                access[k] += p.access_weight * st.pop / 1000.0 * libm::expf(-p.access_decay * c);
+            }
+        }
+    }
+    let mut cands: Vec<(usize, SiteParts)> = Vec::with_capacity(cells.len());
+    for (k, &cell) in cells.iter().enumerate() {
+        let food = cached_food(state, t, p, cell);
+        let mut parts = site_parts_without_neighbours(state, t, p, cell, food);
+        parts.shadow = shadow[k];
+        parts.access = access[k];
+        cands.push((cell, parts));
     }
     let max_food = cands
         .iter()
