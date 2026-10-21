@@ -431,7 +431,15 @@ The simulation lane runs left to right through its gates; the map generation tra
      - **Shadow note.** v3(a) was dropped (D53): in km form the drain is what spaces markets, so splitting it off did not help. The shadow stays in travel cost. Since the cost shadow pushes places off roads, the on-road share is the number to watch in (b).
 
    - (c) **Bridges at busy crossings,** using the free-crossing mechanism of D33.
-   - (d) **Mills** add a few percent to their settlement's yield.
+     - **Rule.** At each road step, a road cell that crosses a river or stream away from a ford becomes a bridge if its load has been at least `bridge_load` for `bridge_steps` road steps in a row. Starting values are 2 × `road_keep_load` and 3 steps.
+     - **Effect.** The bridge's crossing cost is 0. A bridge never decays, even if its road fades: towns outlive their reason, and bridges outlived their roads.
+     - **Viewer.** The viewer's bridges come from the model's bridges from now on, instead of its own traffic rule.
+     - **Gate.** The v3(b) gate holds.
+     - **Reported.** Bridges per run, and the share of places of 1,000 or more within 2 km of a bridge, against the share of all settlements.
+   - (d) **Mills.** A settlement whose fields include a stream or river cell with drainage of at least `mill_area` (starting value 20 km²) has a mill. Its yield is raised by `mill_bonus` (3%). The viewer's mill comes from the model's from now on. Gate: the v3(b) gate holds. Reported: the share of settlements with a mill.
+   - **v3 milestone** after (d), recorded as for v2.
+   - **Kent note at (b)** (a51cd28). Spacing of inland places over 500 now matches the real figure (10.8 km against 10.6), but there are only 12 of them against 29 real, and there are 445 settlements against 238 before. 19% of Roman road cells survive, and Watling Street, which in reality persisted, mostly fades: the model has no Continental traffic through Dover. That belongs to v5's outside world. It is reported, not chased.
+
 
    Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
 3. **v4 Shocks.** The event queue comes into use:
