@@ -553,3 +553,14 @@ Kind: model mechanism; stopped.
 - **Why.** Noise with mean zero slows early growth, because losses are asymmetric. On map 1 seed 1, population at year 200 is 47.8k with sd 0, 27.6k at 0.095 and 14.8k at 0.15. The shocks then strike a smaller region. Details are in `docs/market/w1.md`.
 - **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped.
 Kind: model mechanism (designer decision); stopped.
+
+## D77 — S2 design decisions (designer); the shadow market decoupled
+- **The designer's decisions on `docs/market/s2-design.md`:**
+  - rents are paid in value at `rent_share`;
+  - fees are paid by the buyer outside the routing price, which is a deliberate departure from a pure equilibrium, so that break of bulk is not counted twice;
+  - `p_floor` is 0.25 and `c_max` is `food_cap`.
+- **The shadow is decoupled (this commit).** `market_shadow` now writes its own fields: `shadow_price` per settlement and `shadow_arcs`, beside `port_price` and `market_residual`. The model reads none of them, and `price` belongs to the trading equilibria (S1 goods, S2 grain).
+  - Before this, the shadow overwrote S1's goods prices. D72's founding test and S1's warm start then read them, so a shadow-on run differed (`1ed04bc733038208` against `ec7a24a7caeac414`).
+  - `tests/shadow.rs` checks that a run with the shadow on matches one with it off, prices aside.
+  - The snapshot carries `shadow_price` when the shadow is on. The probe prints S1's goods prices and the shadow's grain price.
+Kind: designer decision; fix.

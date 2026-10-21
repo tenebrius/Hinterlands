@@ -489,7 +489,11 @@ pub fn cmd_prices(args: &Args) {
         for s in &sim.state.settlements {
             let (x, yy) = g.xy(s.anchor as usize);
             let yld = s.food_prod / s.fields.len().max(1) as f32;
-            let pr = s.price;
+            // Market prices where the model trades by them, else the shadow's.
+            let mut pr = s.shadow_price;
+            if sim.params.market_goods {
+                pr[1..].copy_from_slice(&s.price[1..]);
+            }
             let sp = s.supply_price;
             let hv = &sim.state.harvest;
             let m = if hv.is_empty() || s.fields.is_empty() {
@@ -508,7 +512,12 @@ pub fn cmd_prices(args: &Args) {
             );
         }
         if arcs_at.contains(&y) {
-            for &(a, b, x, gap, t) in &sim.state.market_arcs {
+            let arcs = if sim.params.market_shadow {
+                &sim.state.shadow_arcs
+            } else {
+                &sim.state.market_arcs
+            };
+            for &(a, b, x, gap, t) in arcs {
                 println!("arc {seed} {y} {a} {b} {x:.2} {gap:.5} {t:.5}");
             }
         }

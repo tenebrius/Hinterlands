@@ -151,7 +151,7 @@ impl Snapshot {
                 goods_in: s.goods_in,
                 mill: s.mill,
                 planted: s.planted,
-                price: p.market_shadow.then_some(s.price),
+                price: p.market_shadow.then_some(s.shadow_price),
             })
             .collect();
         let flows = state

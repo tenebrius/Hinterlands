@@ -183,9 +183,13 @@ pub struct Settlement {
     pub mill: bool,
     /// Planted by a lord (D63).
     pub planted: bool,
-    /// Shadow prices, grain units (v6 S0, D69): grain, salt, iron, stone,
-    /// imports; zero until `market_shadow` solves them.
+    /// Market prices (v6): grain, salt, iron, stone, imports; the goods by
+    /// `market_goods` (S1), grain by `market_grain` (S2); zero otherwise.
     pub price: [f32; 5],
+    /// Shadow prices, same order (v6 S0, D69), written only by the shadow
+    /// solve and read by nothing in the model (D77).
+    #[serde(default)]
+    pub shadow_price: [f32; 5],
     /// Supply prices of salt, iron and stone where the place holds sites (D71).
     pub supply_price: [f32; 3],
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
@@ -224,6 +228,7 @@ impl Settlement {
             mill: false,
             planted: false,
             price: [0.0; 5],
+            shadow_price: [0.0; 5],
             supply_price: [0.0; 3],
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
@@ -359,6 +364,9 @@ pub struct State {
     pub market_residual: [f32; 5],
     #[serde(default)]
     pub market_arcs: Vec<(u32, u32, f32, f32, f32)>,
+    /// The shadow solve's grain arcs, as `market_arcs` (D77).
+    #[serde(default)]
+    pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
     /// Goods demand left unmet this year by the equilibrium (D71), by good.
     #[serde(default)]
     pub market_unmet: [f32; 5],
@@ -522,6 +530,7 @@ impl State {
             port_price: Vec::new(),
             market_residual: [0.0; 5],
             market_arcs: Vec::new(),
+            shadow_arcs: Vec::new(),
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],

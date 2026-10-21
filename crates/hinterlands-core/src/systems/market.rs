@@ -19,7 +19,8 @@
 //! follow in closed form. Prices are warm-started from last year. Goods supply
 //! is what the sites sold this year. Outside ports sell imports without limit
 //! at a price of 1, and buy their fixed grain at the price that clears it.
-//! Writes: settlements' `price`, `market_shadow` (residuals and grain arcs).
+//! Writes: settlements' `shadow_price`, `port_price`, `market_residual` and
+//! `shadow_arcs` only, none of which the model reads (D77).
 
 use crate::params::Params;
 use crate::state::{port_of, Good, State};
@@ -179,7 +180,7 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         let mut price: Vec<f32> = (0..nodes)
             .map(|i| {
                 let v = if i < m {
-                    state.settlements[i].price[g]
+                    state.settlements[i].shadow_price[g]
                 } else {
                     state.port_price.get(i - m).copied().unwrap_or(1.0)
                 };
@@ -289,7 +290,7 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
             .sum::<f32>()
             / total;
         for (i, s) in state.settlements.iter_mut().enumerate() {
-            s.price[g] = if demand[i] > 0.0 { price[i] } else { sell[i] };
+            s.shadow_price[g] = if demand[i] > 0.0 { price[i] } else { sell[i] };
         }
         if g == 0 {
             state.port_price = price[m..].to_vec();
@@ -308,7 +309,7 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         }
     }
     state.market_residual = residual;
-    state.market_arcs = grain_arcs;
+    state.shadow_arcs = grain_arcs;
 }
 
 /// Goods by the equilibrium (v6 S1, D71), in place of the shopping model
