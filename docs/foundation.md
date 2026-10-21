@@ -574,6 +574,31 @@ Noted from the report: `b_Y` is now identified (−0.003 to −0.011, inside the
 
 Then stop. The designer reviews the note before any S2 code is written.
 
+**S2 design note reviewed (`docs/market/s2-design.md`, d1faf0c); decisions (D77).** The note is approved as written, except for decision 2.
+1. **Rents in value: approved.** `rent_share × p_i H_i`, paid by today's gravity weights on W, is the real income of market towns: lords, the church and their households lived in them on rents and tithes. It keeps the base of the hierarchy, and the payer loses exactly what the receiver gains.
+2. **Fees: paid by the buyer, outside the routing price.** Handling (0.046) and transshipment (0.24) were tuned as income terms (D27). The physical cost of breaking bulk is already in the cost grid (+3 per transshipment). Putting both into the routing price would count break of bulk twice and push grain off the water routes that make ports. So each flow's buyer pays `f_ij × q`, which is credited where it arises, and routing uses `p_i + t_ij`. This is a deliberate departure from a pure equilibrium, recorded as such.
+3. **`p_floor` 0.25 and `c_max` = `food_cap` (1.2): approved.** Unsold grain is lost and reported until S3.
+4. **The shadow fix first:** in S2's first commit, `market_shadow` writes its own field, so turning it on cannot change a run. The W1 Clark numbers were taken with the old coupling and are re-measured at W1.
+5. **Convergence** (re-level, then exact log-space solves, then the safeguard): approved. **Cost:** S2's limit is the hard budget, 50 ms a year in wasm, with 45 as the target; use the note's levers in order if over.
+
+**S2 build (approved).** Switch `market_grain`, off until S2 passes.
+- **Gate,** 20 seeds a map, Historical, with `market_goods` on and W1 off:
+  - every v5 check;
+  - Clark `b_P` within 0.8–1.2 and R² at least 0.6 (75% of seeds per map);
+  - determinism;
+  - at most 50 ms a year in wasm.
+- **Reported:**
+  - `b_Y`;
+  - grain unsold per year;
+  - the price gap against transport on grain arcs;
+  - the share of places whose demand is capped by their budget;
+  - the 1316 grain price in towns against villages;
+  - the solver's residual and passes per year, and the worst year;
+  - the W-as-demand-only diagnostic (option 1) on 3 seeds a map;
+  - the Kent regression.
+- **Tuning.** `rent_share`, `ε`, `p_floor` and the W premium's α are the implementer's to tune, with every change recorded.
+- **Stop** and report, whether it passes or fails.
+
 
 ## Future versions
 
