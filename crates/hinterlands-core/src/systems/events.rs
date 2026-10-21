@@ -58,6 +58,23 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
             });
         }
     }
+    // Better ships (D65): in historical mode, at each road step from
+    // `ship_from` to `ship_to`, sea cost per km moves along a straight line to
+    // `1 − ship_gain` of its starting value; the midpoint is announced.
+    if p.events_mode == 1
+        && p.ship_gain > 0.0
+        && p.ship_to > p.ship_from
+        && y > p.ship_from
+        && y <= p.ship_to + p.road_interval
+        && y % p.road_interval.max(1) == 0
+    {
+        let f = ((y - p.ship_from) as f32 / (p.ship_to - p.ship_from) as f32).min(1.0);
+        let mid = (p.ship_from + p.ship_to) / 2;
+        state.events.push(Event::Ships {
+            sea: p.cost_sea * (1.0 - p.ship_gain * f),
+            announce: y >= mid && y < mid + p.road_interval.max(1),
+        });
+    }
     // Planted towns (D63): every `plant_interval` years with events on.
     if p.events_mode != 0
         && p.plant_interval > 0

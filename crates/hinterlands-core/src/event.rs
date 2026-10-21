@@ -2,8 +2,8 @@
 //! events fall due and queues them; they are applied at the start of the year,
 //! and an event that lasts several years queues its own next part.
 //! Writes, through `apply` only: famine state, settlements' pop and market,
-//! silted harbour costs and the cost grid, planted settlements, the queue and
-//! the log.
+//! silted harbour costs, the sea cost ratio and the cost grid, planted
+//! settlements, the queue and the log.
 
 use crate::params::Params;
 use crate::state::{LogEntry, LogKind, State};
@@ -28,11 +28,28 @@ pub enum Event {
     /// A lord plants a town at `cell` with `pop` people and market size
     /// `market` (D63).
     Plant { cell: u32, pop: f32, market: f32 },
+    /// Better ships (v5, D65): sea cost per km becomes `sea`; the cost grid is
+    /// rebuilt. `announce` puts the change in the chronicle.
+    Ships { sea: f32, announce: bool },
 }
 
 impl Event {
     pub fn apply(&self, state: &mut State, t: &Terrain, p: &Params) {
         match self {
+            Event::Ships { sea, announce } => {
+                state.transport.sea = *sea;
+                state.rebuild_costs(t);
+                if *announce {
+                    state.log.push(LogEntry {
+                        year: state.year,
+                        settlement: crate::state::NONE,
+                        name: String::new(),
+                        anchor: 0,
+                        pop: 0.0,
+                        kind: LogKind::Ships,
+                    });
+                }
+            }
             Event::Plant { cell, pop, market } => {
                 let id = state.add_settlement(t, p, *cell, *pop, false);
                 state.tally.founded += 1;

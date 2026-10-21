@@ -293,6 +293,8 @@ pub enum LogKind {
     Silted,
     /// A lord planted the settlement (D63).
     Planted,
+    /// Larger ships now sail the coast (v5, D65); not tied to a settlement.
+    Ships,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

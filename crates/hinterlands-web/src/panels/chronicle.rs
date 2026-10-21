@@ -87,6 +87,7 @@ impl Panel for Chronicle {
                             e.name,
                             thousands(lost)
                         ),
+                        LogKind::Ships => format!("{}. Larger ships now sail the coast.", e.year),
                         LogKind::Planted => format!("{}. Lord's town planted at {}.", e.year, e.name),
                         LogKind::Silted => format!("{}. The harbour at {} silted.", e.year, e.name),
                         LogKind::Failed { cause, moved_to } => {

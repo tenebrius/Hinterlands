@@ -260,6 +260,9 @@ define_params! {
         plant_pop: f32 = 200.0, [10, 5000], "People a planted town starts with";
         plant_market: f32 = 5.0, [0, 50], "A planted town's starting market size, in multiples of market_w0";
         plant_spacing_km: f32 = 10.7, [0, 50], "Least distance from a planted town to any place over 500 (Bracton's 6 2/3 miles)";
+        ship_gain: f32 = 0.0, [0, 0.9], "Share by which sea cost per km falls as ships improve (historical; v5, D65)";
+        ship_from: u32 = 200, [0, 2000], "Year ships start to improve (historical; 1300)";
+        ship_to: u32 = 400, [0, 2000], "Year the improvement is complete (historical; 1500)";
         famine_interval: f32 = 120.0, [1, 2000], "Mean years between famines (random mode)";
         plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
     }

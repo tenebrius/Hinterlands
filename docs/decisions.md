@@ -385,3 +385,31 @@ Kind: model mechanism (designer decision).
   - **Planted towns alive 100 years after planting: 0.82 / 0.70 / 0.57**, 100 judged a map. Two maps are above the brief's expected 30–70%. Planted at the best-access cells, most are supported by trade.
   - Plague drop 0.37; the pre-plague total regained in 44–47 years; total at 500 against Off 1.03–1.04.
 Kind: model mechanism (designer's specification); `plant_from` tuned by the implementer.
+
+## D64 — v5 O1: outside ports and imports (stopped: map 1 market spacing)
+- **Ports.** One per open-sea map edge (a side with at least three sea cells), at the edge sea cell nearest the busiest coast. At the start of a run there is no traffic, so the busiest coast is proxied by the harbour cell with the most yield within 10 km. Imported maps read the ports from a file instead: Kent's are the Continent off Dover and the North Sea off the Thames mouth (`data/real/kent/outside_km.csv`, `MapParams.outside_file`). Ports are partners with id `OUTSIDE − k`, and every outside flow rides the settlement's stored path, so handling and transship income come with it.
+- **Trade order in the trade system:** goods (D41), then imports, then grain to the ports, then the domestic grain market with what is left.
+  - **Imports:** `import_demand` × market size, split among the ports a place reaches by `exp(−β/ρ_imp c)` (ρ 10), and paid in grain that leaves the map.
+  - **Grain:** each port buys `outside_grain`, split among the sellers that reach it by remaining marketed grain × `exp(−β c)` and capped at that. The seller is paid in imports, which count in its market inflow.
+  - **Import flows** are marked with `Flow.import`.
+- **D25's outside world is retired.** Its parameters (`outside_enabled`, `outside_size`, `outside_beta`, `outside_out`) are removed; old files that name them still load, because unknown keys are ignored.
+- **Default.** `outside_ports` is off until the gate passes, so the golden is unchanged (`2c5e9c5c90ab1d43`).
+- **Tuning (Historical, map 1 unless noted):**
+
+| `outside_grain`, `import_demand` | Seeds | Outside trade (median, passing) | Map 1 market spacing passing |
+| --- | --- | --- | --- |
+| 300, 0.05 | 2 a map | 0.025–0.030, 0/2 | — |
+| 1,000, 0.1 | 2 a map | 0.07–0.08, all | 0/2 |
+| 700, 0.07 | 20, all maps | 0.05, 20/20 every map | **13/20** (maps 2 and 3 pass) |
+| 200, 0.1 | 20 | 0.031, 12/20 | 13/20 |
+| 1,200, 0.02 | 20 | 0.063, 20/20 | 14/20 |
+| 500, 0.03 | 20 | 0.031, 13/20 | 16/20 |
+| 650, 0.04 | 20 | 0.041, 20/20 | 13/20 |
+
+- **Reading.** Map 1 spacing is a marginal check: 18/20 at v4, and 15/20 or 16/20 at other versions. It moves between 13 and 16 with no trend in the trade values, which is seed noise around a pass rate near 70%. No outside-trade setting gives both checks the 75% margin on map 1. Every other check passes.
+Kind: model mechanism (designer's specification); stopped for the designer.
+
+## D65 — v5 O2: better ships (written; not yet gated)
+- **Rule.** In historical mode, at each road step from `ship_from` (200, 1300) to `ship_to` (400, 1500), sea cost per km moves along a straight line to `(1 − ship_gain)` of `cost_sea`. It is written into the state's transport ratios through an event, and the cost grid is rebuilt then, so only at road steps. 1450 is announced in the chronicle.
+- **Default.** `ship_gain` is 0 until O1 is settled. The brief's 0.3 goes in at the O2 gate.
+Kind: model mechanism (designer's specification).
