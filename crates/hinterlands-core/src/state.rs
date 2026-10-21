@@ -243,6 +243,12 @@ pub enum LogKind {
         cause: FailCause,
         moved_to: Option<u32>,
     },
+    /// A specialist settlement founded at a resource site (v2, D40).
+    Works {
+        good: Good,
+        demand: f32,
+        donor: u32,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

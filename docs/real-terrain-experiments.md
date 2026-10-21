@@ -476,3 +476,38 @@ Run once as pre-registered, nothing tuned, with a scale check that turned a Kent
 ## v1.2 milestone (approved)
 
 Make `shed_unfed` the default; implement the revised contingency check in `validate` (the old one reported); switch `just real` to the roads + bridges configuration. Then, as for any milestone: `just test` and `just validate` pass, the new golden hash is recorded natively and in the browser (`?selftest=500`), and `docs/milestones.md` gets the table with the new contingency figures per map alongside the old ones, the time per year in the release wasm build, and the Kent table. Record the default change as D35. If the revised contingency check fails on any map, stop and report; nothing is tuned to pass it.
+
+## v2 G3: specialists, and the gate (stopped on a failed check)
+
+Specialist founding (D40) is implemented as specified. For each good, at each founding step, the free resource site with the most reachable demand `Σ demand_k × exp(−β_g c)` gets a hamlet of `found_pop`, if that demand would feed the founders. Its kind is Mine, Saltern or Quarry, it is logged as new works, and it fails by the ordinary rules. `validate` now gates "sites producing ≥ 2/3" and "largest not specialist" (both trivially true with goods off), and reports the v2 measures.
+
+**Gate, goods on, starting goods values (20 seeds per map): FAILED.**
+
+| | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| v1.2 per-seed checks | pass | pass | pass |
+| Over 5,000 median ≥ 2 | 2 | 2 | **1** |
+| Top-10 overlap ≤ 0.80 | 0.55 | 0.53 | 0.52 |
+| Sites producing ≥ 2/3 (median) | 0.87 | 0.80 | 0.73 |
+| **Largest is not a specialist** | **2/20** | **9/20** | 20/20 |
+| Specialists per run; size median / p90 / max | 8.8; 858 / 6,322 / 8,569 | 6.4; 258 / 5,297 / 7,716 | 8.0; 773 / 3,654 / 4,450 |
+| Payment share of market inflow (expected 5–25%) | 0.074 | 0.071 | 0.070 |
+| Forest within 5 km of iron / land | 0.00 / 0.41 | 0.00 / 0.41 | 0.00 / 0.41 |
+| Settlements > 2,000 on a goods route | 1.00 | 1.00 | 1.00 |
+| Slowest run, native | 27.6 ms/year | 28.7 | 27.3 |
+
+**Cause.** The oversized specialists are salterns. In map 1, seed 1, the two largest places (Mereport 6,738 and Holport 3,761) sit on salt sites producing at the 1,000 cap, with no through-trade. The specification's production-constrained gravity sells a site's whole output whatever the demand. Four or five salterns at cap supply 4,000–5,000 grain units of salt a year against a regional salt demand of about 2,000, and buyers pay for all of it, up to their marketed share. A saltern therefore earns about 1,000 grain a year whether or not the salt is wanted. That builds its market size W, which then draws ordinary grain trade by gravity: Mereport receives 6,271 food a year, of which the salt pays about 1,000. The saltern becomes the regional market town.
+
+**Options (for the designer).**
+- (a) **Demand-limited sales.** A site sells at most the demand it reaches: output `min(cap, prod × workers, Σ demand_k e^{−β_g c})`, and each buyer gets at most its demand. Competing sites then share the market, which is Weber's market areas and what the founding test already uses. This is a change of shape, so it is the designer's.
+- (b) **A lower cap per site** (tuning, mine): this bounds each saltern's income, but buyers would still pay for salt they do not need, which inflates the payment share.
+
+Recommendation: (a). It makes oversupply impossible rather than smaller.
+
+### Designer's decision on the G3 gate
+
+The implementer stopped correctly on a failed check and found the cause. **The specification error is the designer's.** I wrote the goods step as "the mirror of the grain step", with the producer as the origin. But grain is sold by farmers who must sell; goods are bought by people who need a fixed amount. In Wilson's family of models that is the shopping model, with the buyer as the origin. With the producer as origin, oversupply was paid for, and a saltern at its cap became a market town on salt nobody needed.
+
+**Decided:** the implementer's option (a), in the published form now written in `docs/foundation.md` ("Goods trade"). Each consumer buys its demand, split among sites by capacity × `exp(−β_g c)`. Orders above a site's capacity are scaled down in one pass, and output is what is sold. This is what the implementer proposed, with the sharing between competing sites made explicit, so that two salterns cannot both count the same buyers. Option (b) alone is declined, because it would make the overpayment smaller rather than impossible. Goods parameters, the caps included, remain the implementer's to tune afterwards.
+
+**Next:** implement it (D41), re-run the v2 gate once, and report. If the gate passes, carry on to G4. If it fails, stop and report as before. Separately, forest within 5 km of iron sites is 0.00: mines strip their woods entirely. That is reported, not gated; look at it in G4. Wealden iron was run on managed coppice, so a mine that settles at its woods' regrowth would be the better picture.

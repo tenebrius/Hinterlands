@@ -304,4 +304,83 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
         });
         founded.push(cell);
     }
+
+    if p.goods_enabled {
+        found_works(state, t, p);
+    }
+}
+
+/// Specialist settlements (v2, D40): for each good, the free resource site with
+/// the most reachable demand, `Σ demand_k × exp(−β_g c)`, gets a hamlet of
+/// `found_pop` on the cell if that demand would feed the founders. At most one
+/// per good per step; migrants come from the nearest settlement that can spare
+/// them, as for any founding.
+fn found_works(state: &mut State, t: &Terrain, p: &Params) {
+    use crate::state::{Good, Kind};
+    use crate::systems::trade;
+    for good in Good::ALL {
+        let b = trade::beta(p, good);
+        let best = state
+            .sites
+            .iter()
+            .filter(|site| site.good == good)
+            .map(|site| site.cell as usize)
+            .filter(|&cell| {
+                t.is_land(cell)
+                    && !state
+                        .settlements
+                        .iter()
+                        .any(|s| t.grid.dist_km(s.anchor as usize, cell) < p.min_spacing_km)
+            })
+            .map(|cell| {
+                let reach: f32 = state
+                    .settlements
+                    .iter()
+                    .map(|s| {
+                        let c = s.reach.cost_to_cell(cell);
+                        if c.is_finite() {
+                            trade::demand(s, p, good) * libm::expf(-b * c)
+                        } else {
+                            0.0
+                        }
+                    })
+                    .sum();
+                (reach, cell)
+            })
+            .filter(|&(reach, _)| reach >= p.found_pop * p.food_per_person)
+            .max_by(|a, b| a.0.total_cmp(&b.0).then(b.1.cmp(&a.1)));
+        let Some((demand, cell)) = best else { continue };
+        let donor = state
+            .settlements
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.food_ratio > p.donor_min_ratio && s.pop > 2.0 * p.found_pop)
+            .map(|(i, s)| (s.reach.cost_to_cell(cell), i))
+            .filter(|(c, _)| c.is_finite())
+            .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        let Some((_, di)) = donor else { continue };
+        state.settlements[di].pop -= p.found_pop;
+        let donor_id = state.settlements[di].id;
+        let id = state.add_settlement(t, p, cell as u32, p.found_pop, false);
+        if let Some(i) = state.index_of(id) {
+            state.settlements[i].kind = match good {
+                Good::Salt => Kind::Saltern,
+                Good::Iron => Kind::Mine,
+                Good::Stone => Kind::Quarry,
+            };
+        }
+        state.tally.founded += 1;
+        state.log.push(LogEntry {
+            year: state.year,
+            settlement: id,
+            name: state.name_of(id),
+            anchor: cell as u32,
+            pop: p.found_pop,
+            kind: LogKind::Works {
+                good,
+                demand,
+                donor: donor_id,
+            },
+        });
+    }
 }

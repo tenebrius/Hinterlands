@@ -49,6 +49,14 @@ impl Panel for Chronicle {
                             let from = name_of(*donor).unwrap_or_else(|| "elsewhere".into());
                             format!("{}. {} is founded by settlers from {from}.", e.year, e.name)
                         }
+                        LogKind::Works { good, .. } => {
+                            let what = match good {
+                                hinterlands_core::state::Good::Salt => "Salt works",
+                                hinterlands_core::state::Good::Iron => "An iron mine",
+                                hinterlands_core::state::Good::Stone => "A quarry",
+                            };
+                            format!("{}. {what} founded at {}.", e.year, e.name)
+                        }
                         LogKind::Failed { cause, moved_to } => {
                             let why = match cause {
                                 FailCause::Depopulated => "dwindled away",

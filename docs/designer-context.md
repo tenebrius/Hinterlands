@@ -34,12 +34,13 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v2 briefed** (`docs/foundation.md`, "v2 specification"): salt, iron, stone beside grain; fixed exchange ratios, decay from value density (`β_g = β/ρ_g`); production-constrained goods flows paid in grain from the marketed share, so no food is created; iron fuel-bound (Weber); specialist hamlets (`Mine`, `Saltern`, `Quarry`) founded on resource cells with reachable demand; all behind `goods_enabled`. Stages G1–G4 run on without approval unless a check fails; gate: v1.2 checks, ≥ 2/3 of sites producing, no specialist largest, < 50 ms wasm.
 - **G1 done (1317aa6, D38):** held sites all produce; forest within 5 km of iron sites 0.17 against a land mean of 0.66 by year 200; `v_g` = 1, `fuel_per_iron` 0.1 accepted. Only ~38% of sites have a holder, so the ≥ 2/3 gate rests on G3 specialists. D36–D37 are the rendering merge from the graphics session.
 - **G2 done (D39):** payments balance (goods 53,226 received, 52,405 paid, 1.5% short where buyers hit their marketed share); median route cost iron 19.7 > salt 14.5 > grain 13.3 > stone 9.0, full order in 22 of 24 runs. Accepted.
+- **G3 gate failed (a362721, D40):** salterns at the 1,000 cap became the largest place in 18/20 (map 1) and 11/20 (map 2) seeds. Spec error (mine, rule 7). Corrected to the shopping model with capacity scaling (D41); one re-run of the gate, then G4 if it passes. Forest near iron sites 0.00 to look at in G4.
 - **Later options, not scheduled:** Kent resources as data (Wealden iron, ragstone, estuary salt); the outside world as a seller; the shadow in km; Kent inland spacing (6.2 km against 10.6).
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
 
-Six of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+Seven of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
 
 1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
 2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
@@ -49,6 +50,8 @@ Six of my specification choices have been wrong, all caught by the real-terrain 
 5. **The Roman roads expectation rested on a mechanism the model lacked.** Rochester and Canterbury were expected from road–river crossings, but crossings were never bridges. Rule: a pre-registration names the mechanism its expectation depends on, and the implementer confirms the code has it before running.
 
 6. **The failure rule deleted towns.** "Unfed for 20 years, removed" was written for hamlets and applied to every size, and it read market lapse (39% of markets survived) as places vanishing. It contradicted the brief's own "towns outlive their reason". Before the probe found it, I withdrew the Rochester expectation on reasoning that turned out wrong. Rules: when a pre-registered test fails, measure the mechanism directly before choosing a fix or withdrawing the expectation; and check every removal or cut-off rule at each scale it acts on.
+
+7. **Goods were sold whether wanted or not.** I specified goods trade as the mirror of the grain step (producer as origin), so salterns earned at their cap on salt nobody needed and became the largest towns. Goods follow the shopping model (buyer as origin, demand fixed). Rule: for each flow, ask who is obliged to trade, the seller or the buyer, and put the origin there.
 
 Judgement rules that now stand:
 
@@ -90,4 +93,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v2 G2 accepted; G3 specialists under way.
+Last updated: 2026-10-21 — v2 G3 gate failed; goods trade corrected to buyer-origin (D41).
