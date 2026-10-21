@@ -675,3 +675,14 @@ What this shows:
 - **The on-road share rises** from 23% to 29%, close to the land share of 32%. The cost shadow no longer pushes places off a road network that has faded.
 - **Inland spacing now matches the record:** 10.8 km against the real 10.6. There are fewer inland places over 500 (12 a seed against the real 29), and many more small settlements (445 a seed against 238). With fewer roads, travel is dearer and more of the land is beyond any market's reach, so hamlets fill it.
 - **Kent's network has not settled by year 500.** Its 13.6% change between years 300 and 500 is above the 10% gated on the generated maps; Kent is reported, not gated.
+
+## v3: Kent with bridges and mills (D55, D56)
+Kent was run with the v3 defaults on `map-resources.json`, 20 seeds. Against v3(b), little changes:
+- The on-road share of settlements is 30%, and 49% for places of 1,000 or more.
+- 19% of Roman road cells survive.
+- Inland places over 500: 12 per seed at 10.4 km.
+- Settlements per seed: 445.
+- The model builds 2.5 bridges per run. The Roman crossings are already bridged by input (D33), and the other crossings rarely carry 1,600 a year for three steps in a row.
+- 21% of settlements have a mill, against about 40% on the generated maps. Kent has fewer stream cells inside fields.
+- Lowland AUC is 0.52 / 0.53 / 0.51.
+- Largest city: Gravesend 10, Faversham 9.

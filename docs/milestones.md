@@ -270,4 +270,13 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - `data/real/experiments/v3b.json` gives v3(b)'s `0b590b3b017b63d0`;
   - the v1, v1.2, v2 and v2.1 files reproduce their hashes.
 - **Viewer:** bridges and mills come from the model. Screenshot: `docs/screenshots/v3-year450.png`.
-- **Kent regression:** to follow.
+- **Kent regression** (20 seeds, `map-resources.json`), against v3(b):
+  - Roman road cells still road at year 500: 19% (19%).
+  - On-road share of settlements: 30% (29%); for places of 1,000 or more, 49% (50%).
+  - Inland places over 500: 12 per seed at 10.4 km (12 at 10.8; real 29 at 10.6).
+  - Settlements per seed: 445 (445).
+  - Model bridges per run: 2.5. Roman crossings already carry input bridges (D33), which are not counted.
+  - Settlements with a mill: 0.21.
+  - Lowland AUC: 0.52 / 0.53 / 0.51.
+  - Largest city: Gravesend 10, Faversham 9, Milton Regis 1.
+  - Details: `docs/real/kent-v3/scores.md`.
