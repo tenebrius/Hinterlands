@@ -512,7 +512,12 @@ fn outside(
             if left <= 0.0 {
                 continue;
             }
-            if let Some(k) = state.settlements[i].reach.partners.iter().position(|q| q.id == id) {
+            if let Some(k) = state.settlements[i]
+                .reach
+                .partners
+                .iter()
+                .position(|q| q.id == id)
+            {
                 let c = state.settlements[i].reach.partners[k].cost;
                 offers.push((i, k as u32, left * libm::expf(-p.beta * c), left));
             }

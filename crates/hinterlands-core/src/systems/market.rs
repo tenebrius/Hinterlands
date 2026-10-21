@@ -242,17 +242,13 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
                         continue;
                     }
                     // Shares by softmax of θ p_j − θ t + ln m_j, max-subtracted.
-                    let score = |a: &Arc| {
-                        theta * (price[a.to] - a.t) + libm::logf(a.premium.max(1e-9))
-                    };
+                    let score =
+                        |a: &Arc| theta * (price[a.to] - a.t) + libm::logf(a.premium.max(1e-9));
                     let top = ks
                         .iter()
                         .map(|&k| score(&arcs[k]))
                         .fold(f32::NEG_INFINITY, f32::max);
-                    let total: f32 = ks
-                        .iter()
-                        .map(|&k| libm::expf(score(&arcs[k]) - top))
-                        .sum();
+                    let total: f32 = ks.iter().map(|&k| libm::expf(score(&arcs[k]) - top)).sum();
                     for &k in ks {
                         flow[k] = supply[i] * libm::expf(score(&arcs[k]) - top) / total;
                         inflow[arcs[k].to] += flow[k];
@@ -269,8 +265,8 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
                 }
                 let e = if j >= m { 0.0 } else { elast };
                 let pj = price[j];
-                let f = libm::logf(inflow[j]) - libm::logf(demand[j])
-                    + e * libm::logf(pj.max(1e-6));
+                let f =
+                    libm::logf(inflow[j]) - libm::logf(demand[j]) + e * libm::logf(pj.max(1e-6));
                 let d = theta + e / pj.max(1e-6);
                 let step = (-f / d).clamp(-p.market_step, p.market_step);
                 price[j] = (pj + p.market_damping * step).clamp(1e-3, 1e3);
@@ -423,7 +419,11 @@ pub fn goods_trade(
             }
             for (k, q) in s.reach.partners.iter().enumerate() {
                 let Some(i) = node_of(q.id) else { continue };
-                let ok = if g == 4 { i >= m } else { i < m && cap[i] > 0.0 };
+                let ok = if g == 4 {
+                    i >= m
+                } else {
+                    i < m && cap[i] > 0.0
+                };
                 if ok {
                     arcs.push((i, j, tau * q.cost, k as u32));
                 }
@@ -477,7 +477,9 @@ pub fn goods_trade(
                 if by_from[i].is_empty() {
                     continue;
                 }
-                let a = lse(&mut by_from[i].iter().map(|&k| theta * (buy_p[arcs[k].1] - arcs[k].2)));
+                let a = lse(&mut by_from[i]
+                    .iter()
+                    .map(|&k| theta * (buy_p[arcs[k].1] - arcs[k].2)));
                 let lc = libm::logf(cap[i].max(1e-9));
                 let mut pi = (a - lc) / theta;
                 if pi < 1.0 {
@@ -494,7 +496,9 @@ pub fn goods_trade(
                 if by_to[j].is_empty() {
                     continue;
                 }
-                let b = lse(&mut by_to[j].iter().map(|&k| -theta * (sup_p[arcs[k].0] + arcs[k].2)));
+                let b = lse(&mut by_to[j]
+                    .iter()
+                    .map(|&k| -theta * (sup_p[arcs[k].0] + arcs[k].2)));
                 let ld = libm::logf(demand[j].max(1e-9));
                 let mut pj = buy_p[j];
                 for _ in 0..4 {
@@ -617,12 +621,20 @@ pub fn goods_trade(
     }
     let mut cap_of = vec![[0f32; 3]; m];
     for site in state.sites.iter() {
-        if let Some(i) = idx_of.get(site.holder as usize).copied().filter(|&i| i != u32::MAX) {
+        if let Some(i) = idx_of
+            .get(site.holder as usize)
+            .copied()
+            .filter(|&i| i != u32::MAX)
+        {
             cap_of[i as usize][site.good.index()] += site.output.max(0.0);
         }
     }
     for site in state.sites.iter_mut() {
-        if let Some(i) = idx_of.get(site.holder as usize).copied().filter(|&i| i != u32::MAX) {
+        if let Some(i) = idx_of
+            .get(site.holder as usize)
+            .copied()
+            .filter(|&i| i != u32::MAX)
+        {
             let (i, g) = (i as usize, site.good.index());
             if cap_of[i][g] > 0.0 {
                 site.sold = sold_by[i][g] * site.output.max(0.0) / cap_of[i][g];

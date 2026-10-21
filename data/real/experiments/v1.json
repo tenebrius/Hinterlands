@@ -30,5 +30,7 @@
   "traffic_bridges": false,
   "mills": false,
   "events_mode": 0,
-  "outside_ports": false
+  "outside_ports": false,
+  "market_goods": false,
+  "demand_iron": 0.02
 }

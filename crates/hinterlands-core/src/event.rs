@@ -114,7 +114,9 @@ impl Event {
                     state.last_plague = state.year;
                 }
                 for &(id, y) in shares {
-                    let Some(i) = state.index_of(id) else { continue };
+                    let Some(i) = state.index_of(id) else {
+                        continue;
+                    };
                     let s = &mut state.settlements[i];
                     let before = s.pop;
                     s.pop -= before * y;

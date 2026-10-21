@@ -5,7 +5,8 @@
 //! the iron sites a settlement holds (D38). A settlement with a stream or river
 //! among its fields has a mill, which adds `mill_bonus` to its produce (D56).
 //! In a famine year (D57) the harvest is cut by the famine's loss after the
-//! fields are chosen. Writes: owner, fields, forest, food_prod, mill,
+//! fields are chosen, and under local harvests (v6 W1) each field's yield is
+//! multiplied by its cell's multiplier for the year. Writes: owner, fields, forest, food_prod, mill,
 //! resource_out, sites' fuel_got.
 
 use crate::params::Params;
@@ -25,6 +26,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         owner,
         forest,
         sites,
+        harvest,
         ..
     } = state;
 
@@ -67,6 +69,14 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 let c = c as usize;
                 t.is_river(c) && t.flux[c] * cell_km2 >= p.mill_area
             });
+        // Local harvests (v6 W1): the year's weather, after the fields are chosen.
+        if !harvest.is_empty() {
+            produce = s
+                .fields
+                .iter()
+                .map(|&c| t.food_yield[c as usize] * ppc * harvest[c as usize])
+                .sum();
+        }
         s.food_prod = if s.mill {
             produce * (1.0 + p.mill_bonus)
         } else {

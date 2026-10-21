@@ -44,8 +44,7 @@ impl Layer for EventsLayer {
             .min();
         if let Some(age) = since {
             let a = 0.32 * (1.0 - age as f32 / TINT_YEARS as f32);
-            d.painter
-                .rect_filled(d.rect, 0.0, PLAGUE.gamma_multiply(a));
+            d.painter.rect_filled(d.rect, 0.0, PLAGUE.gamma_multiply(a));
         }
         let z = d.camera.zoom;
         // A silted harbour: a ring in mud colour, struck through.
@@ -55,7 +54,8 @@ impl Layer for EventsLayer {
                 continue;
             }
             let r = (z * 0.55).clamp(5.0, 12.0);
-            d.painter.circle_stroke(c, r, Stroke::new(3.0, INK.gamma_multiply(0.6)));
+            d.painter
+                .circle_stroke(c, r, Stroke::new(3.0, INK.gamma_multiply(0.6)));
             d.painter.circle_stroke(c, r, Stroke::new(1.8, SILT));
             d.painter.line_segment(
                 [c + vec2(-r * 0.7, r * 0.7), c + vec2(r * 0.7, -r * 0.7)],
@@ -73,7 +73,11 @@ impl Layer for EventsLayer {
             let top = foot + vec2(0.0, -h);
             d.painter.line_segment([foot, top], Stroke::new(1.5, INK));
             d.painter.add(Shape::convex_polygon(
-                vec![top, top + vec2(h * 0.7, h * 0.18), top + vec2(0.0, h * 0.36)],
+                vec![
+                    top,
+                    top + vec2(h * 0.7, h * 0.18),
+                    top + vec2(0.0, h * 0.36),
+                ],
                 PENNANT,
                 Stroke::new(1.0, INK),
             ));

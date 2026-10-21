@@ -524,3 +524,15 @@ Kind: stopped for the designer.
 - **Why map 1 is still short.** Its iron is only mildly dear, so valuing demand barely raises it. The same remote eastern sites stay unheld in most seeds: iron at (102,49) and (86,25), stone at (90,54) and (79,46). Under the v2 demand they were reached.
 - **State.** `market_goods` stays off; the golden is unchanged. Stopped for the designer.
 Kind: model mechanism (designer decision); stopped.
+
+## D73 — Under `market_goods`, idle marginal sites are the equilibrium (designer decision); `market_goods` on by default
+- **Rule.** Under `market_goods` the v2 gate's sites-producing quota is reported, not gated. The gate is instead that every good with a site on the map has at least one working site at the final year, in 75% of seeds a map (`every good worked` in `validate`).
+- **Why** (the designer, `docs/foundation.md`, "S1 third gate"): when the working sites meet demand at about cost, the marginal ones correctly stay idle. That is the extensive margin, not a fault.
+- **Gate** (Historical, 20 seeds a map, the defaults below): **PASSED.**
+  - every good worked: 20 / 19 / 18 of 20;
+  - sites producing, now reported: medians 0.73 / 0.80 / 0.73;
+  - spacing 17 / 20 / 18; outside trade 4.7–5.4%;
+  - runs passing every check: 16 / 18 / 15.
+- **Defaults.** `market_goods` true, `demand_iron` 0.0013 (D71). Golden `ec7a24a7caeac414`, native and release wasm (`?selftest=500`, 31.9 ms/year).
+- **Reproducibility.** `data/real/experiments/v5.json` pins `market_goods` off and `demand_iron` 0.02, and gives v5's `4ce58fae34550933`. Every earlier version file pins the same two values. `v4.json` also pins `ship_gain` 0, which it had lacked since D65, and gives v4's `2c5e9c5c90ab1d43` again.
+Kind: validation (designer decision); defaults.

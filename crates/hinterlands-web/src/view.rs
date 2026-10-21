@@ -388,9 +388,8 @@ const LANE_KM: f32 = 4.0;
 /// For each cell, the cell its routes are drawn on (see `ViewState::sea_lane`).
 pub fn sea_lanes(t: &Terrain) -> Vec<u32> {
     let g = t.grid;
-    let coastal_sea = |i: usize| {
-        t.is_sea(i) && (0..8).any(|d| g.neighbor(i, d).is_some_and(|j| t.is_land(j)))
-    };
+    let coastal_sea =
+        |i: usize| t.is_sea(i) && (0..8).any(|d| g.neighbor(i, d).is_some_and(|j| t.is_land(j)));
     (0..t.n())
         .map(|i| {
             if !t.is_sea(i) || coastal_sea(i) {

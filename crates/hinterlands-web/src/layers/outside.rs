@@ -61,8 +61,10 @@ impl Layer for OutsideLayer {
                 .map(|&p| d.camera.to_screen(d.rect, p))
                 .collect();
             let w = (0.4 + f.amount.sqrt() * 0.12).min(3.0) * (z / 6.0).clamp(0.6, 2.0);
-            d.painter
-                .add(Shape::line(line, Stroke::new(w, IMPORTS.gamma_multiply(0.75))));
+            d.painter.add(Shape::line(
+                line,
+                Stroke::new(w, IMPORTS.gamma_multiply(0.75)),
+            ));
         }
         // A ship: a hull and a square sail.
         for &cell in &snap.ports {

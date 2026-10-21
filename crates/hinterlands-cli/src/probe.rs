@@ -216,7 +216,10 @@ pub fn cmd_goods(args: &Args) {
                     println!("works {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
                 }
                 LogKind::Outgrew { good } => {
-                    println!("outgrew {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
+                    println!(
+                        "outgrew {map} {seed} {} {good:?} {x} {yy} {}",
+                        e.year, e.name
+                    )
                 }
                 _ => {}
             }
@@ -408,7 +411,11 @@ pub fn cmd_desertion(args: &Args) {
             let fy = if s.fields.is_empty() {
                 f32::NAN
             } else {
-                s.fields.iter().map(|&c| t.food_yield[c as usize]).sum::<f32>() / s.fields.len() as f32
+                s.fields
+                    .iter()
+                    .map(|&c| t.food_yield[c as usize])
+                    .sum::<f32>()
+                    / s.fields.len() as f32
             };
             let near: Vec<usize> = t
                 .grid
@@ -446,7 +453,9 @@ pub fn cmd_desertion(args: &Args) {
 /// yield is the harvest per cultivated cell; each year a line
 /// `market seed year residuals... unmet salt iron stone imports` (unmet
 /// goods demand with `market_goods`); each settlement's line ends with its
-/// supply prices of salt, iron and stone and its kind; and at `--arcs` years
+/// supply prices of salt, iron and stone, its kind, its whole harvest and its
+/// fields' mean yield multiplier for the year (1 without local harvests, v6
+/// W1); and at `--arcs` years
 /// the grain arcs,
 /// `arc seed year from to flow gap transport`.
 pub fn cmd_prices(args: &Args) {
@@ -482,9 +491,20 @@ pub fn cmd_prices(args: &Args) {
             let yld = s.food_prod / s.fields.len().max(1) as f32;
             let pr = s.price;
             let sp = s.supply_price;
+            let hv = &sim.state.harvest;
+            let m = if hv.is_empty() || s.fields.is_empty() {
+                1.0
+            } else {
+                let fy = |c: &u32| sim.terrain.food_yield[*c as usize];
+                s.fields
+                    .iter()
+                    .map(|c| fy(c) * hv[*c as usize])
+                    .sum::<f32>()
+                    / s.fields.iter().map(fy).sum::<f32>().max(1e-9)
+            };
             println!(
-                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?}",
-                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind
+                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?} harvest {:.1} m {:.4}",
+                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind, s.food_prod, m
             );
         }
         if arcs_at.contains(&y) {

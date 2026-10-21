@@ -93,6 +93,10 @@ pub struct ShockResult {
 pub struct GoodsResult {
     /// Share of resource sites that sold anything (1 with goods off or no sites).
     pub sites_share: f32,
+    /// Under `market_goods` (D73) the share is reported, not gated; the gate
+    /// is instead that every good with a site has a working one.
+    pub market: bool,
+    pub every_good_worked: bool,
     pub largest_specialist: bool,
     pub specialist_pops: Vec<f32>,
     /// Payment grain arriving at producers as a share of all market inflow.
@@ -108,6 +112,8 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     let (st, t, p) = (&sim.state, &sim.terrain, &sim.params);
     let neutral = GoodsResult {
         sites_share: 1.0,
+        market: false,
+        every_good_worked: true,
         largest_specialist: false,
         specialist_pops: Vec::new(),
         payment_share: f32::NAN,
@@ -122,6 +128,10 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     } else {
         st.sites.iter().filter(|s| s.sold > 0.0).count() as f32 / st.sites.len() as f32
     };
+    let every_good_worked = st
+        .sites
+        .iter()
+        .all(|s| st.sites.iter().any(|o| o.good == s.good && o.sold > 0.0));
     let largest_specialist = st
         .settlements
         .iter()
@@ -172,6 +182,8 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     };
     GoodsResult {
         sites_share,
+        market: p.market_goods,
+        every_good_worked,
         largest_specialist,
         specialist_pops,
         payment_share: if market > 0.0 {
@@ -245,7 +257,13 @@ pub const CHECKS: &[Check] = &[
     Check {
         name: "sites producing",
         target: ">=0.67",
-        ok: |r| r.goods.sites_share >= 2.0 / 3.0,
+        ok: |r| r.goods.market || r.goods.sites_share >= 2.0 / 3.0,
+    },
+    // D73: under market_goods, idle marginal sites are the equilibrium.
+    Check {
+        name: "every good worked",
+        target: "true",
+        ok: |r| r.goods.every_good_worked,
     },
     Check {
         name: "largest not specialist",
@@ -308,7 +326,12 @@ pub fn run_one(
     let mut silt: Option<(u32, u32, f32)> = None;
     let mut planted: Vec<(u32, u32)> = Vec::new();
     let coastal_share = |sim: &Sim| {
-        let big: Vec<_> = sim.state.settlements.iter().filter(|s| s.pop > 2000.0).collect();
+        let big: Vec<_> = sim
+            .state
+            .settlements
+            .iter()
+            .filter(|s| s.pop > 2000.0)
+            .collect();
         let all: f32 = big.iter().map(|s| s.pop).sum();
         let coast: f32 = big
             .iter()
@@ -385,9 +408,13 @@ pub fn run_one(
             let y = sim.state.year;
             let fy = params.famine_year;
             let in_famine = y >= fy && y <= fy + params.famine_years + 1;
-            let in_plague = [params.plague_year, params.plague_recur_1, params.plague_recur_2]
-                .iter()
-                .any(|&py| y >= py && y <= py + params.plague_years + 1);
+            let in_plague = [
+                params.plague_year,
+                params.plague_recur_1,
+                params.plague_recur_2,
+            ]
+            .iter()
+            .any(|&py| y >= py && y <= py + params.plague_years + 1);
             // A planting in year Y shows in the total read after it, Y + 1.
             let planting = params.plant_interval > 0
                 && y > 1
@@ -459,10 +486,7 @@ pub fn run_one(
                 .iter()
                 .filter(|id| now.iter().take(10).any(|x| x == *id))
                 .count() as u32;
-            (
-                moves.iter().sum::<f32>() / moves.len().max(1) as f32,
-                kept,
-            )
+            (moves.iter().sum::<f32>() / moves.len().max(1) as f32, kept)
         },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
@@ -547,7 +571,9 @@ fn shock_result(
     };
     let fy = p.famine_year;
     let pre = at(fy);
-    let dip_low = (fy + 1..=fy + p.famine_years + 5).map(at).fold(f32::INFINITY, f32::min);
+    let dip_low = (fy + 1..=fy + p.famine_years + 5)
+        .map(at)
+        .fold(f32::INFINITY, f32::min);
     let back = (fy + 1..py)
         .find(|&y| at(y) >= pre)
         .map_or(f32::NAN, |y| (y - fy) as f32);
@@ -571,7 +597,11 @@ fn shock_result(
 
 /// Share of settlements of at least `min_pop` within 2 km of a model bridge.
 fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> f32 {
-    let places: Vec<_> = snap.settlements.iter().filter(|s| s.pop >= min_pop).collect();
+    let places: Vec<_> = snap
+        .settlements
+        .iter()
+        .filter(|s| s.pop >= min_pop)
+        .collect();
     let near = places
         .iter()
         .filter(|s| {
@@ -675,6 +705,13 @@ pub fn cmd_validate(args: &Args) {
                     "failure rate" => r.m.failure_rate,
                     "forest near cities" => r.m.forest_near_cities,
                     "sites producing" => r.goods.sites_share,
+                    "every good worked" => {
+                        if r.goods.every_good_worked {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
                     "largest not specialist" => {
                         if r.goods.largest_specialist {
                             0.0
@@ -699,10 +736,11 @@ pub fn cmd_validate(args: &Args) {
             let med = vals.get(vals.len() / 2).copied().unwrap_or(f32::NAN);
             // v1 rule (D21): each check passes in at least 75% of the seeds on every map.
             let rate_ok = pass * 4 >= rs.len() * 3;
+            let reported = c.name == "sites producing" && rs.iter().all(|r| r.goods.market);
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
                 c.name,
-                c.target,
+                if reported { "(reported)" } else { c.target },
                 canon.map_or(f32::NAN, |r| value(r)),
                 med,
                 pass,

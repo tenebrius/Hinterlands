@@ -368,3 +368,17 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - settlement names given priority over feature names;
   - the graphics session's R8 merged (D68), with notes for it in `docs/rendering.md`.
 - **Screenshots** (`docs/screenshots/release/`): map 1, seed 1 at 1200, 1349, 1450 and 1600, and Kent at 1600 (the CLI's cell render).
+
+## v6 S1 — Goods by the price equilibrium (D71–D73)
+- **On by default:** `market_goods`. Salt, iron, stone and imports trade by the entropy price equilibrium in grain units, and `demand_iron` is 0.0013 (D71). The specialist founding test counts demand by value at last year's buyer prices (D72).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Every check holds, with D73's gate for goods.
+  - every good worked: 20 / 19 / 18;
+  - sites producing (reported): medians 0.73 / 0.80 / 0.73;
+  - market spacing 17 / 20 / 18; outside trade 4.7–5.4%;
+  - runs passing every check: 16 / 18 / 15.
+- **Iron at year 450,** median town price: 1.19 / 3.26 / 1.16.
+- **Determinism:**
+  - golden `ec7a24a7caeac414`;
+  - the release wasm build gives the same hash (`?selftest=500`, 31.9 ms/year, under the 45 ms gate);
+  - `data/real/experiments/v5.json` gives v5's `4ce58fae34550933`, and the earlier version files give their hashes.
+- **Details:** `docs/market/s1.md`.

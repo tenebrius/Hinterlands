@@ -45,7 +45,8 @@ impl Panel for EventsPanel {
             return Vec::new();
         }
         let end = v.snapshot.year.max(1) as f32;
-        let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 28.0), Sense::hover());
+        let (rect, _) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 28.0), Sense::hover());
         let painter = ui.painter_at(rect);
         painter.rect_stroke(
             rect,
@@ -65,13 +66,21 @@ impl Panel for EventsPanel {
                 2.0
             };
             painter.rect_filled(
-                egui::Rect::from_min_max(Pos2::new(px, inner.top()), Pos2::new(px + w, inner.bottom())),
+                egui::Rect::from_min_max(
+                    Pos2::new(px, inner.top()),
+                    Pos2::new(px + w, inner.bottom()),
+                ),
                 0.0,
                 col,
             );
         }
         ui.horizontal_wrapped(|ui| {
-            for m in [EventMark::Famine, EventMark::Plague, EventMark::Silted, EventMark::Planted] {
+            for m in [
+                EventMark::Famine,
+                EventMark::Plague,
+                EventMark::Silted,
+                EventMark::Planted,
+            ] {
                 ui.colored_label(colour(m), "■");
                 ui.small(label(m));
             }

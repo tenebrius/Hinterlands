@@ -119,10 +119,7 @@ impl Panel for Chronicle {
             }
             let raw = e.year;
             let year = shown_year(e.year);
-            let e = &LogEntry {
-                year,
-                ..e.clone()
-            };
+            let e = &LogEntry { year, ..e.clone() };
             let text = match &e.kind {
                 LogKind::Initial => format!("{}. {} is settled.", e.year, e.name),
                 LogKind::Founded { donor, .. } => {

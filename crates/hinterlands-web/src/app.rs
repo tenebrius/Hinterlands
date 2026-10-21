@@ -118,12 +118,16 @@ impl App {
         }
         if let Some(years) = selftest_years() {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
-            // `&shadow=1` turns on the shadow market (v6 S0) and `&goods=1`
-            // goods by the equilibrium (S1), to time them.
+            // `&shadow=1` turns on the shadow market (v6 S0), `&goods=0` the
+            // shopping model instead of goods by the equilibrium (S1), and
+            // `&harvests=1` local harvests (W1), to time them.
             let mut params = Params::default();
             params.market_shadow = url_param("shadow") == Some(1);
-            if url_param("goods") == Some(1) {
-                params.market_goods = true;
+            if let Some(g) = url_param("goods") {
+                params.market_goods = g == 1;
+            }
+            if url_param("harvests") == Some(1) {
+                params.local_harvests = true;
             }
             let mut probe = SimHandle::new(1, 1, params);
             let start = web_time_now();
@@ -132,9 +136,22 @@ impl App {
             let line = format!(
                 "selftest map 1 seed 1 years {years}{} hash {:016x} {ms:.1} ms/year",
                 format!(
-                    "{}{}",
-                    if url_param("shadow") == Some(1) { " shadow" } else { "" },
-                    if url_param("goods") == Some(1) { " goods" } else { "" }
+                    "{}{}{}",
+                    if url_param("shadow") == Some(1) {
+                        " shadow"
+                    } else {
+                        ""
+                    },
+                    if url_param("goods") == Some(0) {
+                        " shopping"
+                    } else {
+                        ""
+                    },
+                    if url_param("harvests") == Some(1) {
+                        " harvests"
+                    } else {
+                        ""
+                    }
                 ),
                 probe.snapshot().hash()
             );

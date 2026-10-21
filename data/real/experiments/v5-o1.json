@@ -1,3 +1,5 @@
 {
-  "ship_gain": 0.0
+  "ship_gain": 0.0,
+  "market_goods": false,
+  "demand_iron": 0.02
 }

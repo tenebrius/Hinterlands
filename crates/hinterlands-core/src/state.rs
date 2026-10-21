@@ -387,6 +387,9 @@ pub struct State {
     /// A famine lasts while `year < famine_until`, taking `famine_loss` of yield.
     pub famine_until: u32,
     pub famine_loss: f32,
+    /// This year's yield multiplier per cell (v6 W1); empty unless `local_harvests`.
+    #[serde(default)]
+    pub harvest: Vec<f32>,
     /// Outside ports as water-layer nodes (v5, D64); empty unless `outside_ports`.
     #[serde(default)]
     pub outside: Vec<u32>,
@@ -459,10 +462,11 @@ fn outside_ports(t: &Terrain) -> Vec<u32> {
         if cells.len() < 3 {
             continue;
         }
-        let best = cells
-            .iter()
-            .copied()
-            .min_by(|&a, &b| g.dist_km(a, coast).total_cmp(&g.dist_km(b, coast)).then(a.cmp(&b)));
+        let best = cells.iter().copied().min_by(|&a, &b| {
+            g.dist_km(a, coast)
+                .total_cmp(&g.dist_km(b, coast))
+                .then(a.cmp(&b))
+        });
         if let Some(c) = best {
             let node = n + c as u32;
             if !out.contains(&node) {
@@ -498,8 +502,16 @@ impl State {
             road,
             road_edges: Vec::new(),
             road_q,
-            bridge: if p.traffic_bridges { vec![false; n] } else { Vec::new() },
-            bridge_streak: if p.traffic_bridges { vec![0; n] } else { Vec::new() },
+            bridge: if p.traffic_bridges {
+                vec![false; n]
+            } else {
+                Vec::new()
+            },
+            bridge_streak: if p.traffic_bridges {
+                vec![0; n]
+            } else {
+                Vec::new()
+            },
             silt: Vec::new(),
             silt_year: 0,
             last_plague: NONE,
@@ -524,6 +536,7 @@ impl State {
             events: Vec::new(),
             famine_until: 0,
             famine_loss: 0.0,
+            harvest: Vec::new(),
             outside_trade: (0.0, 0.0),
             outside: if p.outside_ports {
                 outside_ports(t)
@@ -571,10 +584,20 @@ impl State {
         self.cost = if self.road_q.is_empty() && self.bridge.is_empty() && self.silt.is_empty() {
             CostGrid::build(t, &self.road, &self.transport)
         } else if self.road_q.is_empty() {
-            let q: Vec<f32> = self.road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
+            let q: Vec<f32> = self
+                .road
+                .iter()
+                .map(|&r| if r { 1.0 } else { 0.0 })
+                .collect();
             CostGrid::build_with_condition(t, &q, &self.bridge, &self.silt, &self.transport)
         } else {
-            CostGrid::build_with_condition(t, &self.road_q, &self.bridge, &self.silt, &self.transport)
+            CostGrid::build_with_condition(
+                t,
+                &self.road_q,
+                &self.bridge,
+                &self.silt,
+                &self.transport,
+            )
         };
     }
 

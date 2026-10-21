@@ -159,7 +159,7 @@ define_params! {
         rho_iron: f32 = 8.0, [0.1, 20], "Value density of iron relative to grain";
         rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
         demand_salt: f32 = 0.02, [0, 0.2], "Salt wanted per person a year, grain units";
-        demand_iron: f32 = 0.02, [0, 0.2], "Iron wanted per person a year, grain units";
+        demand_iron: f32 = 0.0013, [0, 0.2], "Iron wanted per person a year, grain units";
         demand_stone: f32 = 0.01603657, [0, 0.3], "Stone wanted per market person a year, grain units";
         prod_salt: f32 = 2.0, [0, 20], "Salt output per worker a year, grain units";
         prod_iron: f32 = 2.0, [0, 20], "Iron output per worker a year, grain units";
@@ -237,7 +237,7 @@ define_params! {
         rho_import: f32 = 10.0, [0.1, 50], "Value density of imports: distance decay is beta / rho";
     }
     "Market" => {
-        market_goods: bool = false, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
+        market_goods: bool = true, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
         market_shadow: bool = false, [0, 1], "Solve shadow prices each year beside the trade; nothing feeds back (v6 S0, D69)";
         market_tau: f32 = 0.002, [0.0001, 0.05], "Transport price of grain per unit of travel cost, as a share of its value (Clark: about 0.2% per km)";
         market_passes: u32 = 8, [1, 200], "Balancing passes a year";
@@ -278,6 +278,13 @@ define_params! {
         ship_to: u32 = 400, [0, 2000], "Year the improvement is complete (historical; 1500)";
         famine_interval: f32 = 120.0, [1, 2000], "Mean years between famines (random mode)";
         plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
+    }
+    "Harvests" => {
+        local_harvests: bool = false, [0, 1], "Each cell's yield varies year to year with a smooth local field (v6 W1)";
+        harvest_sd: f32 = 0.15, [0, 0.5], "Standard deviation of the yearly yield multiplier at the field's nodes";
+        harvest_km: f32 = 15.0, [1, 200], "Spacing of the field's nodes, km";
+        harvest_min: f32 = 0.5, [0, 1], "Least yearly yield multiplier";
+        harvest_max: f32 = 1.5, [1, 3], "Greatest yearly yield multiplier";
     }
     "Mills" => {
         mills: bool = true, [0, 1], "A settlement with a stream or river among its fields has a mill (D56)";

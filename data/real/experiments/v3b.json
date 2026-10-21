@@ -5,5 +5,7 @@
   "shadow_weight": 4.3475847,
   "found_threshold": 0.3269517,
   "noise": 0.3083304,
-  "outside_ports": false
+  "outside_ports": false,
+  "market_goods": false,
+  "demand_iron": 0.02
 }
