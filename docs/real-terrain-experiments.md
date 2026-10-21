@@ -337,3 +337,21 @@ Bridges are opt-in (`road_bridges` in `data/real/kent/map-bridges.json`), so the
 **The expectation fails.** Rochester reaches 1 of 20 seeds against a bar of 5, and in most seeds there is no settlement within 3 km at all (median 0). Canterbury is at 1 of 20, as weakly expected. The on-road share stays at 20%, as the designer expected under (a) alone. Larger-town placement is worse (AUC 0.41), and Gravesend falls from 15 to 8, a cost of roads, not of bridges, since it was already 6 with roads alone.
 
 **What this rules out.** A free crossing on the navigable Medway, on Watling Street, does not by itself make a town there. Since no settlement usually exists near the bridge at all, the failure comes before growth. Either founding never chooses the site, or the cost-based shadow suppresses whatever is founded there: a bridged crossing makes the site cheaper to reach from its neighbours, so it falls into their shadow, the same mechanism that pushes settlements off the roads. That is the designer's option (b). No further change was tried.
+
+### Designer's reading of the bridges result
+
+Run once, input checked and committed first, roads-only run reproduced exactly: a clean test. It fails, and it closes the question it was set.
+
+1. **(b) is not approved as the next round.** The implementer's diagnosis points to the travel-cost shadow, but the roads test already holds a bound on that: with the shadow switched off entirely, roads gave Rochester 0/20 and an on-road share of 29%, still under the land share. A shadow measured in km suppresses less than the cost shadow and more than none, so it cannot by itself bring Rochester to 5/20. It also changes the generated maps, so as a default it needs a re-tune, full validation and Divish's approval. It stays recorded as a known defect (a road deepens the shadow along itself), not as the fix for this result.
+2. **The Rochester and Canterbury expectation is withdrawn, and the error was the designer's.** Both were Roman towns (Durobrivae, Durovernum Cantiacorum) and early sees. Their place in 1300 is persistence from before the model's start, which the model takes from its starting state, not from founding. A model that founds hamlets on food and water and grows them over 500 years cannot be asked to place them. Rule: a site expectation is set only for places whose rise falls inside the model's period and mechanisms.
+3. **Kent defaults.** Roads and bridges stay options, as soil did. They lower the gateway result (Gravesend 15 → 8) and add nothing to placement. Kent with roads runs at 42–49 ms a year natively, near the 50 ms budget; acceptable while they are opt-in.
+
+## Diagnostic: why nothing settles at the Rochester bridge (approved, before running)
+
+One round, no model change, nothing tuned, roads + bridges configuration, the same 20 seeds. Its purpose is to say whether founding or the shadow keeps the site empty; that decides whether (b) goes to Divish as a candidate default change.
+
+1. Per seed, every settlement founded within 3 km of the Rochester bridge cells (54, 57) and (55, 57): founding year, peak population, and final population or year and cause of failure.
+2. The founding score at those two cells at years 100, 250 and 500, split into its terms (food, water, shadow, access), against the best score and the threshold in that step.
+3. The same 20 seeds with the shadow off, as in the roads diagnostic, plus bridges: Rochester count and on-road share.
+
+**Stop.** Report, then stop. Nothing is tuned whatever the result. The next round after this is the agreed step (2), the outside world as a seller, to be pre-registered by the designer.

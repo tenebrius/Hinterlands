@@ -22,12 +22,14 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - The standard placement metric is **AUC against lowland cells**, which cannot be fooled by "towns sit low". Always include a random baseline.
 - **Roman roads test failed (D32).** Itiner-e roads (58 segments, CC BY 4.0) as an initial road set: Rochester 1/20, Canterbury 0/20, settlements on or next to a road 20% (land 32%, real towns 47%), Gravesend largest in only 6 of 20. Causes: the shadow is in travel cost, so roads make neighbours suppress each other; nothing rewards a road site; a road crossing a river pays the full crossing cost because the model has fords but no bridges. The expectation rested on the crossings being special, which the model never made them: my error.
 - Roman roads are the **first Kent input with signal for small towns** (47% of real towns against 32% of land). The model moving settlements off roads is a model fault.
-- **Agreed next steps**, in order: (1) Roman bridges as input data, zero crossing cost where an Itiner-e road crosses a river; pre-registered in `docs/real-terrain-experiments.md` (Rochester at 1,000+ in at least 5/20; Canterbury weaker; run once, no tuning); (2) if it fails, the shadow in km rather than travel cost (needs a re-tune and full validation); a larger through-traffic margin is declined as tuning; (3) the outside world as a seller; (4) v2, goods and specialists.
+- **Roman bridges test failed too (D33).** 52 bridges, 30 on navigable rivers; Rochester 1/20 (bar 5), usually no settlement near the bridge at all; Canterbury bridged only on a stream. Roads and bridges stay Kent options, not defaults (Gravesend 15 → 8 with roads).
+- The Rochester/Canterbury expectation is **withdrawn**: both are Roman-era persistence, outside what a food-and-water founding model can place (rule 6 below). (b), the shadow in km, is **not approved** as a fix: the D32 no-shadow diagnostic already gave Rochester 0/20. It stays a known defect; as a default it would be Divish's call.
+- **Agreed next steps**, in order: (1) one diagnostic round on the Rochester bridge (founding history, founding-score terms, shadow off + bridges), approved in `docs/real-terrain-experiments.md`; (2) the outside world as a seller, which I pre-register after (1) reports; (3) v2, goods and specialists.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
 
-Five of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+Six of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
 
 1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
 2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
@@ -35,6 +37,8 @@ Five of my specification choices have been wrong, all caught by the real-terrain
 4. **The water rule was a river rule.** "Water within 1 km" with a 60 km² stream threshold forbade founding on most of the Weald and the Downs, which are full of springs and brooks. Rule: a filter must be checked against the share of land it admits before it is trusted.
 
 5. **The Roman roads expectation rested on a mechanism the model lacked.** Rochester and Canterbury were expected from road–river crossings, but crossings were never bridges. Rule: a pre-registration names the mechanism its expectation depends on, and the implementer confirms the code has it before running.
+
+6. **Rochester and Canterbury were the wrong sites to expect.** They were Roman towns whose 1300 standing is persistence from before the model's start. Rule: a site expectation is set only for places whose rise falls inside the model's period and mechanisms.
 
 Judgement rules that now stand:
 
@@ -76,4 +80,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — after D32 (Roman roads test failed); Roman bridges test pre-registered and its input check in (D33: 52 bridges, Rochester on the navigable Medway, Canterbury on a stream); foundation corrected against the code; session channel set up. Golden still `68beae826cf800cd`.
+Last updated: 2026-10-21 — after D33 (Roman bridges test failed); Rochester expectation withdrawn; (b) not approved; Rochester-bridge diagnostic approved. Golden still `68beae826cf800cd`.
