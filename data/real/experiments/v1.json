@@ -33,5 +33,6 @@
   "outside_ports": false,
   "market_goods": false,
   "demand_iron": 0.02,
-  "grain_relief": false
+  "grain_relief": false,
+  "grain_stores": false
 }

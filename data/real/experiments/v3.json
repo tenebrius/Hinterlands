@@ -7,5 +7,6 @@
   "market_goods": false,
   "demand_iron": 0.02,
   "grain_relief": false,
-  "shadow_drain": 0.0168
+  "shadow_drain": 0.0168,
+  "grain_stores": false
 }

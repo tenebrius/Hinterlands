@@ -391,3 +391,16 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - golden `f5b32f88ee3fc22f`;
   - the release wasm build gives the same hash (`?selftest=500`, 30.9 ms/year);
   - `data/real/experiments/v6-s1.json` gives S1's `ec7a24a7caeac414`, and every earlier version file now pins relief off and the old drain.
+
+## v6 S3 — Grain stores (D81)
+- **On by default:** `grain_stores`, with `store_cap` 1.0 and `store_loss` 0.05.
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Runs passing every check: 14 / 17 / 15.
+- **Reported:**
+  - famine dip 0.17 / 0.17 / 0.18 (S2′ 0.24–0.25);
+  - stores at 0.49–0.52 of need before 1315 (map 1's 0.52 accepted by the designer as a near miss), 93–99% drawn down by 1317;
+  - famine deficit met 55–59%.
+  - Details: `docs/market/stores.md`.
+- **Determinism:**
+  - golden `0e65d09ec147b5c7`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.8 ms/year);
+  - `data/real/experiments/relief.json` gives S2′'s `f5b32f88ee3fc22f`, and the earlier version files give theirs.

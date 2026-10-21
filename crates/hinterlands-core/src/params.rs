@@ -238,9 +238,9 @@ define_params! {
     }
     "Market" => {
         market_goods: bool = true, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
-        grain_stores: bool = false, [0, 1], "Each place keeps a grain store, filled from surplus above food_cap and drawn in deficit, own first, then by neighbours (v6 S3, D81)";
-        store_cap: f32 = 0.5, [0, 2], "Largest store, as a share of a year's need (S3)";
-        store_loss: f32 = 0.08, [0, 0.5], "Share of a store lost each year to spoilage, vermin and holding (S3)";
+        grain_stores: bool = true, [0, 1], "Each place keeps a grain store, filled from surplus above food_cap and drawn in deficit, own first, then by neighbours (v6 S3, D81)";
+        store_cap: f32 = 1.0, [0, 2], "Largest store, as a share of a year's need (S3)";
+        store_loss: f32 = 0.05, [0, 0.5], "Share of a store lost each year to spoilage, vermin and holding (S3)";
         grain_relief: bool = true, [0, 1], "After trade, places in deficit draw on surplus above food_cap that would otherwise be lost, unpaid (v6 S2', D80)";
         market_grain: bool = false, [0, 1], "Grain trades by the price equilibrium, paid from budgets of sales, rents, fees and goods (v6 S2, D78)";
         grain_premium: bool = true, [0, 1], "Under market_grain, market size W^alpha is a premium on the buyer side (decision 4; off is option 1, W as demand only)";
