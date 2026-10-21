@@ -609,6 +609,24 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **Tuning.** One round over `rent_share`, `K`, `ε` (growth) and α is allowed, with every change recorded. Then run the full S2 gate as briefed, and stop and report either way.
 - **Added to the report:** the establishment's share of grain demand in towns over 2,000, against the people's own food.
 
+**S2 second build (bf77fcd) and the designer's decision (D80): S2 is stopped, by the proposal's own stop rule.** With K as a real purchase and one tuning round over 20 settings, no town over 2,000 forms on any map. The hierarchy checks fail 0/20, the Clark R² is 0.25–0.37, and `b_Y` has the wrong sign. The implementer's reading is right. v5's hierarchy is a positive feedback on inflow that cost the market nothing to receive. Once W must be bought from income, every village keeps a small market on its own rents, and nothing concentrates. Making that work means redesigning the growth form on which every check from v1 to v5 rests. That is the over-ambition this project exists to avoid. So:
+- **`market_grain` stays off.** Its code stays behind the switch as the record. S1 (goods by price) stays the default. Shadow grain prices remain for reports, and the Clark checks are reported in shadow mode only.
+- **The proposal's visible aims are kept by a smaller route:** grain reaching the hungry, nothing burned, and stores that carry good years into bad ones. The hierarchy feedback is untouched.
+
+**S2′ grain relief (approved; switch `grain_relief`).** This is the foundation's original intent, which the code never carried out: food reaches places in deficit.
+- **After the trade step,** each place has `A_i = food_prod + food_in − food_out` against need `N_i`. Its surplus is `S_i = max(0, A_i − c_max N_i)`, the grain now lost above `food_cap`. Its deficit is `d_i = max(0, N_i − A_i)`.
+- **Each place in deficit draws its deficit** from the surplus holders in proportion to `S_j exp(−β c_jk)` within `C_max`, as in the shopping model (D41). Orders above a holder's surplus are scaled down in one pass. Relief arrives less the usual transport loss, and unmet deficit stays.
+- **The surplus would otherwise be lost, so nobody pays and nothing is created.** Relief counts in the food ratio but not in `market_in`, so W and the hierarchy feedback are unchanged. It loads the routes, so grain is seen moving to a dearth, but earns no handling income.
+- **Gate:** every v5 check with `market_goods` on; determinism; under 50 ms a year in wasm.
+- **Reported:**
+  - relief volume per year;
+  - the share of deficit met, in normal years and in 1315–17;
+  - the famine dip against v5 with S1;
+  - the failure rate against v5 with S1;
+  - grain still lost above `c_max`.
+- **Tuning.** None beyond what a failing v5 check needs, recorded.
+- **Next:** S3 stores, briefed after S2′, then W1.
+
 
 ## Future versions
 
