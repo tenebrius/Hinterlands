@@ -14,6 +14,10 @@ uniform sampler2D u_cover;
 // This year, r: owner (hashed, -1 for none), g: strip direction + 2 x rotation,
 // b: hedged (farmed 50 years), a: flood meadow.
 uniform sampler2D u_plot;
+// This year, r: built up, g: ruin, b: inside a city's walls, a: how fresh the ruin is.
+uniform sampler2D u_town;
+// Settlements and buildings layers on.
+uniform vec2 u_town_show;
 uniform float u_year;
 // 0 spring .. 3 winter; u_season is -1 with the seasons layer off.
 uniform int u_season;
@@ -36,6 +40,32 @@ vec4 land_at(ivec2 c) {
 
 vec4 cover_at(ivec2 c) {
     return texelFetch(u_cover, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0);
+}
+
+vec4 town_at(ivec2 c) {
+    return texelFetch(u_town, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0);
+}
+
+// Smoothed town field and its gradient (per cell), for distances to its outlines.
+void town_smooth(vec2 p, out vec4 v, out vec4 gx, out vec4 gy) {
+    vec2 q = p - 0.5;
+    vec2 b = floor(q);
+    vec2 f = q - b;
+    vec2 s = f * f * (3.0 - 2.0 * f);
+    vec2 ds = 6.0 * f * (1.0 - f);
+    ivec2 ib = ivec2(b);
+    vec4 v00 = town_at(ib);
+    vec4 v10 = town_at(ib + ivec2(1, 0));
+    vec4 v01 = town_at(ib + ivec2(0, 1));
+    vec4 v11 = town_at(ib + ivec2(1, 1));
+    v = mix(mix(v00, v10, s.x), mix(v01, v11, s.x), s.y);
+    gx = ds.x * mix(v10 - v00, v11 - v01, s.y);
+    gy = ds.y * mix(v01 - v00, v11 - v10, s.x);
+}
+
+// Signed distance in cells to the 0.5 line of a smoothed field (positive inside).
+float field_dist(float v, float gx, float gy) {
+    return (v - 0.5) / max(length(vec2(gx, gy)), 0.05);
 }
 
 vec4 plot_at(ivec2 c) {
@@ -287,6 +317,86 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         }
         float bushes = 0.55 + 0.45 * smoothstep(0.3, 0.6, vnoise(p * 28.0, 81));
         c = mix(c, HEDGE * (0.85 + 0.3 * vnoise(p * 60.0, 83)), on * bushes * smoothstep(6.0, 10.0, u_px));
+    }
+
+    // Settlements: one smooth outline round each built-up area, ruins fading grey,
+    // and close up the streets: house plots along the lanes, gardens behind,
+    // thinning towards the edge of town. Roads and rivers are drawn over them.
+    if (u_town_show.x > 0.5) {
+        vec4 tv, tgx, tgy;
+        town_smooth(p, tv, tgx, tgy);
+        float px = 1.0 / u_px;
+        float db = field_dist(tv.r, tgx.r, tgy.r);
+        float inside = smoothstep(-px, px, db);
+        float ruin = smoothstep(-px, px, field_dist(tv.g, tgx.g, tgy.g)) * (1.0 - inside);
+        vec3 rubble = vec3(0.49, 0.45, 0.41);
+        if (u_px > 12.0) {
+            // Broken walls of the old houses.
+            vec2 rq = fract(p * 9.0);
+            float wallv = min(min(rq.x, 1.0 - rq.x), min(rq.y, 1.0 - rq.y));
+            float broken = step(0.45, vnoise(p * 9.0, 111));
+            rubble = mix(rubble, vec3(0.36, 0.33, 0.30), (1.0 - smoothstep(0.04, 0.09, wallv)) * broken);
+        }
+        c = mix(c, rubble, ruin * (0.25 + 0.55 * tv.a));
+
+        vec3 town = mix(vec3(178.0, 74.0, 58.0) / 255.0, vec3(196.0, 160.0, 120.0) / 255.0, smoothstep(3.0, 6.0, u_px));
+        float streets = smoothstep(10.0, 18.0, u_px);
+        if (streets > 0.0) {
+            // Blocks of a third of a cell, the street grid bent a little.
+            vec2 q = p * 3.0 + (vec2(vnoise(p * 1.5, 101), vnoise(p * 1.5, 103)) - 0.5) * 0.6;
+            ivec2 blk = ivec2(floor(q));
+            vec2 u = fract(q);
+            vec2 e = min(u, 1.0 - u);
+            float lane = min(e.x, e.y);
+            float along = e.x < e.y ? u.y : u.x;
+            float plot = floor(along * 7.0);
+            int side = e.x < e.y ? (u.x < 0.5 ? 0 : 1) : (u.y < 0.5 ? 2 : 3);
+            float h = hash(blk * 4 + ivec2(side, int(plot)), 107);
+            float empty = 0.08 + 0.55 * (1.0 - smoothstep(0.0, 0.7, db));
+            vec3 street = vec3(0.86, 0.80, 0.68);
+            vec3 garden = vec3(0.60, 0.65, 0.43);
+            vec3 roof = vec3(0.62, 0.27, 0.19) * (0.82 + 0.3 * hash(blk, 109) + 0.1 * h);
+            float a = aa(lane);
+            float house = smoothstep(0.07, 0.07 + a, lane) * (1.0 - smoothstep(0.33, 0.33 + a, lane));
+            float gap = 1.0 - smoothstep(0.0, 0.08, min(fract(along * 7.0), 1.0 - fract(along * 7.0)));
+            house *= step(empty, h) * (1.0 - gap * 0.8);
+            vec3 blockc = mix(garden, roof, house);
+            blockc = mix(street, blockc, smoothstep(0.07 - a, 0.07, lane));
+            town = mix(town, blockc, streets);
+        }
+        c = mix(c, town, inside);
+        float rim = 1.0 - smoothstep(0.0, 1.3 * px, abs(db));
+        c = mix(c, vec3(0.42, 0.30, 0.22), rim * smoothstep(3.0, 6.0, u_px) * 0.8);
+
+        // City walls on the outline of the walled area, with towers spaced along them.
+        if (u_town_show.y > 0.5 && u_px > 3.0) {
+            vec3 stone = vec3(150.0, 140.0, 125.0) / 255.0;
+            vec3 dark = vec3(0.30, 0.27, 0.24);
+            float dw = field_dist(tv.b, tgx.b, tgy.b);
+            float hw = max(0.035, 1.2 * px);
+            float wall = 1.0 - smoothstep(hw, hw + px, abs(dw));
+            float edgeline = 1.0 - smoothstep(0.0, px, abs(abs(dw) - hw));
+            c = mix(c, stone, wall);
+            c = mix(c, dark, edgeline * wall * smoothstep(5.0, 10.0, u_px));
+            vec2 lp = floor(p * 2.0);
+            for (int dy = 0; dy <= 1; dy++) {
+                for (int dx = 0; dx <= 1; dx++) {
+                    vec2 l = (lp + vec2(float(dx), float(dy))) / 2.0;
+                    vec4 lv, lgx, lgy;
+                    town_smooth(l, lv, lgx, lgy);
+                    vec2 grad = vec2(lgx.b, lgy.b);
+                    float g2 = max(dot(grad, grad), 1e-3);
+                    float dl = field_dist(lv.b, lgx.b, lgy.b);
+                    if (abs(dl) < 0.25 && lv.b > 0.05 && lv.b < 0.95) {
+                        vec2 at = l - grad * (lv.b - 0.5) / g2;
+                        float rt = max(0.07, 2.5 * px);
+                        float r = length(p - at);
+                        c = mix(c, stone, 1.0 - smoothstep(rt - px, rt, r));
+                        c = mix(c, dark, (1.0 - smoothstep(0.0, px, abs(r - rt + 0.5 * px))) * smoothstep(5.0, 10.0, u_px));
+                    }
+                }
+            }
+        }
     }
 
     // Seasons: water standing on the flood meadows in spring, frost and snow in winter.

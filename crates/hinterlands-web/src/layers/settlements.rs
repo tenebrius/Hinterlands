@@ -56,7 +56,10 @@ impl Layer for SettlementsLayer {
             self.key = key;
         }
         let z = d.camera.zoom;
-        if z < 4.0 {
+        // The relief shader draws the footprints and ruins with smooth outlines;
+        // only the markers are added here.
+        let cells = !super::relief::active(v);
+        if cells && z < 4.0 {
             if let Some(tex) = &self.tex {
                 let r = d.camera.map_rect(d.rect, t.grid.w, t.grid.h);
                 d.painter.image(
@@ -66,7 +69,7 @@ impl Layer for SettlementsLayer {
                     Color32::WHITE,
                 );
             }
-        } else {
+        } else if cells {
             draw_blocks(d);
         }
         let w = t.grid.w;
