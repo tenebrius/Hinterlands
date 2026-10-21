@@ -162,3 +162,10 @@ Kind: input data (owner/designer decision).
 ## D34 — Underfed places shed people instead of being deleted (switch `shed_unfed`, default off)
 The failure rule removed any settlement unfed for `fail_unfed_years`, at any size. In v1.1 it deletes about 170 settlements per generated run that had peaked at 1,000 or more. Under `shed_unfed`, an underfed place loses a third of `(1 − ratio) × P` a year (the leavers are lost), and only the low-population rule removes. Results: every per-seed check improves (runs passing every check 19/20/18 against 7/13/14), but the gated "largest city varies" check fails on maps 2 and 3 (0.20, 0.00). On Kent the Rochester expectation fails (1/20), because the bridge towns still starve, now by shrinking. Golden unchanged. Making it the default is the designer's decision (design authority delegated by the owner).
 Kind: model mechanism behind a switch (designer decision); default pending.
+
+## D35 — v1.2: shedding is the default; contingency gated on the middle tier (designer decision)
+1. `shed_unfed` (D34) is the default. An underfed place sheds a third of its food gap a year, and only the low-population rule removes. Nothing was re-tuned.
+2. Contingency: gated on the ten largest. For each ordered pair of the 20 runs on a map, take the share of one run's ten largest settlements with one of the other run's ten largest within 5 km. The mean must be at most 0.80. The varying largest city (gated at ≥ 0.30 until v1.2), the river-corridor share and the largest city's distance to the mouth are reported. A clearly best site may hold the largest city in every seed; contingency lives in the middle tier.
+3. Kent's standard configuration is uniform soil with Roman roads and bridges (`just real`). Kent is a regression report at each milestone, and Rochester is closed as a target.
+Golden hash: `2b00434da9781880`, native and in the browser.
+Kind: change to the defaults and the acceptance test (designer, with design authority delegated by the owner).

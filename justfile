@@ -31,9 +31,9 @@ bench *ARGS:
 golden:
     cargo run --release -p hinterlands-cli -- hash --map-seed 1 --seed 1 --years 500 > crates/hinterlands-cli/tests/golden.txt
 
-# Real-terrain test: 20 seeds on Kent, scored against the towns of c.1300
+# Real-terrain test: 20 seeds on Kent (uniform soil, Roman roads and bridges), scored against the towns of c.1300
 real:
-    tools/real/run_seeds.sh data/real/kent 20
+    tools/real/run_seeds.sh data/real/kent 20 500 "" "" data/real/kent/map-bridges.json
     python3 -I tools/real/score.py data/real/kent target/real/kent docs/real/kent
     python3 -I tools/real/score.py data/real/kent target/real/kent docs/real/kent/interior 10
     rm -f docs/real/kent/interior/*.png docs/real/kent/interior/truth.csv

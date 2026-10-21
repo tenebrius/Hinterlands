@@ -206,7 +206,7 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
-        shed_unfed: bool = false, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
+        shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "View" => {
         density_per_cell: f32 = 1500.0, [100, 20000], "People per built-up cell in the drawn footprint (rendering only)";

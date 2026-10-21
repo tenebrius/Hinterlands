@@ -6,12 +6,12 @@
 
 | Measure | Model | Random land | Random lowland | Seeds beating random land (95th pct) |
 | --- | ---: | ---: | ---: | ---: |
-| Real towns with a model place within 5 km | 0.33 | 0.37 | 0.30 | 0% |
-| Real towns with a model place within 10 km | 0.76 | 0.82 | 0.65 | 0% |
-| Model places with a real town within 5 km | 0.39 | 0.41 | 0.38 | 0% |
-| Model places with a real town within 10 km | 0.84 | 0.90 | 0.85 | 0% |
-| Real top 10 with a model top-15 place within 10 km | 0.35 | 0.29 | 0.38 | 5% |
-| Rank agreement (Spearman, real size vs model size within 5 km) | 0.11 | -0.03 | 0.20 | 40% |
+| Real towns with a model place within 5 km | 0.41 | 0.37 | 0.30 | 20% |
+| Real towns with a model place within 10 km | 0.86 | 0.82 | 0.65 | 15% |
+| Model places with a real town within 5 km | 0.45 | 0.41 | 0.38 | 10% |
+| Model places with a real town within 10 km | 0.88 | 0.90 | 0.85 | 0% |
+| Real top 10 with a model top-15 place within 10 km | 0.54 | 0.29 | 0.38 | 45% |
+| Rank agreement (Spearman, real size vs model size within 5 km) | 0.09 | -0.03 | 0.20 | 15% |
 
 ## The 27 real towns of 1,000 or more against the model's top 27
 
@@ -19,12 +19,12 @@
 
 | Measure | Model | Random land | Random lowland | Seeds beating random land (95th pct) |
 | --- | ---: | ---: | ---: | ---: |
-| Real towns with a model place within 5 km | 0.16 | 0.15 | 0.17 | 5% |
-| Real towns with a model place within 10 km | 0.47 | 0.45 | 0.46 | 5% |
-| Model places with a real town within 5 km | 0.16 | 0.15 | 0.18 | 5% |
-| Model places with a real town within 10 km | 0.49 | 0.48 | 0.52 | 0% |
-| Real top 10 with a model top-15 place within 10 km | 0.35 | 0.29 | 0.39 | 5% |
-| Rank agreement (Spearman, real size vs model size within 5 km) | 0.01 | 0.01 | 0.14 | 5% |
+| Real towns with a model place within 5 km | 0.23 | 0.15 | 0.17 | 10% |
+| Real towns with a model place within 10 km | 0.53 | 0.45 | 0.46 | 10% |
+| Model places with a real town within 5 km | 0.21 | 0.15 | 0.18 | 0% |
+| Model places with a real town within 10 km | 0.51 | 0.48 | 0.52 | 0% |
+| Real top 10 with a model top-15 place within 10 km | 0.54 | 0.29 | 0.39 | 45% |
+| Rank agreement (Spearman, real size vs model size within 5 km) | 0.30 | 0.01 | 0.14 | 35% |
 
 ## Site prediction over all seeds
 
@@ -32,15 +32,15 @@ Frequency map: share of seeds with a top-K model place within 3 km of a cell. AU
 
 | Towns | AUC against land | AUC against lowland | Mean frequency at real towns | Mean frequency on land |
 | --- | ---: | ---: | ---: | ---: |
-| All (70) | 0.53 | 0.44 | 0.16 | 0.15 |
-| 1,000 or more (27) | 0.64 | 0.54 | 0.22 | 0.15 |
-| Under 1,000 (43) | 0.46 | 0.37 | 0.13 | 0.15 |
+| All (70) | 0.58 | 0.49 | 0.24 | 0.16 |
+| 1,000 or more (27) | 0.62 | 0.53 | 0.26 | 0.16 |
+| Under 1,000 (43) | 0.55 | 0.46 | 0.22 | 0.16 |
 
 ## Largest city: London (City)
 
-Seeds whose largest model place is within 10 km of London (City): 0 of 20; a top-3 place within 10 km: 0; any top-70 place within 10 km: 19. Median distance from the model's largest place to London (City): 41 km. Largest place's share of the region's people (median): 0.30.
+Seeds whose largest model place is within 10 km of London (City): 0 of 20; a top-3 place within 10 km: 5; any top-70 place within 10 km: 20. Median distance from the model's largest place to London (City): 41 km. Largest place's share of the region's people (median): 0.30.
 
-Nearest real town to the model's largest place, by seeds: Gravesend 15, Faversham 3, Fordwich 2.
+Nearest real town to the model's largest place, by seeds: Gravesend 10, Faversham 4, Rayleigh 3, Milton Regis 2, Wingham 1.
 
 ## By site
 
@@ -48,113 +48,113 @@ Site of the real towns and of the model's top places (within a cell of a navigab
 
 | Site | Real towns | Share | Model top places | Share | Real towns found (5 km) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| river | 18 | 26% | 22.8 | 32% | 41% |
-| coast | 6 | 9% | 8.4 | 12% | 32% |
-| inland | 46 | 66% | 38.8 | 55% | 31% |
+| river | 18 | 26% | 30.6 | 44% | 47% |
+| coast | 6 | 9% | 9.0 | 13% | 44% |
+| inland | 46 | 66% | 30.4 | 44% | 39% |
 
-Inland places over 500 people, nearest other place over 500 (median): real 10.6 km (29 towns); model 9.1 km (median over seeds; 20 such places per seed).
+Inland places over 500 people, nearest other place over 500 (median): real 10.6 km (29 towns); model 6.2 km (median over seeds; 32 such places per seed).
 
-Mean nearest-neighbour spacing of the 70 places: real 8.6 km, model 6.9 km, random land 6.9 km.
+Mean nearest-neighbour spacing of the 70 places: real 8.6 km, model 7.5 km, random land 6.9 km.
 
 ## Per seed
 
 | Seed | recall5 | recall10 | precision5 | precision10 | big10 | spearman | Largest |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 1 | 0.33 | 0.73 | 0.37 | 0.87 | 0.30 | 0.05 | Iselhaven 11779 |
-| 2 | 0.39 | 0.76 | 0.40 | 0.81 | 0.30 | 0.18 | Malden 33981 |
-| 3 | 0.31 | 0.83 | 0.39 | 0.87 | 0.30 | -0.00 | Belham 40110 |
-| 4 | 0.36 | 0.77 | 0.36 | 0.84 | 0.40 | 0.03 | Talelholt 38906 |
-| 5 | 0.33 | 0.70 | 0.47 | 0.86 | 0.30 | 0.09 | Buresholt 31398 |
-| 6 | 0.23 | 0.67 | 0.21 | 0.73 | 0.40 | 0.02 | Seleley 38736 |
-| 7 | 0.33 | 0.74 | 0.36 | 0.79 | 0.20 | -0.06 | Stanenwood 16652 |
-| 8 | 0.31 | 0.73 | 0.37 | 0.91 | 0.50 | 0.36 | Grimerford 29479 |
-| 9 | 0.34 | 0.81 | 0.36 | 0.84 | 0.40 | 0.19 | Elmelcote 37927 |
-| 10 | 0.29 | 0.54 | 0.39 | 0.81 | 0.30 | 0.13 | Walenwood 35950 |
-| 11 | 0.36 | 0.74 | 0.44 | 0.90 | 0.30 | 0.06 | Uperworth 32864 |
-| 12 | 0.40 | 0.83 | 0.43 | 0.89 | 0.50 | -0.12 | Everingford 50741 |
-| 13 | 0.39 | 0.87 | 0.40 | 0.89 | 0.30 | 0.18 | Upenbourne 38987 |
-| 14 | 0.31 | 0.70 | 0.34 | 0.81 | 0.10 | 0.22 | Roenhurst 34598 |
-| 15 | 0.34 | 0.81 | 0.44 | 0.84 | 0.50 | 0.07 | Wyowood 26668 |
-| 16 | 0.33 | 0.77 | 0.34 | 0.79 | 0.20 | 0.01 | Fairenhurst 42253 |
-| 17 | 0.34 | 0.76 | 0.41 | 0.86 | 0.60 | 0.24 | Upenbourne 36579 |
-| 18 | 0.26 | 0.73 | 0.33 | 0.79 | 0.20 | 0.19 | Holesey 40270 |
-| 19 | 0.36 | 0.77 | 0.47 | 0.86 | 0.50 | 0.12 | Chedewood 31643 |
-| 20 | 0.37 | 0.83 | 0.43 | 0.84 | 0.40 | 0.18 | Upenbourne 38018 |
+| 1 | 0.46 | 0.91 | 0.46 | 0.87 | 0.60 | 0.11 | Dunholt 52456 |
+| 2 | 0.41 | 0.80 | 0.44 | 0.89 | 0.50 | 0.04 | Croeford 50366 |
+| 3 | 0.40 | 0.86 | 0.41 | 0.91 | 0.50 | -0.02 | Fairesholt 55459 |
+| 4 | 0.43 | 0.84 | 0.51 | 0.89 | 0.50 | 0.10 | Faleshaven 54227 |
+| 5 | 0.44 | 0.89 | 0.49 | 0.89 | 0.50 | 0.26 | Penwick 46548 |
+| 6 | 0.34 | 0.83 | 0.37 | 0.89 | 0.70 | 0.07 | Torport 59460 |
+| 7 | 0.46 | 0.89 | 0.47 | 0.83 | 0.60 | 0.16 | Halhaven 43455 |
+| 8 | 0.47 | 0.87 | 0.51 | 0.87 | 0.60 | 0.11 | Noreington 45849 |
+| 9 | 0.43 | 0.90 | 0.49 | 0.89 | 0.50 | 0.00 | Roasea 41543 |
+| 10 | 0.41 | 0.86 | 0.49 | 0.90 | 0.70 | 0.13 | Oakhurst 53772 |
+| 11 | 0.41 | 0.81 | 0.40 | 0.91 | 0.30 | 0.19 | Craneley 52494 |
+| 12 | 0.39 | 0.87 | 0.39 | 0.91 | 0.50 | 0.03 | Falden 47189 |
+| 13 | 0.36 | 0.81 | 0.46 | 0.91 | 0.60 | 0.24 | Roingley 61687 |
+| 14 | 0.39 | 0.87 | 0.41 | 0.84 | 0.50 | 0.05 | Barford 25690 |
+| 15 | 0.41 | 0.86 | 0.43 | 0.84 | 0.60 | 0.09 | Dewesfield 39708 |
+| 16 | 0.41 | 0.90 | 0.43 | 0.90 | 0.50 | 0.08 | Verholt 55883 |
+| 17 | 0.46 | 0.87 | 0.49 | 0.89 | 0.40 | 0.16 | Iselstead 47725 |
+| 18 | 0.44 | 0.86 | 0.44 | 0.90 | 0.50 | 0.11 | Holstead 42742 |
+| 19 | 0.36 | 0.83 | 0.39 | 0.86 | 0.60 | -0.10 | Fenesham 45030 |
+| 20 | 0.37 | 0.86 | 0.43 | 0.89 | 0.60 | 0.00 | Verby 47563 |
 
 ## Real towns by how often the model finds them (place within 5 km, share of seeds)
 
 | Town | Pop. c.1300 | Tier | Found |
 | --- | ---: | --- | ---: |
-| London (City) | 80000 | city | 50% |
-| Canterbury | 10000 | city | 30% |
-| Colchester | 4000 | large_town | 45% |
-| Sandwich | 4000 | large_town | 30% |
-| Winchelsea | 3500 | large_town | 40% |
-| Dover | 3000 | large_town | 35% |
-| New Romney | 2500 | town | 85% |
-| Rye | 2500 | town | 30% |
-| Lewes | 2500 | town | 10% |
-| Maidstone | 2000 | town | 50% |
-| Hythe | 2000 | town | 35% |
-| Hastings | 2000 | town | 35% |
-| Maldon | 2000 | town | 80% |
-| Faversham | 2000 | town | 45% |
-| Rochester | 1900 | town | 35% |
-| Lydd | 1500 | town | 70% |
-| Chelmsford | 1500 | town | 40% |
+| London (City) | 80000 | city | 40% |
+| Canterbury | 10000 | city | 90% |
+| Colchester | 4000 | large_town | 5% |
+| Sandwich | 4000 | large_town | 90% |
+| Winchelsea | 3500 | large_town | 100% |
+| Dover | 3000 | large_town | 25% |
+| New Romney | 2500 | town | 90% |
+| Rye | 2500 | town | 100% |
+| Lewes | 2500 | town | 0% |
+| Maidstone | 2000 | town | 35% |
+| Hythe | 2000 | town | 65% |
+| Hastings | 2000 | town | 20% |
+| Maldon | 2000 | town | 20% |
+| Faversham | 2000 | town | 60% |
+| Rochester | 1900 | town | 30% |
+| Lydd | 1500 | town | 10% |
+| Chelmsford | 1500 | town | 85% |
 | New Shoreham | 1500 | town | 10% |
-| Battle | 1200 | town | 40% |
+| Battle | 1200 | town | 10% |
 | Tonbridge | 1200 | town | 50% |
-| Dartford | 1200 | town | 45% |
-| Hertford | 1200 | town | 15% |
+| Dartford | 1200 | town | 80% |
+| Hertford | 1200 | town | 0% |
 | Ware | 1200 | town | 5% |
-| Croydon | 1000 | town | 65% |
-| Reigate | 1000 | town | 20% |
-| Folkestone | 1000 | town | 45% |
-| Bishop's Stortford | 1000 | town | 25% |
-| Seaford | 800 | small_town | 25% |
-| East Grinstead | 800 | small_town | 15% |
-| Milton Regis | 800 | small_town | 5% |
-| Barking | 800 | small_town | 55% |
-| Waltham Abbey | 800 | small_town | 45% |
-| Pevensey | 600 | small_town | 50% |
-| Fordwich | 600 | small_town | 35% |
-| Tenterden | 600 | small_town | 20% |
-| Ashford | 600 | small_town | 65% |
-| Sevenoaks | 600 | small_town | 30% |
+| Croydon | 1000 | town | 50% |
+| Reigate | 1000 | town | 15% |
+| Folkestone | 1000 | town | 70% |
+| Bishop's Stortford | 1000 | town | 5% |
+| Seaford | 800 | small_town | 0% |
+| East Grinstead | 800 | small_town | 0% |
+| Milton Regis | 800 | small_town | 50% |
+| Barking | 800 | small_town | 20% |
+| Waltham Abbey | 800 | small_town | 100% |
+| Pevensey | 600 | small_town | 100% |
+| Fordwich | 600 | small_town | 90% |
+| Tenterden | 600 | small_town | 10% |
+| Ashford | 600 | small_town | 70% |
+| Sevenoaks | 600 | small_town | 50% |
 | West Malling | 600 | small_town | 55% |
-| Cranbrook | 600 | small_town | 25% |
-| Gravesend | 600 | small_town | 15% |
-| Romford | 600 | small_town | 10% |
-| Coggeshall | 600 | small_town | 30% |
-| Braintree | 600 | small_town | 45% |
-| Great Dunmow | 600 | small_town | 30% |
-| Wye | 500 | small_town | 30% |
-| Witham | 500 | small_town | 55% |
-| Brentwood | 500 | small_town | 35% |
-| Chipping Barnet | 500 | small_town | 10% |
-| Bletchingley | 500 | small_town | 5% |
-| Westerham | 400 | small_town | 30% |
-| Charing | 400 | small_town | 25% |
-| Wrotham | 400 | small_town | 35% |
-| Lenham | 400 | small_town | 15% |
-| Elham | 400 | small_town | 20% |
-| Wingham | 400 | small_town | 15% |
-| Bromley | 400 | small_town | 30% |
-| Robertsbridge | 400 | small_town | 30% |
-| Hailsham | 400 | small_town | 55% |
-| Mayfield | 400 | small_town | 30% |
-| Cuckfield | 400 | small_town | 10% |
-| Crawley | 400 | small_town | 0% |
-| Epping | 400 | small_town | 35% |
+| Cranbrook | 600 | small_town | 15% |
+| Gravesend | 600 | small_town | 35% |
+| Romford | 600 | small_town | 5% |
+| Coggeshall | 600 | small_town | 100% |
+| Braintree | 600 | small_town | 5% |
+| Great Dunmow | 600 | small_town | 90% |
+| Wye | 500 | small_town | 35% |
+| Witham | 500 | small_town | 0% |
+| Brentwood | 500 | small_town | 5% |
+| Chipping Barnet | 500 | small_town | 0% |
+| Bletchingley | 500 | small_town | 0% |
+| Westerham | 400 | small_town | 0% |
+| Charing | 400 | small_town | 0% |
+| Wrotham | 400 | small_town | 0% |
+| Lenham | 400 | small_town | 0% |
+| Elham | 400 | small_town | 5% |
+| Wingham | 400 | small_town | 25% |
+| Bromley | 400 | small_town | 65% |
+| Robertsbridge | 400 | small_town | 80% |
+| Hailsham | 400 | small_town | 25% |
+| Mayfield | 400 | small_town | 25% |
+| Cuckfield | 400 | small_town | 100% |
+| Crawley | 400 | small_town | 50% |
+| Epping | 400 | small_town | 65% |
 | Billericay | 400 | small_town | 25% |
-| Rayleigh | 400 | small_town | 60% |
-| Rochford | 400 | small_town | 40% |
-| Harlow | 400 | small_town | 20% |
-| Chipping Ongar | 400 | small_town | 35% |
-| Hoddesdon | 400 | small_town | 10% |
-| Sawbridgeworth | 400 | small_town | 25% |
-| Hatfield | 400 | small_town | 35% |
+| Rayleigh | 400 | small_town | 40% |
+| Rochford | 400 | small_town | 35% |
+| Harlow | 400 | small_town | 80% |
+| Chipping Ongar | 400 | small_town | 50% |
+| Hoddesdon | 400 | small_town | 65% |
+| Sawbridgeworth | 400 | small_town | 90% |
+| Hatfield | 400 | small_town | 70% |
 
 ## Persistent model places with no real town within 10 km
 
@@ -162,9 +162,10 @@ Cells where at least half the seeds put a top-K place within 3 km (local maxima)
 
 | x km | y km | Share of seeds | Nearest real town | km | Elevation m |
 | ---: | ---: | ---: | --- | ---: | ---: |
-| 104 | 2 | 70% | Colchester | 22 | 0 |
-| 105 | 8 | 65% | Colchester | 23 | 15 |
-| 115 | 59 | 55% | Sandwich | 11 | 19 |
-| 3 | 47 | 55% | London (City) | 11 | 7 |
-| 95 | 10 | 50% | Colchester | 15 | 18 |
-| 81 | 31 | 50% | Rochford | 13 | 0 |
+| 3 | 47 | 95% | London (City) | 11 | 7 |
+| 89 | 11 | 90% | Colchester | 11 | 1 |
+| 104 | 12 | 85% | Colchester | 24 | 0 |
+| 29 | 89 | 80% | East Grinstead | 11 | 50 |
+| 22 | 1 | 80% | Bishop's Stortford | 10 | 98 |
+| 61 | 80 | 70% | Lenham | 10 | 24 |
+| 27 | 104 | 55% | Mayfield | 12 | 32 |

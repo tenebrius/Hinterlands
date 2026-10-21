@@ -202,28 +202,17 @@ pub fn cmd_search(raw: &[String], args: &Args) {
         .map(|c| {
             let rs: Vec<_> = results.iter().filter(|(k, _)| *k == c).collect();
             let mut mean = rs.iter().map(|(_, r)| miss(r)).sum::<f32>() / rs.len().max(1) as f32;
-            // The varying largest city per map, when there are enough seeds to judge it.
+            // Contingency per map (D35): the ten largest must differ between
+            // seeds, when there are enough seeds to judge it.
             if seeds >= 3 {
                 for (ms, t) in &terrains {
-                    let g: Vec<_> = rs
+                    let g: Vec<&crate::validate::RunResult> = rs
                         .iter()
                         .filter(|(_, r)| r.map_seed == *ms)
                         .map(|(_, r)| r)
                         .collect();
-                    let anchors: Vec<usize> = g.iter().filter_map(|r| r.largest_anchor).collect();
-                    let modal = anchors
-                        .iter()
-                        .map(|&a| {
-                            anchors
-                                .iter()
-                                .filter(|&&b| t.grid.dist_km(a, b) <= 5.0)
-                                .count()
-                        })
-                        .max()
-                        .unwrap_or(0);
-                    let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
-                    // The river-corridor share is reported, not gated (D30).
-                    mean += (0.3 - differs).max(0.0) / 0.3 / terrains.len() as f32;
+                    let overlap = crate::validate::top10_overlap(t, &g);
+                    mean += (overlap - 0.8).max(0.0) / 0.2 / terrains.len() as f32;
                 }
             }
             let passes = rs

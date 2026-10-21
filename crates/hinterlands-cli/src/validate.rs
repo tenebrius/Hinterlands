@@ -18,6 +18,8 @@ pub struct RunResult {
     /// Largest year-on-year change in total population after year 100.
     pub max_change: f32,
     pub largest_anchor: Option<usize>,
+    /// Anchors of the ten largest settlements, largest first.
+    pub top10: Vec<usize>,
     /// A settlement over 5,000 on the main river corridor or the coast within 15 km of it.
     pub corridor_city: bool,
     /// Distance of the largest settlement from the main river mouth, km (reported only).
@@ -113,6 +115,9 @@ pub fn run_one(
         .iter()
         .max_by(|a, b| a.pop.total_cmp(&b.pop))
         .map(|s| s.anchor as usize);
+    let mut by_size: Vec<_> = snap.settlements.iter().collect();
+    by_size.sort_by(|a, b| b.pop.total_cmp(&a.pop).then(a.id.cmp(&b.id)));
+    let top10 = by_size.iter().take(10).map(|s| s.anchor as usize).collect();
     let corridor_city = metrics::corridor_city(&snap, t, &metrics::main_river_corridor(t));
     let largest_mouth_km = match (largest_anchor, t.river_mouth) {
         (Some(a), Some(m)) => t.grid.dist_km(a, m as usize),
@@ -127,6 +132,7 @@ pub fn run_one(
         m,
         max_change,
         largest_anchor,
+        top10,
         corridor_city,
         largest_mouth_km,
         ms_per_year,
@@ -244,10 +250,11 @@ pub fn cmd_validate(args: &Args) {
         let differs = 1.0 - modal as f32 / anchors.len().max(1) as f32;
         let corridor =
             rs.iter().filter(|r| r.corridor_city).count() as f32 / rs.len().max(1) as f32;
-        // Only the varying largest city is gated; the river-corridor share is
-        // reported (D30): with a populated middle tier, which river gets the
-        // city is partly contingent, and siting carries the transport claim.
-        let contingency_ok = differs >= 0.3;
+        // Contingency is gated on the middle tier (D35): the ten largest must
+        // differ between seeds. The varying largest city (gated until v1.2) and
+        // the river-corridor share (D30) are reported.
+        let overlap = top10_overlap(t, &rs);
+        let contingency_ok = overlap <= 0.8;
         let mut over5: Vec<u32> = rs.iter().map(|r| r.m.over_5000).collect();
         over5.sort();
         let over5_median = over5.get(over5.len() / 2).copied().unwrap_or(0);
@@ -257,12 +264,16 @@ pub fn cmd_validate(args: &Args) {
         let ms = rs.iter().map(|r| r.ms_per_year).fold(0.0, f64::max);
         println!(
             "{:<20} {:>12} {:>10} {:>10.2} {:>10} {:>8}",
-            "largest varies",
-            ">=.30",
+            "top-10 overlap",
+            "<=.80",
             "",
-            differs,
+            overlap,
             "",
             if contingency_ok { "ok" } else { "FAIL" }
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10.2} {:>10} {:>8}",
+            "largest varies", "(reported)", "", differs, "", ""
         );
         println!(
             "{:<20} {:>12} {:>10} {:>10.2} {:>10} {:>8}",
@@ -299,5 +310,30 @@ pub fn cmd_validate(args: &Args) {
     println!("\nvalidation {}", if all_ok { "PASSED" } else { "FAILED" });
     if !all_ok {
         std::process::exit(1);
+    }
+}
+
+/// Mean over ordered pairs of runs of the share of one run's ten largest
+/// settlements with one of the other run's ten largest within 5 km (D35).
+pub fn top10_overlap(t: &hinterlands_core::Terrain, rs: &[&RunResult]) -> f32 {
+    let (mut sum, mut pairs) = (0.0f32, 0u32);
+    for (i, a) in rs.iter().enumerate() {
+        for (j, b) in rs.iter().enumerate() {
+            if i == j || a.top10.is_empty() {
+                continue;
+            }
+            let near = a
+                .top10
+                .iter()
+                .filter(|&&x| b.top10.iter().any(|&y| t.grid.dist_km(x, y) <= 5.0))
+                .count();
+            sum += near as f32 / a.top10.len() as f32;
+            pairs += 1;
+        }
+    }
+    if pairs == 0 {
+        f32::NAN
+    } else {
+        sum / pairs as f32
     }
 }

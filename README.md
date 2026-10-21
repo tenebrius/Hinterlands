@@ -12,7 +12,7 @@ just serve          # build and serve on http://localhost:8080
 just run            # one 500-year headless run, metrics every 50 years
 just test           # unit tests, determinism and the golden snapshot hash
 just validate       # the validation table: 3 maps x 20 seeds x 500 years
-just real           # the real-terrain test on Kent (20 seeds, scored against the towns of c.1300)
+just real           # the Kent regression (Roman roads and bridges, 20 seeds, scored against the towns of c.1300)
 ```
 
 ![Map 1, seed 1, year 450](docs/screenshots/map1-seed1-year450.png)
@@ -35,7 +35,7 @@ The world is a grid of 1 km cells (128 × 128 by default) generated from a seed:
 
 **4. Founding** (Artificial Anasazi; VEP; Christaller). Every five years every free cell with a brook (5 km² of drainage) or the coast within 3 km and no settlement within 3 km is scored for free food nearby and water at hand (a brook or river in the cell, or within 1 km), less the shadow of larger neighbours, plus access to markets beyond it, plus noise. The best few become hamlets, peopled from the nearest well-fed settlement. Transport does not place villages; it decides, through trade and growth, which villages become towns.
 
-**5. Failure.** A settlement below 20 people for 10 years, or unfed for 20, is removed; its fields are released and its people move to the nearest fed settlement. Most new foundations fail; the well-placed survive.
+**5. Failure.** An underfed place sheds a third of the people its food does not feed each year (since v1.2). A settlement below 20 people for 12 years is removed; its fields are released and its people move to the nearest fed settlement. Most new foundations fail, and a failed market town falls back to the village its fields feed.
 
 **6. Roads** (Dalgaard et al. 2022). Every ten years the largest trade flows whose path is not yet road become roads, and travel costs are rebuilt.
 

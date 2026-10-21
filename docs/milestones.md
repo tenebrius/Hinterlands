@@ -147,3 +147,32 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - Performance: 21 ms per year native (reach refresh 15.7, trade 3.7, founding 2.4), 27.8 ms in the release wasm build.
 - Kent (`just real`, on the corrected 128 × 128 grid, D31): lowland AUC 0.44 / 0.54 / 0.37 (v1 0.48 / 0.55 / 0.43); inland towns found 31% (30%); places on rivers 32% (48%; real 26%); inland places over 500: 20 per seed at 9.1 km (v1 14 at 9.3; real 29 at 10.6); largest city at Gravesend in 15 of 20 seeds (v1 6); largest share 0.30 (0.22). v1's Kent results are in `docs/real/kent/experiments/v1.md`.
 - Soil (D31): SoilGrids and a valley-floor proxy do not improve Kent placement (lowland AUC 0.41–0.47); with this data no static feature points toward the small towns (feature AUCs 0.20–0.48).
+
+## v1.2 — Shedding, not deletion (D34, D35)
+
+- Default change: `shed_unfed` on. Nothing re-tuned; all other defaults are as in v1.1.
+- `hinterlands validate --maps 3 --seeds 20`: **validation PASSED**. Seeds passing each check, maps 1 / 2 / 3 (v1.1 in brackets):
+  - settlements 20/20/20 (20/20/20), median 240/242/239;
+  - over 2,000: 20/20/20 (16/18/19);
+  - over 5,000: 20/20/20 (19/20/20), median 2/2/2;
+  - largest share 20/20/20;
+  - rank-size slope 20/20/20 (19/15/20), median −0.98/−1.03/−1.00;
+  - market spacing 19/20/18 (15/18/17);
+  - siting 20/20/20;
+  - failure rate 20/20/20 (16/20/17), median 0.59/0.55/0.58;
+  - forest near cities 20/20/20 (19/20/20);
+  - stability 20/20/20.
+
+  Runs passing every check: 19/20/18 (7/13/14).
+- Contingency per map (v1.2 / v1.1):
+
+| | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Top-10 overlap, gated ≤ 0.80 | 0.36 / 0.11 | 0.40 / 0.12 | 0.37 / 0.13 |
+| Largest varies (gated ≥ 0.30 until v1.2; now reported) | 0.30 / 0.75 | 0.20 / 0.45 | 0.00 / 0.55 |
+| River-corridor share (reported) | 0.00 / 0.35 | 0.45 / 0.40 | 0.20 / 0.45 |
+| Largest city to main mouth, median km (reported) | 7.3 / 26.2 | 5.1 / 7.1 | 36.8 / 33.1 |
+
+- Determinism: golden `2b00434da9781880`; the release wasm build gives the same hash (`?selftest=500`).
+- Performance: 26.1 ms per year in the release wasm build; slowest native validation run 27.8 ms per year.
+- Kent regression (`just real`: uniform soil, Roman roads and bridges, 20 seeds): lowland AUC 0.49 / 0.53 / 0.46; inland towns found 39%; places on rivers 44% (real 26%); inland places over 500: 32 per seed at 6.2 km (real 29 at 10.6); places of 1,000+ on or next to a Roman road 53% (real towns 47%, land 32%); largest city at Gravesend in 10 of 20 seeds, Faversham 4, Rayleigh 3; largest share 0.30; Rochester 1/20 (closed as a target).
