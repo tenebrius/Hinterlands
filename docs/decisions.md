@@ -543,3 +543,13 @@ Kind: validation (designer decision); defaults.
 - **Reported:** `b_Y` is identified but tiny (about −0.007). The multiplier's own CV is 0.095. Details are in `docs/market/w1.md`.
 - **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped for the designer.
 Kind: model mechanism; stopped.
+
+## D75 — W1: weather fixed per seed, sd 0.15 at the cells (designer decision). Gate failed; stopped
+- **Rule.** With `local_harvests` on, the node field for `harvest_years` (500) years is drawn at initialisation, before anything else draws from the run's `Rng`. Later years are drawn when reached. The interpolated field is divided by its own sd at each cell, so the multiplier has sd 0.15 at every cell.
+- **Gate: FAILED.**
+  - top-10 vs off: 13 / 10 / 13;
+  - market spacing: 14 / 13 / 16;
+  - failure rate: 8 / 7 / 19, medians about 0.40.
+- **Why.** Noise with mean zero slows early growth, because losses are asymmetric. On map 1 seed 1, population at year 200 is 47.8k with sd 0, 27.6k at 0.095 and 14.8k at 0.15. The shocks then strike a smaller region. Details are in `docs/market/w1.md`.
+- **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped.
+Kind: model mechanism (designer decision); stopped.

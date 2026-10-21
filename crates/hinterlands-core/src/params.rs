@@ -285,6 +285,7 @@ define_params! {
         harvest_km: f32 = 15.0, [1, 200], "Spacing of the field's nodes, km";
         harvest_min: f32 = 0.5, [0, 1], "Least yearly yield multiplier";
         harvest_max: f32 = 1.5, [1, 3], "Greatest yearly yield multiplier";
+        harvest_years: u32 = 500, [0, 5000], "Years of weather drawn at the start of a run, so a seed's weather is fixed (D75)";
     }
     "Mills" => {
         mills: bool = true, [0, 1], "A settlement with a stream or river among its fields has a mill (D56)";

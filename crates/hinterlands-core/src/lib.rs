@@ -78,13 +78,16 @@ impl Sim {
         let terrain_hash = terrain.hash();
         let mut state = State::empty(&terrain, &params);
         init::populate(&mut state, &terrain, &params);
+        let mut rng = rng_from_seed(sim_seed);
+        // The weather is drawn first, so a seed keeps it whatever else draws (D75).
+        systems::harvest::init(&mut state, &terrain, &params, &mut rng);
         Self {
             terrain,
             terrain_hash,
             state,
             params,
             sim_seed,
-            rng: rng_from_seed(sim_seed),
+            rng,
         }
     }
 

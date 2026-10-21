@@ -390,6 +390,9 @@ pub struct State {
     /// This year's yield multiplier per cell (v6 W1); empty unless `local_harvests`.
     #[serde(default)]
     pub harvest: Vec<f32>,
+    /// The weather's node values, year after year (D75); empty unless `local_harvests`.
+    #[serde(default)]
+    pub harvest_nodes: Vec<f32>,
     /// Outside ports as water-layer nodes (v5, D64); empty unless `outside_ports`.
     #[serde(default)]
     pub outside: Vec<u32>,
@@ -537,6 +540,7 @@ impl State {
             famine_until: 0,
             famine_loss: 0.0,
             harvest: Vec::new(),
+            harvest_nodes: Vec::new(),
             outside_trade: (0.0, 0.0),
             outside: if p.outside_ports {
                 outside_ports(t)
