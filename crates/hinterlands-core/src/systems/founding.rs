@@ -350,7 +350,20 @@ fn found_works(state: &mut State, t: &Terrain, p: &Params) {
                     .map(|s| {
                         let c = s.reach.cost_to_cell(cell);
                         if c.is_finite() {
-                            trade::demand(s, p, good) * libm::expf(-b * c)
+                            // Under goods by price (D72) demand counts at its
+                            // value: the buyer's latest price for the good, or
+                            // 1 where no working site reaches it.
+                            let price = if p.market_goods {
+                                let v = s.price[1 + good.index()];
+                                if v > 0.0 {
+                                    v
+                                } else {
+                                    1.0
+                                }
+                            } else {
+                                1.0
+                            };
+                            price * trade::demand(s, p, good) * libm::expf(-b * c)
                         } else {
                             0.0
                         }
