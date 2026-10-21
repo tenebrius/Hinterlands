@@ -131,25 +131,29 @@ pub fn land_data(t: &Terrain) -> Vec<f32> {
     out
 }
 
-/// Per cell for this year: built up, ruined, inside a city's walls, and how fresh the ruin is.
+/// Per cell for this year: built up, ruined, inside a city's walls, and either
+/// how fresh the ruin is or, on a built cell, whether its settlement is a town
+/// or larger (which gets quays where it meets the sea).
 fn town_data(v: &ViewState) -> Vec<f32> {
     let snap = &v.snapshot;
-    let cities: std::collections::BTreeSet<u32> = snap
-        .settlements
-        .iter()
-        .filter(|s| s.rank == Rank::City)
-        .map(|s| s.id)
-        .collect();
+    let rank: std::collections::BTreeMap<u32, Rank> =
+        snap.settlements.iter().map(|s| (s.id, s.rank)).collect();
     let mut out = Vec::with_capacity(snap.built.len() * 4);
     for (&b, &r) in snap.built.iter().zip(&snap.ruin) {
         let built = b != NONE;
         let ruin = !built && r > 0;
-        let walled = built && cities.contains(&b);
+        let rank = rank.get(&b).copied();
+        let walled = built && rank == Some(Rank::City);
+        let last = if built {
+            (rank >= Some(Rank::Town)) as u8 as f32
+        } else {
+            (r as f32 / 100.0).min(1.0)
+        };
         out.extend_from_slice(&[
             built as u8 as f32,
             ruin as u8 as f32,
             walled as u8 as f32,
-            (r as f32 / 100.0).min(1.0),
+            last,
         ]);
     }
     out

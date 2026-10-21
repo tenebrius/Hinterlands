@@ -123,48 +123,16 @@ fn centre(v: &ViewState, cell: u32) -> Vec2 {
 
 /// Splits the network into chains that run from pin to pin, then smooths each.
 fn chains(v: &ViewState, net: &Network) -> Vec<Chain> {
-    let mut adj: BTreeMap<(Class, u32), Vec<u32>> = BTreeMap::new();
-    for &(a, b, c) in net.edges.keys() {
-        adj.entry((c, a)).or_default().push(b);
-        adj.entry((c, b)).or_default().push(a);
-    }
     let key = |a: u32, b: u32, c: Class| (a.min(b), a.max(b), c);
-    let mut seen: BTreeSet<(u32, u32, Class)> = BTreeSet::new();
-    let mut walks: Vec<(Class, Vec<u32>)> = Vec::new();
-    let mut walk = |c: Class, from: u32, to: u32, seen: &mut BTreeSet<(u32, u32, Class)>| {
-        let mut cells = vec![from, to];
-        seen.insert(key(from, to, c));
-        let (mut prev, mut cur) = (from, to);
-        while !net.pins.contains(&cur) {
-            let Some(&next) = adj[&(c, cur)].iter().find(|&&x| x != prev) else {
-                break;
-            };
-            if !seen.insert(key(cur, next, c)) {
-                break;
-            }
-            cells.push(next);
-            (prev, cur) = (cur, next);
-        }
-        walks.push((c, cells));
-    };
-    for (&(c, node), next) in &adj {
-        if net.pins.contains(&node) {
-            for &to in next {
-                if !seen.contains(&key(node, to, c)) {
-                    walk(c, node, to, &mut seen);
-                }
-            }
-        }
-    }
-    // Whatever is left are closed loops with no pin on them.
-    for &(a, b, c) in net.edges.keys() {
-        if !seen.contains(&(a, b, c)) {
-            walk(c, a, b, &mut seen);
-        }
-    }
-    walks
-        .into_iter()
-        .map(|(class, cells)| {
+    let mut out = Vec::new();
+    for class in [Class::Water, Class::Track, Class::Road] {
+        let edges: BTreeSet<(u32, u32)> = net
+            .edges
+            .keys()
+            .filter(|e| e.2 == class)
+            .map(|&(a, b, _)| (a, b))
+            .collect();
+        for cells in lines::chains(&edges, &net.pins) {
             let flows: Vec<f32> = cells
                 .windows(2)
                 .map(|w| net.edges[&key(w[0], w[1], class)])
@@ -183,14 +151,15 @@ fn chains(v: &ViewState, net: &Network) -> Vec<Chain> {
             for p in &pts {
                 bounds.extend_with(p.to_pos2());
             }
-            Chain {
+            out.push(Chain {
                 class,
                 pts,
                 flow,
                 bounds: bounds.expand(0.5),
-            }
-        })
-        .collect()
+            });
+        }
+    }
+    out
 }
 
 /// Draws a polyline whose width and colour vary along it, as runs of one style.

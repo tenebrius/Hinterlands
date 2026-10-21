@@ -76,7 +76,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        crate::style::install(&cc.egui_ctx);
         let sim = SimHandle::new(1, 1, Params::default());
         let layers = layers::all();
         let on = layers
@@ -181,7 +182,7 @@ impl App {
         }
 
         let painter = ui.painter_at(rect);
-        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(20, 24, 30));
+        painter.rect_filled(rect, 0.0, crate::style::MAP_SURROUND);
         let d = DrawCtx {
             view: &self.view,
             camera: cam,
@@ -231,11 +232,16 @@ impl eframe::App for App {
             .show(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for p in self.panels.iter_mut() {
-                        egui::CollapsingHeader::new(p.title())
-                            .default_open(p.default_open())
-                            .show(ui, |ui| {
-                                msgs.extend(p.ui(ui, &self.view, &layer_names));
-                            });
+                        egui::CollapsingHeader::new(
+                            egui::RichText::new(p.title())
+                                .font(crate::style::serif(17.0))
+                                .color(crate::style::INK),
+                        )
+                        .id_salt(p.title())
+                        .default_open(p.default_open())
+                        .show(ui, |ui| {
+                            msgs.extend(p.ui(ui, &self.view, &layer_names));
+                        });
                     }
                     if !self.view.status.is_empty() {
                         ui.separator();

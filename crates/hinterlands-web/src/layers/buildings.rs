@@ -220,11 +220,12 @@ impl Layer for BuildingsLayer {
         let s = (0.3 * z).clamp(4.0, 22.0);
         let p = d.painter;
         let thin = Stroke::new(1.0, OUTLINE);
-        // The relief shader draws the walls along the smoothed footprint.
+        // The relief shader draws the walls along the smoothed footprint and the
+        // quays along the smoothed shore; the river layer embanks rivers in towns.
         let walls = !super::relief::active(v);
         for gl in &self.glyphs {
             match *gl {
-                Glyph::Wall(..) | Glyph::Tower(_) if !walls => {}
+                Glyph::Wall(..) | Glyph::Tower(_) | Glyph::Quay(..) if !walls => {}
                 Glyph::Wall(a, b) => {
                     p.line_segment(
                         [to(a), to(b)],

@@ -1,12 +1,15 @@
 //! Rivers as lines: each stream and river follows its drainage from cell to
 //! cell, smoothed, widening with the water it carries. Built once per terrain.
+//! Where a river runs through a town or city it is embanked with quays.
 
 use super::{lines, DrawCtx, Layer, Swatch};
 use egui::{Color32, Pos2, Rect, Shape, Stroke, Vec2};
+use hinterlands_core::state::{Rank, NONE};
 use hinterlands_core::terrain::{Terrain, Water};
 
 const STREAM: Color32 = Color32::from_rgb(74, 124, 186);
 const NAVIGABLE: Color32 = Color32::from_rgb(44, 88, 168);
+const QUAY: Color32 = Color32::from_rgb(92, 64, 40);
 
 /// One unbroken run of river between sources, confluences and the sea.
 struct Chain {
@@ -22,6 +25,9 @@ struct Chain {
 pub struct RiversLayer {
     chains: Vec<Chain>,
     key: Option<u64>,
+    /// Per chain point: inside a town or larger this year, so embanked.
+    quays: Vec<Vec<bool>>,
+    quay_key: Option<(u64, u32)>,
 }
 
 /// Channel width in km for a drainage flux: wide on the lower river, a thread at the source.
@@ -127,6 +133,30 @@ impl Layer for RiversLayer {
             self.chains = chains(t);
             self.key = Some(v.terrain_version);
         }
+        let year_key = (v.terrain_version, v.snapshot.year);
+        if self.quay_key != Some(year_key) {
+            let snap = &v.snapshot;
+            let towns: std::collections::BTreeSet<u32> = snap
+                .settlements
+                .iter()
+                .filter(|s| s.rank >= Rank::Town)
+                .map(|s| s.id)
+                .collect();
+            let g = t.grid;
+            let in_town = |p: Vec2| {
+                let (x, y) = (p.x.floor() as i32, p.y.floor() as i32);
+                g.in_bounds(x, y) && {
+                    let b = snap.built[g.idx(x, y)];
+                    b != NONE && towns.contains(&b)
+                }
+            };
+            self.quays = self
+                .chains
+                .iter()
+                .map(|c| c.pts.iter().map(|&p| in_town(p)).collect())
+                .collect();
+            self.quay_key = Some(year_key);
+        }
         let z = d.camera.zoom;
         // Spring high water widens every channel.
         let flood = if v.layer_on("seasons") && v.season_index(d.time) == 0 {
@@ -140,6 +170,25 @@ impl Layer for RiversLayer {
             d.camera.to_map(d.rect, d.rect.min).to_pos2(),
             d.camera.to_map(d.rect, d.rect.max).to_pos2(),
         );
+        // Embankments first, under the water, once a town is drawn street by street.
+        if v.layer_on("buildings") && z >= 4.0 {
+            for (c, q) in self.chains.iter().zip(&self.quays) {
+                if !c.bounds.intersects(view) {
+                    continue;
+                }
+                for k in 1..c.pts.len() {
+                    if q[k - 1] && q[k] {
+                        let w = (c.width[k] * z * flood).max(1.6) + 3.0;
+                        let (a, b) = (
+                            d.camera.to_screen(d.rect, c.pts[k - 1]),
+                            d.camera.to_screen(d.rect, c.pts[k]),
+                        );
+                        d.painter.line_segment([a, b], Stroke::new(w, QUAY));
+                        d.painter.circle_filled(b, w / 2.0, QUAY);
+                    }
+                }
+            }
+        }
         for c in &self.chains {
             if !c.bounds.intersects(view) {
                 continue;
