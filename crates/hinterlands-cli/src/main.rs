@@ -1,6 +1,7 @@
 //! Headless runner: runs, validation, renders, benchmarks and ground-truth scoring.
 
 mod png;
+mod probe;
 mod render;
 mod sweep;
 mod truth;
@@ -456,6 +457,7 @@ fn main() {
         "sweep" => sweep::cmd_sweep(&argv[1..], &args),
         "search" => sweep::cmd_search(&argv[1..], &args),
         "render" => cmd_render(&args),
+        "probe" => probe::cmd_probe(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),
         "params" => cmd_params(),

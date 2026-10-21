@@ -355,3 +355,27 @@ One round, no model change, nothing tuned, roads + bridges configuration, the sa
 3. The same 20 seeds with the shadow off, as in the roads diagnostic, plus bridges: Rochester count and on-road share.
 
 **Stop.** Report, then stop. Nothing is tuned whatever the result. The next round after this is the agreed step (2), the outside world as a seller, to be pre-registered by the designer.
+
+### Diagnostic round at the Rochester bridge (approved, no model change)
+
+`hinterlands probe` (new, read-only) follows every settlement founded within 3 km of the bridge cells (54, 57) and (55, 57). At the founding steps of years 100, 250 and 500 it scores those cells on a copy of the run advanced to the moment founding runs. Configuration: v1.1 defaults, roads + bridges (`map-bridges.json`), seeds 1–20. Raw output: `docs/real/kent/experiments/probe-rochester.md`.
+
+**(a) Settlements at the bridge.** Founding does choose the site:
+- 35 settlements were founded within 3 km of the bridge, in 14 of the 20 seeds, most of them in the first 20 years.
+- 15 grew to 1,000 or more (peaks 1,020–4,280).
+- **14 of those 15 were then removed by the failure rule as unfed for 20 years** ("Starved"). Six of the removals fall in years 209–230, the rest in years 331–485.
+- Only one town of 1,000+ survives at year 500 (seed 15, 2,162). In all, 11 settlements near the bridge are alive at year 500, nearly all small.
+
+**(b) The founding score at the bridge cells** (medians over 20 seeds and both cells; the score shown is without noise, and noise adds up to 0.31):
+
+| Step | Cells that are candidates | Food | Water | Shadow | Access | Score | Best score of the step | Threshold |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Year 100 | 20 of 40 | 0.61 | 1.14 | 1.33 | 0.41 | 0.79 | 1.83 | 0.33 |
+| Year 250 | 24 of 40 | 0.64 | 1.14 | 29.9 | 8.05 | −20.0 | 5.06 | 0.33 |
+| Year 500 | 30 of 40 | 0.64 | 1.14 | 31.3 | 10.4 | −16.9 | 9.17 | 0.33 |
+
+Early on the site clears the threshold but loses to better sites in the same step. Founding takes up to 6 sites per step, so it is still chosen in most seeds. From year 250 on, the cost-based shadow at the bridge is 10 to 210. The Medway, the Thames and the roads put much of the region within travel cost 10, so a site there cannot be founded again once its first town has gone.
+
+**(c) Shadow off (both founding shadow and drain), roads + bridges:** Rochester 3 of 20 seeds (median largest place within 3 km: 656); on or next to a road 28% of all settlements and 23% of places of 1,000+. Near the bridge, 91 settlements were founded across the 20 seeds, 24 peaked at 1,000+, 32 starved, and 58 were alive at year 500.
+
+**Reading.** The failure at Rochester is not founding. Bridged and on Watling Street, the site is chosen early in most seeds, and its towns grow to thousands. They are then deleted whole by the failure rule ("unfed for 20 years"), which was written for failing hamlets. A town of 2,846 that runs short of food is removed with all its people, rather than shrinking to the size its food supports. The shrink rate (`r_shrink` 0.02 × shortfall a year) is too slow to bring a starving town back to fed within the 20 years. Once the town has gone, the cost-based shadow keeps the site empty. Why towns at the bridge run short around years 210–230 (competition for the food that feeds their market people, presumably from the tidal-Thames city growing at the same time) is not measured here. No change was tried.
