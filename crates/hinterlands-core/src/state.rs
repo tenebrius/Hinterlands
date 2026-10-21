@@ -183,6 +183,9 @@ pub struct Settlement {
     pub mill: bool,
     /// Planted by a lord (D63).
     pub planted: bool,
+    /// Shadow prices, grain units (v6 S0, D69): grain, salt, iron, stone,
+    /// imports; zero until `market_shadow` solves them.
+    pub price: [f32; 5],
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -218,6 +221,7 @@ impl Settlement {
             goods_in: 0.0,
             mill: false,
             planted: false,
+            price: [0.0; 5],
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
             food_ratio: 1.0,
@@ -343,6 +347,15 @@ pub struct State {
     pub last_plague: u32,
     /// Anchors of the harbours that have silted, in order (D60; for the view).
     pub silted_ports: Vec<u32>,
+    /// Shadow market (D69): the outside ports' grain prices, the year's
+    /// unmatched excess demand per good as a share of demand, and the grain
+    /// arcs carrying at least one unit (from, to, flow, price gap, transport).
+    #[serde(default)]
+    pub port_price: Vec<f32>,
+    #[serde(default)]
+    pub market_residual: [f32; 5],
+    #[serde(default)]
+    pub market_arcs: Vec<(u32, u32, f32, f32, f32)>,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -485,6 +498,9 @@ impl State {
             silt_year: 0,
             last_plague: NONE,
             silted_ports: Vec::new(),
+            port_price: Vec::new(),
+            market_residual: [0.0; 5],
+            market_arcs: Vec::new(),
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],

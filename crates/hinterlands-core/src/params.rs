@@ -236,6 +236,18 @@ define_params! {
         import_demand: f32 = 0.07, [0, 2], "Imports wanted a year per market person, grain units";
         rho_import: f32 = 10.0, [0.1, 50], "Value density of imports: distance decay is beta / rho";
     }
+    "Market" => {
+        market_shadow: bool = false, [0, 1], "Solve shadow prices each year beside the trade; nothing feeds back (v6 S0, D69)";
+        market_tau: f32 = 0.002, [0.0001, 0.05], "Transport price of grain per unit of travel cost, as a share of its value (Clark: about 0.2% per km)";
+        market_passes: u32 = 8, [1, 200], "Balancing passes a year";
+        market_damping: f32 = 0.7, [0.05, 1], "Share of each Newton step taken";
+        market_step: f32 = 1.0, [0.01, 2], "Largest change in log price per pass";
+        elast_grain: f32 = 0.75, [0, 3], "Price elasticity of grain demand (Clark)";
+        elast_salt: f32 = 0.2, [0, 3], "Price elasticity of salt demand";
+        elast_iron: f32 = 0.5, [0, 3], "Price elasticity of iron demand";
+        elast_stone: f32 = 1.0, [0, 3], "Price elasticity of stone demand";
+        elast_import: f32 = 1.0, [0, 3], "Price elasticity of import demand";
+    }
     "Events" => {
         events_mode: u32 = 1, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";
         famine_year: u32 = 215, [0, 2000], "Year the Great Famine begins (historical; 1315)";

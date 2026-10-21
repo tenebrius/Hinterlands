@@ -456,3 +456,30 @@ Kind: rendering and tooling.
   - the panel list keeps the events and goods panels, with the chronicle second as R8 has it.
 - **Check.** The model is unchanged: `?selftest=500` gives `4ce58fae34550933` (27.4 ms/year).
 Kind: rendering (frontend merge).
+
+## D69 — v6 S0: shadow prices (designer's brief, D70 plan)
+- **Switch.** `market_shadow`, off by default. It runs after trade, writes only settlements' `price` and the market records in `State`, and nothing reads them back. The snapshot carries the prices only when the switch is on.
+- **Form.** An entropy-regularised spatial price equilibrium (decision 3), with one price per place and good:
+  - flows `x_ij = m_j · exp(θ (p_j − p_i − t_ij))`, with `t_ij = τ_g c_ij`, `τ_g = market_tau / ρ_g` (`market_tau` 0.002, Clark's carriage);
+  - `θ = β / market_tau`, so that at equal prices the flows fall off with cost as the gravity trade does;
+  - `m_j = W_j^α` for grain (decision 4, the market premium), and 1 for goods.
+- **Supply and demand:**
+  - **Grain:** each place's whole harvest; demand is need × `p^(−ε)`.
+  - **Salt, iron and stone:** supply is what the sites sold this year; demand is the v2 demand.
+  - **Imports:** sold by the ports without limit at a price of 1.
+  - **Ports' grain:** they buy their fixed `outside_grain`.
+  - **Elasticities:** grain 0.75, salt 0.2, iron 0.5, stone 1.0 (the brief), imports 1.0 (mine; the brief gives none).
+- **Solver.** `market_passes` (8) Furness passes, warm-started from last year. Each pass:
+  1. sets the price level so that the region's demand equals its supply, by bisection;
+  2. shares each supplier's supply among its outlets by a max-subtracted softmax;
+  3. moves each buyer's price by a damped Newton step (`market_damping` 0.7, at most `market_step` 1.0).
+
+  The level step is needed because a buyer's own step only moves it against its rivals. Without it, a region-wide famine did not converge.
+- **Result** (report in `docs/market/s0.md`):
+  - 44.9 ms/year in wasm, with the same hash native and in the browser (`7f0884378d30344a`);
+  - `b_P` 0.98–1.15 and R² 0.66–0.98, inside the ranges in 9 of 9 runs;
+  - `b_Y` within ±0.03 of zero, and slightly positive in 5 of 9, because the model has no local yield variation;
+  - price gaps about a quarter of transport on the trading arcs;
+  - 1316 prices about double 1310's, region-wide.
+- **Tooling.** The viewer's `?selftest=N&shadow=1` times it in the browser.
+Kind: model mechanism behind a switch (designer's brief), off.

@@ -6,6 +6,7 @@ pub mod events;
 pub mod failure;
 pub mod founding;
 pub mod growth;
+pub mod market;
 pub mod production;
 pub mod roads;
 pub mod trade;

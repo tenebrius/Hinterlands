@@ -440,3 +440,52 @@ pub fn cmd_desertion(args: &Args) {
         println!("place {map} {seed} {id} {pop:.0} {nf} {fy:.3} {ly:.3} {y} {c} {d:.1}");
     }
 }
+
+/// Shadow prices (v6 S0): every settlement each year from `--from` (default 1),
+/// `price seed year id x y grain salt iron stone imports yield pop`, where
+/// yield is the harvest per cultivated cell; each year a line
+/// `market seed year residuals...`; and at `--arcs` years the grain arcs,
+/// `arc seed year from to flow gap transport`.
+pub fn cmd_prices(args: &Args) {
+    let mut sim = make_sim(args);
+    if !sim.params.market_shadow {
+        die("prices needs --params with market_shadow true");
+    }
+    let years = args.u64("years", 500) as u32;
+    let from = args.u64("from", 1) as u32;
+    let arcs_at: Vec<u32> = args
+        .str("arcs")
+        .unwrap_or("")
+        .split(',')
+        .filter(|v| !v.is_empty())
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let seed = sim.sim_seed;
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if y < from {
+            continue;
+        }
+        let g = sim.terrain.grid;
+        let r = sim.state.market_residual;
+        println!(
+            "market {seed} {y} {:.4} {:.4} {:.4} {:.4} {:.4}",
+            r[0], r[1], r[2], r[3], r[4]
+        );
+        for s in &sim.state.settlements {
+            let (x, yy) = g.xy(s.anchor as usize);
+            let yld = s.food_prod / s.fields.len().max(1) as f32;
+            let pr = s.price;
+            println!(
+                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0}",
+                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop
+            );
+        }
+        if arcs_at.contains(&y) {
+            for &(a, b, x, gap, t) in &sim.state.market_arcs {
+                println!("arc {seed} {y} {a} {b} {x:.2} {gap:.5} {t:.5}");
+            }
+        }
+    }
+}
