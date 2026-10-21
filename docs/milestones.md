@@ -353,3 +353,18 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - **On-road share:** 29%; 41% for places of 1,000 or more.
   - **Inland places over 500:** 10 per seed at 12.0 km (real 29 at 10.6).
   - **Lowland AUC:** 0.52 / 0.55 / 0.50.
+
+## v5 release — frozen
+- **Golden `4ce58fae34550933`, frozen.** Native and release wasm (`?selftest=500`, 27.4 ms/year after the R8 merge; gate under 50).
+- **Final checks, all on the frozen model:**
+  - `just test` passes;
+  - `just validate` (Historical, 20 seeds a map) PASSED. Every check holds, and runs passing every check are 14 / 17 / 17. Outside trade is 5.2–5.3%.
+  - the Kent regression (20 seeds, `map-outside.json`) is unchanged from the v5 milestone: Watling Street 24%, the largest city near Gravesend in 17 seeds, on-road share 29%, inland places over 500 at 12.0 km (10 per seed), lowland AUC 0.52 / 0.55 / 0.50.
+- **What the release added, with no new mechanisms:**
+  - the README rewritten as one page on the whole model, with a source for each mechanism;
+  - `docs/parameters.md` regenerated from `Params` (it already matched);
+  - the "What you are watching" panel, open on first load;
+  - coastal sea lanes bundled into one lane per coast;
+  - settlement names given priority over feature names;
+  - the graphics session's R8 merged (D68), with notes for it in `docs/rendering.md`.
+- **Screenshots** (`docs/screenshots/release/`): map 1, seed 1 at 1200, 1349, 1450 and 1600, and Kent at 1600 (the CLI's cell render).
