@@ -325,3 +325,31 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - largest city: Gravesend 13, Milton Regis 4, Faversham 3; its share is 0.33 (0.28).
 
   Scores are in `docs/real/kent-v4/scores.md`.
+
+## v5 — The outside world: outside ports, imports, better ships (D64–D67)
+- **On by default:**
+  - outside ports at the open-sea edges, one per side, at the busiest coast (D64);
+  - each port buys 700 grain a year and is the only seller of imports, 0.07 per market person, ρ 10 (D64);
+  - founding re-tuned for ports: `shadow_weight` 4.53, `found_threshold` 0.449, `noise` 0.324 (D66);
+  - sea cost falling 30% from 1300 to 1500 (D65).
+- **D25's outside world is retired.**
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Every v4 check holds; the outside-trade check is 0.052 / 0.053 / 0.052, 20/20 on every map. Runs passing every check: 14 / 17 / 17.
+  - Map 1 market spacing passed 15/20 at the D66 re-tune and holds with ships.
+- **Reported:**
+  - coastal share of people in places over 2,000, 1300 → 1600: 0.46 → 0.39 / 0.20 → 0.22 / 0.52 → 0.47 (without ships: 0.40 / 0.22 / 0.41);
+  - top ten of 1400 by 1600: mean rank change 4.0–4.3, with 8 kept.
+- **Determinism:**
+  - golden `4ce58fae34550933`;
+  - the release wasm build gives the same hash (`?selftest=500`, 26.2 ms/year);
+  - the version files reproduce every earlier hash, from v1 `afd6c175b193443b` to v4 `2c5e9c5c90ab1d43` and O1 `8ee85c10266b1dd2`.
+- **View:**
+  - a new layer, `layers/outside.rs`: wine-red import routes and ships at the outside ports;
+  - the 1450 chronicle line.
+
+  Screenshot: `docs/screenshots/v5-year450.png`.
+- **Kent** (20 seeds, `map-outside.json` with the Continent off Dover and the North Sea off the Thames mouth):
+  - **Watling Street cells still road at 1600: median 24%** (18–32%), against about 26% under v4 (3 seeds). The trade through Dover does not keep it alive: the ports' grain and imports ride sea paths from the nearest coast, not the road.
+  - **Largest city's site:** near Gravesend in 17 seeds, Milton Regis 2, Faversham 1; its share is 0.35. The real largest town, London, lies at the map's western edge and is not reproduced.
+  - **On-road share:** 29%; 41% for places of 1,000 or more.
+  - **Inland places over 500:** 10 per seed at 12.0 km (real 29 at 10.6).
+  - **Lowland AUC:** 0.52 / 0.55 / 0.50.

@@ -426,3 +426,24 @@ Kind: model mechanism (designer's specification).
 - **Reproducibility.** `data/real/experiments/v4.json` pins the old founding values with ports off and reproduces v4's `2c5e9c5c90ab1d43`. The earlier version files pin them too.
 - **Golden with outside ports, before O2:** `8ee85c10266b1dd2`.
 Kind: change to the defaults (designer decision).
+
+## D65, gated — better ships on
+- **Setting.** `ship_gain` is 0.3, on by default.
+- **Full gate** (Historical, 20 seeds a map, outside ports on): **PASSED**. Every check holds. Outside trade is 0.052 / 0.053 / 0.052. Runs passing every check: 14 / 17 / 17.
+- **Coastal share of the people in places over 2,000, 1300 → 1600:**
+  - with ships: 0.46 → 0.39, 0.20 → 0.22, 0.52 → 0.47;
+  - without (`ship_gain` 0): 0.46 → 0.40, 0.20 → 0.22, 0.52 → 0.41.
+
+  Ships raise the coastal share at 1600 only on map 3, by 6 points; maps 1 and 2 are unchanged. The fall from 1300 happens with or without ships.
+- **Top ten of 1400 by 1600:** mean rank change 4.0 / 4.2 / 4.3, with 8 still in the top ten.
+- **Golden** `4ce58fae34550933`. `data/real/experiments/v5-o1.json` (ships off) gives O1's `8ee85c10266b1dd2`.
+Kind: model mechanism (designer's specification).
+
+## D67 — v5 O3: the outside world in the view
+- **New layer, `layers/outside.rs`.**
+  - Imports are drawn as a sixth route colour, wine red. Only the 25 largest import flows are drawn, thin and partly transparent: every buyer has its own import path, and drawing all of them floods the sea.
+  - Each outside port is a ship at the map edge.
+- **Chronicle.** "1450. Larger ships now sail the coast." comes from the ships event at the midpoint of the drift.
+- **Kent.** `data/real/kent/map-outside.json` is `map-resources.json` plus `outside_file`.
+- **Watling Street mask.** `tools/real/watling.py` writes `watling.asc`: the Roman road cells within 2 km of the line London – Rochester – Canterbury – Dover, 157 cells. `hinterlands roads --mask` reports the share still road.
+Kind: rendering and tooling.
