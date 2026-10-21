@@ -180,6 +180,14 @@ impl App {
         if cam_changed {
             out.push(Msg::SetCamera(cam));
         }
+        // The hover card follows the cursor, except while the map is being dragged.
+        if self.view.layer_on("hovercard") && !resp.dragged() {
+            if let Some(cell) = resp.hover_pos().and_then(|p| cam.pick(rect, g.w, g.h, p)) {
+                let view = &self.view;
+                resp.clone()
+                    .on_hover_ui_at_pointer(|ui| crate::hover::card(ui, view, cell));
+            }
+        }
 
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, crate::style::MAP_SURROUND);
