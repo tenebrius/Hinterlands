@@ -618,3 +618,40 @@ The town pattern against v2 with the importer's random sites:
 - Largest city: Gravesend in 10 seeds and Faversham in 10, against Gravesend 10 and Rochford 8. Faversham stands beside the Seasalter–Graveney pans. The largest place's share is 0.25, against 0.28.
 
 With the real sites, the largest city moves from the Essex shore to the north Kent salt coast in half the seeds. The other measures stay within seed noise of v2.
+
+## v3(a): the shadow in km. Stopped: validation not passed by tuning
+**Change** (D52). The founding shadow and the growth drain are measured in straight-line km between anchors against `shadow_radius_km`; access stays in travel cost.
+
+**Untuned** (radius 10 km, v2.1 values). Validation fails on every map:
+- about 400 settlements, against a target of 150–350;
+- market spacing about 5 km, against 8–15;
+- failure rate about 0.3, against 0.40–0.70.
+
+A travel-cost radius of 10 reached further than 10 km, so the km shadow is far weaker.
+
+**Tuning.** Seven rounds were run, with searches and sweeps over `shadow_radius_km`, `shadow_weight`, `shadow_drain`, `found_threshold`, `noise`, α, ε and K, on 1–3 seeds a map. The best candidate is `data/real/experiments/v3a-candidate.json`: radius 15.2 km, shadow weight 4.69, drain 0.0106, threshold 0.44, noise 0.48, ε 0.124, K 3.17. Full validation of it, 20 seeds a map:
+
+| Map | Market spacing (median, seeds passing) | Failure rate (median, seeds passing) | Runs passing every check |
+| --- | --- | --- | ---: |
+| 1 | 7.2 km, **8/20** | 0.68, 18/20 | 7/20 |
+| 2 | 9.1 km, 15/20 | 0.63, 19/20 | 13/20 |
+| 3 | 8.9 km, **12/20** | 0.63, 20/20 | 12/20 |
+
+Every other check passes. Top-10 overlap is 0.44 / 0.44 / 0.54, and the over-5,000 median is 3 / 3 / 2.
+
+**What blocks it.** On map 1, spacing and failure rate pull against each other:
+- **A larger radius.** It spaces markets, but the growth drain then reaches every small place within it. Small foundings die: map 1 seed 1 has 386 failures, nearly all with a peak under 100, against 168 under v2.1. The failure rate goes above 0.70, and at radius 21 km or more the hierarchy flattens (slope above −0.8).
+- **Fewer failures.** A higher threshold or a weaker drain lowers them, but places over 500 then form about 6 km apart.
+- **The cause.** The founding shadow scales with the neighbour's population, so a place of a few hundred casts almost none, and new places form beside mid-sized ones that later pass 500.
+
+**Kent with the candidate** (not validated; 20 seeds, `map-resources.json`):
+- **Roads, the pre-registered test.** Settlements on or next to a Roman road: **39%** (1,000 or more: 50%), against 32% of land and 23% under v2.1. The expectation is met.
+- **Inland spacing.** Inland places over 500: 23 per seed at 6.0 km, against the real 10.6. This is unchanged from v2.1.
+- **Lowland AUC.** 0.52 / 0.62 / 0.46, against 0.49 / 0.53 / 0.46.
+- **Largest city.** Faversham 17, Gravesend 2.
+
+**Options for the designer:**
+1. Give the growth drain its own radius, shorter (for example 8 km), and keep the founding shadow at 15–18 km. The two radii do different jobs: the drain was the main source of the extra failures.
+2. Add a floor to the founding shadow, so that any settlement within the radius casts at least `shadow_weight × 0.5`, whatever its size.
+
+Either is a change to the specification.

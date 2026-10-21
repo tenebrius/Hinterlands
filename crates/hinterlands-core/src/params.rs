@@ -209,7 +209,7 @@ define_params! {
         w_food: f32 = 1.0950333, [0, 5], "Score weight of free food within the cultivation radius";
         shadow_weight: f32 = 4.3475847, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
         shadow_radius: f32 = 10.0, [0, 40], "Travel cost within which a settlement casts a shadow (without shadow_km)";
-        shadow_km: bool = true, [0, 1], "The urban shadow, in founding and in the growth drain, is measured in straight-line km between anchors (D52)";
+        shadow_km: bool = false, [0, 1], "The urban shadow, in founding and in the growth drain, is measured in straight-line km between anchors (D52)";
         shadow_radius_km: f32 = 10.0, [0, 40], "Distance, km, within which a settlement casts a shadow (with shadow_km)";
         access_weight: f32 = 0.3, [0, 5], "Market access per 1,000 people beyond the shadow radius";
         access_decay: f32 = 0.05, [0, 0.5], "Decay of market access per unit cost";

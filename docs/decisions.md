@@ -258,3 +258,9 @@ Kind: data and an importer option (reported, not gated, per the foundation's pla
 - Gate re-run, 20 seeds a map: validation passed, with every check at 19/20 or better. Iron output per held site at year 500, median (4 seeds a map): 25 / 18 / 28, against 47 / 38 / 43 without coppice. Forest within 5 km of iron sites: 0.19 / 0.22 / 0.17 against a land mean of 0.46 / 0.45 / 0.44; it was 0.00 without coppice.
 Golden hash: `f67bf8565c500fda`, native and in the browser.
 Kind: model mechanism behind a switch (designer decision).
+
+## D52 — v3(a): the shadow in km, behind a switch (off until validation passes)
+- With `shadow_km`, the founding shadow and the growth drain use the straight-line distance between anchors, against `shadow_radius_km`. The access term stays in travel cost and counts only settlements outside the shadow. The drain still comes only from trade partners.
+- The switch is off by default because validation has not yet passed with it (see `docs/real-terrain-experiments.md`, "v3(a)"). The golden hash is unchanged at `f67bf8565c500fda`.
+- `data/real/experiments/v3a-candidate.json` holds the best values found so far. The older experiment files pin `shadow_km` off.
+Kind: model mechanism behind a switch (designer's specification); the default awaits the designer.

@@ -1,0 +1,10 @@
+{
+  "shadow_km": true,
+  "shadow_radius_km": 15.215086,
+  "shadow_weight": 4.6874924,
+  "shadow_drain": 0.010575184,
+  "found_threshold": 0.4413028,
+  "noise": 0.47511095,
+  "epsilon": 0.123899415,
+  "k_maint": 3.1675544
+}
