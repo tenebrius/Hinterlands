@@ -72,7 +72,11 @@ impl Layer for TerrainLayer {
         "terrain"
     }
     fn name(&self) -> &'static str {
-        "Terrain and forest"
+        "Terrain and forest (cells)"
+    }
+    /// Replaced by the smooth relief and rivers; kept as their fallback and for comparison.
+    fn default_on(&self) -> bool {
+        false
     }
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
         vec![

@@ -9,7 +9,7 @@ use egui::{Color32, ColorImage, TextureHandle, TextureOptions};
 #[derive(Default)]
 pub struct SeasonsLayer {
     tex: Option<TextureHandle>,
-    key: Option<(u64, u32, usize)>,
+    key: Option<(u64, u32, usize, bool)>,
 }
 
 impl Layer for SeasonsLayer {
@@ -35,13 +35,17 @@ impl Layer for SeasonsLayer {
         let v = d.view;
         let t = &v.terrain;
         let season = v.season_index(d.time);
-        let key = (v.terrain_version, v.snapshot.year, season);
+        // With the river lines on, spring high water widens them instead of tinting cells.
+        let rivers = v.layer_on("rivers");
+        let key = (v.terrain_version, v.snapshot.year, season, rivers);
         if self.key != Some(key) {
             let px = (0..t.n())
                 .map(|i| {
                     let forest = v.snapshot.forest[i] as f32 / 255.0;
                     match season {
-                        0 if t.is_river(i) => Color32::from_rgba_unmultiplied(120, 180, 245, 150),
+                        0 if t.is_river(i) && !rivers => {
+                            Color32::from_rgba_unmultiplied(120, 180, 245, 150)
+                        }
                         0 if t.is_land(i) && t.slope[i] < 0.02 && t.touches(i, |j| t.is_nav(j)) => {
                             Color32::from_rgba_unmultiplied(120, 170, 235, 70)
                         }

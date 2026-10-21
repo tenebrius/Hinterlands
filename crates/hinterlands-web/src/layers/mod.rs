@@ -10,6 +10,8 @@ mod labels;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;
+mod relief;
+mod rivers;
 mod routes;
 mod seasons;
 mod settlements;
@@ -148,6 +150,7 @@ pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
 pub fn all() -> Vec<Box<dyn Layer>> {
     vec![
         Box::new(terrain::TerrainLayer::default()),
+        Box::new(relief::ReliefLayer::default()),
         Box::new(fields::FieldsLayer::default()),
         Box::new(countryside::CountrysideLayer::new(
             countryside::Kind::Grazing,
@@ -160,6 +163,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         )),
         Box::new(history::HistoryLayer),
         Box::new(seasons::SeasonsLayer::default()),
+        Box::new(rivers::RiversLayer::default()),
         Box::new(parish::ParishLayer::new()),
         Box::new(parish::FootpathsLayer::new()),
         Box::new(overlay_cost::CostOverlay::default()),
