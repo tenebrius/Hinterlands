@@ -238,6 +238,14 @@ define_params! {
     }
     "Market" => {
         market_goods: bool = true, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
+        market_grain: bool = false, [0, 1], "Grain trades by the price equilibrium, paid from budgets of sales, rents, fees and goods (v6 S2, D78)";
+        grain_premium: bool = true, [0, 1], "Under market_grain, market size W^alpha is a premium on the buyer side (decision 4; off is option 1, W as demand only)";
+        rent_share: f32 = 0.48655713, [0, 0.9], "Under market_grain, share of each place's grain sales paid as rent and tithe to markets, in value (D77)";
+        p_floor: f32 = 0.25, [0.01, 1], "Under market_grain, least supply price of grain; what does not sell at it is lost (D77)";
+        grain_market_people: bool = false, [0, 1], "Under market_grain, fields feed only the farmers (pop less market size); market people buy their grain (experiment)";
+        port_world_price: f32 = 0.6, [0.05, 3], "Under market_grain, the world grain price: the outside ports buy their fixed grain up to it (D78)";
+        port_elast: f32 = 4.0, [0, 20], "Under market_grain, price elasticity of the outside ports' grain demand above the world price";
+        grain_flow_min: f32 = 0.05, [0, 10], "Under market_grain, least grain flow assigned to a path";
         market_shadow: bool = false, [0, 1], "Solve shadow prices each year beside the trade; nothing feeds back (v6 S0, D69)";
         market_tau: f32 = 0.002, [0.0001, 0.05], "Transport price of grain per unit of travel cost, as a share of its value (Clark: about 0.2% per km)";
         market_passes: u32 = 8, [1, 200], "Balancing passes a year";

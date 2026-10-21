@@ -32,7 +32,20 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
 
     for s in settlements.iter_mut() {
         // Enough to eat after the marketed share leaves, with the margin on top.
-        let target = s.need(p) * p.cult_margin / (1.0 - p.market_share).max(0.05);
+        // Under S2 the rent is the share that leaves (D78).
+        let share = if p.market_grain {
+            p.rent_share
+        } else {
+            p.market_share
+        };
+        // Under S2 the market people buy their grain; the fields feed the
+        // farmers (D78).
+        let fed = if p.market_grain && p.grain_market_people {
+            (s.pop - s.market.max(0.0)).max(0.0) * p.food_per_person
+        } else {
+            s.need(p)
+        };
+        let target = fed * p.cult_margin / (1.0 - share).max(0.05);
         let mut produce: f32 = s
             .fields
             .iter()

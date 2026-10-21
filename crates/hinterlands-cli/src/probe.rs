@@ -460,7 +460,7 @@ pub fn cmd_desertion(args: &Args) {
 /// `arc seed year from to flow gap transport`.
 pub fn cmd_prices(args: &Args) {
     let mut sim = make_sim(args);
-    if !sim.params.market_shadow && !sim.params.market_goods {
+    if !sim.params.market_shadow && !sim.params.market_goods && !sim.params.market_grain {
         die("prices needs --params with market_shadow or market_goods true");
     }
     let years = args.u64("years", 500) as u32;
@@ -480,7 +480,15 @@ pub fn cmd_prices(args: &Args) {
             continue;
         }
         let g = sim.terrain.grid;
-        let r = sim.state.market_residual;
+        let mut r = sim.state.market_residual;
+        if sim.params.market_grain {
+            let gs = sim.state.grain_stats;
+            r[0] = gs.residual;
+            println!(
+                "grain {seed} {y} residual {:.4} passes {} unsold {:.0} harvest {:.0} capped {}",
+                gs.residual, gs.passes, gs.unsold, gs.harvest, gs.capped
+            );
+        }
         let u = sim.state.market_unmet;
         println!(
             "market {seed} {y} {:.4} {:.4} {:.4} {:.4} {:.4} unmet {:.0} {:.0} {:.0} {:.0}",
@@ -491,8 +499,11 @@ pub fn cmd_prices(args: &Args) {
             let yld = s.food_prod / s.fields.len().max(1) as f32;
             // Market prices where the model trades by them, else the shadow's.
             let mut pr = s.shadow_price;
-            if sim.params.market_goods {
+            if sim.params.market_goods || sim.params.market_grain {
                 pr[1..].copy_from_slice(&s.price[1..]);
+            }
+            if sim.params.market_grain {
+                pr[0] = s.price[0];
             }
             let sp = s.supply_price;
             let hv = &sim.state.harvest;
@@ -507,8 +518,9 @@ pub fn cmd_prices(args: &Args) {
                     / s.fields.iter().map(fy).sum::<f32>().max(1e-9)
             };
             println!(
-                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?} harvest {:.1} m {:.4}",
-                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind, s.food_prod, m
+                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?} harvest {:.1} m {:.4} grain {:.4} {:.1} {} eaten {:.1} in {:.1}",
+                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind, s.food_prod, m,
+                s.grain_sup, s.income, s.capped as u8, s.food_prod + s.food_in - s.food_out, s.market_in
             );
         }
         if arcs_at.contains(&y) {
@@ -520,6 +532,46 @@ pub fn cmd_prices(args: &Args) {
             for &(a, b, x, gap, t) in arcs {
                 println!("arc {seed} {y} {a} {b} {x:.2} {gap:.5} {t:.5}");
             }
+        }
+    }
+}
+
+/// The largest places' accounts at `--at` years (default 100,200,300):
+/// `town seed year id pop market market_in through transship food_ratio
+/// income grain_price capped`.
+pub fn cmd_towns(args: &Args) {
+    let mut sim = make_sim(args);
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("100,200,300")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let top = args.u64("top", 8) as usize;
+    let seed = sim.sim_seed;
+    let last = at.iter().copied().max().unwrap_or(0);
+    while sim.state.year < last {
+        sim.step(1);
+        if !at.contains(&sim.state.year) {
+            continue;
+        }
+        let mut ss: Vec<_> = sim.state.settlements.iter().collect();
+        ss.sort_by(|a, b| b.pop.total_cmp(&a.pop));
+        for s in ss.iter().take(top) {
+            println!(
+                "town {seed} {} {} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.0} {:.3} {}",
+                sim.state.year,
+                s.id,
+                s.pop,
+                s.market,
+                s.market_in,
+                s.through,
+                s.transship,
+                s.food_ratio,
+                s.income,
+                s.price[0],
+                s.capped as u8
+            );
         }
     }
 }

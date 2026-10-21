@@ -13,6 +13,17 @@ pub const OUTSIDE: u32 = u32::MAX - 1;
 /// Most outside ports a map can have (one per side).
 pub const MAX_PORTS: u32 = 4;
 
+/// The grain market's yearly record (S2, D78): the solver's residual and
+/// passes, grain unsold, the region's harvest, and places capped by budget.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct GrainStats {
+    pub residual: f32,
+    pub passes: u32,
+    pub unsold: f32,
+    pub harvest: f32,
+    pub capped: u32,
+}
+
 /// The outside port a partner id names, if it is one.
 pub fn port_of(id: u32) -> Option<usize> {
     (id <= OUTSIDE && id > OUTSIDE - MAX_PORTS).then(|| (OUTSIDE - id) as usize)
@@ -192,6 +203,20 @@ pub struct Settlement {
     pub shadow_price: [f32; 5],
     /// Supply prices of salt, iron and stone where the place holds sites (D71).
     pub supply_price: [f32; 3],
+    /// Grain by the equilibrium (S2, D78): the supply price of its harvest,
+    /// its income this year (value units), whether its budget capped its
+    /// grain, and last year's fees: earned, and paid per unit of grain bought
+    /// from others.
+    #[serde(default)]
+    pub grain_sup: f32,
+    #[serde(default)]
+    pub income: f32,
+    #[serde(default)]
+    pub capped: bool,
+    #[serde(default)]
+    pub fee_earned: f32,
+    #[serde(default)]
+    pub fee_rate: f32,
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -229,6 +254,11 @@ impl Settlement {
             planted: false,
             price: [0.0; 5],
             shadow_price: [0.0; 5],
+            grain_sup: 0.0,
+            income: 0.0,
+            capped: false,
+            fee_earned: 0.0,
+            fee_rate: 0.0,
             supply_price: [0.0; 3],
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
@@ -364,6 +394,14 @@ pub struct State {
     pub market_residual: [f32; 5],
     #[serde(default)]
     pub market_arcs: Vec<(u32, u32, f32, f32, f32)>,
+    /// Grain by the equilibrium (S2, D78): the regional price level last
+    /// year, the ports' grain prices, and the year's solver and market record.
+    #[serde(default)]
+    pub grain_level: f32,
+    #[serde(default)]
+    pub port_grain: Vec<f32>,
+    #[serde(default)]
+    pub grain_stats: GrainStats,
     /// The shadow solve's grain arcs, as `market_arcs` (D77).
     #[serde(default)]
     pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
@@ -531,6 +569,9 @@ impl State {
             market_residual: [0.0; 5],
             market_arcs: Vec::new(),
             shadow_arcs: Vec::new(),
+            grain_level: 0.0,
+            port_grain: Vec::new(),
+            grain_stats: GrainStats::default(),
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],

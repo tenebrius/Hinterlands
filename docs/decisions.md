@@ -564,3 +564,20 @@ Kind: model mechanism (designer decision); stopped.
   - `tests/shadow.rs` checks that a run with the shadow on matches one with it off, prices aside.
   - The snapshot carries `shadow_price` when the shadow is on. The probe prints S1's goods prices and the shadow's grain price.
 Kind: designer decision; fix.
+
+## D78 — v6 S2 first build: grain by equilibrium (stopped: no towns form)
+- **Built as in D77,** behind `market_grain` (off). The golden is unchanged.
+- **Changes from the note, made in building:**
+  - rent is taken in kind, and farmers eat their own grain first;
+  - the outside ports buy up to `outside_grain` at a world price, `port_world_price` 0.6 (elasticity `port_elast` 4 above it);
+  - the solver gets a level step, a common price shift that leaves the flows unchanged, with supply prices stopping at the floor;
+  - goods are paid in value from last year's income, with no grain payment flows;
+  - each flow's buyer pays the handling and transshipment fees its path earns, using the same counts as `through` and `transship`, so fees paid equal fees earned.
+- **Solver:** grain residual about 0.0002 in 8–11 passes, every year. Native cost +3 ms a year.
+- **Result: FAILED before the gate.**
+  - Every place still cultivates for its own need plus rent, so rent grain has no buyers.
+  - About half of each harvest is unsold at the floor, W's real inflow is a fraction of v5's, and no place passes about 600 people (map 1 seed 1).
+  - v5's K (3.39) was tuned on gross inflow that included burned grain (P3).
+- **Options for the designer** are in `docs/market/s2.md`. Recommended: market establishments demand `K × W` grain, paid from rents and fees.
+- **Experiment switch:** `grain_market_people` (off) makes fields feed only pop − W.
+Kind: model mechanism behind a switch; stopped.

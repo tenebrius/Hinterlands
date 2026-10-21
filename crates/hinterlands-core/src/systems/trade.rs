@@ -71,7 +71,10 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Goods (v2, D39): each site's output goes to consumers in proportion to
     // demand × exp(−β_g c), and they pay for it in grain out of their marketed
     // share, which travels to the producer as an ordinary food flow.
-    let paid = if p.goods_enabled && p.market_goods {
+    // Grain by the equilibrium (S2, D78): goods go by the S1 equilibrium,
+    // paid in value, and the ports buy grain inside the grain market.
+    let s2 = p.market_grain;
+    let paid = if p.goods_enabled && (p.market_goods || s2) {
         crate::systems::market::goods_trade(
             state,
             p,
@@ -96,14 +99,32 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     };
     // The outside world (v5, D64): imports bought and grain sold to the ports,
     // out of what is left of each marketed share.
-    let (paid, to_ports) = if p.outside_ports && !state.outside.is_empty() {
+    let (paid, to_ports) = if s2 {
+        (paid, vec![0f32; m])
+    } else if p.outside_ports && !state.outside.is_empty() {
         outside(state, p, paid, &mut market_in, &mut food_out, &mut flows)
     } else {
         state.outside_trade = (0.0, 0.0);
         (paid, vec![0f32; m])
     };
+    if s2 {
+        if !p.goods_enabled {
+            state.outside_trade = (0.0, 0.0);
+        }
+        crate::systems::grain::trade(
+            state,
+            p,
+            &idx_of,
+            &attract,
+            &paid,
+            &mut food_in,
+            &mut food_out,
+            &mut market_in,
+            &mut flows,
+        );
+    }
 
-    for i in 0..m {
+    for i in (0..m).filter(|_| !s2) {
         let s = &state.settlements[i];
         // What is left of the marketed share after paying for goods and
         // imports and selling to the ports.
@@ -158,27 +179,76 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let mut dirs = vec![0u16; t.n()];
     // Where cargo changes mode: boarding or leaving a boat, or barge to sea ship.
     let mut transship = vec![0f32; t.n()];
+    // Under S2 each flow's buyer pays the handling and transshipment fees it
+    // earns the places on its path (D77): per anchor passed, and per
+    // transshipment within a cell of an anchor, once for each such anchor.
+    let fees = s2 && p.handling_income;
+    let mut anchor_at = Vec::new();
+    let mut near = Vec::new();
+    if fees {
+        anchor_at = vec![false; t.n()];
+        near = vec![0u8; t.n()];
+        for s in &state.settlements {
+            let a = s.anchor as usize;
+            anchor_at[a] = true;
+            near[a] += 1;
+            for d in 0..8 {
+                if let Some(j) = grid.neighbor(a, d) {
+                    near[j] += 1;
+                }
+            }
+        }
+    }
+    let mut fee_paid = vec![0f32; m];
+    let mut flow_fee: Vec<f32> = Vec::with_capacity(flows.len());
     for f in &flows {
         let s = &state.settlements[idx_of[f.from as usize] as usize];
         let path = &s.reach.partners[f.partner_idx as usize].path;
+        let mut fee = 0.0f32;
         for w in path.windows(2).filter(|_| p.handling_income) {
             let (a, b) = (w[0], w[1]);
             let (wa, wb) = (state.cost.is_water_node(a), state.cost.is_water_node(b));
             let (ca, cb) = (state.cost.node_cell(a), state.cost.node_cell(b));
-            if wa != wb {
-                transship[if wa { cb } else { ca }] += f.amount;
+            let at = if wa != wb {
+                Some(if wa { cb } else { ca })
             } else if wa && t.is_nav(ca) != t.is_nav(cb) {
-                transship[if t.is_nav(ca) { ca } else { cb }] += f.amount;
+                Some(if t.is_nav(ca) { ca } else { cb })
+            } else {
+                None
+            };
+            if let Some(c) = at {
+                transship[c] += f.amount;
+                if fees {
+                    fee += p.transship_margin * near[c] as f32;
+                }
             }
         }
         let mark = f.amount >= p.hub_min_flow;
         for q in 1..path.len().saturating_sub(1) {
             let cell = state.cost.node_cell(path[q]);
             state.cell_load[cell] += f.amount;
+            if fees && anchor_at[cell] {
+                fee += p.handling_margin;
+            }
             if mark {
                 let din = back_dir(step_dir(&grid, &state.cost, path[q - 1], path[q]));
                 let dout = step_dir(&grid, &state.cost, path[q], path[q + 1]);
                 dirs[cell] |= (1 << din) | (1 << dout);
+            }
+        }
+        flow_fee.push(fee * f.amount);
+    }
+    if fees {
+        // Grain flows are paid by the receiver, goods by the buyer (`from`);
+        // flows to the outside ports are paid from outside.
+        for (f, fee) in flows.iter().zip(&flow_fee) {
+            let payer = if f.good.is_none() && !f.import {
+                idx_of.get(f.to as usize).copied()
+            } else {
+                idx_of.get(f.from as usize).copied()
+            };
+            if let Some(i) = payer.filter(|&i| i != u32::MAX) {
+                fee_paid[i as usize] += fee;
             }
         }
     }
@@ -198,6 +268,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .filter_map(|d| grid.neighbor(a, d))
                 .map(|j| transship[j])
                 .sum::<f32>();
+        // Fees this year, for next year's budgets (S2, D78).
+        if fees {
+            s.fee_earned = p.handling_margin * s.through + p.transship_margin * s.transship;
+            s.fee_rate = fee_paid[i] / food_in[i].max(1.0);
+        }
     }
     state.flows = flows;
 }

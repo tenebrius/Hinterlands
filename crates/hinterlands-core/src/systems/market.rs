@@ -564,7 +564,13 @@ pub fn goods_trade(
     }
     let scale: Vec<f32> = (0..m)
         .map(|i| {
-            let budget = state.settlements[i].food_prod * p.market_share;
+            // Under S2 goods are paid in value from last year's income (D78).
+            let s = &state.settlements[i];
+            let budget = if p.market_grain {
+                s.income.max(0.0)
+            } else {
+                s.food_prod * p.market_share
+            };
             if bill[i] > budget {
                 budget / bill[i]
             } else {
@@ -582,7 +588,9 @@ pub fn goods_trade(
         let buyer = &state.settlements[b.buyer];
         let pay = b.pj * b.q * scale[b.buyer];
         paid[b.buyer] += pay;
-        food_out[b.buyer] += pay;
+        if !p.market_grain {
+            food_out[b.buyer] += pay;
+        }
         let to = buyer.reach.partners[b.k as usize].id;
         let good = (b.g < 4).then(|| Good::ALL[b.g - 1]);
         // The goods come in on the buyer's path; the payment goes out on it.
@@ -596,24 +604,29 @@ pub fn goods_trade(
             payment: false,
             import: b.g == 4,
         });
-        flows.push(Flow {
-            from: buyer.id,
-            to,
-            amount: pay,
-            food: pay,
-            partner_idx: b.k,
-            good: None,
-            payment: true,
-            import: false,
-        });
+        // Under S2 payment is in value and travels no path (D78).
+        if !p.market_grain {
+            flows.push(Flow {
+                from: buyer.id,
+                to,
+                amount: pay,
+                food: pay,
+                partner_idx: b.k,
+                good: None,
+                payment: true,
+                import: false,
+            });
+        }
         if b.from >= m {
             imported += pay;
             continue;
         }
         // The producer gets the supply price; carriage and margin are lost.
         let received = b.pi * b.q * scale[b.buyer];
-        food_in[b.from] += received;
-        market_in[b.from] += received;
+        if !p.market_grain {
+            food_in[b.from] += received;
+            market_in[b.from] += received;
+        }
         goods_in[b.from] += received;
     }
     // Each holder's sales shared over its sites by capacity.
