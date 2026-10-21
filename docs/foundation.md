@@ -685,7 +685,18 @@ Then stop. The designer reviews the note before any S2 code is written.
 **S4 and S5 (D84).**
 - **S5 (coin, projects, mayors) is dropped.** It needs settlements to hold and spend money from budgets. S2 showed that paying for what towns now receive free breaks the hierarchy the whole model rests on.
 - **S4 (goods in use) is not scheduled.** Iron raising yields and stone feeding bridges each add a positive feedback, and the W1 finding shows how the growth rule turns uneven effects into drift. It would be reconsidered only after the growth rule's asymmetry is dealt with.
-- **One item is open, the owner's to confirm:** a single attempt at weather with the market pull on the 10-year average inflow (`avg_inflow`), which addresses the asymmetry W1 found. It would be validated without weather first, then gated with weather at σ 0.15, and dropped if it fails.
+- **Weather, one attempt (approved by the owner, D85):** a single attempt at weather with the market pull on the 10-year average inflow (`avg_inflow`), which addresses the asymmetry W1 found. It would be validated without weather first, then gated with weather at σ 0.15, and dropped if it fails.
+
+**W2 brief (D85).**
+- **Change.** Switch `pull_smoothed`: the market pull uses the 10-year moving average of inflow (`avg_inflow`, already kept), not the year's inflow. A market's traders and lords do not leave over one bad harvest. Nothing else changes.
+- **Step 1, without weather.** Run full validation with `pull_smoothed` on. Report every check against v6 and the golden hash. Without weather the inflow is steady, so the result should be close to v6. If a check fails, stop and report.
+- **Step 2, with weather.** `local_harvests` at σ 0.15, with relief and stores on.
+  - Gate: every v6 check; determinism; under 50 ms a year in wasm.
+  - Pre-registered, as before: total population at year 200 within 20% of the same seed with smoothing on and no weather, and regional stores at least 0.2 of need at year 400.
+  - Reported: the top-10 overlap against the Off run, Clark in shadow mode, and the famine dip.
+- **Result.**
+  - If step 2 passes, `pull_smoothed` and `local_harvests` become the defaults, with a new golden hash.
+  - If it fails, weather is dropped for good, and `pull_smoothed` is kept only if step 1 showed it harmless.
 
 
 ## Future versions
