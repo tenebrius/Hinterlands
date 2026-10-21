@@ -1,6 +1,7 @@
 //! Built-up footprints, for rendering only: nothing in the systems reads them.
 //! A settlement covers `pop / density_per_cell` cells, filled outward from its
-//! anchor by a fixed attractiveness (near the anchor, flat, by water, on a road).
+//! anchor by a fixed attractiveness (near the anchor, flat, by water, on a road),
+//! never over a navigable river (a town centred on one keeps that cell).
 //! Built cells stay built, so towns grow by accretion; a shrinking town loses its
 //! least attractive edge, which stays a ruin for `ruin_years`.
 
@@ -51,7 +52,9 @@ pub fn update(state: &mut State, t: &Terrain, p: &Params) {
             for &c in &mine {
                 for d in 0..8 {
                     if let Some(j) = g.neighbor(c, d) {
+                        // Towns grow along the banks, not over the navigable river.
                         if t.is_land(j)
+                            && !t.is_nav(j)
                             && state.built[j] == NONE
                             && !frontier.iter().any(|f| f.1 == j)
                         {

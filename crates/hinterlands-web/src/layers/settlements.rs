@@ -140,5 +140,23 @@ fn draw_blocks(d: &DrawCtx) {
                     .rect_filled(house, 1, Color32::from_rgb(158, 64, 46));
             }
         }
+        // A river through a built-up cell is drawn across it: the town straddles
+        // its river rather than covering it.
+        let t = &v.terrain;
+        if t.is_river(i) {
+            let width = if t.is_nav(i) { 0.32 * z } else { 0.14 * z };
+            let water = Color32::from_rgb(40, 90, 200);
+            for k in 0..8 {
+                let Some(j) = g.neighbor(i, k) else { continue };
+                let linked =
+                    t.downstream(i) == Some(j) || (t.downstream(j) == Some(i) && t.is_river(j));
+                if linked {
+                    let cj = d.camera.cell_center(d.rect, g.w, j);
+                    d.painter
+                        .line_segment([c, c + (cj - c) * 0.5], egui::Stroke::new(width, water));
+                }
+            }
+            d.painter.circle_filled(c, width * 0.5, water);
+        }
     }
 }

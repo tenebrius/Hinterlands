@@ -189,6 +189,35 @@ fn cmd_run(args: &Args) {
             );
         }
     }
+    if args.str("water").is_some() {
+        let t = &sim.terrain;
+        let (mut nav, mut stream, mut sea, mut built) = (0, 0, 0, 0);
+        for i in 0..t.n() {
+            if snap.built[i] != hinterlands_core::state::NONE {
+                built += 1;
+                if t.is_nav(i) {
+                    nav += 1
+                }
+                if t.water[i] == hinterlands_core::terrain::Water::Stream {
+                    stream += 1
+                }
+                if t.is_sea(i) {
+                    sea += 1
+                }
+            }
+        }
+        let anchors_nav = snap
+            .settlements
+            .iter()
+            .filter(|s| t.is_nav(s.anchor as usize))
+            .count();
+        let anchors_stream = snap
+            .settlements
+            .iter()
+            .filter(|s| t.water[s.anchor as usize] == hinterlands_core::terrain::Water::Stream)
+            .count();
+        println!("built cells {built}: on navigable river {nav}, on stream {stream}, on sea {sea}; anchors on navigable river {anchors_nav}, on stream {anchors_stream} of {}", snap.settlements.len());
+    }
     if args.str("young").is_some() {
         // Settlements founded during the run: size, fields and food ratio by age.
         let mut v: Vec<_> = snap.settlements.iter().filter(|s| !s.initial).collect();
