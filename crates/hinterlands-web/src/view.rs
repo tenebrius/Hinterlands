@@ -4,7 +4,7 @@
 use crate::camera::Camera;
 use crate::sim_handle::SimHandle;
 use hinterlands_core::metrics::{self, Metrics};
-use hinterlands_core::state::LogEntry;
+use hinterlands_core::state::{LogEntry, LogKind};
 use hinterlands_core::{Params, Snapshot, Terrain};
 use std::collections::BTreeSet;
 
@@ -32,6 +32,15 @@ pub const SEASONS: [&str; 4] = ["Spring", "Summer", "Autumn", "Winter"];
 /// Never farmed, in the farming-history arrays.
 pub const NEVER: u16 = u16::MAX;
 
+/// A shock on the event timeline (v4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EventMark {
+    Famine,
+    Plague,
+    Silted,
+    Planted,
+}
+
 /// One point of the population chart.
 #[derive(Clone, Copy, Debug)]
 pub struct YearStats {
@@ -57,6 +66,9 @@ pub struct ViewState {
     pub history: Vec<YearStats>,
     /// Foundings and failures, newest last.
     pub chronicle: Vec<LogEntry>,
+    /// Shocks for the timeline (v4): year and kind, oldest first, one per
+    /// event (a plague once, in the year it strikes).
+    pub events: Vec<(u32, EventMark)>,
     /// Bumped whenever the terrain changes, so cached layers rebuild.
     pub terrain_version: u64,
     pub status: String,
@@ -89,6 +101,7 @@ impl ViewState {
             speed: 20.0,
             history: Vec::new(),
             chronicle: Vec::new(),
+            events: Vec::new(),
             terrain_version: 0,
             status: String::new(),
             farm_first: vec![NEVER; cells],
@@ -134,7 +147,28 @@ impl ViewState {
             total: s.total_pop(),
             largest: s.settlements.iter().map(|x| x.pop).fold(0.0, f32::max),
         });
-        self.chronicle.extend(s.log.iter().cloned());
+        // A plague logs every place it strikes; the chronicle keeps the places
+        // that lost at least 300, and the timeline one mark.
+        for e in &s.log {
+            let mark = match e.kind {
+                LogKind::Famine { .. } => Some(EventMark::Famine),
+                LogKind::Plague { .. } => Some(EventMark::Plague),
+                LogKind::Silted => Some(EventMark::Silted),
+                LogKind::Planted => Some(EventMark::Planted),
+                _ => None,
+            };
+            if let Some(m) = mark {
+                if !self.events.contains(&(e.year, m)) {
+                    self.events.push((e.year, m));
+                }
+            }
+        }
+        self.chronicle.extend(
+            s.log
+                .iter()
+                .filter(|e| !matches!(e.kind, LogKind::Plague { lost } if lost < 300.0))
+                .cloned(),
+        );
         if self.chronicle.len() > 2000 {
             self.chronicle.drain(..self.chronicle.len() - 2000);
         }
@@ -149,6 +183,7 @@ impl ViewState {
     fn restart(&mut self, sim: &SimHandle) {
         self.history.clear();
         self.chronicle.clear();
+        self.events.clear();
         self.farm_first = vec![NEVER; self.terrain.n()];
         self.farm_last = vec![NEVER; self.terrain.n()];
         self.map_seed = sim.map_seed;

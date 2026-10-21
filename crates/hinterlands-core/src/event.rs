@@ -38,6 +38,7 @@ impl Event {
                 state.tally.founded += 1;
                 if let Some(i) = state.index_of(id) {
                     state.settlements[i].market = market.min(*pop);
+                    state.settlements[i].planted = true;
                 }
                 state.log.push(LogEntry {
                     year: state.year,
@@ -56,6 +57,7 @@ impl Event {
                     state.silt = vec![0.0; t.n()];
                 }
                 let a = state.settlements[i].anchor as usize;
+                state.silted_ports.push(a as u32);
                 for c in std::iter::once(a).chain((0..8).filter_map(|d| t.grid.neighbor(a, d))) {
                     state.silt[c] += cost;
                 }
@@ -123,5 +125,17 @@ impl Event {
                 }
             }
         }
+    }
+}
+
+/// Year 0 of the historical calendar (D57).
+pub const HISTORICAL_BASE: u32 = 1100;
+
+/// The year as shown: the calendar year in historical mode, else the run year.
+pub fn shown_year(p: &Params, year: u32) -> u32 {
+    if p.events_mode == 1 {
+        year + HISTORICAL_BASE
+    } else {
+        year
     }
 }

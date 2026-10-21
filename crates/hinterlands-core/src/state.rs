@@ -174,6 +174,8 @@ pub struct Settlement {
     pub goods_in: f32,
     /// A stream or river with enough drainage among the fields (D56; cultivation).
     pub mill: bool,
+    /// Planted by a lord (D62).
+    pub planted: bool,
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -208,6 +210,7 @@ impl Settlement {
             transship: 0.0,
             goods_in: 0.0,
             mill: false,
+            planted: false,
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
             food_ratio: 1.0,
@@ -327,6 +330,8 @@ pub struct State {
     pub silt_year: u32,
     /// Year the last plague struck, or `NONE` (D61).
     pub last_plague: u32,
+    /// Anchors of the harbours that have silted, in order (D60; for the view).
+    pub silted_ports: Vec<u32>,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -429,6 +434,7 @@ impl State {
             silt: Vec::new(),
             silt_year: 0,
             last_plague: NONE,
+            silted_ports: Vec::new(),
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],

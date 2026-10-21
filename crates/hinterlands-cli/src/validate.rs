@@ -352,7 +352,10 @@ pub fn run_one(
             let in_plague = [params.plague_year, params.plague_recur_1, params.plague_recur_2]
                 .iter()
                 .any(|&py| y >= py && y <= py + params.plague_years + 1);
-            in_famine || in_plague
+            // A planting in year Y shows in the total read after it, Y + 1.
+            let planting =
+                params.plant_interval > 0 && y > 1 && (y - 1) % params.plant_interval == 0;
+            in_famine || in_plague || planting
         };
         if sim.state.year > 100 && prev > 0.0 && !shocked {
             max_change = max_change.max((tot - prev).abs() / prev);

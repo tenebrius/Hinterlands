@@ -36,6 +36,9 @@ pub struct SettlementView {
     /// Has a mill (v3, D56); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "is_false")]
     pub mill: bool,
+    /// Planted by a lord (v4, D62); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub planted: bool,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -106,6 +109,9 @@ pub struct Snapshot {
     /// Cells the model has bridged (v3, D55), ascending; left out when none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bridges: Vec<u32>,
+    /// Anchors of silted harbours (v4, D60), in order; left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub silted: Vec<u32>,
 }
 
 impl Snapshot {
@@ -134,6 +140,7 @@ impl Snapshot {
                 kind: s.kind,
                 goods_in: s.goods_in,
                 mill: s.mill,
+                planted: s.planted,
             })
             .collect();
         let flows = state
@@ -188,6 +195,7 @@ impl Snapshot {
             } else {
                 Vec::new()
             },
+            silted: state.silted_ports.clone(),
             bridges: (0..state.bridge.len())
                 .filter(|&i| state.bridge[i])
                 .map(|i| i as u32)

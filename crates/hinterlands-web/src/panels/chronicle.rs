@@ -3,6 +3,7 @@
 
 use super::Panel;
 use crate::view::{Msg, ViewState};
+use hinterlands_core::state::LogEntry;
 use hinterlands_core::state::{FailCause, LogKind};
 
 pub struct Chronicle;
@@ -43,6 +44,12 @@ impl Panel for Chronicle {
             .id_salt("chronicle")
             .show(ui, |ui| {
                 for e in v.chronicle.iter().rev().take(300) {
+                    // Calendar years in historical mode (v4, D57).
+                    let year = hinterlands_core::event::shown_year(&v.params, e.year);
+                    let e = &LogEntry {
+                        year,
+                        ..e.clone()
+                    };
                     let text = match &e.kind {
                         LogKind::Initial => format!("{}. {} is settled.", e.year, e.name),
                         LogKind::Founded { donor, .. } => {
@@ -66,11 +73,20 @@ impl Panel for Chronicle {
                             format!("{}. {} has outgrown its {what}.", e.year, e.name)
                         }
                         LogKind::Famine { years } => {
-                            format!("{}. Famine: the harvests fail for {years} years.", e.year)
+                            let span = match years {
+                                1 => "a year".to_string(),
+                                2 => "two years".to_string(),
+                                3 => "three years".to_string(),
+                                n => format!("{n} years"),
+                            };
+                            format!("{}. The harvests failed; famine for {span}.", e.year)
                         }
-                        LogKind::Plague { lost } => {
-                            format!("{}. Plague at {}: {lost:.0} die.", e.year, e.name)
-                        }
+                        LogKind::Plague { lost } => format!(
+                            "{}. The pestilence came; {} lost {} of its people.",
+                            e.year,
+                            e.name,
+                            thousands(lost)
+                        ),
                         LogKind::Planted => format!("{}. Lord's town planted at {}.", e.year, e.name),
                         LogKind::Silted => format!("{}. The harbour at {} silted.", e.year, e.name),
                         LogKind::Failed { cause, moved_to } => {
@@ -94,4 +110,22 @@ impl Panel for Chronicle {
             });
         out
     }
+}
+
+/// People lost, rounded to the hundred over a thousand, with a thousands comma.
+fn thousands(x: &f32) -> String {
+    let n = if *x >= 1000.0 {
+        (x / 100.0).round() as u64 * 100
+    } else {
+        (x / 10.0).round() as u64 * 10
+    };
+    let s = n.to_string();
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if i > 0 && (s.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
 }
