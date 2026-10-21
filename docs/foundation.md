@@ -413,6 +413,24 @@ The simulation lane runs left to right through its gates; the map generation tra
 | v4 Shocks and politics-lite | The event queue in use: drought, plague, a river shifting, a route cut. First use of `domain`: lords holding territory, planting towns, taking tolls; borders from catchments; a defence weight, no warfare | The map reorganising after a plague; planted towns competing with organic ones; a capital above the rank-size curve | Anasazi climate work; English charters and the Bannmeile; mostly heuristic |
 | v5 World | Larger or joined regions with a coarse routing layer; way-stations on sparse stretches; sea trade between coasts; regions with different parameters; transport ratios drifting with technology | Long-distance corridors; a highland of pastoralists and a coast of traders; late in a run a better ship moving the whole hierarchy | Christaller’s transport principle; caravanserai spacing; design |
 
+**Plan after v2** (designer, 21 October 2026). This replaces the table above where they differ.
+1. **v2.1 Kent resources (short, data only).** Wealden iron, Maidstone ragstone and the estuary salt pans are added to Kent's `Terrain` through the importer, as a showcase of v2 on real ground. It is reported, not gated, and no expectation is set for any single site.
+2. **v3 Landscape.** The work comes in this order, with the steps in one version because each depends on the last:
+   - (a) **The shadow is measured in km, not travel cost.** Bosker & Buringh's bands and Bracton's spacing are distances. With the shadow in travel cost, every road deepens the shadow along itself, which works against the next step. A re-tune and full validation are needed, and Kent's inland spacing (6.2 km against 10.6) is reported.
+   - (b) **Roads follow traffic.** They upgrade with edge load and decay slowly when it falls (Dalgaard et al. 2022: Roman roads largely persisted).
+   - (c) **Bridges at busy crossings,** using the free-crossing mechanism of D33.
+   - (d) **Mills** add a few percent to their settlement's yield.
+
+   Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
+3. **v4 Shocks.** The event queue comes into use:
+   - **plague** on the Black Death pattern (a third to a half of the people lost, then recovery);
+   - **famine years** on the 1315–17 pattern (yield down about 40% region-wide for one to three years);
+   - **a river shifting** or a route cut;
+   - **lords planting towns** at chosen sites, which survive only if the market logic supports them (charter evidence).
+
+   Borders, tolls and politics are dropped, because the evidence is too weak to model. The gate: after a plague, the map contracts and recovers to about its old hierarchy, with marginal places deserted (deserted medieval villages).
+4. **v5 World** will be decided after v4. The outside world as a seller, tried in D25 without effect, is folded into v5's sea trade and not done before it.
+
 **Map generation track.** v1 ships noise, thermal erosion, hydrology and yield. Later passes, in order of effect on realism: hydraulic erosion with floodplains and deltas as the best land; lakes and marshes; coastline detail; a rain-shadow climate with biomes from temperature and moisture; resources placed by geology; tectonic plates giving ranges a direction. Each is a new pass in the pipeline and changes nothing else.
 
 **Real terrain.** Importing a free 90 m DEM (SRTM) of a documented region, resampled to the chosen cell size, is the single most valuable step after v1. Run on medieval Kent or the Rhône valley and compare the settlements the model produces with the ones that existed. If the model puts a city where Canterbury or Lyon stands, the model is right rather than merely plausible. Generated maps stay the tool for development and tuning; real terrain is for validation and for the demonstration that convinces people.

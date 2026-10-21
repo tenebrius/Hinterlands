@@ -36,7 +36,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **G2 done (D39):** payments balance (goods 53,226 received, 52,405 paid, 1.5% short where buyers hit their marketed share); median route cost iron 19.7 > salt 14.5 > grain 13.3 > stone 9.0, full order in 22 of 24 runs. Accepted.
 - **G3 gate failed (a362721, D40):** salterns at the 1,000 cap became the largest place in 18/20 (map 1) and 11/20 (map 2) seeds. Spec error (mine, rule 7). Corrected to the shopping model with capacity scaling (D41); one re-run of the gate, then G4 if it passes. Forest near iron sites 0.00 to look at in G4.
 - **Gate re-run with the shopping model (0c326ed, D41):** oversupply gone (payment share 3%), but the largest place is a "saltern" in 19/20 (map 1) seeds: salterns founded on the best harbour sites grow into the city and keep the label. Decided (D43): the kind follows the economy (specialist only while goods sales ≥ 25% of inflow), and the gate tests that. Map 3's over-5,000 median (1) is for the implementer to tune. D42 is reserved for the graphics merge.
-- **Later options, not scheduled:** Kent resources as data (Wealden iron, ragstone, estuary salt); the outside world as a seller; the shadow in km; Kent inland spacing (6.2 km against 10.6).
+- **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
@@ -95,4 +95,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v2 gate re-run failed on a label; kind now follows the economy (D43).
+Last updated: 2026-10-21 — roadmap after v2 decided; v2 gate re-run (D43) in progress.
