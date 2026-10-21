@@ -627,6 +627,33 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **Tuning.** None beyond what a failing v5 check needs, recorded.
 - **Next:** S3 stores, briefed after S2′, then W1.
 
+**S2′ result (8875174) and S3 brief (D81).** Relief passes the gate with `shadow_drain` 0.015 → 0.025, for map 1 spacing. It meets 86–88% of deficit in normal years, but only 6–8% in 1315–17, because a region-wide shortfall leaves nobody above `food_cap`. The famine dip is unchanged (0.24). About 5,300–5,800 grain a year is still lost above `food_cap`. As expected, moving grain across a famine needs stores.
+- **`grain_relief` becomes the default** with the tuned drain (`data/real/experiments/relief.json`). Record the new golden hash.
+
+**S3 stores** (switch `grain_stores`):
+- **State.** Each settlement has a grain store `G_i`, carried from year to year.
+- **Order each year, after trade:**
+  1. a place in deficit draws first on its own store;
+  2. relief (S2′) then draws on neighbours' surplus above `c_max N` and on the stores of neighbours not themselves in deficit, in the same shopping-model allocation;
+  3. what is still above `c_max N` goes into the place's own store, up to `store_cap × N` (0.5, half a year's need), and the rest is lost as now;
+  4. stores lose `store_loss` (0.08) a year to spoilage, vermin and holding.
+- **Footing.** Clark (1999): carry-over reached about 40% of a harvest after cheap years, with storage costing up to 5% a year plus interest.
+- **Accounting.** Drawn store counts in the food ratio, not in `market_in`. It loads routes when it moves as relief.
+- **Expectation (pre-registered).** The 1315–17 famine dip falls from 0.24 to 0.18 or less. Regional stores stand at 20–50% of a year's need in the decade before 1315 and are mostly drawn down by 1317.
+- **View,** in new files:
+  - a small granary fill mark on settlements over 500;
+  - a regional store line under the population chart;
+  - the chronicle line "1316. The granaries of Harthorpe are empty."
+- **Gate:** every v5 check; determinism; under 50 ms a year in wasm.
+- **Reported:**
+  - regional stores as a share of need over time;
+  - the 1315–17 draw-down;
+  - the famine dip against S2′;
+  - grain still lost;
+  - the failure rate.
+- **Tuning.** `store_cap` and `store_loss` are the implementer's, within 0.25–1.0 and 0.03–0.15.
+- **Stop** and report. W1 comes next if S3 passes.
+
 
 ## Future versions
 
