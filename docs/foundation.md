@@ -452,14 +452,19 @@ Written by the designer on 21 October 2026, after v4 passed validation (golden `
 
 As before, report after each stage and carry on unless a check fails or the spec is unclear.
 
-**After v5: release.**
-- Update the README to the full model.
-- Bring `docs/parameters.md` up to date.
-- Add a short guided start in the viewer: a "what you are watching" panel.
-- Make a final screenshot set.
-- Freeze the golden hash.
+**After v5: release** (approved 21 October 2026, after the v5 milestone, golden `4ce58fae34550933`).
+1. **README.** Rewrite it as one page covering the whole model as it now stands: the six systems, goods, roads with bridges and mills, shocks and the outside world. Give each mechanism its source in a line.
+2. **`docs/parameters.md`.** Regenerate it from `Params`, so it matches the defaults exactly.
+3. **"What you are watching" panel.** A short panel open on first load, a few plain sentences per phase of a run: villages fill the farmland (1100–1200); markets and towns pull ahead; works and goods; the famine and the pestilence (1315–1349); recovery and the planted towns; ships and the coast (1450 onward). It closes and is reopened from the panel list.
+4. **View tidy, two items from the v5 screenshot.**
+   - The sea lanes along the coast draw as a wall of parallel lines. Bundle sea-going flows that share a corridor into one lane, its width set by total flow, with goods colours as thin stripes or on hover.
+   - Some labels collide ("The Gile Sea" with "Ewamouth", "Everelford" with "Dew Forest"). Settlement names take priority, and feature names move or hide.
 
-No new mechanisms after that.
+   If these touch files the graphics session is working in, leave a note for it in `docs/rendering.md` instead of editing them.
+5. **Final screenshots.** At 1200, 1349, 1450 and 1600 on map 1, seed 1, and one of Kent at 1600.
+6. **Freeze.** Record the release golden hash in `docs/milestones.md` as "v5 release". Run `just test`, `just validate`, the wasm timing and the Kent regression one last time.
+
+No new mechanisms in the release. After it, v6 S0 begins as briefed in "v6 plan" below.
 
 ## v6 plan: markets, consumers and stores (D70)
 
