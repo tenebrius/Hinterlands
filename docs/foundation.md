@@ -552,6 +552,13 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
   - the depth of local dearths: the worst place's yield multiplier per year.
 - **Stop** and report before S2.
 
+**W1 first gate (D74, `docs/market/w1.md`) and the designer's decision (D75).** `market_goods` is the default (28ddc53, golden `ec7a24a7caeac414`). With W1 on, every check passes except map 1's top-10 overlap against the same seed run Off (12/20, median 0.60). The comparison stopped being controlled: the Off run draws a different random stream, so it also gets 500 different years of weather. The fix is to make the comparison controlled again, not to change the threshold:
+1. **Weather is drawn up front.** With `local_harvests` on, the whole node field for the run's configured length is drawn from the run's one `Rng` at initialisation, before anything else draws. Events on or off, the same seed then has the same weather, and the hard rule of one `Rng` per run holds. A viewer run that goes past that length draws further years when it reaches them.
+2. **The standard deviation is set at the cells.** Scale the node values so that the interpolated multiplier has a standard deviation of `σ` = 0.15 at the cells, not 0.095.
+3. **Re-run the W1 gate once.** If it passes, make `local_harvests` the default, record the golden hash and report, and S2 will be briefed. If not, stop and report.
+
+Noted from the report: `b_Y` is now identified (−0.003 to −0.011, inside the S2 range), because the equilibrium spreads a local shortfall across the region at `market_tau` 0.002. Map 2 seed 2 is an outlier (`b_P` 1.35, R² 0.32), to watch at S2.
+
 
 ## Future versions
 
