@@ -1,7 +1,7 @@
 // Headless check of the web build. Loads the page, performs actions, saves a
 // screenshot and prints console errors and self-test lines.
 // Usage: node tools/screenshot.mjs <url> <out.png> [action ...]
-//   actions: click:X,Y   wait:MS   key:NAME   shot:FILE
+//   actions: click:X,Y  move:X,Y  wheel:X,Y,DY  wait:MS  key:NAME  shot:FILE
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 let chromium;
@@ -22,6 +22,7 @@ for (const a of actions) {
   const [kind, arg] = a.split(/:(.*)/);
   if (kind === 'click') { const [x, y] = arg.split(',').map(Number); await page.mouse.click(x, y); await page.waitForTimeout(300); }
   else if (kind === 'move') { const [x, y] = arg.split(',').map(Number); await page.mouse.move(x, y); await page.waitForTimeout(300); }
+  else if (kind === 'wheel') { const [x, y, dy] = arg.split(',').map(Number); await page.mouse.move(x, y); for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, dy / 10); await page.waitForTimeout(60); } await page.waitForTimeout(800); }
   else if (kind === 'wait') await page.waitForTimeout(Number(arg));
   else if (kind === 'key') await page.keyboard.press(arg);
   else if (kind === 'shot') await page.screenshot({ path: arg });

@@ -85,6 +85,19 @@ impl App {
             .map(|l| l.id())
             .collect();
         let mut view = ViewState::new(&sim, on);
+        let mut sim = sim;
+        if let Some(map) = url_param("map") {
+            sim = SimHandle::new(
+                map as u64,
+                url_param("seed").unwrap_or(1) as u64,
+                Params::default(),
+            );
+            view = ViewState::new(&sim, view.layers_on.clone());
+        }
+        // `?year=N` opens the run already advanced to year N.
+        if let Some(year) = url_param("year") {
+            view::update(&mut view, &mut sim, Msg::Step(year));
+        }
         if let Some(years) = selftest_years() {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
             let mut probe = SimHandle::new(1, 1, Params::default());
@@ -272,17 +285,26 @@ pub fn pick_save_file() {
 
 /// `?selftest=N` in the page URL.
 fn selftest_years() -> Option<u32> {
+    url_param("selftest")
+}
+
+/// A numeric `?name=N` from the page URL (`HINTERLANDS_<NAME>` natively).
+fn url_param(name: &str) -> Option<u32> {
     #[cfg(target_arch = "wasm32")]
     {
         let search = web_sys::window()?.location().search().ok()?;
+        let prefix = format!("{name}=");
         search
             .trim_start_matches('?')
             .split('&')
-            .find_map(|kv| kv.strip_prefix("selftest=")?.parse().ok())
+            .find_map(|kv| kv.strip_prefix(prefix.as_str())?.parse().ok())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        std::env::var("HINTERLANDS_SELFTEST").ok()?.parse().ok()
+        std::env::var(format!("HINTERLANDS_{}", name.to_uppercase()))
+            .ok()?
+            .parse()
+            .ok()
     }
 }
 
