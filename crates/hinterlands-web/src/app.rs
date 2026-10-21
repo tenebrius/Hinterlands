@@ -118,16 +118,24 @@ impl App {
         }
         if let Some(years) = selftest_years() {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
-            // `&shadow=1` turns on the shadow market (v6 S0), to time it.
+            // `&shadow=1` turns on the shadow market (v6 S0) and `&goods=1`
+            // goods by the equilibrium (S1), to time them.
             let mut params = Params::default();
             params.market_shadow = url_param("shadow") == Some(1);
+            if url_param("goods") == Some(1) {
+                params.market_goods = true;
+            }
             let mut probe = SimHandle::new(1, 1, params);
             let start = web_time_now();
             probe.step(years);
             let ms = (web_time_now() - start) / years.max(1) as f64;
             let line = format!(
                 "selftest map 1 seed 1 years {years}{} hash {:016x} {ms:.1} ms/year",
-                if url_param("shadow") == Some(1) { " shadow" } else { "" },
+                format!(
+                    "{}{}",
+                    if url_param("shadow") == Some(1) { " shadow" } else { "" },
+                    if url_param("goods") == Some(1) { " goods" } else { "" }
+                ),
                 probe.snapshot().hash()
             );
             log::warn!("{line}");

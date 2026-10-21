@@ -186,6 +186,8 @@ pub struct Settlement {
     /// Shadow prices, grain units (v6 S0, D69): grain, salt, iron, stone,
     /// imports; zero until `market_shadow` solves them.
     pub price: [f32; 5],
+    /// Supply prices of salt, iron and stone where the place holds sites (D71).
+    pub supply_price: [f32; 3],
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -222,6 +224,7 @@ impl Settlement {
             mill: false,
             planted: false,
             price: [0.0; 5],
+            supply_price: [0.0; 3],
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
             food_ratio: 1.0,
@@ -356,6 +359,9 @@ pub struct State {
     pub market_residual: [f32; 5],
     #[serde(default)]
     pub market_arcs: Vec<(u32, u32, f32, f32, f32)>,
+    /// Goods demand left unmet this year by the equilibrium (D71), by good.
+    #[serde(default)]
+    pub market_unmet: [f32; 5],
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -501,6 +507,7 @@ impl State {
             port_price: Vec::new(),
             market_residual: [0.0; 5],
             market_arcs: Vec::new(),
+            market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],

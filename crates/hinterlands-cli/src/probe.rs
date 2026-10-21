@@ -444,12 +444,15 @@ pub fn cmd_desertion(args: &Args) {
 /// Shadow prices (v6 S0): every settlement each year from `--from` (default 1),
 /// `price seed year id x y grain salt iron stone imports yield pop`, where
 /// yield is the harvest per cultivated cell; each year a line
-/// `market seed year residuals...`; and at `--arcs` years the grain arcs,
+/// `market seed year residuals... unmet salt iron stone imports` (unmet
+/// goods demand with `market_goods`); each settlement's line ends with its
+/// supply prices of salt, iron and stone and its kind; and at `--arcs` years
+/// the grain arcs,
 /// `arc seed year from to flow gap transport`.
 pub fn cmd_prices(args: &Args) {
     let mut sim = make_sim(args);
-    if !sim.params.market_shadow {
-        die("prices needs --params with market_shadow true");
+    if !sim.params.market_shadow && !sim.params.market_goods {
+        die("prices needs --params with market_shadow or market_goods true");
     }
     let years = args.u64("years", 500) as u32;
     let from = args.u64("from", 1) as u32;
@@ -469,17 +472,19 @@ pub fn cmd_prices(args: &Args) {
         }
         let g = sim.terrain.grid;
         let r = sim.state.market_residual;
+        let u = sim.state.market_unmet;
         println!(
-            "market {seed} {y} {:.4} {:.4} {:.4} {:.4} {:.4}",
-            r[0], r[1], r[2], r[3], r[4]
+            "market {seed} {y} {:.4} {:.4} {:.4} {:.4} {:.4} unmet {:.0} {:.0} {:.0} {:.0}",
+            r[0], r[1], r[2], r[3], r[4], u[1], u[2], u[3], u[4]
         );
         for s in &sim.state.settlements {
             let (x, yy) = g.xy(s.anchor as usize);
             let yld = s.food_prod / s.fields.len().max(1) as f32;
             let pr = s.price;
+            let sp = s.supply_price;
             println!(
-                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0}",
-                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop
+                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?}",
+                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind
             );
         }
         if arcs_at.contains(&y) {

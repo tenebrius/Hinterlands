@@ -71,7 +71,17 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Goods (v2, D39): each site's output goes to consumers in proportion to
     // demand × exp(−β_g c), and they pay for it in grain out of their marketed
     // share, which travels to the producer as an ordinary food flow.
-    let paid = if p.goods_enabled {
+    let paid = if p.goods_enabled && p.market_goods {
+        crate::systems::market::goods_trade(
+            state,
+            p,
+            &idx_of,
+            &mut food_in,
+            &mut food_out,
+            &mut market_in,
+            &mut flows,
+        )
+    } else if p.goods_enabled {
         goods(
             state,
             p,
@@ -440,7 +450,12 @@ fn outside(
         } else {
             urban_pop(s, p)
         };
-        let want = (p.import_demand * w).min(budget(i, &paid));
+        // With goods by the equilibrium (D71), imports are bought there.
+        let want = if p.market_goods {
+            0.0
+        } else {
+            (p.import_demand * w).min(budget(i, &paid))
+        };
         if want <= 0.0 {
             continue;
         }
@@ -539,6 +554,10 @@ fn outside(
             bought += q;
         }
     }
-    state.outside_trade = (bought, imported);
+    state.outside_trade = if p.market_goods {
+        (bought, state.outside_trade.1)
+    } else {
+        (bought, imported)
+    };
     (paid, sold)
 }

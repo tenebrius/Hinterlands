@@ -314,3 +314,322 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
     state.market_residual = residual;
     state.market_arcs = grain_arcs;
 }
+
+/// Goods by the equilibrium (v6 S1, D71), in place of the shopping model
+/// (D41) when `market_goods` is on. Grain is the numeraire at 1.
+///
+/// For salt, iron and stone the suppliers are the settlements holding working
+/// sites, each with supply `capacity × min(1, p_i)`: a site sells all it can
+/// at a supply price of 1 or more, the old value, and holds back below it. For
+/// imports the outside ports sell without limit at 1. Buyers demand
+/// `D0 · p_j^(−ε)`, `D0` being the v2 demand (per head for salt and iron, per
+/// market person for stone and imports). Along each stored path the flow is
+/// `x_ij = exp(θ (p_j − p_i − t_ij))`, with a holder's own use on an arc of no
+/// cost. Prices are solved by alternating exact log-space solves, suppliers
+/// then buyers (Furness), for `market_passes` passes, warm-started.
+///
+/// A buyer pays `p_j × q` out of its marketed share, capped there as in D41.
+/// The producer receives `p_i × q` as a grain flow, and the rest (carriage
+/// and the entropy margin) is lost. Own use moves no money. Goods and
+/// payments ride the stored paths, as in D41. Writes sites' `sold`,
+/// settlements' `price` (goods) and `goods_in`, `outside_trade`'s imports,
+/// and the goods' unmet demand to `market_unmet`. Returns the grain each
+/// settlement paid.
+#[allow(clippy::too_many_arguments)]
+pub fn goods_trade(
+    state: &mut State,
+    p: &Params,
+    idx_of: &[u32],
+    food_in: &mut [f32],
+    food_out: &mut [f32],
+    market_in: &mut [f32],
+    flows: &mut Vec<crate::state::Flow>,
+) -> Vec<f32> {
+    use crate::state::Flow;
+    let m = state.settlements.len();
+    let ports = state.outside.len();
+    let node_of = |id: u32| -> Option<usize> {
+        if let Some(k) = port_of(id) {
+            return (k < ports).then_some(m + k);
+        }
+        idx_of
+            .get(id as usize)
+            .copied()
+            .filter(|&j| j != u32::MAX)
+            .map(|j| j as usize)
+    };
+    let theta = p.beta / p.market_tau.max(1e-9);
+    // Everything bought: (buyer, supplier node, quantity, buyer price,
+    // supplier price, transport, buyer's partner index or NONE for own use,
+    // good index 1..=4).
+    struct Buy {
+        buyer: usize,
+        from: usize,
+        q: f32,
+        pj: f32,
+        pi: f32,
+        k: u32,
+        g: usize,
+    }
+    let mut buys: Vec<Buy> = Vec::new();
+    let mut unmet = [0f32; PRICED];
+    let mut sold_by = vec![[0f32; 3]; m];
+    for g in 1..PRICED {
+        let rho = match g {
+            1 => p.rho_salt,
+            2 => p.rho_iron,
+            3 => p.rho_stone,
+            _ => p.rho_import,
+        };
+        let tau = p.market_tau / rho.max(1e-6);
+        let elast = match g {
+            1 => p.elast_salt,
+            2 => p.elast_iron,
+            3 => p.elast_stone,
+            _ => p.elast_import,
+        };
+        let demand: Vec<f32> = state
+            .settlements
+            .iter()
+            .map(|s| match g {
+                4 => {
+                    p.import_demand
+                        * if p.market_state {
+                            s.market.max(0.0)
+                        } else {
+                            crate::systems::trade::urban_pop(s, p)
+                        }
+                }
+                _ => crate::systems::trade::demand(s, p, Good::ALL[g - 1]),
+            })
+            .collect();
+        let mut cap = vec![0f32; m];
+        if g < 4 {
+            let good = Good::ALL[g - 1];
+            for site in state.sites.iter().filter(|x| x.good == good) {
+                if let Some(i) = node_of(site.holder).filter(|&i| i < m) {
+                    cap[i] += site.output.max(0.0);
+                }
+            }
+        }
+        // Arcs (supplier node, buyer, transport, buyer's partner index).
+        let mut arcs: Vec<(usize, usize, f32, u32)> = Vec::new();
+        for (j, s) in state.settlements.iter().enumerate() {
+            if demand[j] <= 0.0 {
+                continue;
+            }
+            if g < 4 && cap[j] > 0.0 {
+                arcs.push((j, j, 0.0, crate::state::NONE));
+            }
+            for (k, q) in s.reach.partners.iter().enumerate() {
+                let Some(i) = node_of(q.id) else { continue };
+                let ok = if g == 4 { i >= m } else { i < m && cap[i] > 0.0 };
+                if ok {
+                    arcs.push((i, j, tau * q.cost, k as u32));
+                }
+            }
+        }
+        if arcs.is_empty() {
+            unmet[g] = demand.iter().sum();
+            continue;
+        }
+        let mut by_from: Vec<Vec<usize>> = vec![Vec::new(); m + ports];
+        let mut by_to: Vec<Vec<usize>> = vec![Vec::new(); m];
+        for (a, &(i, j, _, _)) in arcs.iter().enumerate() {
+            by_from[i].push(a);
+            by_to[j].push(a);
+        }
+        // Prices: buyers' delivered prices and suppliers' supply prices,
+        // warm-started; ports' supply price is 1.
+        let mut buy_p: Vec<f32> = state
+            .settlements
+            .iter()
+            .map(|s| if s.price[g] > 0.0 { s.price[g] } else { 1.0 })
+            .collect();
+        let mut sup_p: Vec<f32> = (0..m + ports)
+            .map(|i| {
+                // Ports sell imports at 1; only salt, iron and stone have
+                // settlement suppliers.
+                if i >= m || g == 4 {
+                    1.0
+                } else {
+                    let v = state.settlements[i].supply_price[g - 1];
+                    if v > 0.0 {
+                        v
+                    } else {
+                        1.0
+                    }
+                }
+            })
+            .collect();
+        // log Σ exp(v) over a list, max-subtracted.
+        let lse = |vals: &mut dyn Iterator<Item = f32>| -> f32 {
+            let v: Vec<f32> = vals.collect();
+            let top = v.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+            if !top.is_finite() {
+                return f32::NEG_INFINITY;
+            }
+            top + libm::logf(v.iter().map(|&x| libm::expf(x - top)).sum::<f32>())
+        };
+        for _ in 0..p.market_passes {
+            // Suppliers: θ p_i + ln S(p_i) = ln Σ_j exp(θ (p_j − t_ij)).
+            for i in 0..m {
+                if by_from[i].is_empty() {
+                    continue;
+                }
+                let a = lse(&mut by_from[i].iter().map(|&k| theta * (buy_p[arcs[k].1] - arcs[k].2)));
+                let lc = libm::logf(cap[i].max(1e-9));
+                let mut pi = (a - lc) / theta;
+                if pi < 1.0 {
+                    // Below 1 supply is cap × p: θ p + ln p = a − ln cap.
+                    for _ in 0..4 {
+                        let f = theta * pi + libm::logf(pi.max(1e-6)) + lc - a;
+                        pi = (pi - f / (theta + 1.0 / pi.max(1e-6))).clamp(1e-3, 1.0);
+                    }
+                }
+                sup_p[i] = pi.clamp(1e-3, 1e3);
+            }
+            // Buyers: θ p_j + ln Σ_i exp(−θ (p_i + t_ij)) = ln D0 − ε ln p_j.
+            for j in 0..m {
+                if by_to[j].is_empty() {
+                    continue;
+                }
+                let b = lse(&mut by_to[j].iter().map(|&k| -theta * (sup_p[arcs[k].0] + arcs[k].2)));
+                let ld = libm::logf(demand[j].max(1e-9));
+                let mut pj = buy_p[j];
+                for _ in 0..4 {
+                    let f = theta * pj + b - ld + elast * libm::logf(pj.max(1e-6));
+                    pj = (pj - f / (theta + elast / pj.max(1e-6))).clamp(1e-3, 1e3);
+                }
+                buy_p[j] = pj;
+            }
+        }
+        // The flows at the solved prices.
+        let mut got = vec![0f32; m];
+        for &(i, j, t, k) in &arcs {
+            let q = libm::expf((theta * (buy_p[j] - sup_p[i] - t)).min(60.0));
+            if !(q > 0.0) {
+                continue;
+            }
+            got[j] += q;
+            if i < m && g < 4 {
+                sold_by[i][g - 1] += q;
+            }
+            buys.push(Buy {
+                buyer: j,
+                from: i,
+                q,
+                pj: buy_p[j],
+                pi: sup_p[i],
+                k,
+                g,
+            });
+        }
+        unmet[g] = (0..m).map(|j| (demand[j] - got[j]).max(0.0)).sum();
+        for (j, s) in state.settlements.iter_mut().enumerate() {
+            s.price[g] = buy_p[j];
+            if g < 4 {
+                s.supply_price[g - 1] = sup_p[j];
+            }
+        }
+    }
+    // Goods arcs for the report: (supplier id, buyer id, quantity, price gap,
+    // transport), settlement suppliers only, own use left out.
+    state.market_arcs = buys
+        .iter()
+        .filter(|b| b.from < m && b.from != b.buyer && b.q >= 0.1)
+        .map(|b| {
+            let t = b.pj - b.pi - libm::logf(b.q.max(1e-9)) / theta;
+            (
+                state.settlements[b.from].id,
+                state.settlements[b.buyer].id,
+                b.q,
+                b.pj - b.pi,
+                t,
+            )
+        })
+        .collect();
+    // Bills, capped at each buyer's marketed share (own use is free).
+    let mut bill = vec![0f32; m];
+    for b in buys.iter().filter(|b| b.from != b.buyer) {
+        bill[b.buyer] += b.pj * b.q;
+    }
+    let scale: Vec<f32> = (0..m)
+        .map(|i| {
+            let budget = state.settlements[i].food_prod * p.market_share;
+            if bill[i] > budget {
+                budget / bill[i]
+            } else {
+                1.0
+            }
+        })
+        .collect();
+    let mut paid = vec![0f32; m];
+    let mut goods_in = vec![0f32; m];
+    let mut imported = 0.0f32;
+    for b in &buys {
+        if b.from == b.buyer {
+            continue;
+        }
+        let buyer = &state.settlements[b.buyer];
+        let pay = b.pj * b.q * scale[b.buyer];
+        paid[b.buyer] += pay;
+        food_out[b.buyer] += pay;
+        let to = buyer.reach.partners[b.k as usize].id;
+        let good = (b.g < 4).then(|| Good::ALL[b.g - 1]);
+        // The goods come in on the buyer's path; the payment goes out on it.
+        flows.push(Flow {
+            from: buyer.id,
+            to,
+            amount: b.pj * b.q,
+            food: 0.0,
+            partner_idx: b.k,
+            good,
+            payment: false,
+            import: b.g == 4,
+        });
+        flows.push(Flow {
+            from: buyer.id,
+            to,
+            amount: pay,
+            food: pay,
+            partner_idx: b.k,
+            good: None,
+            payment: true,
+            import: false,
+        });
+        if b.from >= m {
+            imported += pay;
+            continue;
+        }
+        // The producer gets the supply price; carriage and margin are lost.
+        let received = b.pi * b.q * scale[b.buyer];
+        food_in[b.from] += received;
+        market_in[b.from] += received;
+        goods_in[b.from] += received;
+    }
+    // Each holder's sales shared over its sites by capacity.
+    for site in state.sites.iter_mut() {
+        site.sold = 0.0;
+    }
+    let mut cap_of = vec![[0f32; 3]; m];
+    for site in state.sites.iter() {
+        if let Some(i) = idx_of.get(site.holder as usize).copied().filter(|&i| i != u32::MAX) {
+            cap_of[i as usize][site.good.index()] += site.output.max(0.0);
+        }
+    }
+    for site in state.sites.iter_mut() {
+        if let Some(i) = idx_of.get(site.holder as usize).copied().filter(|&i| i != u32::MAX) {
+            let (i, g) = (i as usize, site.good.index());
+            if cap_of[i][g] > 0.0 {
+                site.sold = sold_by[i][g] * site.output.max(0.0) / cap_of[i][g];
+            }
+        }
+    }
+    for (s, g) in state.settlements.iter_mut().zip(goods_in) {
+        s.goods_in = g;
+    }
+    state.outside_trade.1 = imported;
+    state.market_unmet = unmet;
+    paid
+}

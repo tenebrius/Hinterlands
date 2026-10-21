@@ -1,6 +1,7 @@
 """Map of shadow grain prices for one year (v6 S0).
 
-usage: python3 -I tools/market/price_map.py PRICES.txt YEAR BACKGROUND.png OUT.png [LABEL]
+usage: python3 -I tools/market/price_map.py PRICES.txt YEAR BACKGROUND.png OUT.png [LABEL] [GOOD]
+GOOD is grain (default), salt, iron, stone or imports.
 PRICES.txt is `hinterlands prices` output (places founded after the market step that year, with no price yet, are left out); BACKGROUND.png a bare terrain
 render (`hinterlands render --bare 1`). Each settlement is a dot sized by
 population and coloured by its grain price on a fixed scale, cheap (blue)
@@ -11,6 +12,8 @@ from PIL import Image, ImageDraw
 
 path, year, bg, out = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 label = sys.argv[5] if len(sys.argv) > 5 else f"year {year}"
+good = sys.argv[6] if len(sys.argv) > 6 else "grain"
+col = 6 + ["grain", "salt", "iron", "stone", "imports"].index(good)
 img = Image.open(bg).convert("RGB")
 img = Image.blend(img, Image.new("RGB", img.size, (255, 255, 255)), 0.45)
 d = ImageDraw.Draw(img)
@@ -31,8 +34,8 @@ def colour(p):
 prices = []
 for line in open(path):
     f = line.split()
-    if f[0] == "price" and int(f[2]) == year and float(f[6]) > 0:
-        x, y, p, pop = int(f[4]), int(f[5]), float(f[6]), float(f[12])
+    if f[0] == "price" and int(f[2]) == year and float(f[col]) > 0:
+        x, y, p, pop = int(f[4]), int(f[5]), float(f[col]), float(f[12])
         prices.append(p)
         r = max(1.5, math.sqrt(pop) / 12) * scale / 4
         cx, cy = (x + 0.5) * scale, (y + 0.5) * scale
@@ -42,6 +45,6 @@ med = prices[len(prices) // 2] if prices else float("nan")
 for k in range(100):
     p = math.exp(lo + (hi - lo) * k / 99)
     d.rectangle([10 + k * 2, img.size[1] - 22, 12 + k * 2, img.size[1] - 10], fill=colour(p))
-d.text((10, img.size[1] - 38), f"{label}: grain 0.4 to 2.0, median {med:.2f}", fill=(0, 0, 0))
+d.text((10, img.size[1] - 38), f"{label}: {good} 0.4 to 2.0, median {med:.2f}", fill=(0, 0, 0))
 img.save(out)
 print(f"wrote {out} ({len(prices)} places, median {med:.3f})")

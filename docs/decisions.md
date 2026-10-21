@@ -483,3 +483,20 @@ Kind: rendering (frontend merge).
   - 1316 prices about double 1310's, region-wide.
 - **Tooling.** The viewer's `?selftest=N&shadow=1` times it in the browser.
 Kind: model mechanism behind a switch (designer's brief), off.
+
+## D71 — v6 S1: goods by the price equilibrium (stopped: map 2 spacing)
+- **Switch.** `market_goods`, off. When on, salt, iron, stone and imports trade by the S0 equilibrium in place of D41, and the outside ports' import sale moves into it. Grain is the numeraire at 1 and its trade is unchanged.
+- **Supply.** At holders, `capacity × min(1, p_i)`: a site sells all its capacity at a supply price of 1, the old value, or more, and holds back below. This is my reading of "supply up to capacity, with the supply price clearing it". The ports sell imports without limit at 1.
+- **Demand.** `D0 · p^(−ε)` (salt 0.2, iron 0.5, stone 1.0, imports 1.0).
+- **Flows and solver.** Flows are `exp(θ (p_j − p_i − t))` on the stored paths, with a zero-cost arc for a holder's own use. Prices are solved by alternating exact log-space solves, suppliers then buyers, for `market_passes` passes, warm-started each year.
+- **Payment.** The buyer pays `p_j q`, capped at its marketed share as in D41. The producer receives `p_i q` as a grain flow. Carriage and the entropy margin are lost. Own use moves no money.
+- **Gate** (Historical, 20 seeds a map): **FAILED on map 2 market spacing (14/20).**
+  - Every other check holds. Largest not a specialist: 20 / 19 / 20. Outside trade: 4.5–5.4%.
+  - Release wasm 31.2 ms/year; the hash `3e18908a758b4937` is the same natively and in the browser.
+- **Cause.**
+  - **Iron:** at the v2 demand against coppice-limited output (D51), it prices at 22–80, with about 2,000 a year of demand unmet.
+  - **Mines:** the rent makes them large, with specialist medians of 1,500–2,800 people against v5's 40–105. On map 2, which has the most mines, that crowds its spacing.
+  - **Price gaps:** on goods arcs the median gap is 0.85–1.06 of transport.
+- **Report:** `docs/market/s1.md`, with the options. `market_goods` stays off, and the golden is unchanged.
+- **Tooling.** The viewer's `?selftest=N&goods=1` times S1 in the browser.
+Kind: model mechanism behind a switch (designer's brief); stopped for the designer.

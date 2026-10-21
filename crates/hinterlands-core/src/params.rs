@@ -237,6 +237,7 @@ define_params! {
         rho_import: f32 = 10.0, [0.1, 50], "Value density of imports: distance decay is beta / rho";
     }
     "Market" => {
+        market_goods: bool = false, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
         market_shadow: bool = false, [0, 1], "Solve shadow prices each year beside the trade; nothing feeds back (v6 S0, D69)";
         market_tau: f32 = 0.002, [0.0001, 0.05], "Transport price of grain per unit of travel cost, as a share of its value (Clark: about 0.2% per km)";
         market_passes: u32 = 8, [1, 200], "Balancing passes a year";
