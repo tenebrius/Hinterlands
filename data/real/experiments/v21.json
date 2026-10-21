@@ -2,5 +2,9 @@
   "traffic_roads": false,
   "traffic_bridges": false,
   "mills": false,
-  "events_mode": 0
+  "events_mode": 0,
+  "shadow_weight": 4.3475847,
+  "found_threshold": 0.3269517,
+  "noise": 0.3083304,
+  "outside_ports": false
 }

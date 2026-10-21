@@ -204,14 +204,14 @@ define_params! {
         w_coast: f32 = 0.0, [0, 5], "Score weight of the coast";
         w_road: f32 = 0.0, [0, 5], "Score weight of a road";
         w_food: f32 = 1.0950333, [0, 5], "Score weight of free food within the cultivation radius";
-        shadow_weight: f32 = 4.3475847, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
+        shadow_weight: f32 = 4.5326834, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
         shadow_radius: f32 = 10.0, [0, 40], "Travel cost within which a settlement casts a shadow (without shadow_km)";
         shadow_km: bool = false, [0, 1], "The urban shadow, in founding and in the growth drain, is measured in straight-line km between anchors (D52)";
         shadow_radius_km: f32 = 10.0, [0, 40], "Distance, km, within which a settlement casts a founding shadow (with shadow_km)";
         access_weight: f32 = 0.3, [0, 5], "Market access per 1,000 people beyond the shadow radius";
         access_decay: f32 = 0.05, [0, 0.5], "Decay of market access per unit cost";
-        noise: f32 = 0.3083304, [0, 2], "Upper bound of the uniform noise term";
-        found_threshold: f32 = 0.3269517, [0, 10], "Least score for a new settlement";
+        noise: f32 = 0.3244266, [0, 2], "Upper bound of the uniform noise term";
+        found_threshold: f32 = 0.44928834, [0, 10], "Least score for a new settlement";
         max_found_per_step: u32 = 6, [0, 30], "Most settlements founded per founding step";
         min_spacing_km: f32 = 3.0, [1, 20], "No founding within this distance of a settlement, km";
         water_radius_km: f32 = 1.0, [0, 5], "Founding sites need water within this distance, km";
@@ -231,9 +231,9 @@ define_params! {
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Outside" => {
-        outside_ports: bool = false, [0, 1], "Outside ports at the open-sea map edges buy grain and sell imports (v5, D64)";
-        outside_grain: f32 = 300.0, [0, 100000], "Grain each outside port buys a year, grain units";
-        import_demand: f32 = 0.05, [0, 2], "Imports wanted a year per market person, grain units";
+        outside_ports: bool = true, [0, 1], "Outside ports at the open-sea map edges buy grain and sell imports (v5, D64)";
+        outside_grain: f32 = 700.0, [0, 100000], "Grain each outside port buys a year, grain units";
+        import_demand: f32 = 0.07, [0, 2], "Imports wanted a year per market person, grain units";
         rho_import: f32 = 10.0, [0.1, 50], "Value density of imports: distance decay is beta / rho";
     }
     "Events" => {

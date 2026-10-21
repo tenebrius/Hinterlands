@@ -413,3 +413,16 @@ Kind: model mechanism (designer's specification); stopped for the designer.
 - **Rule.** In historical mode, at each road step from `ship_from` (200, 1300) to `ship_to` (400, 1500), sea cost per km moves along a straight line to `(1 − ship_gain)` of `cost_sea`. It is written into the state's transport ratios through an event, and the cost grid is rebuilt then, so only at road steps. 1450 is announced in the chronicle.
 - **Default.** `ship_gain` is 0 until O1 is settled. The brief's 0.3 goes in at the O2 gate.
 Kind: model mechanism (designer's specification).
+
+## D66 — Re-tune with outside ports on (designer decision)
+- **Settings.** Outside ports on at `outside_grain` 700 and `import_demand` 0.07. One tuning pass over `shadow_weight`, `found_threshold` and `noise`, the spacing measure unchanged.
+- **Screen.** A search of 24 samples, 3 maps × 4 seeds each, ranked these; the best point went to full validation.
+- **New defaults:** `shadow_weight` 4.5327 (was 4.3476), `found_threshold` 0.4493 (0.3270), `noise` 0.3244 (0.3083).
+- **Full gate** (Historical, 20 seeds a map): **PASSED**.
+  - Every check holds.
+  - Map 1 market spacing: 15/20, exactly at the 75% line; median 8.9 km. Maps 2 and 3: 20/20 and 18/20.
+  - Outside trade: 0.051 / 0.052 / 0.055 of market inflow, 20/20 on every map.
+  - Runs passing every check: 15 / 18 / 16.
+- **Reproducibility.** `data/real/experiments/v4.json` pins the old founding values with ports off and reproduces v4's `2c5e9c5c90ab1d43`. The earlier version files pin them too.
+- **Golden with outside ports, before O2:** `8ee85c10266b1dd2`.
+Kind: change to the defaults (designer decision).
