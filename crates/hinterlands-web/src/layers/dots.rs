@@ -2,10 +2,11 @@
 //! trip by mode: cart, river barge, sea ship); dots spawn at that rate and move
 //! along the stored path at each mode's speed. One real second is one day.
 //! Dots are capped per route, with more cargo per dot when flows are large.
-//! The simulation never sees the dots.
+//! Each path is smoothed like the drawn routes, kept sharp at the same pins, so
+//! the dots travel on the lines. The simulation never sees the dots.
 
-use super::{DrawCtx, Layer, Swatch};
-use egui::{Color32, Pos2};
+use super::{lines, routes, DrawCtx, Layer, Swatch};
+use egui::{Color32, Vec2};
 use hinterlands_core::terrain::Terrain;
 
 /// Tonnes of goods per food unit (a person's grain for a year, about 250 kg).
@@ -44,8 +45,9 @@ impl Mode {
 }
 
 struct Leg {
-    a: Pos2,
-    b: Pos2,
+    /// Map positions, in cells.
+    a: Vec2,
+    b: Vec2,
     /// Days from the route's start to this leg's start, and the leg's length in days.
     t0: f32,
     dt: f32,
@@ -63,7 +65,7 @@ struct Route {
 #[derive(Default)]
 pub struct DotsLayer {
     routes: Vec<Route>,
-    key: Option<(u64, u32, i64, i64, i64)>,
+    key: Option<(u64, u32)>,
 }
 
 fn mode_of(t: &Terrain, n: u32, a: u32, b: u32) -> Mode {
@@ -102,16 +104,14 @@ impl Layer for DotsLayer {
         let t = &v.terrain;
         let g = t.grid;
         let n = t.n() as u32;
-        // Positions are cached in screen space, so the camera is part of the key.
-        let key = (
-            v.terrain_version,
-            v.snapshot.year,
-            (d.camera.zoom * 100.0) as i64,
-            (d.camera.center.x * 100.0) as i64,
-            (d.camera.center.y * 100.0) as i64,
-        );
+        let key = (v.terrain_version, v.snapshot.year);
         if self.key != Some(key) {
             self.routes.clear();
+            let pins = routes::network(v).pins;
+            let centre = |c: usize| {
+                let (x, y) = g.xy(c);
+                Vec2::new(x as f32 + 0.5, y as f32 + 0.5)
+            };
             let mut flows: Vec<_> = v
                 .snapshot
                 .flows
@@ -120,8 +120,9 @@ impl Layer for DotsLayer {
                 .collect();
             flows.sort_by(|a, b| b.amount.total_cmp(&a.amount));
             for f in flows.into_iter().take(400) {
-                let mut legs = Vec::new();
-                let mut t0 = 0.0;
+                // The path's cells, each with the mode of the leg leaving it.
+                let mut cells = vec![(f.path[0] % n) as usize];
+                let mut modes = Vec::new();
                 let mut cargo = 1.0f32;
                 for w in f.path.windows(2) {
                     let (ca, cb) = ((w[0] % n) as usize, (w[1] % n) as usize);
@@ -130,10 +131,35 @@ impl Layer for DotsLayer {
                     }
                     let mode = mode_of(t, n, w[0], w[1]);
                     cargo = cargo.max(mode.tonnes());
-                    let dt = g.dist_km(ca, cb) / mode.km_per_day();
+                    cells.push(cb);
+                    modes.push(mode);
+                }
+                if modes.is_empty() {
+                    continue;
+                }
+                modes.push(modes[modes.len() - 1]);
+                // Smooth between pins, where the drawn routes keep their corners too.
+                let mut pts: Vec<Vec2> = Vec::new();
+                let mut at: Vec<Mode> = Vec::new();
+                let mut start = 0;
+                for k in 1..cells.len() {
+                    if k == cells.len() - 1 || pins.contains(&(cells[k] as u32)) {
+                        let part: Vec<Vec2> = cells[start..=k].iter().map(|&c| centre(c)).collect();
+                        let (p, m) = lines::chaikin(&part, &modes[start..=k], 2, |a, _, _| a);
+                        let skip = usize::from(!pts.is_empty());
+                        pts.extend_from_slice(&p[skip..]);
+                        at.extend_from_slice(&m[skip..]);
+                        start = k;
+                    }
+                }
+                let mut legs = Vec::new();
+                let mut t0 = 0.0;
+                for k in 0..pts.len() - 1 {
+                    let mode = at[k];
+                    let dt = (pts[k + 1] - pts[k]).length() * g.cell_km / mode.km_per_day();
                     legs.push(Leg {
-                        a: d.camera.cell_center(d.rect, g.w, ca),
-                        b: d.camera.cell_center(d.rect, g.w, cb),
+                        a: pts[k],
+                        b: pts[k + 1],
                         t0,
                         dt,
                         mode,
@@ -170,7 +196,7 @@ impl Layer for DotsLayer {
                 let leg = r.legs.iter().find(|l| s >= l.t0 && s < l.t0 + l.dt);
                 if let Some(leg) = leg.filter(|l| !(winter && l.mode == Mode::Ship)) {
                     let u = (s - leg.t0) / leg.dt.max(1e-6);
-                    let p = leg.a + (leg.b - leg.a) * u;
+                    let p = d.camera.to_screen(d.rect, leg.a + (leg.b - leg.a) * u);
                     if d.rect.contains(p) {
                         d.painter.circle_filled(
                             p,

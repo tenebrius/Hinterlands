@@ -6,14 +6,13 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 ## Handover: merging into `main`
 
-This section describes the step waiting to be merged; it is rewritten for each step.
+This section describes the steps waiting to be merged; it is rewritten each time.
 
-- **Step: R3, the farmed countryside in the shader.** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`.
+- **Steps: R3 (the farmed countryside in the shader) and R4 (smoothed roads, routes and trade dots).** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`, with `main` merged in since. Each step is one commit and they can be merged together.
 - **Files touched.** All in `crates/hinterlands-web/src/layers/`:
-  - `relief.rs` and `relief.frag`: two per-year textures (land use; plots) and the countryside and season drawing.
-  - `countryside.rs`: the strip-direction rule is now the shared function `strip_orientation`, and the strips and pasture tint are skipped while the shader draws them.
-  - `fields.rs`, `history.rs` and `seasons.rs`: each skips its per-cell drawing while the shader draws it.
-  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*`, `5-*`.
+  - R3: `relief.rs` and `relief.frag` get two per-year textures (land use; plots) and the countryside and season drawing. `countryside.rs`: the strip-direction rule is now the shared function `strip_orientation`, and the strips and pasture tint are skipped while the shader draws them. `fields.rs`, `history.rs` and `seasons.rs` each skip their per-cell drawing while the shader draws it.
+  - R4: new `lines.rs` (the shared Chaikin smoothing); `routes.rs` rewritten around chains; `dots.rs` moves along smoothed paths; `rivers.rs` uses `lines.rs`, with unchanged output; `mod.rs` registers `lines`. `routes::segments` keeps its signature for `buildings.rs`.
+  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*`, `5-*`, `6-*`.
 - **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
 - **No new dependencies.**
 - **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
@@ -60,15 +59,29 @@ What changes is the drawing:
 
 Kind: rendering.
 
+## R4 — Roads, routes and trade drawn as smoothed lines
+
+Roads and trade routes were straight segments from cell centre to cell centre, so every route zig-zagged along the eight grid directions.
+
+- **Chains.** Each year's route segments are joined into chains, one kind at a time: water, land trade off the roads, and roads.
+- **Pins.** Chains break only at pins. A pin is a junction, an end, a cell where a kind of route starts or stops, or a settlement centre, so roads still run through towns.
+- **Smoothing.** Each chain is smoothed with the same Chaikin corner cutting as the rivers (now shared in `lines.rs`). Width still follows each segment's flow.
+- **Roads.** Once a road is 2.5 px wide it is drawn cased: a dark edge under a light fill, with all edges drawn before all fills so junctions join cleanly. Below that width a road is a single brown line, as before. Quiet roads still fade back.
+- **Tracks and water.** Land trade off the roads is a dashed track. Water trade stays a pale line.
+- **Trade dots.** Each trade path is smoothed the same way and split at the same pins, so the moving dots run on the drawn lines. Dot positions are cached in map space and placed on screen each frame, so panning and zooming no longer rebuild them.
+- **Unchanged.** Which segments are drawn (the 2% share rule), and the trip, cargo and speed rules for dots.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
 - R1–R2, summer, on v1.1: `1-overview`, `2-region` (zoomed to the central river valley) and `3-coast` (zoomed to the coast, river mouth and Chedesworth).
 - R3, on v1.2: `4-fields` (zoomed to Chedesworth and Harnfield in summer) and `5-winter` (the central valley in winter).
+- R4, on v2 G2: `6-roads` (the same view as `4-fields`, roads and routes before and after).
 
 ## Next steps, in order
 
-1. Roads and water routes smoothed with Chaikin, with an outline under the fill. The trade dots follow the smoothed line. These are now the most visibly blocky thing on the map.
-2. Settlement footprints traced as one outline, not per-cell blocks.
-3. Lettering: a bundled serif font and halos behind labels.
-4. A panel theme to match the map.
+1. Settlement footprints traced as one outline, not per-cell blocks. Footpaths and parish boundaries smoothed like the roads.
+2. Lettering: a bundled serif font and halos behind labels.
+3. A panel theme to match the map.
