@@ -1,7 +1,7 @@
 //! The read-only view of a year. The viewer and the CLI only ever see this.
 
 use crate::cost::Transport;
-use crate::state::{LogEntry, Rank, State, Tally};
+use crate::state::{Good, Kind, LogEntry, Rank, State, Tally};
 use crate::terrain::Terrain;
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,37 @@ pub struct SettlementView {
     pub fields: u32,
     /// Population 50 years ago (or at founding, if younger).
     pub pop_50_ago: f32,
+    /// Specialist kind (v2); left out of the bytes for ordinary settlements.
+    #[serde(default = "agrarian", skip_serializing_if = "is_agrarian")]
+    pub kind: Kind,
+    /// Grain received for goods sold this year (v2); left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub goods_in: f32,
+}
+
+fn agrarian() -> Kind {
+    Kind::Agrarian
+}
+
+fn is_agrarian(k: &Kind) -> bool {
+    *k == Kind::Agrarian
+}
+
+fn is_zero(x: &f32) -> bool {
+    *x == 0.0
+}
+
+/// A resource site as the viewer sees it (v2).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SiteView {
+    pub cell: u32,
+    pub good: Good,
+    /// The settlement working the site, or `NONE`.
+    pub holder: u32,
+    /// Capacity this year, grain units.
+    pub capacity: f32,
+    /// Sold this year, its holder's own use included.
+    pub sold: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -62,6 +93,9 @@ pub struct Snapshot {
     pub flows: Vec<FlowView>,
     pub log: Vec<LogEntry>,
     pub tally: Tally,
+    /// Resource sites (v2); left out of the bytes with goods off.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sites: Vec<SiteView>,
 }
 
 impl Snapshot {
@@ -87,6 +121,8 @@ impl Snapshot {
                 food_ratio: s.food_ratio,
                 fields: s.fields.len() as u32,
                 pop_50_ago: s.history.first().copied().unwrap_or(s.pop),
+                kind: s.kind,
+                goods_in: s.goods_in,
             })
             .collect();
         let flows = state
@@ -126,6 +162,21 @@ impl Snapshot {
             flows,
             log: state.log.clone(),
             tally: state.tally.clone(),
+            sites: if p.goods_enabled {
+                state
+                    .sites
+                    .iter()
+                    .map(|s| SiteView {
+                        cell: s.cell,
+                        good: s.good,
+                        holder: s.holder,
+                        capacity: s.output,
+                        sold: s.sold,
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            },
         }
     }
 

@@ -141,21 +141,21 @@ define_params! {
     "Trade" => {
         trade_enabled: bool = true, [0, 1], "Run the trade system";
         c_max: f32 = 30.0, [10, 200], "Largest travel cost at which two settlements trade";
-        alpha: f32 = 1.095267, [0.5, 2], "Size exponent of the gravity attraction";
-        beta: f32 = 0.1421178, [0.005, 0.5], "Distance decay of trade per km-equivalent";
+        alpha: f32 = 1.0882609, [0.5, 2], "Size exponent of the gravity attraction";
+        beta: f32 = 0.13902539, [0.005, 0.5], "Distance decay of trade per km-equivalent";
         transport_loss: f32 = 0.005, [0, 0.03], "Share of shipped food lost per unit cost";
         cost_refresh_years: u32 = 5, [1, 25], "Years between refreshes of travel costs and paths";
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
         home_weight: f32 = 1.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
-        market_share: f32 = 0.4484705, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
+        market_share: f32 = 0.48655713, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
         outside_enabled: bool = false, [0, 1], "An outside world off the sea edge trades with the region (D25)";
         outside_size: f32 = 5000.0, [0, 100000], "Market size W of the outside world";
         outside_beta: f32 = 0.05, [0.005, 0.5], "Distance decay of trade with the outside world";
         outside_out: f32 = 2000.0, [0, 50000], "Goods the outside world sends into the region per year";
     }
     "Goods" => {
-        goods_enabled: bool = false, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";
+        goods_enabled: bool = true, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";
         value_salt: f32 = 1.0, [0.1, 10], "Grain paid per unit of salt";
         value_iron: f32 = 1.0, [0.1, 10], "Grain paid per unit of iron";
         value_stone: f32 = 1.0, [0.1, 10], "Grain paid per unit of stone";
@@ -164,7 +164,7 @@ define_params! {
         rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
         demand_salt: f32 = 0.02, [0, 0.2], "Salt wanted per person a year, grain units";
         demand_iron: f32 = 0.02, [0, 0.2], "Iron wanted per person a year, grain units";
-        demand_stone: f32 = 0.03, [0, 0.3], "Stone wanted per market person a year, grain units";
+        demand_stone: f32 = 0.01603657, [0, 0.3], "Stone wanted per market person a year, grain units";
         prod_salt: f32 = 2.0, [0, 20], "Salt output per worker a year, grain units";
         prod_iron: f32 = 2.0, [0, 20], "Iron output per worker a year, grain units";
         prod_stone: f32 = 2.0, [0, 20], "Stone output per worker a year, grain units";
@@ -180,8 +180,8 @@ define_params! {
         r_grow: f32 = 0.027, [0, 0.1], "Yearly natural growth at a full food surplus";
         r_shrink: f32 = 0.02, [0, 0.2], "Yearly decline per unit of food shortfall";
         food_cap: f32 = 1.2, [1, 2], "Food ratio above which surplus adds no natural growth";
-        epsilon: f32 = 0.14509128, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
-        k_maint: f32 = 3.5032141, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
+        epsilon: f32 = 0.13734761, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
+        k_maint: f32 = 3.3905132, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
         through_weight: f32 = 0.025, [0, 2], "Weight of trade passing through and non-food trade in inflow";
         gross_inflow: bool = false, [0, 1], "Markets grow on gross market inflow, as published Rihll-Wilson, not net food imports (D24)";
         market_state: bool = true, [0, 1], "Market size W is its own state, grown on gross market inflow (Rihll-Wilson; D26)";

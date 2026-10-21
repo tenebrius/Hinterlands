@@ -376,7 +376,8 @@ pub fn cmd_validate(args: &Args) {
         let mut over5: Vec<u32> = rs.iter().map(|r| r.m.over_5000).collect();
         over5.sort();
         let over5_median = over5.get(over5.len() / 2).copied().unwrap_or(0);
-        let over5_ok = over5_median >= 2;
+        // Reported, not gated, since v2 (D48); the per-seed 1–5 check stays gated.
+        let over5_ok = true;
         let mut mouth_km: Vec<f32> = rs.iter().map(|r| r.largest_mouth_km).collect();
         mouth_km.sort_by(|a, b| a.total_cmp(b));
         let ms = rs.iter().map(|r| r.ms_per_year).fold(0.0, f64::max);
@@ -399,12 +400,7 @@ pub fn cmd_validate(args: &Args) {
         );
         println!(
             "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
-            "over 5,000 median",
-            ">=2",
-            "",
-            over5_median,
-            "",
-            if over5_ok { "ok" } else { "FAIL" }
+            "over 5,000 median", "(reported)", "", over5_median, "", ""
         );
         println!(
             "{:<20} {:>12} {:>10} {:>10.1} {:>10} {:>8}",

@@ -230,3 +230,16 @@ Kind: rendering.
 ## D47 — Lettering and panel theme (rendering; R7 from the graphics-overhaul branch)
 Labels and the legend are set in EB Garamond Medium and Medium Italic: Latin subsets of about 50 KB each in `crates/hinterlands-web/assets/fonts/`, under the SIL Open Font License 1.1, with `OFL.txt` beside them. Panels get a parchment theme in light and dark mode (`src/style.rs`). The wasm grows by about 130 KB.
 Kind: rendering.
+
+## D48 — The over-5,000 median is reported, not gated (designer decision)
+From v2, the median count of settlements over 5,000 across the 20 seeds is reported, not gated (it was gated at ≥ 2 from D20). The per-seed check (1–5 over 5,000) stays gated. Reasons: v1.2 passed the median on map 3 by one seed; map 3 has one dominant site; and the per-seed hierarchy checks carry what the median was for. `validate` prints it as reported, and the search no longer scores it (tuning towards it was declined).
+Kind: change to the acceptance test (designer).
+
+## D49 — v2: goods on by default, re-tuned values, and the goods view
+- `goods_enabled` is on by default, with the values re-tuned under goods (on the generated maps, 4 seeds a map): α 1.0883, β 0.1390, ε 0.1373, K 3.3905, market share 0.4866, stone demand 0.0160. The other goods values are the specification's starting values, plus v_g 1 and fuel_per_iron 0.1 (D38) and specialist_share 0.25 (D44). Files that reproduce earlier versions: `data/real/experiments/v1.json` gives v1's golden `afd6c175b193443b`, and `v12.json` gives v1.2's `2b00434da9781880`.
+- The snapshot gains each settlement's `kind` and `goods_in`, and the year's `sites` (good, holder, capacity, sold). All are left out of the bytes at their defaults, so goods-off runs keep their old hashes.
+- The view gains a new layer, `layers/goods.rs`: goods trade as smoothed lines coloured by good (salt white, iron rust, stone grey), with a dark casing; site symbols (square salt works, triangle mine, diamond quarry), filled while selling; and a ring in the good's colour round each specialist. Legend entries come from the layer.
+- The view gains a new panel, `panels/goods.rs`: totals by good, and the site or specialist at the selected cell.
+- The chronicle names new works and specialists that outgrow their works.
+Golden hash: `b0de71500774acf8`, native and in the browser.
+Kind: change to the defaults (designer), and rendering.

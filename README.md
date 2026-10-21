@@ -41,6 +41,8 @@ The world is a grid of 1 km cells (128 × 128 by default) generated from a seed:
 
 **6. Roads** (Dalgaard et al. 2022). Every ten years the largest trade flows whose path is not yet road become roads, and travel costs are rebuilt.
 
+**Goods** (v2; Weber 1909; Huff 1964; Wilson 1971). Salt works on the coast, iron mines in the uplands and quarries in the hills produce salt, iron and stone, worked by the settlement that holds the site. Iron burns charcoal from its holder's woods. Every settlement buys its yearly demand for each good from the working sites, shared by capacity and closeness, and pays in grain out of its marketed share, so no food is created. Goods and payments travel the routes, and the towns they pass earn handling income. A free site with enough demand in reach gets a specialist hamlet: a mine, salt works or quarry. A specialist whose goods sales fall below a quarter of its income becomes an ordinary town.
+
 **Names.** Settlements are named when founded, and natural features when the map is generated, from a hash of the place and its features (-ford at a ford, -mouth at a river mouth, -port on a harbour, -hurst in woodland, -don on high ground). Naming never touches the run's random generator.
 
 Everything drawn on screen (footprints, routes, trade traffic, labels, overlays, charts) is derived from the year's snapshot and never feeds back.

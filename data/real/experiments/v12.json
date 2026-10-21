@@ -1,0 +1,9 @@
+{
+  "goods_enabled": false,
+  "alpha": 1.095267,
+  "beta": 0.1421178,
+  "market_share": 0.4484705,
+  "epsilon": 0.14509128,
+  "k_maint": 3.5032141,
+  "demand_stone": 0.03
+}

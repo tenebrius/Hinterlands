@@ -5,6 +5,7 @@ mod buildings;
 mod countryside;
 mod dots;
 mod fields;
+mod goods;
 mod history;
 mod labels;
 mod lines;
@@ -173,6 +174,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(settlements::SettlementsLayer::default()),
         Box::new(buildings::BuildingsLayer::default()),
         Box::new(dots::DotsLayer::default()),
+        Box::new(goods::GoodsLayer),
         Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,

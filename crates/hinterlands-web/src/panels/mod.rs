@@ -4,6 +4,7 @@
 mod charts;
 mod chronicle;
 mod controls;
+mod goods;
 mod inspector;
 mod layers;
 mod params;
@@ -30,6 +31,7 @@ pub fn all() -> Vec<Box<dyn Panel>> {
         Box::new(layers::Layers),
         Box::new(charts::Charts),
         Box::new(chronicle::Chronicle),
+        Box::new(goods::GoodsPanel),
         Box::new(params::ParamsPanel),
     ]
 }

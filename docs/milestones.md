@@ -176,3 +176,31 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - Determinism: golden `2b00434da9781880`; the release wasm build gives the same hash (`?selftest=500`).
 - Performance: 26.1 ms per year in the release wasm build; slowest native validation run 27.8 ms per year.
 - Kent regression (`just real`: uniform soil, Roman roads and bridges, 20 seeds): lowland AUC 0.49 / 0.53 / 0.46; inland towns found 39%; places on rivers 44% (real 26%); inland places over 500: 32 per seed at 6.2 km (real 29 at 10.6); places of 1,000+ on or next to a Roman road 53% (real towns 47%, land 32%); largest city at Gravesend in 10 of 20 seeds, Faversham 4, Rayleigh 3; largest share 0.30; Rochester 1/20 (closed as a target).
+
+## v2 — Goods and specialists (D38–D41, D44, D48, D49)
+
+- Defaults: goods on, with salt, iron and stone sites, production, shopping-model goods trade paid in grain, specialists whose kind follows their economy, and the re-tuned values in D49. Parameters: `docs/parameters.md`.
+- `hinterlands validate --maps 3 --seeds 20`: **validation PASSED**. Seeds passing each check, maps 1 / 2 / 3:
+  - settlements 20/20/20, median 245/245/249;
+  - over 2,000: 20/20/20;
+  - over 5,000: 20/20/20 (median 2/2/1, reported, D48);
+  - largest share 20/20/20;
+  - rank-size slope 20/20/20, median −0.99/−0.97/−1.00;
+  - market spacing 20/20/19;
+  - siting 20/20/20;
+  - failure rate 20/20/20, median 0.58/0.55/0.57;
+  - forest near cities 20/20/20;
+  - stability 20/20/20;
+  - sites producing 20/20/19 (median 0.87/0.80/0.73);
+  - largest not specialist 20/20/20.
+
+  Top-10 overlap 0.43/0.39/0.50. Runs passing every check 20/20/18.
+- Reported, maps 1 / 2 / 3:
+  - specialists per run 1.4 / 3.1 / 0.3, size median 60 / 90 / 28, p90 278 / 237 / 234, max 404;
+  - payment share of market inflow 0.026 / 0.027 / 0.025;
+  - forest within 5 km of working iron sites 0.00 against land 0.42 / 0.41 / 0.40;
+  - settlements over 2,000 on a goods route 1.00;
+  - largest varies 0.05 / 0.45 / 0.00; river-corridor share 0.95 / 0.40 / 0.05.
+- Determinism: golden `b0de71500774acf8`; the release wasm build gives the same hash (`?selftest=500`).
+- Performance: 28.2 ms per year in the release wasm build; slowest native validation run 29.8 ms per year.
+- Kent regression (`just real`: uniform soil, Roman roads and bridges; Kent has no resource sites yet, so only the re-tuned values act): lowland AUC 0.47 / 0.54 / 0.43; inland towns found 37%; places on rivers 42%; inland places over 500: 26 per seed at 6.0 km (real 29 at 10.6); largest city at Gravesend in 10 of 20 seeds and Rochford in 8; largest share 0.28. (v1.2: 0.49 / 0.53 / 0.46; 39%; 32 at 6.2 km; Gravesend 10.)
