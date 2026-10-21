@@ -1,8 +1,9 @@
 //! Smooth relief: the base map drawn by a fragment shader that interpolates the
 //! cells instead of painting squares. Coast, shallows, hillshade and the forest
 //! canopy are derived per pixel from the cell values, and so are the farmed
-//! countryside (field strips, pasture, hedgerows, old fields) and the season
-//! tints, each drawn only while its own layer is on. If the shader cannot be
+//! countryside (field strips, pasture, hedgerows, old fields), the built-up
+//! footprints of settlements with ruins and city walls, and the season tints,
+//! each drawn only while its own layer is on. If the shader cannot be
 //! built the layer falls back to the cell texture of `TerrainLayer`, and the
 //! countryside layers draw their cells as before.
 
@@ -13,7 +14,7 @@ use crate::view::{ViewState, NEVER};
 use eframe::egui_glow;
 use eframe::glow::{self, HasContext};
 use egui::Color32;
-use hinterlands_core::state::NONE;
+use hinterlands_core::state::{Rank, NONE};
 use hinterlands_core::terrain::Terrain;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -60,10 +61,12 @@ struct Gpu {
     land: Option<glow::Texture>,
     cover: Option<glow::Texture>,
     plot: Option<glow::Texture>,
+    town: Option<glow::Texture>,
     /// Data waiting to be uploaded on the next paint.
     land_data: Option<Vec<f32>>,
     cover_data: Option<Vec<f32>>,
     plot_data: Option<Vec<f32>>,
+    town_data: Option<Vec<f32>>,
     size: (i32, i32),
     failed: bool,
 }
@@ -82,6 +85,8 @@ struct Frame {
     field_season: i32,
     /// Which countryside layers are on: fields, strips, pasture, hedgerows and old fields.
     show: [f32; 4],
+    /// Settlements and buildings layers on (footprints; walls).
+    town: [f32; 2],
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -122,6 +127,30 @@ pub fn land_data(t: &Terrain) -> Vec<f32> {
             let shade = if here { 1.0 } else { lambert / light[2] };
             out.extend_from_slice(&[t.elevation[i], coast, t.food_yield[i], shade]);
         }
+    }
+    out
+}
+
+/// Per cell for this year: built up, ruined, inside a city's walls, and how fresh the ruin is.
+fn town_data(v: &ViewState) -> Vec<f32> {
+    let snap = &v.snapshot;
+    let cities: std::collections::BTreeSet<u32> = snap
+        .settlements
+        .iter()
+        .filter(|s| s.rank == Rank::City)
+        .map(|s| s.id)
+        .collect();
+    let mut out = Vec::with_capacity(snap.built.len() * 4);
+    for (&b, &r) in snap.built.iter().zip(&snap.ruin) {
+        let built = b != NONE;
+        let ruin = !built && r > 0;
+        let walled = built && cities.contains(&b);
+        out.extend_from_slice(&[
+            built as u8 as f32,
+            ruin as u8 as f32,
+            walled as u8 as f32,
+            (r as f32 / 100.0).min(1.0),
+        ]);
     }
     out
 }
@@ -206,6 +235,7 @@ impl Gpu {
         self.land = Some(gl.create_texture()?);
         self.cover = Some(gl.create_texture()?);
         self.plot = Some(gl.create_texture()?);
+        self.town = Some(gl.create_texture()?);
         Ok(())
     }
 
@@ -245,8 +275,8 @@ impl Gpu {
                     return;
                 }
             }
-            let (Some(program), Some(land), Some(cover), Some(plot)) =
-                (self.program, self.land, self.cover, self.plot)
+            let (Some(program), Some(land), Some(cover), Some(plot), Some(town)) =
+                (self.program, self.land, self.cover, self.plot, self.town)
             else {
                 return;
             };
@@ -254,6 +284,7 @@ impl Gpu {
                 (land, self.land_data.take()),
                 (cover, self.cover_data.take()),
                 (plot, self.plot_data.take()),
+                (town, self.town_data.take()),
             ] {
                 if let Some(data) = data {
                     Self::upload(gl, tex, self.size, &data);
@@ -262,6 +293,7 @@ impl Gpu {
             gl.use_program(Some(program));
             gl.bind_vertex_array(self.vao);
             for (unit, tex) in [
+                (glow::TEXTURE3, town),
                 (glow::TEXTURE2, plot),
                 (glow::TEXTURE1, cover),
                 (glow::TEXTURE0, land),
@@ -273,6 +305,8 @@ impl Gpu {
             gl.uniform_1_i32(at("u_land").as_ref(), 0);
             gl.uniform_1_i32(at("u_cover").as_ref(), 1);
             gl.uniform_1_i32(at("u_plot").as_ref(), 2);
+            gl.uniform_1_i32(at("u_town").as_ref(), 3);
+            gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
             gl.uniform_1_f32(at("u_year").as_ref(), f.year);
             gl.uniform_1_i32(at("u_season").as_ref(), f.season);
             gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
@@ -343,6 +377,7 @@ impl Layer for ReliefLayer {
             let (cover, plot) = year_data(v);
             gpu.cover_data = Some(cover);
             gpu.plot_data = Some(plot);
+            gpu.town_data = Some(town_data(v));
             self.key = Some(key);
         }
         drop(gpu);
@@ -367,6 +402,7 @@ impl Layer for ReliefLayer {
             },
             field_season: v.season_index(d.time) as i32,
             show: ["fields", "strips", "grazing", "history"].map(|id| v.layer_on(id) as u8 as f32),
+            town: ["settlements", "buildings"].map(|id| v.layer_on(id) as u8 as f32),
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

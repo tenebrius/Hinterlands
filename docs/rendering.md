@@ -8,11 +8,12 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 This section describes the steps waiting to be merged; it is rewritten each time.
 
-- **Steps: R3 (the farmed countryside in the shader) and R4 (smoothed roads, routes and trade dots).** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`, with `main` merged in since. Each step is one commit and they can be merged together.
+- **Steps: R3 (the farmed countryside in the shader), R4 (smoothed roads, routes and trade dots) and R5 (settlement footprints and city walls in the shader).** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`, with `main` merged in since. Each step is one commit and they can be merged together.
 - **Files touched.** All in `crates/hinterlands-web/src/layers/`:
   - R3: `relief.rs` and `relief.frag` get two per-year textures (land use; plots) and the countryside and season drawing. `countryside.rs`: the strip-direction rule is now the shared function `strip_orientation`, and the strips and pasture tint are skipped while the shader draws them. `fields.rs`, `history.rs` and `seasons.rs` each skip their per-cell drawing while the shader draws it.
   - R4: new `lines.rs` (the shared Chaikin smoothing); `routes.rs` rewritten around chains; `dots.rs` moves along smoothed paths; `rivers.rs` uses `lines.rs`, with unchanged output; `mod.rs` registers `lines`. `routes::segments` keeps its signature for `buildings.rs`.
-  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*`, `5-*`, `6-*`.
+  - R5: `relief.rs` and `relief.frag` get a per-year town texture and the footprint, ruin and wall drawing. `settlements.rs` keeps only its markers, and `buildings.rs` skips walls and towers, while the shader draws them.
+  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*` to `7-*`.
 - **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
 - **No new dependencies.**
 - **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
@@ -73,15 +74,29 @@ Roads and trade routes were straight segments from cell centre to cell centre, s
 
 Kind: rendering.
 
+## R5 — Settlement footprints, ruins and city walls drawn in the shader
+
+Built-up areas were drawn per cell: a texture far out, and rounded squares with houses close in. City walls ran along cell edges with towers at the corners. The relief shader now draws them from a per-year texture with four values per cell: built up, ruin, inside a city's walls, and how fresh the ruin is.
+
+- **Footprints.** Each built-up area has one smooth outline, placed by signed distance from a smoothed field and its exact gradient. Far out it is a town-red tint. At middle zoom it is a tan area with an inked edge. Close in it fills with street blocks a third of a cell across, the grid bent slightly: house plots along the lanes, gardens behind. Plots empty out towards the edge of town.
+- **Ruins.** A grey patch that fades with the ruin's age, showing broken house walls close in.
+- **Walls.** City walls follow the outline of the city's built-up area. Towers sit on the wall line at half-cell spacing, snapped onto the line along the gradient.
+- **Order.** Roads and rivers are drawn over the towns, so roads read as main streets. Settlement markers, churches, squares, quays and bridges are still drawn by egui.
+- **Toggles.** Footprints follow the settlements toggle and walls follow the buildings toggle. The per-cell versions stand down only while the shader runs.
+- **Known difference.** Where a road runs along a river through a town, the road now covers the river's line there, as it already did outside towns. The per-cell view drew the river channel over everything in built-up cells (D22). If this matters, the river line can be redrawn over roads inside built-up areas.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
 - R1–R2, summer, on v1.1: `1-overview`, `2-region` (zoomed to the central river valley) and `3-coast` (zoomed to the coast, river mouth and Chedesworth).
 - R3, on v1.2: `4-fields` (zoomed to Chedesworth and Harnfield in summer) and `5-winter` (the central valley in winter).
 - R4, on v2 G2: `6-roads` (the same view as `4-fields`, roads and routes before and after).
+- R5, on v2 G3: `7-town` (Langden, a walled city, at full zoom; before is the per-cell view).
 
 ## Next steps, in order
 
-1. Settlement footprints traced as one outline, not per-cell blocks. Footpaths and parish boundaries smoothed like the roads.
+1. Footpaths and parish boundaries smoothed like the roads; quays along the smoothed shore.
 2. Lettering: a bundled serif font and halos behind labels.
 3. A panel theme to match the map.
