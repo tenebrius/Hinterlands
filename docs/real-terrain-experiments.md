@@ -379,3 +379,26 @@ Early on the site clears the threshold but loses to better sites in the same ste
 **(c) Shadow off (both founding shadow and drain), roads + bridges:** Rochester 3 of 20 seeds (median largest place within 3 km: 656); on or next to a road 28% of all settlements and 23% of places of 1,000+. Near the bridge, 91 settlements were founded across the 20 seeds, 24 peaked at 1,000+, 32 starved, and 58 were alive at year 500.
 
 **Reading.** The failure at Rochester is not founding. Bridged and on Watling Street, the site is chosen early in most seeds, and its towns grow to thousands. They are then deleted whole by the failure rule ("unfed for 20 years"), which was written for failing hamlets. A town of 2,846 that runs short of food is removed with all its people, rather than shrinking to the size its food supports. The shrink rate (`r_shrink` 0.02 × shortfall a year) is too slow to bring a starving town back to fed within the 20 years. Once the town has gone, the cost-based shadow keeps the site empty. Why towns at the bridge run short around years 210–230 (competition for the food that feeds their market people, presumably from the tidal-Thames city growing at the same time) is not measured here. No change was tried.
+
+### Designer's reading of the Rochester diagnostic
+
+The probe found the cause; credit to the implementer. It also disproves both earlier readings: the implementer's (the shadow keeps the site from being founded) and the designer's (a food-and-water founding model cannot choose the site). Founding chooses the bridge in 14 of 20 seeds, and towns of up to 4,280 grow there. They are then deleted.
+
+1. **The failure rule is a specification error, and it was the designer's.** It was written for hamlets and applied to every size. It also misreads its evidence: the 39% survival of English markets from 1300 to 1600 counts markets that lapsed, not places that vanished; most lapsed markets stayed villages. Deleting a town of 2,846 because it ran short of food for 17 years contradicts the brief's own expected behaviour "towns outlive their reason" (population inertia). This is the scale rule again: a mechanism matched to hamlets was applied to towns.
+2. **Corrected rule.** An underfed place sheds the people its food does not feed, a third of the gap each year, which is the brief's three-year inertia. The leavers are lost, as under the present shrink. Removal is only for places that fall below `fail_pop` for `fail_low_years`; the unfed rule removes nothing. A starving hamlet shrinks below 20 and goes by that rule; a starving town shrinks to the village or town its food supports and stays.
+3. **The Rochester expectation is re-set for this round, with its mechanism confirmed.** The earlier withdrawal rested on reasoning that the probe disproved. The mechanism (towns form at the bridge and are deleted by the failure rule) is now measured, which the pre-registration rule requires.
+
+## Failure by shrinking, not deletion (pre-registered, before running)
+
+Written by the designer and committed before any run.
+
+**Change.** A switch `shed_unfed`, default off. When on, a place with food ratio below 1 loses a third of `(1 − ratio) × P` each year, and the unfed rule (`fail_unfed_years`) no longer removes anything; `fail_pop` and `fail_low_years` are unchanged. Golden hash with the switch off: `68beae826cf800cd`. Nothing is re-tuned.
+
+**Report, in this order.**
+1. **Scale check, v1.1 unchanged:** removals by cause and by peak population (< 100, 100–499, 500–999, 1,000+), over the 3 generated maps × 20 seeds and over Kent (uniform soil, no roads). This says whether the defect is general or a Kent effect.
+2. **Generated maps with the switch on:** the full validation table, pass rates per check and per map, against v1.1, with the failure rate stated; time per year.
+3. **Kent with the switch on,** both without roads and with roads + bridges: the usual table (lowland AUC; count and spacing of inland places over 500; on-road share; largest city with Gravesend's count) and Rochester.
+
+**Expectation (the designer's).** On Kent with roads + bridges, a place of 1,000 or more within 3 km of Rochester in at least 5 of 20 seeds. On the generated maps, the failure rate stays within 40–70%, since most failures are hamlets that fall below 20. The count of inland places over 500 on Kent rises toward the real 29.
+
+**Stop.** Run once, then stop and report. Nothing is tuned. Making `shed_unfed` the default, and any re-tune it needs, goes to Divish with these numbers.

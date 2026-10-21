@@ -23,8 +23,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **Roman roads test failed (D32).** Itiner-e roads (58 segments, CC BY 4.0) as an initial road set: Rochester 1/20, Canterbury 0/20, settlements on or next to a road 20% (land 32%, real towns 47%), Gravesend largest in only 6 of 20. Causes: the shadow is in travel cost, so roads make neighbours suppress each other; nothing rewards a road site; a road crossing a river pays the full crossing cost because the model has fords but no bridges. The expectation rested on the crossings being special, which the model never made them: my error.
 - Roman roads are the **first Kent input with signal for small towns** (47% of real towns against 32% of land). The model moving settlements off roads is a model fault.
 - **Roman bridges test failed too (D33).** 52 bridges, 30 on navigable rivers; Rochester 1/20 (bar 5), usually no settlement near the bridge at all; Canterbury bridged only on a stream. Roads and bridges stay Kent options, not defaults (Gravesend 15 → 8 with roads).
-- The Rochester/Canterbury expectation is **withdrawn**: both are Roman-era persistence, outside what a food-and-water founding model can place (rule 6 below). (b), the shadow in km, is **not approved** as a fix: the D32 no-shadow diagnostic already gave Rochester 0/20. It stays a known defect; as a default it would be Divish's call.
-- **Agreed next steps**, in order: (1) one diagnostic round on the Rochester bridge (founding history, founding-score terms, shadow off + bridges), approved in `docs/real-terrain-experiments.md`; (2) the outside world as a seller, which I pre-register after (1) reports; (3) v2, goods and specialists.
+- **Rochester diagnostic (e1d287e, `hinterlands probe`):** founding does choose the bridge (14 of 20 seeds), towns reach 1,000–4,280, and 14 of 15 are then deleted by the "unfed for 20 years" failure rule; the cost shadow keeps the site empty afterwards. Both earlier readings were wrong (mine and the implementer's).
+- **Failure rule is a spec error (mine):** written for hamlets, applied to towns, and it misreads the 39% market-survival figure (markets lapsed; places stayed). Corrected rule pre-registered as switch `shed_unfed`: underfed places shed a third of the unfed gap a year; removal only below `fail_pop`. Rochester expectation re-set for that round (≥5/20 with roads + bridges). Making it the default goes to Divish.
+- (b), the shadow in km: still a known defect, not pursued.
+- **Agreed next steps**, in order: (1) the `shed_unfed` round: scale check, generated-map validation, Kent; (2) the outside world as a seller, pre-registered by me after (1); (3) v2, goods and specialists.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
@@ -38,7 +40,7 @@ Six of my specification choices have been wrong, all caught by the real-terrain 
 
 5. **The Roman roads expectation rested on a mechanism the model lacked.** Rochester and Canterbury were expected from road–river crossings, but crossings were never bridges. Rule: a pre-registration names the mechanism its expectation depends on, and the implementer confirms the code has it before running.
 
-6. **Rochester and Canterbury were the wrong sites to expect.** They were Roman towns whose 1300 standing is persistence from before the model's start. Rule: a site expectation is set only for places whose rise falls inside the model's period and mechanisms.
+6. **The failure rule deleted towns.** "Unfed for 20 years, removed" was written for hamlets and applied to every size, and it read market lapse (39% of markets survived) as places vanishing. It contradicted the brief's own "towns outlive their reason". Before the probe found it, I withdrew the Rochester expectation on reasoning that turned out wrong. Rules: when a pre-registered test fails, measure the mechanism directly before choosing a fix or withdrawing the expectation; and check every removal or cut-off rule at each scale it acts on.
 
 Judgement rules that now stand:
 
@@ -80,4 +82,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — after D33 (Roman bridges test failed); Rochester expectation withdrawn; (b) not approved; Rochester-bridge diagnostic approved. Golden still `68beae826cf800cd`.
+Last updated: 2026-10-21 — after the Rochester diagnostic (e1d287e); failure-rule correction `shed_unfed` pre-registered. Golden still `68beae826cf800cd`.
