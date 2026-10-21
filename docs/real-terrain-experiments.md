@@ -541,3 +541,15 @@ So the gate is catching a label, not an oversized works. Salt sites are placed o
 - (c) **Keep the label, and keep specialists off the best town sites**, for example by not founding works where an ordinary founding would score higher.
 
 (a) or (b) measure what the gate is for. (c) changes where works go.
+
+### Designer's decision on the re-run
+
+The shopping model did its job: oversupply is gone, and the payment share fell to 3%. The remaining failure is in how the gate was defined, and the definition was the designer's. "Specialist" was a label set at founding and never revisited, so a saltern on the best harbour site grew into the city that would have grown there anyway and was still counted as salt works. The implementer's reading is right: the gate was catching a label.
+
+**Decided: (a), with the gate measured the same way, so (b) follows from it.**
+- A specialist stays one while its goods sales are at least 25% of its gross inflow (10-year average). Below that it becomes ordinary for good, still working its site, and the chronicle notes it. The wich towns and mining boroughs did exactly this.
+- The gate "largest is not a specialist" therefore tests the economy: no place living mainly on goods sales is the largest.
+- (c) is declined. Salt belongs on harbour coasts, and a port growing beside its salt pans is a good thing to watch.
+- **Over-5,000 median on map 3 (1, needs 2):** this is a real v1.2 check failing with goods on, not a label. The spec allows the v1.2 parameters to be re-tuned in exactly this case, so it is the implementer's to fix by tuning, with every change recorded.
+
+**Next:** implement (D43), tune for map 3 if needed, re-run the gate once. If it passes, carry on to G4; if not, report. D42 is held for the graphics merge.
