@@ -204,3 +204,45 @@ Settlements by size band, share inland (land is 72% inland):
 - inland places over 500 rise from 12 to 20 per seed, at 9.3 km spacing against the real 10.6.
 
 The model still does not find the *right* inland places: inland towns are found 29% of the time, and the small-town AUC against lowland falls to 0.36. Its inland towns sit on higher ground than the real ones, which lie in the valleys. On Kent the founding score has nothing that prefers a valley floor: soil is uniform, and yield varies only with slope. The real Kent's valley loams, Weald clay and chalk downland differ a great deal. The soil map the designer deferred is now the input this test needs.
+
+## Soil: SoilGrids and a valley-floor proxy (v1.1 defaults, mapgen only)
+
+**Correction first.** The Kent DEM header gives a cell size of 999.8 m, and the importer floored 127.97 cells to 127, so every Kent run above used a 127 × 127 grid about 0.8% smaller than the real coordinates (up to about 1 km at the far edge). The importer now rounds near-whole cell counts. Kent imports at 128 × 128, and v1 and v1.1 were re-run on it below; v1's parameters are in `data/real/experiments/v1.json` and reproduce the v1 golden hash. The overall picture holds. One claim changes: on the true grid, **v1 already put its largest city at Gravesend in 6 of 20 seeds** (not never). v1.1 raises that to 15.
+
+**Soil data.** The European Soil Database cannot be downloaded directly: ESDAC hands it out through a request form that asks for the requester's name, organisation and email. In its place: ISRIC SoilGrids 2.0 (250 m, CC-BY 4.0), fetched by `tools/real/fetch_soil.py`, which uses topsoil (5–15 cm) clay, sand and coarse fragments. It scores medieval arable quality from 0.1 to 1, penalising:
+- heavy clay over 30%;
+- sand over 55%;
+- coarse fragments over 10% (thin chalk and flint soils).
+
+SoilGrids leaves built-up areas blank (London and every modern town). Those holes are filled from the surrounding cells, because blank town sites would leak the answer. The importer reads any soil grid (`soil_file`), so the ESDB can replace SoilGrids if it is requested. The valley-floor proxy is a topographic position index, height above the mean within 3 km (`soil_tpi`, fixed at 0.5 beforehand and not tuned). Both are rescaled to the mean yield of uniform soil, so they move yield around without adding any.
+
+### Kent, 128 × 128, 20 seeds
+
+| Run | AUC vs lowland: all / ≥1,000 / <1,000 | Inland towns found | Model places on rivers | Spearman | Inland places >500: spacing, count | Largest city near (seeds) | Largest share |
+| --- | --- | ---: | ---: | ---: | --- | --- | ---: |
+| v1 | 0.48 / 0.55 / 0.43 | 30% | 48% | 0.12 | 9.3 km, 14 | Gravesend 6, Faversham 3, Maldon 3 | 0.22 |
+| v1.1 (uniform soil) | 0.44 / 0.54 / 0.37 | 31% | 32% | 0.11 | 9.1 km, 20 | Gravesend 15, Faversham 3 | 0.30 |
+| v1.1 + SoilGrids | 0.46 / 0.51 / 0.43 | 30% | 34% | 0.07 | 9.0 km, 21 | Gravesend 15 | 0.30 |
+| v1.1 + valley floor | 0.41 / 0.51 / 0.35 | 27% | 30% | 0.17 | 8.8 km, 22 | Gravesend 6, Faversham 5 | 0.26 |
+| v1.1 + both | 0.47 / 0.51 / 0.44 | 28% | 31% | 0.11 | 9.0 km, 18 | Gravesend 9 | 0.27 |
+| Real | | | 26% | | 10.6 km, 29 | London | ≈0.3 |
+
+**Neither soil layer improves placement.** The lowland AUC stays between 0.41 and 0.47 for all towns, and the inland find rate between 27% and 31%.
+
+### Do the layers carry information about where towns were?
+
+Each static feature, scored directly against the real towns: the AUC of the real towns' cells against lowland cells (0.5 = no information).
+
+| Feature | All | ≥1,000 | <1,000 |
+| --- | ---: | ---: | ---: |
+| SoilGrids quality | 0.41 | 0.40 | 0.42 |
+| Valley floor (−TPI) | 0.53 | 0.62 | 0.48 |
+| Low elevation | 0.29 | 0.44 | 0.20 |
+| Near a navigable river | 0.42 | 0.45 | 0.40 |
+| Near the coast | 0.37 | 0.50 | 0.29 |
+
+None points toward the small towns. Within the lowlands they sit *higher* than average (on dry ground above the marshes and estuaries), and not on better soil. SoilGrids' quality is also low-contrast here: on lowland cells, p10 0.83, median 0.92, p90 0.98. Only the valley-floor term carries some signal, and only for towns of 1,000 or more.
+
+**What this means.** With the first-nature data available, the lowland AUC for small towns has a ceiling near 0.5, whatever the model does. Their siting at the scale of a few km is second-nature: roads, the spacing of markets, lordship and charters. The model's 0.37–0.44 for small towns is therefore partly a property of the data. The number to judge small towns by is their count and spacing, where v1.1 has moved toward the real pattern: 20 inland places over 500 at 9.1 km, against 14 in v1 and 29 at 10.6 km in reality. The location AUC remains the right test for towns of 1,000 or more, and there the model stays at 0.51–0.55, about where the valley-floor feature alone gets (0.62).
+
+**Recommendation.** Keep uniform soil as the Kent default for now, and keep the soil and valley inputs as options (`data/real/kent/map-soil*.json`, `map-tpi.json`). The next gains for Kent are not soil. They are second-nature inputs: Roman roads as a given network at the start (Watling Street and Stane Street, which several missed towns sit on), or the outside world as a seller, now that B makes the tidal Thames the gateway.

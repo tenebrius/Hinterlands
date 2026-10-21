@@ -146,3 +146,7 @@ Kind: correction of the water-supply rule (owner/designer decision); default pen
 3. Founding's candidate scan was made cheaper with identical results: free food near each cell is cached and refreshed only near changed owners or roads, settlement spacing is stamped once, and shadow and access are summed with settlements outermost in the same order. Founding fell from 6.5 to 2.4 ms per year.
 Golden hash: `68beae826cf800cd` (map 1, seed 1, 500 years), native and in the browser.
 Kind: change to the defaults and the acceptance test (owner/designer decision).
+
+## D31 — Soil for imported maps; DEM cell count rounding
+`MapParams` gains `soil_file` (an ESRI ASCII soil-quality grid on the map's grid, read by the DEM importer) and `soil_tpi`, `tpi_radius_km` and `tpi_scale_m` (a valley-position factor on soil). Both are rescaled to the uniform mean yield, and both are off by default, so generated maps and the golden hash are unchanged. `tools/real/fetch_soil.py` builds a soil grid from ISRIC SoilGrids 2.0, filling built-up holes from the surrounding cells. The ESDB needs a request form, so it was not fetched. The importer now rounds a target cell count within 0.05 of a whole number (a 999.8 m source cell is 1 km); Kent imports at 128 × 128, where it had been 127 × 127. Results: `docs/real-terrain-experiments.md`.
+Kind: map import.
