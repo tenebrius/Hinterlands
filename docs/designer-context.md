@@ -32,6 +32,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v1.2 decided (mine):** `shed_unfed` is the default; the contingency gate moves to the middle tier (mean top-10 overlap between seeds ≤ 0.80; largest-city variation reported); Kent's standard configuration is uniform soil + Roman roads + bridges (53% of places of 1,000+ on a road, real 47%); Rochester is closed as a target; Kent becomes a regression report. `docs/foundation.md` already describes v1.2.
 - **v1.2 released (c03d31e):** validation passed on all 3 maps; top-10 overlap 0.36/0.40/0.37 (gate ≤ 0.80); runs passing every check 19/20/18; golden `2b00434da9781880` native and browser; 26.1 ms/year wasm. Kent regression: AUC 0.49/0.53/0.46, 53% of places of 1,000+ on a Roman road.
 - **v2 briefed** (`docs/foundation.md`, "v2 specification"): salt, iron, stone beside grain; fixed exchange ratios, decay from value density (`β_g = β/ρ_g`); production-constrained goods flows paid in grain from the marketed share, so no food is created; iron fuel-bound (Weber); specialist hamlets (`Mine`, `Saltern`, `Quarry`) founded on resource cells with reachable demand; all behind `goods_enabled`. Stages G1–G4 run on without approval unless a check fails; gate: v1.2 checks, ≥ 2/3 of sites producing, no specialist largest, < 50 ms wasm.
+- **G1 done (1317aa6, D38):** held sites all produce; forest within 5 km of iron sites 0.17 against a land mean of 0.66 by year 200; `v_g` = 1, `fuel_per_iron` 0.1 accepted. Only ~38% of sites have a holder, so the ≥ 2/3 gate rests on G3 specialists. D36–D37 are the rendering merge from the graphics session.
 - **Later options, not scheduled:** Kent resources as data (Wealden iron, ragstone, estuary salt); the outside world as a seller; the shadow in km; Kent inland spacing (6.2 km against 10.6).
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
@@ -88,4 +89,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v1.2 released (golden `2b00434da9781880`); v2 goods and specialists briefed.
+Last updated: 2026-10-21 — v2 G1 accepted; G2 under way.

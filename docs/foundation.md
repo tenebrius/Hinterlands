@@ -329,14 +329,14 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
 **What the viewer should see.** Salt works on the coast, quarries in the hills and iron mines in the uplands, each a small settlement that buys its bread. Woods thin around the iron mines. Grain moves up the valleys to the mines and iron comes down; stone comes out of the quarries to the larger towns. Ports and river towns on those routes grow on the trade they handle.
 
 **Goods.** Four goods: grain (the existing good), salt, iron and stone. Each non-grain good `g` has:
-- a **value** `v_g` in grain units per unit of good, a fixed exchange ratio, not a price;
+- quantities stated in **grain units** (output, demand and payment alike), so a unit of good exchanges for one unit of grain: a fixed ratio, not a price (`v_g` = 1, D38);
 - a **value density** `ρ_g` relative to grain, from which its distance decay follows: `β_g = β / ρ_g`. A good worth more per tonne travels farther for the same cost. This applies ORBIS's per-weight costs to goods of different value, and adds no free parameter for decay. Starting values: iron `ρ` 8, salt 3, stone 0.4;
 - a **demand**: salt and iron per person, stone per market person (towns build; villages do not), in grain units a year. Starting values: salt 0.02, iron 0.02, stone 0.03.
 
 **Sites and production** (a new system, `production`, after cultivation; Weber 1909).
 - Resource cells come from map generation as now: ore, salt and stone. The **holder** of a site is the settlement whose anchor is within `min_spacing_km` of it at the least travel cost.
-- Output, in grain units a year: `min(cap_g, prod_g × (market people of the holder + site_crew))`. Starting values: `prod_g` 2 for every good, `site_crew` 10, `cap_g` 1,000.
-- **Iron is fuel-bound.** Smelting is the weight-losing step Weber places at the fuel source. Each unit of iron draws `fuel_per_iron` of forest, which cultivation (the owner of forest) adds to the holder's fuel demand and cuts nearest first, as for household fuel. Iron output is capped by the fuel actually obtained the year before. A mine whose woods are gone declines.
+- Output, in grain units a year: `min(cap_g, prod_g × (market size W of the holder + site_crew))`. Starting values: `prod_g` 2 for every good, `site_crew` 10, `cap_g` 1,000.
+- **Iron is fuel-bound.** Smelting is the weight-losing step Weber places at the fuel source. Each unit of iron draws `fuel_per_iron` (0.1, D38) of forest, which cultivation (the owner of forest) adds to the holder's fuel demand and cuts nearest first, as for household fuel. Iron output is capped by the fuel actually obtained the year before. A mine whose woods are gone declines.
 - Under v2 the old `resource_out` (a flat 50 per owned resource cell) is retired.
 
 **Goods trade** (in the trade system). Production-constrained gravity, the mirror of the grain step: each holder ships all its output to consumers in proportion to `demand_k × exp(−β_g c_jk)`, over the pairs within `C_max`, along the stored paths.
