@@ -40,6 +40,10 @@ impl Layer for HistoryLayer {
             return;
         }
         let v = d.view;
+        // The relief shader draws hedges and old fields along the smoothed field edges.
+        if super::relief::active(v) {
+            return;
+        }
         let t = &v.terrain;
         let g = t.grid;
         let snap = &v.snapshot;

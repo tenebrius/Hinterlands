@@ -25,6 +25,10 @@ impl Layer for FieldsLayer {
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;
+        // The relief shader tints the fields with smooth edges.
+        if super::relief::active(v) {
+            return;
+        }
         let t = &v.terrain;
         let key = (v.terrain_version, v.snapshot.year);
         if self.tex.is_none() || self.key != key {

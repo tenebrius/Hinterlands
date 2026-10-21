@@ -10,6 +10,7 @@
 //!   cover by fuel cutting is coppice.
 
 use super::{DrawCtx, Layer, Swatch};
+use crate::view::ViewState;
 use egui::{Color32, Rect, Stroke};
 use hinterlands_core::state::NONE;
 
@@ -39,7 +40,7 @@ const STUMP: Color32 = Color32::from_rgb(110, 78, 48);
 const PASTURE: Color32 = Color32::from_rgba_premultiplied(52, 68, 34, 70);
 const COPPICE: Color32 = Color32::from_rgb(40, 92, 44);
 
-fn hash(i: usize, k: u32) -> u32 {
+pub(super) fn hash(i: usize, k: u32) -> u32 {
     let mut h = (i as u32).wrapping_mul(2654435761) ^ k.wrapping_mul(40503);
     h ^= h >> 15;
     h = h.wrapping_mul(0x2c1b3c6d);
@@ -91,48 +92,53 @@ impl CountrysideLayer {
         }
     }
 
-    /// Strips run away from the nearest road or river: if the nearest such cell
-    /// (within 3 cells) lies east or west, strips run east-west.
     fn orient(&mut self, d: &DrawCtx) {
         let v = d.view;
         let key = (v.terrain_version, v.snapshot.year / 10);
         if self.orient.key == Some(key) {
             return;
         }
-        let t = &v.terrain;
-        let g = t.grid;
-        let mut out = vec![false; g.n()];
-        for (i, o) in out.iter_mut().enumerate() {
-            if v.snapshot.owner[i] == NONE {
-                continue;
-            }
-            let (x, y) = g.xy(i);
-            let mut best: Option<(i32, i32, i32)> = None;
-            for dy in -3..=3 {
-                for dx in -3..=3 {
-                    let (nx, ny) = (x + dx, y + dy);
-                    if (dx, dy) == (0, 0) || !g.in_bounds(nx, ny) {
-                        continue;
-                    }
-                    let j = g.idx(nx, ny);
-                    if v.snapshot.road[j] || t.is_river(j) {
-                        let dist = dx * dx + dy * dy;
-                        if best.is_none_or(|b| dist < b.0) {
-                            best = Some((dist, dx, dy));
-                        }
-                    }
-                }
-            }
-            *o = match best {
-                Some((_, dx, dy)) => dx.abs() >= dy.abs(),
-                None => hash(i, 99) % 2 == 0,
-            };
-        }
         self.orient = Orientation {
-            horizontal: out,
+            horizontal: strip_orientation(v),
             key: Some(key),
         };
     }
+}
+
+/// Strips run away from the nearest road or river: if the nearest such cell
+/// (within 3 cells) lies east or west, strips run east-west. Per farmed cell;
+/// shared with the relief shader so both draw the same fields.
+pub fn strip_orientation(v: &ViewState) -> Vec<bool> {
+    let t = &v.terrain;
+    let g = t.grid;
+    let mut out = vec![false; g.n()];
+    for (i, o) in out.iter_mut().enumerate() {
+        if v.snapshot.owner[i] == NONE {
+            continue;
+        }
+        let (x, y) = g.xy(i);
+        let mut best: Option<(i32, i32, i32)> = None;
+        for dy in -3..=3 {
+            for dx in -3..=3 {
+                let (nx, ny) = (x + dx, y + dy);
+                if (dx, dy) == (0, 0) || !g.in_bounds(nx, ny) {
+                    continue;
+                }
+                let j = g.idx(nx, ny);
+                if v.snapshot.road[j] || t.is_river(j) {
+                    let dist = dx * dx + dy * dy;
+                    if best.is_none_or(|b| dist < b.0) {
+                        best = Some((dist, dx, dy));
+                    }
+                }
+            }
+        }
+        *o = match best {
+            Some((_, dx, dy)) => dx.abs() >= dy.abs(),
+            None => hash(i, 99) % 2 == 0,
+        };
+    }
+    out
 }
 
 impl Layer for CountrysideLayer {
@@ -192,6 +198,8 @@ impl Layer for CountrysideLayer {
         );
         let visible = (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| g.idx(x, y)));
         match self.kind {
+            // The relief shader draws the strips, with field edges that follow the land.
+            Kind::Strips if super::relief::active(v) => {}
             Kind::Strips => {
                 self.orient(d);
                 let season = v.season_index(d.time);
@@ -269,13 +277,17 @@ impl Layer for CountrysideLayer {
                     let near_fields =
                         (0..8).any(|k| g.neighbor(i, k).is_some_and(|j| snap.owner[j] != NONE));
                     if near_fields && f < 0.35 {
+                        // The shader draws the pasture itself; only the sheep are added here.
+                        let tinted = !super::relief::active(v);
                         let winter = v.season_index(d.time) == 3;
                         let tint = if winter {
                             Color32::from_rgba_premultiplied(60, 58, 44, 70)
                         } else {
                             PASTURE
                         };
-                        p.rect_filled(r, 0.0, tint);
+                        if tinted {
+                            p.rect_filled(r, 0.0, tint);
+                        }
                         if z >= 10.0 {
                             for (fx, fy) in scatter(i, 3) {
                                 let c = egui::pos2(
