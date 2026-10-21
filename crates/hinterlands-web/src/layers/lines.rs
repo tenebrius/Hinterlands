@@ -2,6 +2,7 @@
 //! the trade moving on them), so they do not zig-zag on the grid.
 
 use egui::Vec2;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Chaikin corner cutting, `rounds` times, endpoints kept so lines still meet.
 /// Each point carries an attribute; `mix(a, b, f)` gives the attribute of a new
@@ -35,4 +36,50 @@ pub fn chaikin<T: Copy>(
         a = na;
     }
     (p, a)
+}
+
+/// Splits undirected edges into chains of nodes that run from pin to pin. A node
+/// keeps its corner (ends a chain) if it is pinned or has other than two edges;
+/// closed loops with no such node come back whole.
+pub fn chains(edges: &BTreeSet<(u32, u32)>, pins: &BTreeSet<u32>) -> Vec<Vec<u32>> {
+    let mut adj: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for &(a, b) in edges {
+        adj.entry(a).or_default().push(b);
+        adj.entry(b).or_default().push(a);
+    }
+    let stop = |n: u32| pins.contains(&n) || adj[&n].len() != 2;
+    let key = |a: u32, b: u32| (a.min(b), a.max(b));
+    let mut seen: BTreeSet<(u32, u32)> = BTreeSet::new();
+    let mut out = Vec::new();
+    let mut walk = |from: u32, to: u32, seen: &mut BTreeSet<(u32, u32)>| {
+        let mut nodes = vec![from, to];
+        seen.insert(key(from, to));
+        let (mut prev, mut cur) = (from, to);
+        while !stop(cur) {
+            let Some(&next) = adj[&cur].iter().find(|&&x| x != prev) else {
+                break;
+            };
+            if !seen.insert(key(cur, next)) {
+                break;
+            }
+            nodes.push(next);
+            (prev, cur) = (cur, next);
+        }
+        out.push(nodes);
+    };
+    for (&node, next) in &adj {
+        if stop(node) {
+            for &to in next {
+                if !seen.contains(&key(node, to)) {
+                    walk(node, to, &mut seen);
+                }
+            }
+        }
+    }
+    for &(a, b) in edges {
+        if !seen.contains(&(a, b)) {
+            walk(a, b, &mut seen);
+        }
+    }
+    out
 }

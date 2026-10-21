@@ -14,7 +14,8 @@ uniform sampler2D u_cover;
 // This year, r: owner (hashed, -1 for none), g: strip direction + 2 x rotation,
 // b: hedged (farmed 50 years), a: flood meadow.
 uniform sampler2D u_plot;
-// This year, r: built up, g: ruin, b: inside a city's walls, a: how fresh the ruin is.
+// This year, r: built up, g: ruin, b: inside a city's walls, a: how fresh the ruin
+// is, or on built cells, whether the settlement is a town or larger (quays).
 uniform sampler2D u_town;
 // Settlements and buildings layers on.
 uniform vec2 u_town_show;
@@ -427,5 +428,18 @@ void main() {
     // Coastline in ink once a cell is a few pixels across.
     float ink = (1.0 - smoothstep(0.0, w * 1.3, abs(coast))) * smoothstep(1.5, 4.0, u_px);
     c = mix(c, vec3(0.20, 0.26, 0.30), ink * 0.85);
+    // Quays: where a town's footprint meets the sea, the shore is a timber and stone edge.
+    if (u_town_show.y > 0.5 && u_px > 4.0 && abs(coast) < 0.4) {
+        vec4 tv, tgx, tgy;
+        town_smooth(p, tv, tgx, tgy);
+        float near = smoothstep(-0.35, -0.1, field_dist(tv.r, tgx.r, tgy.r));
+        float port = near * step(0.5, tv.a / max(tv.r, 1e-3));
+        float px = 1.0 / u_px;
+        float qw = max(0.06, 2.5 * px);
+        float quay = 1.0 - smoothstep(qw - px, qw, abs(coast - qw * 0.5));
+        float edge = 1.0 - smoothstep(0.0, px, abs(coast));
+        c = mix(c, vec3(92.0, 64.0, 40.0) / 255.0, quay * port);
+        c = mix(c, vec3(0.22, 0.16, 0.10), edge * port);
+    }
     o_color = vec4(c, 1.0);
 }
