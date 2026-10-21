@@ -42,17 +42,21 @@ impl Layer for SettlementsLayer {
             }
             self.key = key;
         }
-        if let Some(tex) = &self.tex {
-            let r = d.camera.map_rect(d.rect, t.grid.w, t.grid.h);
-            d.painter.image(
-                tex.id(),
-                r,
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                Color32::WHITE,
-            );
+        let z = d.camera.zoom;
+        if z < 4.0 {
+            if let Some(tex) = &self.tex {
+                let r = d.camera.map_rect(d.rect, t.grid.w, t.grid.h);
+                d.painter.image(
+                    tex.id(),
+                    r,
+                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                    Color32::WHITE,
+                );
+            }
+        } else {
+            draw_blocks(d);
         }
         let w = t.grid.w;
-        let z = d.camera.zoom;
         for s in &snap.settlements {
             let p = d.camera.cell_center(d.rect, w, s.anchor as usize);
             let r = match s.rank {
@@ -61,6 +65,8 @@ impl Layer for SettlementsLayer {
                 Rank::Town => 0.32,
                 Rank::City => 0.42,
             } * z;
+            // Close up the town blocks show the extent; the marker only marks the centre.
+            let r = if z >= 4.0 { r.min(5.0) } else { r };
             d.painter.circle(
                 p,
                 r.max(1.5),
@@ -75,6 +81,59 @@ impl Layer for SettlementsLayer {
                     egui::FontId::proportional(11.0),
                     Color32::from_rgb(30, 20, 15),
                 );
+            }
+        }
+    }
+}
+
+/// Close up, built-up cells are drawn as rounded town blocks; further in, each
+/// block shows a few houses, placed by a hash of the cell so they stay put.
+fn draw_blocks(d: &DrawCtx) {
+    let v = d.view;
+    let g = v.terrain.grid;
+    let snap = &v.snapshot;
+    let z = d.camera.zoom;
+    let half = egui::vec2(0.5, 0.5) * z;
+    for i in 0..g.n() {
+        let built = snap.built[i] != NONE;
+        if !built && snap.ruin[i] == 0 {
+            continue;
+        }
+        let c = d.camera.cell_center(d.rect, g.w, i);
+        let cell = egui::Rect::from_center_size(c, half * 2.0);
+        if !d.rect.intersects(cell) {
+            continue;
+        }
+        let block = cell.shrink(z * 0.07);
+        let radius = (z * 0.18) as u8;
+        if !built {
+            let a = 40 + snap.ruin[i] * 2;
+            d.painter.rect_filled(
+                block,
+                radius,
+                Color32::from_rgba_unmultiplied(125, 115, 104, a),
+            );
+            continue;
+        }
+        d.painter
+            .rect_filled(block, radius, Color32::from_rgb(196, 160, 120));
+        if z >= 12.0 {
+            let mut h = (i as u32).wrapping_mul(2654435761);
+            for _ in 0..6 {
+                h ^= h << 13;
+                h ^= h >> 17;
+                h ^= h << 5;
+                let fx = (h & 0xff) as f32 / 255.0;
+                let fy = ((h >> 8) & 0xff) as f32 / 255.0;
+                let sz = 0.14 + ((h >> 16) & 0x3f) as f32 / 63.0 * 0.1;
+                let p = block.min
+                    + egui::vec2(
+                        fx * (block.width() - sz * z),
+                        fy * (block.height() - sz * z),
+                    );
+                let house = egui::Rect::from_min_size(p, egui::vec2(sz * z, sz * z * 0.8));
+                d.painter
+                    .rect_filled(house, 1, Color32::from_rgb(158, 64, 46));
             }
         }
     }

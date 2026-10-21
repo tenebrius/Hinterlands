@@ -1,7 +1,7 @@
 //! Roads (Dalgaard et al. 2022; the Azgaar generator loop, simplified). Every
 //! `road_interval` years the largest trade flows whose path is not yet all road
 //! have their land cells marked as road, and the cost grid is rebuilt.
-//! Roads never decay in v1. Writes: road, cost.
+//! Roads never decay in v1. Writes: road, road_edges, cost.
 
 use crate::params::Params;
 use crate::state::State;
@@ -38,6 +38,15 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             .collect();
         if land.len() < 2 || land.iter().all(|&c| state.road[c]) {
             continue;
+        }
+        // The segments the road follows, for drawing: consecutive land nodes.
+        for w in path.windows(2) {
+            if w[0] < n && w[1] < n && w[0] != w[1] {
+                let e = (w[0].min(w[1]), w[0].max(w[1]));
+                if let Err(at) = state.road_edges.binary_search(&e) {
+                    state.road_edges.insert(at, e);
+                }
+            }
         }
         for c in land {
             state.road[c] = true;
