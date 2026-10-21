@@ -21,6 +21,8 @@ pub struct SiteParts {
     pub food: f32,
     pub shadow: f32,
     pub access: f32,
+    /// Water-supply bonus, already weighted (D29).
+    pub water: f32,
 }
 
 impl SiteParts {
@@ -32,6 +34,39 @@ impl SiteParts {
             + p.w_food * self.food
             - self.shadow
             + self.access
+            + self.water
+    }
+}
+
+/// A cell a village can draw water from: a brook or larger stream, or the sea.
+fn brook_or_sea(t: &Terrain, p: &Params, j: usize) -> bool {
+    t.is_sea(j) || (t.is_land(j) && t.flux[j] >= p.brook_area)
+}
+
+/// Whether a cell has a water supply for a settlement. v1: any stream, river or
+/// sea within `water_radius_km`. With `spring_water` (D29): a brook of at least
+/// `brook_area` or the coast within `supply_radius_km`.
+pub fn has_water_supply(t: &Terrain, p: &Params, cell: usize) -> bool {
+    if p.spring_water {
+        t.grid
+            .disk(cell, p.supply_radius_km)
+            .any(|j| brook_or_sea(t, p, j))
+    } else {
+        t.water_within(cell, p.water_radius_km)
+    }
+}
+
+/// The water-supply score term (D29): a brook or river in the cell, or one or
+/// the sea within 1 km.
+pub fn water_bonus(t: &Terrain, p: &Params, cell: usize) -> f32 {
+    if !p.spring_water {
+        0.0
+    } else if t.flux[cell] >= p.brook_area {
+        p.w_water_cell
+    } else if t.grid.disk(cell, 1.0).any(|j| brook_or_sea(t, p, j)) {
+        p.w_water_near
+    } else {
+        0.0
     }
 }
 
@@ -39,7 +74,7 @@ impl SiteParts {
 pub fn is_candidate(state: &State, t: &Terrain, p: &Params, cell: usize) -> bool {
     t.is_land(cell)
         && state.owner[cell] == NONE
-        && t.water_within(cell, p.water_radius_km)
+        && has_water_supply(t, p, cell)
         && !state
             .settlements
             .iter()
@@ -89,6 +124,7 @@ pub fn site_parts(state: &State, t: &Terrain, p: &Params, cell: usize, food: f32
         food,
         shadow,
         access,
+        water: water_bonus(t, p, cell),
     }
 }
 

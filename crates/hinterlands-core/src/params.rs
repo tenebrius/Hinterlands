@@ -193,6 +193,11 @@ define_params! {
         max_found_per_step: u32 = 6, [0, 30], "Most settlements founded per founding step";
         min_spacing_km: f32 = 3.0, [1, 20], "No founding within this distance of a settlement, km";
         water_radius_km: f32 = 1.0, [0, 5], "Founding sites need water within this distance, km";
+        spring_water: bool = false, [0, 1], "Water supply at brook scale: founding allowed near small streams, water scored by adjacency (D29)";
+        brook_area: f32 = 5.0, [0.5, 60], "Drainage (km²) at which a cell carries a brook a village can draw on";
+        supply_radius_km: f32 = 3.0, [0, 10], "Founding needs a brook or the coast within this distance, km";
+        w_water_cell: f32 = 0.5, [0, 3], "Score bonus for a brook or river in the cell";
+        w_water_near: f32 = 0.2, [0, 3], "Score bonus for a brook, river or the sea within 1 km";
         found_pop: f32 = 30.0, [5, 200], "Population of a new hamlet";
         donor_min_ratio: f32 = 1.1, [0.5, 2], "Least food ratio of the settlement that sends migrants";
     }

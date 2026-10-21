@@ -3,13 +3,13 @@
 
 use crate::params::Params;
 use crate::state::{LogEntry, LogKind, State};
-use crate::systems::founding::free_food_near;
+use crate::systems::founding::{free_food_near, has_water_supply};
 use crate::terrain::Terrain;
 
 pub fn populate(state: &mut State, t: &Terrain, p: &Params) {
     let mut cands: Vec<(f32, usize)> = Vec::new();
     for cell in 0..t.n() {
-        if t.is_land(cell) && t.water_within(cell, p.water_radius_km) {
+        if t.is_land(cell) && has_water_supply(t, p, cell) {
             cands.push((free_food_near(state, t, p, cell), cell));
         }
     }

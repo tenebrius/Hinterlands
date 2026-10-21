@@ -330,6 +330,25 @@ fn cmd_render(args: &Args) {
     let nav = (0..t.n()).filter(|&i| t.is_nav(i)).count();
     let stream = (0..t.n()).filter(|&i| t.is_river(i)).count() - nav;
     let fords = t.ford.iter().filter(|&&f| f).count();
+    // Land cells with a water supply for founding, under the v1 rule and the
+    // brook-scale rule (D29).
+    let eligible = |spring: bool| {
+        let q = Params {
+            spring_water: spring,
+            ..sim.params.clone()
+        };
+        let k = (0..t.n())
+            .filter(|&i| {
+                t.is_land(i) && hinterlands_core::systems::founding::has_water_supply(t, &q, i)
+            })
+            .count();
+        100.0 * k as f32 / land.max(1) as f32
+    };
+    println!(
+        "founding water supply: {:.0}% of land (v1 rule), {:.0}% (brook rule)",
+        eligible(false),
+        eligible(true)
+    );
     let harb = t.harbour.iter().filter(|&&f| f).count();
     let mean_yield = (0..t.n())
         .filter(|&i| t.is_land(i))
