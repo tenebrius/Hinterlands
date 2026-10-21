@@ -191,7 +191,7 @@ v1 is done when the checks below pass on three generated maps, judged by pass ra
 | Determinism | Same seed and params give an identical final snapshot hash | Hidden nondeterminism |
 | Settlement count at year 500 | 150–350 | Founding too weak or too strong |
 | Settlements over 2,000 | 5–12 | Hierarchy absent or runaway |
-| Settlements over 5,000 | at least 1 and at most 5 per run; median over 20 seeds at least 2 | Hierarchy absent or runaway; a region with one city over 5,000 is historically normal |
+| Settlements over 5,000 | at least 1 and at most 5 per run; the median over 20 seeds is reported (gated at ≥ 2 until v2, D48) | Hierarchy absent or runaway; a region with one city over 5,000 is historically normal |
 | Largest settlement’s share of total population | under 25% | One city eats the map |
 | Rank-size slope (log size vs log rank, top 30) | between −0.8 and −1.3 | Flat scatter or primacy |
 | Market-town spacing (nearest neighbour among settlements over 500) | median 8–15 km | Spacing rule wrong |

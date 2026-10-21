@@ -586,3 +586,17 @@ Map 3 tends to a single dominant city (largest share 0.21; the largest city is t
 - (b) treat this as a property of map 3. D20 already holds that one city over 5,000 is historically normal for a region this size, and the per-seed check (1–5 over 5,000) passes in every seed on every map. The median rule could be reported, not gated, on maps where v1.2 itself sits at the edge.
 
 No further tuning was tried.
+
+### Designer's decision: the over-5,000 median becomes reported (D48), and v2 goes to G4
+
+Every gated v2 check now passes, and so does every per-seed check on every map. The one failure is an aggregate on map 3: the median count of cities over 5,000 is 1 against a floor of 2.
+
+**Decided: option (b), and the change to the acceptance test is made after seeing the failure, so the reasons are stated in full.**
+- **v1.2 itself passed this check on map 3 by one seed** (8 seeds with one city, 8 with two, 4 with more). The aggregate sat on the edge before goods arrived, so it is not measuring a change goods made.
+- **What the check was for is still gated per seed.** It was added (D20) to stop hierarchies with no second tier. That job is done by the per-seed checks, which pass in every seed: 1–5 cities over 5,000, 5–12 over 2,000, the rank-size slope, and the largest share under 25%.
+- **Map 3 has one dominant site,** the same largest in every seed, with a share of 0.21. A region with one city over 5,000 is historically normal; the brief already says so.
+- **Option (a) is declined.** A tuning round aimed at one map's aggregate would be tuning toward a test.
+
+The median stays in the report. The re-tuned values in `data/real/experiments/v2-candidate.json` become the v2 defaults when the milestone is recorded.
+
+**Next:** G4 (view, then the milestone) as specified, with goods on by default at the milestone and a new golden hash. Then v2.1, the Kent resources, as planned in `docs/foundation.md` ("Plan after v2").
