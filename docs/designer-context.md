@@ -60,13 +60,14 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v6 S1 second gate (cabdac6):** iron at 0.0013 fixes spacing (specialist medians back to 106–334); map 2 iron still dear (5.6–6.9), accepted. Sites producing failed (14/17/14), because the founding test counts quantity. Decided D72: count value at last year's buyer prices, so that dear goods draw new works. One more re-run.
 - **v6 S1 third gate (d31e04a):** only map 1's sites-producing check fails (14/20): remote sites idle while iron sells at about 1.2. Decided D73: under prices, idle marginal sites are the equilibrium (the extensive margin), so the gate becomes at least one working site per good, with the share producing reported. Then market_goods becomes the default, and W1 local harvests is briefed (σ 0.15 on a 15 km field, fresh each year).
 - **v6 S1 default (28ddc53):** market_goods on, golden `ec7a24a7caeac414`, 31.9 ms/year wasm. **W1 (4d35a23, D74):** map 1 top-10 against the Off run fell to 12/20, because the Off run gets different weather. Decided D75: draw the weather up front from the one Rng so on and off runs share it; set the sd at cells to 0.15 (it came out 0.095); one re-run. `b_Y` is identified but tiny.
+- **W1 second gate (2c066b6):** failed widely; noise with asymmetric losses shrinks the early region. Decided D76: park W1 until after S2 and S3 (my error, rule 8); order S2 → S3 → W1; S2 starts with a design note (supply and demand, value unit and budget, W premium, what replaces food_cap, famine convergence, cost), reviewed before code.
 - **v6 markets decided (D70, number reserved by me):** Divish's proposal (`docs/proposals/markets.md`, through a third session, `session_01MrMcFJCCYku1zTBbBkDVfp`) accepted in staged form after the v5 release: entropy-regularised spatial price equilibrium in grain units; W kept as a market premium; Clark checks reported at S0 and gated at S2; S0 (shadow prices, no feedback) only, then stop. S4–S5 (goods in use, coin and mayors) are not scheduled. "Never planned" now names wages, labour markets, floating money and agents.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
 
-Seven of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+Eight of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
 
 1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
 2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
@@ -78,6 +79,8 @@ Seven of my specification choices have been wrong, all caught by the real-terrai
 6. **The failure rule deleted towns.** "Unfed for 20 years, removed" was written for hamlets and applied to every size, and it read market lapse (39% of markets survived) as places vanishing. It contradicted the brief's own "towns outlive their reason". Before the probe found it, I withdrew the Rochester expectation on reasoning that turned out wrong. Rules: when a pre-registered test fails, measure the mechanism directly before choosing a fix or withdrawing the expectation; and check every removal or cut-off rule at each scale it acts on.
 
 7. **Goods were sold whether wanted or not.** I specified goods trade as the mirror of the grain step (producer as origin), so salterns earned at their cap on salt nobody needed and became the largest towns. Goods follow the shopping model (buyer as origin, demand fixed). Rule: for each flow, ask who is obliged to trade, the seller or the buyer, and put the origin there.
+
+8. **I scheduled local weather before the buffers that absorb it.** Zero-mean harvest noise, with losses asymmetric (shedding in bad years, capped growth in good ones), cut map 1's population at year 200 to a third and failed three checks. Rule: add a source of variance only after the mechanisms that absorb it exist.
 
 Judgement rules that now stand:
 
@@ -120,4 +123,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v6 S1 default; W1 weather drawn up front (D75).
+Last updated: 2026-10-21 — W1 parked (D76); S2 design note requested.

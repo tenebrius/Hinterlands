@@ -559,6 +559,21 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
 
 Noted from the report: `b_Y` is now identified (−0.003 to −0.011, inside the S2 range), because the equilibrium spreads a local shortfall across the region at `market_tau` 0.002. Map 2 seed 2 is an outlier (`b_P` 1.35, R² 0.32), to watch at S2.
 
+**W1 second gate (2c066b6, D75) and the designer's decision (D76).** With the weather controlled and the standard deviation at 0.15, the gate fails more widely: top-10 overlap on all maps, spacing and failure rate on maps 1 and 2. The implementer's diagnosis is right, and the error is the designer's. Weather with a mean of zero is not neutral when losses are asymmetric. A bad year sheds people and kills young places; a good year gives only capped growth. Map 1 seed 1 has 14.8k people at year 200 against 47.8k without weather. Real villages carried bad years with stores and markets. Those buffers are exactly S2 (grain to the hungry) and S3 (stores), and they are not built yet. I put the shock before the mechanisms that absorb it.
+- **W1 is parked,** behind its switch, until S2 and S3 are in. It is then re-gated with the same σ.
+- **The order is now S2 → S3 → W1.** At S2 the Clark checks `b_P` and R² are gated and `b_Y` is reported. `b_Y` is gated at W1.
+- **The post-famine convergence fix belongs to S2.**
+
+**S2: design note first (approved).** Grain by equilibrium touches the core of the model: who pays for grain, with what, and how market people are fed. Before building, the implementer writes `docs/market/s2-design.md`, at most two pages, proposing:
+1. **Supply and demand of grain per settlement,** from S0's form: a place's harvest, its need, and the demand elasticity of 0.75.
+2. **The unit of value and the budget.** What a buyer pays with, in value units within the year, with no stocks across years until S5. Market people's income has to come from somewhere real: the handling and transshipment margin, goods sales, and payment for grain they sell on. No food or value is created. A region-wide famine must show as grain dear against that income.
+3. **How W enters** as the market premium (decision 4).
+4. **What replaces `food_cap`:** surplus is sold at a falling price, or lost if unsold; stores come in S3.
+5. **The famine-year convergence fix.**
+6. **An estimate of the cost per year in wasm,** against the 45 ms limit.
+
+Then stop. The designer reviews the note before any S2 code is written.
+
 
 ## Future versions
 
