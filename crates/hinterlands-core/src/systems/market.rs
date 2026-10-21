@@ -526,10 +526,13 @@ pub fn goods_trade(
             });
         }
         unmet[g] = (0..m).map(|j| (demand[j] - got[j]).max(0.0)).sum();
+        // A buyer that no working supply reaches has no price: it is recorded
+        // as 0, unreached, not as the solver's floor.
         for (j, s) in state.settlements.iter_mut().enumerate() {
-            s.price[g] = buy_p[j];
+            let reached = demand[j] > 0.0 && got[j] > 1e-6 * demand[j].max(1e-6);
+            s.price[g] = if reached { buy_p[j] } else { 0.0 };
             if g < 4 {
-                s.supply_price[g - 1] = sup_p[j];
+                s.supply_price[g - 1] = if cap[j] > 0.0 { sup_p[j] } else { 0.0 };
             }
         }
     }
