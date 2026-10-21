@@ -108,6 +108,9 @@ impl App {
                 }
             }
         }
+        if let Some(k) = url_param("season") {
+            view::update(&mut view, &mut sim, Msg::SetSeason(Some(k.min(3) as u8)));
+        }
         // `?year=N` opens the run already advanced to year N.
         if let Some(year) = url_param("year") {
             view::update(&mut view, &mut sim, Msg::Step(year));
@@ -212,6 +215,7 @@ impl eframe::App for App {
                 self.owed -= 1.0;
             }
             self.owed = self.owed.min(2.0);
+            self.view.year_phase = self.owed.fract() as f32;
             ctx.request_repaint();
         }
 

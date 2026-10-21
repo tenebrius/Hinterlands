@@ -20,7 +20,27 @@ impl Panel for Controls {
         _layers: &[(&'static str, &'static str)],
     ) -> Vec<Msg> {
         let mut out = Vec::new();
-        ui.heading(format!("Year {}", v.snapshot.year));
+        let time = ui.input(|i| i.time);
+        ui.heading(format!(
+            "Year {} · {}",
+            v.snapshot.year,
+            crate::view::SEASONS[v.season_index(time)]
+        ));
+        ui.horizontal(|ui| {
+            ui.label("Season");
+            let mut sel = v.season_fixed;
+            egui::ComboBox::from_id_salt("season")
+                .selected_text(sel.map_or("Follow the clock", |k| crate::view::SEASONS[k as usize]))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut sel, None, "Follow the clock");
+                    for (k, name) in crate::view::SEASONS.iter().enumerate() {
+                        ui.selectable_value(&mut sel, Some(k as u8), *name);
+                    }
+                });
+            if sel != v.season_fixed {
+                out.push(Msg::SetSeason(sel));
+            }
+        });
         ui.horizontal(|ui| {
             if ui
                 .button(if v.playing { "⏸ Pause" } else { "▶ Play" })

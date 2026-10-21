@@ -14,8 +14,27 @@ use egui::{Color32, Rect, Stroke};
 use hinterlands_core::state::NONE;
 
 const CROP: Color32 = Color32::from_rgb(226, 196, 98);
-const CROP_DARK: Color32 = Color32::from_rgb(206, 172, 80);
 const FALLOW: Color32 = Color32::from_rgb(160, 178, 110);
+
+/// Crop, alternate crop and fallow colours by season (spring, summer, autumn, winter).
+const SEASON_FIELDS: [[Color32; 3]; 4] = [
+    [
+        Color32::from_rgb(132, 176, 86),
+        Color32::from_rgb(118, 160, 76),
+        Color32::from_rgb(150, 186, 106),
+    ],
+    [CROP, Color32::from_rgb(206, 172, 80), FALLOW],
+    [
+        Color32::from_rgb(186, 152, 98),
+        Color32::from_rgb(170, 136, 86),
+        Color32::from_rgb(150, 160, 100),
+    ],
+    [
+        Color32::from_rgb(140, 118, 92),
+        Color32::from_rgb(126, 104, 80),
+        Color32::from_rgb(136, 142, 108),
+    ],
+];
 const STUMP: Color32 = Color32::from_rgb(110, 78, 48);
 const PASTURE: Color32 = Color32::from_rgba_premultiplied(52, 68, 34, 70);
 const COPPICE: Color32 = Color32::from_rgb(40, 92, 44);
@@ -175,6 +194,7 @@ impl Layer for CountrysideLayer {
         match self.kind {
             Kind::Strips => {
                 self.orient(d);
+                let season = v.season_index(d.time);
                 let strips = 6;
                 for i in visible {
                     if snap.owner[i] == NONE || snap.built[i] != NONE {
@@ -198,12 +218,13 @@ impl Layer for CountrysideLayer {
                         };
                         // Three-field rotation: the fallow third moves on each year.
                         let fallow = (k as u32 + snap.year + rot) % 3 == 0;
+                        let pal = SEASON_FIELDS[season];
                         let col = if fallow {
-                            FALLOW
+                            pal[2]
                         } else if k % 2 == 0 {
-                            CROP
+                            pal[0]
                         } else {
-                            CROP_DARK
+                            pal[1]
                         };
                         p.rect_filled(sr, 0.0, col);
                     }
@@ -248,7 +269,13 @@ impl Layer for CountrysideLayer {
                     let near_fields =
                         (0..8).any(|k| g.neighbor(i, k).is_some_and(|j| snap.owner[j] != NONE));
                     if near_fields && f < 0.35 {
-                        p.rect_filled(r, 0.0, PASTURE);
+                        let winter = v.season_index(d.time) == 3;
+                        let tint = if winter {
+                            Color32::from_rgba_premultiplied(60, 58, 44, 70)
+                        } else {
+                            PASTURE
+                        };
+                        p.rect_filled(r, 0.0, tint);
                         if z >= 10.0 {
                             for (fx, fy) in scatter(i, 3) {
                                 let c = egui::pos2(

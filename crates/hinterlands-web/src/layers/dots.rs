@@ -162,10 +162,13 @@ impl Layer for DotsLayer {
             self.key = Some(key);
         }
         let now = d.time as f32;
+        // Sea ships stay in port in winter, as in ORBIS.
+        let winter = v.season_index(d.time) == 3;
         for r in &self.routes {
             let mut s = (now + r.phase) % r.every;
             while s < r.days {
-                if let Some(leg) = r.legs.iter().find(|l| s >= l.t0 && s < l.t0 + l.dt) {
+                let leg = r.legs.iter().find(|l| s >= l.t0 && s < l.t0 + l.dt);
+                if let Some(leg) = leg.filter(|l| !(winter && l.mode == Mode::Ship)) {
                     let u = (s - leg.t0) / leg.dt.max(1e-6);
                     let p = leg.a + (leg.b - leg.a) * u;
                     if d.rect.contains(p) {

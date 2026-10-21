@@ -5,11 +5,13 @@ mod buildings;
 mod countryside;
 mod dots;
 mod fields;
+mod history;
 mod labels;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;
 mod routes;
+mod seasons;
 mod settlements;
 mod smoke;
 pub mod terrain;
@@ -156,6 +158,8 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(countryside::CountrysideLayer::new(
             countryside::Kind::Frontier,
         )),
+        Box::new(history::HistoryLayer),
+        Box::new(seasons::SeasonsLayer::default()),
         Box::new(parish::ParishLayer::new()),
         Box::new(parish::FootpathsLayer::new()),
         Box::new(overlay_cost::CostOverlay::default()),

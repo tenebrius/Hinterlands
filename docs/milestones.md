@@ -105,3 +105,14 @@ Every check passes in at least 80% of seeds on every map, and the corridor, medi
 - Viewer: roads drawn along the segments they were built on and thickened by traffic, quiet roads and minor routes faded, town blocks with houses when zoomed, names for settlements and natural features with a toggle per class, a two-column legend from the active layers, chronicle in prose, `?map=`/`?seed=`/`?year=` URL options.
 - Seed and params: defaults as committed (`docs/parameters.md`), map seeds 1–3, run seeds 1–20.
 - Deferred: the outside-world sea market experiment (D20), and every Later and 1.x item.
+
+## 1.x — Derived view layers
+
+All drawn from the snapshot (and, for hedgerows and ghost fields, the farming history the viewer records as it steps); none feeds back into the simulation, so validation and the golden hash are unchanged.
+
+1. Site-earned buildings and crossings: church (village+), market square (town+), cathedral (largest city or over 8,000), walls with corner towers (city), water mill (village+ beside a stream), quay along water-facing edges (town+ on a navigable river or the coast) with warehouses once trade is heavy, bridges where a road crosses a river with traffic of at least 4% of the busiest segment, otherwise fords where the river is fordable. The foundation's three feed-backs (a bridge cheapens its crossing, walls add to site score, a mill raises yield) are not applied: they are v3 and would change the validated model.
+2. Countryside: field strips running away from the nearest road or river with one strip in three fallow, rotating yearly; clearing frontier (stumps on fields still carrying forest); pasture with sheep beyond the fields; coppice in woodland thinned by fuel cutting.
+3. Footpaths (cheapest walking paths to fields and the two nearest neighbours, where no road runs), parish boundaries (cells given to the settlement that reaches them most cheaply), hearth and charcoal smoke.
+4. Seasons (follows the clock when playing at up to 4 years a second, cycles when paused, or fixed from the Time panel): field colours, spring high water, autumn woods, winter frost and snow, ships in port in winter. Hedgerows round fields farmed 50 years or more; abandoned fields keep fading strips and hedges for 200 years.
+
+The legend lists only layers drawn at the current zoom. New URL options: `?on=`, `?off=`, `?season=`.

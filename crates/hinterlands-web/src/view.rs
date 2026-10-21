@@ -23,7 +23,14 @@ pub enum Msg {
     SetCamera(Camera),
     Save,
     Load(Vec<u8>),
+    /// Fix the drawn season (0 spring .. 3 winter), or `None` to follow the clock.
+    SetSeason(Option<u8>),
 }
+
+pub const SEASONS: [&str; 4] = ["Spring", "Summer", "Autumn", "Winter"];
+
+/// Never farmed, in the farming-history arrays.
+pub const NEVER: u16 = u16::MAX;
 
 /// One point of the population chart.
 #[derive(Clone, Copy, Debug)]
@@ -53,12 +60,20 @@ pub struct ViewState {
     /// Bumped whenever the terrain changes, so cached layers rebuild.
     pub terrain_version: u64,
     pub status: String,
+    /// First and last year each cell was cultivated in this session (NEVER if not).
+    pub farm_first: Vec<u16>,
+    pub farm_last: Vec<u16>,
+    /// Fixed season, or None to follow the clock.
+    pub season_fixed: Option<u8>,
+    /// Progress through the current year while playing, 0..1 (set by the app).
+    pub year_phase: f32,
 }
 
 impl ViewState {
     pub fn new(sim: &SimHandle, layers_on: BTreeSet<&'static str>) -> Self {
         let snapshot = sim.snapshot();
         let terrain = sim.terrain().clone();
+        let cells = terrain.n();
         let mut v = Self {
             metrics: metrics::compute(&snapshot, &terrain),
             snapshot,
@@ -76,6 +91,10 @@ impl ViewState {
             chronicle: Vec::new(),
             terrain_version: 0,
             status: String::new(),
+            farm_first: vec![NEVER; cells],
+            farm_last: vec![NEVER; cells],
+            season_fixed: None,
+            year_phase: 0.0,
         };
         v.record();
         v
@@ -85,7 +104,30 @@ impl ViewState {
         self.layers_on.contains(id)
     }
 
+    /// The season to draw, 0..1 through the year (spring starts at 0).
+    pub fn season_phase(&self, time: f64) -> f32 {
+        match self.season_fixed {
+            Some(k) => k as f32 * 0.25 + 0.125,
+            None if self.playing && self.speed <= 4.0 => self.year_phase,
+            None if self.playing => 0.375,
+            None => ((time / 8.0) % 1.0) as f32,
+        }
+    }
+
+    pub fn season_index(&self, time: f64) -> usize {
+        ((self.season_phase(time) * 4.0) as usize).min(3)
+    }
+
     fn record(&mut self) {
+        let year = self.snapshot.year.min(NEVER as u32 - 1) as u16;
+        for (i, &o) in self.snapshot.owner.iter().enumerate() {
+            if o != hinterlands_core::state::NONE {
+                if self.farm_first[i] == NEVER {
+                    self.farm_first[i] = year;
+                }
+                self.farm_last[i] = year;
+            }
+        }
         let s = &self.snapshot;
         self.history.push(YearStats {
             year: s.year,
@@ -107,6 +149,8 @@ impl ViewState {
     fn restart(&mut self, sim: &SimHandle) {
         self.history.clear();
         self.chronicle.clear();
+        self.farm_first = vec![NEVER; self.terrain.n()];
+        self.farm_last = vec![NEVER; self.terrain.n()];
         self.map_seed = sim.map_seed;
         self.sim_seed = sim.sim_seed();
         self.refresh(sim);
@@ -153,6 +197,7 @@ pub fn update(v: &mut ViewState, sim: &mut SimHandle, msg: Msg) {
             v.restart(sim);
         }
         Msg::SetCamera(c) => v.camera = Some(c),
+        Msg::SetSeason(s) => v.season_fixed = s,
         Msg::Save => {
             let file = crate::app::SaveFile::of(v, sim);
             v.status = crate::app::download(
