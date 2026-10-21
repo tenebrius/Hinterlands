@@ -716,3 +716,12 @@ The event parameters cannot reach this. The check covers years 248–300, after 
 1. Measure desertion among places beyond the urban shadow, more than 8 km from any place over 2,000. City-shadow losses are their own mechanism.
 2. Make it a model change: after a plague, people leave poor-land places for vacant good land nearby (Dyer: holdings were taken up on better land). This is a new rule.
 3. Pool the rate over each map's 20 seeds. Map 3 pooled is 0.18 against 0.16, a pass but a narrow one.
+
+### Re-run with desertion measured beyond the urban drain (D59): map 3 still fails
+| Map | Poor land deserted | Failure 248–300, low / high quarter | Plague total regained | Total at 500 against Off |
+| --- | --- | --- | --- | --- |
+| 1 | 16/20 | 0.22 / 0.10 | 48 years | 1.00 |
+| 2 | 20/20 | 0.21 / 0.08 | 49 years | 0.98 |
+| 3 | **11/20** | 0.18 / 0.15 | 50 years | 0.98 |
+
+Every other check passes on all maps. On map 3, away from cities, the poor-land quarter still fails only a little more often than the good-land quarter. Per seed, that is a coin toss. The model has no rule that moves people off poor land when good land falls vacant: after the plague, every place is better fed, and failures come from places already near `fail_pop`, whatever their land. Option 2 (Dyer) would add such a rule.

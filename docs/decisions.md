@@ -320,3 +320,22 @@ Kind: model mechanism (designer's specification), behind a switch.
 - **Desertion.** "Places in the lowest-yield quarter" is read as the *local* yield: the mean yield of land within 3 km of the anchor, among the settlements alive at the plague year. The quarters are within each run. A place's own fields are its best cells and hide how poor its surroundings are: by field yield the check held in 5 of 12 trial runs, by local yield in 10 of 12.
 - **Top-10 against Off.** The share of a run's top ten within 5 km of the same seed's top ten with events off.
 Kind: reading of the acceptance test (implementer); the designer to confirm.
+
+## D59 — Desertion measured beyond the urban drain (designer decision)
+The desertion check counts only settlements more than 8 km from any place over 2,000 at the plague year. Quarters of local yield (D58) are taken among those settlements.
+- **Re-run of the E1 gate** (Historical, 20 seeds a map): poor land deserted in 16/20, 20/20 and **11/20**. Map 3 fails.
+- **Failure rates 248–300,** lowest against highest quarter: 0.22 / 0.10, 0.21 / 0.08 and 0.18 / 0.15.
+- **Every other check passes on every map.**
+- **Reported:**
+  - plague drop 0.37 / 0.37 / 0.36;
+  - the pre-plague total regained in 48 / 49 / 50 years;
+  - total at year 500 against the same seed with events off: 1.00 / 0.98 / 0.98.
+- **Outcome.** Stopped for the designer, by the rule. Option 2 (Dyer's moves to vacant good land) is held in reserve for this case.
+Kind: acceptance test (designer).
+
+## D60 — v4 E2: harbour silting (written; not yet gated)
+- **Effect.** A silted harbour adds `silt_cost` (3) to every land–water step at the anchor and its eight neighbours: coast to sea, sea to coast, boarding and leaving a river boat, and changing mode at a navigable cell. The costs are kept in `State.silt`, so `Terrain` stays fixed.
+- **Which port.** The settlement with the most transshipped trade whose anchor, or a cell next to it, borders sea no deeper than `silt_depth_m` (10 m) or a navigable river cell that flows into the sea. A port already silted is skipped.
+- **When.** In historical mode the year is drawn when the window opens (`silt_from` 250, plus 0–`silt_window` 150), so the run's `Rng` stream is unchanged before year 250. In random mode it is drawn at `silt_interval` (200 years).
+- **Snapshot.** The silt costs are not in the snapshot's `Transport`, so the hash with events off is unchanged.
+Kind: model mechanism (designer's specification).
