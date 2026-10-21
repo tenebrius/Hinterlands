@@ -264,3 +264,13 @@ Kind: model mechanism behind a switch (designer decision).
 - The switch is off by default because validation has not yet passed with it (see `docs/real-terrain-experiments.md`, "v3(a)"). The golden hash is unchanged at `f67bf8565c500fda`.
 - `data/real/experiments/v3a-candidate.json` holds the best values found so far. The older experiment files pin `shadow_km` off.
 Kind: model mechanism behind a switch (designer's specification); the default awaits the designer.
+
+## D53 — v3(a) dropped: the shadow stays in travel cost (designer decision on the outcome)
+- The designer's option 1 was tried: the drain gets its own radius, `drain_radius_km` (about 8 km), and the founding shadow keeps `shadow_radius_km` (15–18 km). The floor on the founding shadow was declined.
+- **Re-tune.** A search ran over both radii, shadow weight, drain, threshold, noise, ε and K: 60 samples × 3 maps × 3 seeds. Its best point failed full validation (20 seeds a map):
+  - market spacing passes in 3 / 18 / 9 of 20 seeds;
+  - rank-size slope in 9 / 9 / 20;
+  - failure rate in 12 / 19 / 20.
+- **Controlled check.** The best single-radius candidate (`v3a-candidate.json`, radius 15.2 km) was re-run with only `drain_radius_km` changed, at 8, 10 and 12 km, on 3 seeds a map. Map 1 spacing is 6.3–8.5 km in every case, and map 3 is 5.0–10.6 km. A shorter drain lets more mid-sized places survive close together, so spacing falls. In the km form, the drain is what spaces the markets, and a short drain cannot do it.
+- **Outcome, by the designer's rule.** v3(a) is dropped. `shadow_km` stays in the code, off by default, with `drain_radius_km` beside it; the golden is unchanged (`f67bf8565c500fda`). v3(b) goes ahead with the cost shadow.
+Kind: designer decision (scope); no change to the defaults.
