@@ -254,7 +254,7 @@ define_params! {
         resettle_years: u32 = 30, [0, 200], "Years after a plague during which people leave poor land for vacant good land (D61)";
         resettle_rate: f32 = 0.02, [0, 0.2], "Yearly share of a poor-land place's people who resettle";
         plant_interval: u32 = 50, [0, 500], "Years between planted towns, with events on (0 = none) (D63)";
-        plant_from: u32 = 0, [0, 2000], "No town is planted before this year";
+        plant_from: u32 = 150, [0, 2000], "No town is planted before this year";
         plant_pop: f32 = 200.0, [10, 5000], "People a planted town starts with";
         plant_market: f32 = 5.0, [0, 50], "A planted town's starting market size, in multiples of market_w0";
         plant_spacing_km: f32 = 10.7, [0, 50], "Least distance from a planted town to any place over 500 (Bracton's 6 2/3 miles)";
