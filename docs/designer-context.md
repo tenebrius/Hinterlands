@@ -52,6 +52,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v4 released (48e6777, 7d86233):** Historical events on by default; validation passed; golden `2c5e9c5c90ab1d43`, 27.6 ms/year wasm; screenshots v4-year450 and v4-plague-1349. Kent: on-road share 30%, inland >500 10 at 11.9 km, largest Gravesend 13.
 - **v5 decided as the last version (mine):** outside ports (fixed grain demand, sole seller of imports) and ships improving 1300–1500 (sea cost −30%); joined regions and the rest of the old v5 dropped. Then a release pass, with no new mechanisms.
 - **v5 O1 (cac85b0, D64–D65):** outside trade at 5% passes everywhere; map 1 spacing 13/20 (chronically marginal). Decided D66: one re-tune of the founding and shadow values with ports on; if that fails, record an exception; the measure stays.
+- **v6 markets decided (D70, number reserved by me):** Divish's proposal (`docs/proposals/markets.md`, through a third session, `session_01MrMcFJCCYku1zTBbBkDVfp`) accepted in staged form after the v5 release: entropy-regularised spatial price equilibrium in grain units; W kept as a market premium; Clark checks reported at S0 and gated at S2; S0 (shadow prices, no feedback) only, then stop. S4–S5 (goods in use, coin and mayors) are not scheduled. "Never planned" now names wages, labour markets, floating money and agents.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
@@ -78,7 +79,7 @@ Judgement rules that now stand:
 - **Judge placement where the inputs have signal; judge count and spacing where they do not.** Score the inputs directly against the ground truth before blaming the model.
 - **Second-nature inputs (roads, initial towns) are data in `Terrain`, not model changes.** They go in through the importer.
 - **Keep the three-crate boundary.** Pure `core` with no I/O; `Snapshot` is the only thing the viewer and CLI read; systems write only their own outputs; one `ViewState`, one `Msg` enum in the UI.
-- **Never planned:** individual agents, a full price economy, hosted CI, pull requests.
+- **Never planned:** individual agents, wages and labour markets, floating money, hosted CI, pull requests. (Market-clearing prices in grain units were admitted by D70.)
 
 ## How to respond to an implementer report
 
@@ -111,4 +112,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v5 O1: re-tune for map 1 spacing approved (D66).
+Last updated: 2026-10-21 — v6 markets plan decided (D70); v5 continues.

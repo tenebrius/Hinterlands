@@ -420,7 +420,7 @@ Written by the designer on 21 October 2026, after v3 passed validation (D55–D5
 
 ## v5 specification: the outside world
 
-Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last simulation version. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
+Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last version of the gravity-only model; a market layer (v6, D70) follows the v5 release. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
 
 **Outside ports.**
 - Map generation marks one outside port on each open-sea map edge, at the sea cell nearest the busiest coastline. Busiest is read as the harbour with the most yield within 10 km, since there is no traffic at year 0 (D64). On imported maps the importer reads them from a file: for Kent, the Continent (off Dover) and the North Sea (off the Thames mouth).
@@ -460,6 +460,36 @@ As before, report after each stage and carry on unless a check fails or the spec
 - Freeze the golden hash.
 
 No new mechanisms after that.
+
+## v6 plan: markets, consumers and stores (D70)
+
+Decided by the designer on 21 October 2026, on the owner's proposal `docs/proposals/markets.md`. That document holds the case, the evidence and the design; this section holds the decisions.
+
+**Why.** The proposal is right on its main charge. In the model, grain is pushed to large markets by gravity on W and never bought. A hungry place cannot buy, received grain is not passed on, food above `food_cap` is lost, there are no stores, and delivered goods do nothing for the buyer. Clark (1999), already in the references, finds the opposite for medieval England: local wheat prices followed the national price (elasticity 0.997), a manor's own yield barely moved its price, and up to 40% of a harvest was carried over after cheap years. These are faults against the record. The fix is published, and it is the dual of the gravity model the project already uses (Samuelson 1952; Takayama & Judge 1971; Wilson 1970; Erlander & Stewart 1990).
+
+**Decisions** (numbered as in the proposal's section 8):
+1. **Yes, beyond v5,** as v6, starting after the v5 release. The v5 work and the release go ahead unchanged, so a finished, frozen v5 exists before any of this starts.
+2. **Market-clearing prices are admitted,** in grain units, as an aggregate equilibrium between settlements. The never-planned list above now excludes wages, a labour market, floating money and agents instead of "a full price economy". The reason for the old rule was scope, and the staging below answers it.
+3. **Form: entropy-regularised spatial price equilibrium,** solved by a fixed count of damped Furness passes, warm-started each year. The lagged price index is declined, because it does not get grain to the hungry, which is the point.
+4. **W: option 2, as a market premium, is the first form.** `W_j^α` multiplies the demand-side factor, read as the convenience of a large market (fairs, credit, many buyers). Every check from v1 to v5 rests on the hierarchy that W produces, and option 2 keeps it. Option 1 (W as demand only) is run as a reported diagnostic at S2, not as the default. Option 3 is declined, because it fixes none of the grain faults.
+5. **Stages approved: S0 only, then stop and report.** S1 to S3 are planned, and each is approved only after the one before reports. S4 (goods in use) and S5 (coin, projects, mayors) are not scheduled; they will be decided after S3, on what S0 to S3 show.
+6. **The Clark checks are reported at S0 and gated at S2,** at the proposed ranges:
+   - local price response to the regional price within 0.8–1.2;
+   - response to local yield, with the regional price controlled for, within −0.15 to 0;
+   - the regional price explaining at least 60% of local price variation.
+7. **P7 (transport loss against Clark's carriage cost) is reported only.** It is looked at in S2, where grain carriage gets its transport price `τ` from Clark (about 0.2% of value per km by land, a tenth of that by water).
+
+**S0 brief (shadow prices).**
+- **Scope.** Solve the equilibrium each year beside the existing trade, for grain and the four goods, and record prices and would-be flows. Nothing feeds back.
+- **Switch.** `market_shadow` off by default, golden unchanged.
+- **Demand elasticities, starting values:** grain 0.75 (Clark), salt 0.2, iron 0.5, stone 1.0.
+- **Report:**
+  - time per year natively and in wasm, which must leave the 50 ms budget;
+  - determinism, natively and with `?selftest`;
+  - the three Clark regressions on the shadow grain prices, per map;
+  - the price gap on trading pairs against transport cost;
+  - one map of shadow prices in a normal year and in 1316.
+- **Stop** and report. If S0 alone breaks the time budget, v6 waits for a cheaper solver, and nothing else is changed to make room.
 
 ## Future versions
 
@@ -525,13 +555,13 @@ The simulation lane runs left to right through its gates; the map generation tra
 
    Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
 3. **v4 Shocks.** Specified below, in "v4 specification: shocks".
-4. **v5 The outside world.** Specified below, in "v5 specification: the outside world". It is the last simulation version. Joined regions, coarse routing, way-stations, pastoral highlands and per-region parameters are dropped, since they are the scale-up that sinks projects of this kind.
+4. **v5 The outside world.** Specified below, in "v5 specification: the outside world". It is followed by the release, then v6 (markets, D70). Joined regions, coarse routing, way-stations, pastoral highlands and per-region parameters are dropped, since they are the scale-up that sinks projects of this kind.
 
 **Map generation track.** v1 ships noise, thermal erosion, hydrology and yield. Later passes, in order of effect on realism: hydraulic erosion with floodplains and deltas as the best land; lakes and marshes; coastline detail; a rain-shadow climate with biomes from temperature and moisture; resources placed by geology; tectonic plates giving ranges a direction. Each is a new pass in the pipeline and changes nothing else.
 
 **Real terrain.** Importing a free 90 m DEM (SRTM) of a documented region, resampled to the chosen cell size, is the single most valuable step after v1. Run on medieval Kent or the Rhône valley and compare the settlements the model produces with the ones that existed. If the model puts a city where Canterbury or Lyon stands, the model is right rather than merely plausible. Generated maps stay the tool for development and tuning; real terrain is for validation and for the demonstration that convinces people.
 
-**Never planned, in any version:** individual agents and a full price economy. Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks.
+**Never planned, in any version:** individual agents, wages and a labour market, and money as a floating currency. Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks. Market-clearing prices in grain units, as an aggregate spatial equilibrium between settlements, were admitted by D70 (see v6 below). The settlement stays the unit.
 
 ## References
 
