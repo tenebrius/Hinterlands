@@ -616,3 +616,13 @@ Kind: model mechanism behind a switch (designer decision).
 - **Wasm:** 30.8 ms/year, same hash as native.
 - **Details:** `docs/market/stores.md`.
 Kind: model mechanism behind a switch (designer's brief).
+
+## D82 — W1 re-gated with relief and stores (designer's brief). Failed; stopped
+- **S3 is the default** (1e5e332): `grain_stores` with `store_cap` 1.0 and `store_loss` 0.05. Golden `0e65d09ec147b5c7`.
+- **W1 at σ 0.15 with relief and stores: FAILED.** Top-10 vs off fails on every map. Population at year 200 is 0.30–0.34 of the same seed without weather (0/20 within 20%), and stores at year 400 are 0.06–0.08 (pre-registered ≥ 0.2).
+- **At σ 0.10, as the brief allowed: FAILED.** Top-10 vs off fails on maps 1 and 3, and population at 200 is 0.57–0.60. Store tuning (loss 0.03) changes nothing.
+- **Clark in shadow mode: in range** (`b_P` 0.98–1.02, R² 0.85–0.98, `b_Y` −0.011 to −0.015 at σ 0.15).
+- **Cause.** Stores and relief act only below need, while growth needs a ratio of 1.2. Weather cuts mean growth, and the stores it fills are never drawn.
+- **Options** are in `docs/market/w1.md`.
+- **New validate reports:** population at 200 against no weather, and deficit met by own store and by relief.
+Kind: model mechanism behind a switch; stopped.

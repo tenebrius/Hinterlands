@@ -48,11 +48,15 @@ pub struct RunResult {
     /// S2′ (D80): relief arrived per year, the share of deficit met outside
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
     /// year; `None` with relief off.
-    pub relief: Option<[f32; 4]>,
+    pub relief: Option<[f32; 6]>,
     /// S3 (D81): regional stores as a share of a year's need: mean over the
     /// ten years before the famine, at its start, at its end (1317), at years
     /// 100 and 400; `None` with stores off.
     pub stores: Option<[f32; 5]>,
+    /// Total population at year 200, and (W1, filled in by `cmd_validate`)
+    /// its ratio to the same seed without local harvests.
+    pub pop_200: f32,
+    pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
     /// year 300 (1400), the mean absolute rank change to year 500 and how many
@@ -356,9 +360,10 @@ pub fn run_one(
     let mut coastal = (f32::NAN, f32::NAN);
     // Relief: deficit and arrived outside the famine, then in it, then all
     // arrived and all lost.
-    let mut relief_acc = [0f32; 6];
+    let mut relief_acc = [0f32; 8];
     // Regional stores over need at the end of each year (index = year).
     let mut store_share: Vec<f32> = Vec::new();
+    let mut pop_200 = f32::NAN;
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -374,21 +379,26 @@ pub fn run_one(
             quartile = yield_quarters(&sim);
         }
         sim.step(1);
+        if sim.state.year == 200 {
+            pop_200 = sim.state.total_pop();
+        }
         if params.grain_stores {
             let need: f32 = sim.state.settlements.iter().map(|s| s.need(params)).sum();
             let held: f32 = sim.state.settlements.iter().map(|s| s.store).sum();
             store_share.push(held / need.max(1.0));
         }
         if params.grain_relief {
-            let [d, _, a, l] = sim.state.relief_stats;
+            let [d, _, a, l, own] = sim.state.relief_stats;
             let y = sim.state.year - 1;
             let famine =
                 (params.famine_year..params.famine_year + params.famine_years).contains(&y);
             let k = if famine { 2 } else { 0 };
             relief_acc[k] += d;
-            relief_acc[k + 1] += a;
+            relief_acc[k + 1] += a + own;
             relief_acc[4] += a;
             relief_acc[5] += l;
+            relief_acc[6] += own;
+            relief_acc[7] += d;
         }
         if shocks {
             totals.push(sim.state.total_pop());
@@ -482,6 +492,8 @@ pub fn run_one(
             ratio(relief_acc[1], relief_acc[0]),
             ratio(relief_acc[3], relief_acc[2]),
             relief_acc[5] / years.max(1) as f32,
+            ratio(relief_acc[6], relief_acc[7]),
+            ratio(relief_acc[4], relief_acc[7]),
         ]
     });
     let stores = params.grain_stores.then(|| {
@@ -497,6 +509,8 @@ pub fn run_one(
         ]
     });
     RunResult {
+        pop_200,
+        weather_ratio: f32::NAN,
         stores,
         relief,
         map_seed,
@@ -714,6 +728,13 @@ pub fn cmd_validate(args: &Args) {
                         sh.overlap_off = share;
                         sh.pop_vs_off = vs_off;
                     }
+                }
+                // W1: the same seed without local harvests, to year 200.
+                if params.local_harvests {
+                    let mut dry = params.clone();
+                    dry.local_harvests = false;
+                    let o = run_one(t, &dry, *map_seed, seed, 200);
+                    r.weather_ratio = r.pop_200 / o.pop_200.max(1.0);
                 }
                 results.lock().unwrap().push(r);
             });
@@ -978,13 +999,27 @@ pub fn cmd_validate(args: &Args) {
                     .collect())
             };
             println!(
-                "{:<20} {:>12} relief arrived per year {:.0}; deficit met: normal years {:.2}, 1315-17 {:.2}; surplus lost above food_cap per year {:.0}",
+                "{:<20} {:>12} relief arrived per year {:.0}; deficit met: normal years {:.2}, 1315-17 {:.2} (all years: own store {:.2}, relief {:.2}); surplus lost above food_cap per year {:.0}",
                 "S2' relief",
                 "(reported)",
                 at(0),
                 at(1),
                 at(2),
+                at(4),
+                at(5),
                 at(3)
+            );
+        }
+        if rs.iter().any(|r| r.weather_ratio.is_finite()) {
+            let ws: Vec<f32> = rs.iter().map(|r| r.weather_ratio).collect();
+            let within = ws.iter().filter(|w| (0.8..=1.2).contains(*w)).count();
+            println!(
+                "{:<20} {:>12} population at year 200 against no weather: median {:.2}, within 20% in {}/{}",
+                "W1 weather",
+                "(reported)",
+                med(ws.clone()),
+                within,
+                ws.len()
             );
         }
         if rs.iter().any(|r| r.stores.is_some()) {

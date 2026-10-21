@@ -414,9 +414,10 @@ pub struct State {
     #[serde(default)]
     pub grain_stats: GrainStats,
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
-    /// relief arrived, and surplus left above `food_cap × need` (lost).
+    /// relief arrived, surplus left above `food_cap × need` (lost), and own
+    /// store drawn (S3).
     #[serde(default)]
-    pub relief_stats: [f32; 4],
+    pub relief_stats: [f32; 5],
     /// The shadow solve's grain arcs, as `market_arcs` (D77).
     #[serde(default)]
     pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
@@ -587,7 +588,7 @@ impl State {
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
-            relief_stats: [0.0; 4],
+            relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],

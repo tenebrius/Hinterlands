@@ -279,7 +279,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     if p.grain_relief {
         relief(state, p, &idx_of);
     } else {
-        state.relief_stats = [0.0; 4];
+        state.relief_stats = [0.0; 5];
     }
 }
 
@@ -424,7 +424,7 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
     } else {
         lost = (0..m).map(|j| surplus[j] - sent_by[j]).sum();
     }
-    state.relief_stats = [deficit, sent_all, arrived_all + drawn_own, lost];
+    state.relief_stats = [deficit, sent_all, arrived_all, lost, drawn_own];
 }
 
 /// Value of one unit of a good in grain.
