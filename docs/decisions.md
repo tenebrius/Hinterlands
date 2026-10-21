@@ -500,3 +500,16 @@ Kind: model mechanism behind a switch (designer's brief), off.
 - **Report:** `docs/market/s1.md`, with the options. `market_goods` stays off, and the golden is unchanged.
 - **Tooling.** The viewer's `?selftest=N&goods=1` times S1 in the browser.
 Kind: model mechanism behind a switch (designer's brief); stopped for the designer.
+
+## D71, re-run — iron re-scaled to 0.0013 (designer decision, option 1). Stopped: sites producing
+- **The value.** `demand_iron` 0.0013 puts the pooled median town price of iron at about 1.2: 1.0–1.4 on map 1, 5.6–6.9 on map 2, 0.93–0.96 on map 3.
+- **Gate** (Historical, 20 seeds a map, `market_goods` on): **FAILED on "sites producing": 14 / 17 / 14 of 20.**
+  - Market spacing now passes (17 / 19 / 20). Specialists are near v5 sizes (medians 106–334).
+- **Cause.** With iron demand at a fifteenth, the specialist founding rule (D40) finds too little demand in quantity in reach of remote iron sites, and they stay unheld: 7 against 1 on map 1, 3 seeds.
+- **Options** (`docs/market/s1.md`):
+  - value the founding test at the delivered price under `market_goods`;
+  - scale the works threshold;
+  - re-tune founding.
+- **State.** `market_goods` stays off, and the golden is unchanged.
+- **Reporting fix.** A good no working supply reaches is recorded as unreached (price 0), not at the solver's floor.
+Kind: stopped for the designer.
