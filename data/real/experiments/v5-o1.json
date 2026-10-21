@@ -1,5 +1,7 @@
 {
   "ship_gain": 0.0,
   "market_goods": false,
-  "demand_iron": 0.02
+  "demand_iron": 0.02,
+  "grain_relief": false,
+  "shadow_drain": 0.0168
 }

@@ -10,7 +10,7 @@ The code is `relief` in `crates/hinterlands-core/src/systems/trade.rs`, behind `
 
 ## Gate (Historical, 20 seeds a map, `market_goods` on): PASSED, after one tuning change
 - **First run, the defaults plus relief:** every check holds except map 1 market spacing, 14/20, with a median of 8.9 km (S1: 17/20). Relief keeps marginal places alive near markets.
-- **Tuning, the one failing check only:** `shadow_drain` 0.015 → 0.025 (the urban shadow). 0.02 still gave 14/20; 0.025 gave 18/20.
+- **Tuning, the one failing check only:** `shadow_drain` 0.0168 → 0.025 (the urban shadow). 0.02 still gave 14/20; 0.025 gave 18/20.
 - **With `shadow_drain` 0.025** (`data/real/experiments/relief.json`), PASSED:
   - spacing 18 / 20 / 19;
   - failure rate 20/20 on every map;

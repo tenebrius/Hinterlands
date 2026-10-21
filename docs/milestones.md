@@ -382,3 +382,12 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - the release wasm build gives the same hash (`?selftest=500`, 31.9 ms/year, under the 45 ms gate);
   - `data/real/experiments/v5.json` gives v5's `4ce58fae34550933`, and the earlier version files give their hashes.
 - **Details:** `docs/market/s1.md`.
+
+## v6 S2′ — Grain relief (D80)
+- **On by default:** `grain_relief`. After trade, places in deficit draw, unpaid, on their partners' surplus above `food_cap × need`. `shadow_drain` goes from 0.0168 to 0.025, the one tuning change, for map 1 spacing.
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Spacing 18 / 20 / 19; runs passing every check 13 / 17 / 17.
+- **Reported:** relief of 1,500–2,000 a year; 86–88% of deficits met in normal years, 6–8% in 1315–17; famine dip unchanged at 0.24–0.25. Details: `docs/market/relief.md`.
+- **Determinism:**
+  - golden `f5b32f88ee3fc22f`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.9 ms/year);
+  - `data/real/experiments/v6-s1.json` gives S1's `ec7a24a7caeac414`, and every earlier version file now pins relief off and the old drain.

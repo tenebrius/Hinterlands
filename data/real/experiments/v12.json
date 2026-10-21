@@ -16,5 +16,7 @@
   "noise": 0.3083304,
   "outside_ports": false,
   "market_goods": false,
-  "demand_iron": 0.02
+  "demand_iron": 0.02,
+  "grain_relief": false,
+  "shadow_drain": 0.0168
 }

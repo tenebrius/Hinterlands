@@ -593,7 +593,7 @@ Kind: model mechanism (designer decision); stopped.
 ## D80 — S2 stopped (designer); S2′ grain relief built and gated
 - **The designer's decision.** S2 is stopped by the proposal's stop rule. `market_grain` stays off, with its code kept as the record. S1 stays the default, and Clark is reported on shadow prices only.
 - **S2′, grain relief** (`grain_relief`, off). After trade, places in deficit draw their deficit, unpaid and shopping-model style, on what partners hold above `food_cap × need`. Relief counts as food but not as market inflow, and loads routes without handling.
-- **Gate: PASSED** with `shadow_drain` 0.025 (from 0.015). With the defaults, map 1 spacing was 14/20.
+- **Gate: PASSED** with `shadow_drain` 0.025 (from 0.0168). With the defaults, map 1 spacing was 14/20.
   - Wasm 30.9 ms/year, with the same hash natively and in the browser (`f5b32f88ee3fc22f`).
 - **Reported:**
   - relief of 1,500–2,000 a year;

@@ -5,5 +5,7 @@
   "outside_ports": false,
   "market_goods": false,
   "demand_iron": 0.02,
-  "ship_gain": 0.0
+  "ship_gain": 0.0,
+  "grain_relief": false,
+  "shadow_drain": 0.0168
 }
