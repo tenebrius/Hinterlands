@@ -94,6 +94,20 @@ impl App {
             );
             view = ViewState::new(&sim, view.layers_on.clone());
         }
+        // `?on=a,b` and `?off=a,b` switch layers by id.
+        for (key, on) in [("on", true), ("off", false)] {
+            for id in url_text(key)
+                .unwrap_or_default()
+                .split(',')
+                .filter(|x| !x.is_empty())
+            {
+                if let Some(l) = layers.iter().find(|l| l.id() == id) {
+                    if on != view.layers_on.contains(l.id()) {
+                        view::update(&mut view, &mut sim, Msg::ToggleLayer(l.id()));
+                    }
+                }
+            }
+        }
         // `?year=N` opens the run already advanced to year N.
         if let Some(year) = url_param("year") {
             view::update(&mut view, &mut sim, Msg::Step(year));
@@ -293,6 +307,11 @@ fn selftest_years() -> Option<u32> {
 
 /// A numeric `?name=N` from the page URL (`HINTERLANDS_<NAME>` natively).
 fn url_param(name: &str) -> Option<u32> {
+    url_text(name)?.parse().ok()
+}
+
+/// The raw value of `?name=...` from the page URL.
+fn url_text(name: &str) -> Option<String> {
     #[cfg(target_arch = "wasm32")]
     {
         let search = web_sys::window()?.location().search().ok()?;
@@ -300,14 +319,11 @@ fn url_param(name: &str) -> Option<u32> {
         search
             .trim_start_matches('?')
             .split('&')
-            .find_map(|kv| kv.strip_prefix(prefix.as_str())?.parse().ok())
+            .find_map(|kv| kv.strip_prefix(prefix.as_str()).map(str::to_string))
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        std::env::var(format!("HINTERLANDS_{}", name.to_uppercase()))
-            .ok()?
-            .parse()
-            .ok()
+        std::env::var(format!("HINTERLANDS_{}", name.to_uppercase())).ok()
     }
 }
 

@@ -8,8 +8,10 @@ mod fields;
 mod labels;
 pub mod overlay_cost;
 mod overlay_score;
+mod parish;
 mod routes;
 mod settlements;
+mod smoke;
 pub mod terrain;
 
 use crate::camera::Camera;
@@ -154,12 +156,15 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(countryside::CountrysideLayer::new(
             countryside::Kind::Frontier,
         )),
+        Box::new(parish::ParishLayer::new()),
+        Box::new(parish::FootpathsLayer::new()),
         Box::new(overlay_cost::CostOverlay::default()),
         Box::new(overlay_score::ScoreOverlay::default()),
         Box::new(routes::RoutesLayer::default()),
         Box::new(settlements::SettlementsLayer::default()),
         Box::new(buildings::BuildingsLayer::default()),
         Box::new(dots::DotsLayer::default()),
+        Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,
         }),
