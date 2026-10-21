@@ -356,3 +356,10 @@ Kind: model mechanism (designer's specification).
   - the famine dip is 0.23–0.24, regained in 15 years;
   - the slowest run took 27.3 ms a year natively.
 Kind: model mechanism (designer decision).
+
+## D60, gated — harbour silting: `silt_cost` 1.0
+- **At the specified 3.0:** E2 failed on map 1 market spacing (14/20). The silted port is the region's largest place in every run. 100 years later it had fallen to a median rank of 9 / 33 / 4.
+- **At 1.5:** map 1 spacing was still 14/20.
+- **At 1.0:** the gate **PASSED**. Every check holds. Map 1 spacing is 16/20, and runs passing every check are 14 / 15 / 17.
+- **Reported:** the port silts in 20/20 runs on every map. Its rank 100 years later is a median 4 / 5 / 1 (from 1), and it loses rank in 13 / 15 / **0** of 20 runs. On map 3 the largest city keeps its place: its land trade carries it.
+Kind: event value tuned (implementer, as the brief allows).

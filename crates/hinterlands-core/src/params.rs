@@ -248,7 +248,7 @@ define_params! {
         plague_years: u32 = 2, [1, 5], "Years over which a plague's deaths are spread";
         silt_from: u32 = 250, [0, 2000], "First year of the window for the historical silting";
         silt_window: u32 = 150, [0, 1000], "Length of that window; the year is drawn within it";
-        silt_cost: f32 = 3.0, [0, 50], "Extra cost of each land-water step at a silted harbour";
+        silt_cost: f32 = 1.0, [0, 50], "Extra cost of each land-water step at a silted harbour";
         silt_depth_m: f32 = 10.0, [0, 200], "Sea no deeper than this counts as a shallow coast";
         silt_interval: f32 = 200.0, [1, 5000], "Mean years between siltings (random mode)";
         resettle_years: u32 = 30, [0, 200], "Years after a plague during which people leave poor land for vacant good land (D61)";
