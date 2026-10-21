@@ -536,3 +536,10 @@ Kind: model mechanism (designer decision); stopped.
 - **Defaults.** `market_goods` true, `demand_iron` 0.0013 (D71). Golden `ec7a24a7caeac414`, native and release wasm (`?selftest=500`, 31.9 ms/year).
 - **Reproducibility.** `data/real/experiments/v5.json` pins `market_goods` off and `demand_iron` 0.02, and gives v5's `4ce58fae34550933`. Every earlier version file pins the same two values. `v4.json` also pins `ship_gain` 0, which it had lacked since D65, and gives v4's `2c5e9c5c90ab1d43` again.
 Kind: validation (designer decision); defaults.
+
+## D74 — v6 W1: local harvests (stopped: map 1 top-10 vs off)
+- **Mechanism, as briefed:** `systems/harvest.rs`, a fresh smooth yield field each year, applied in cultivation after the fields are chosen. It is behind `local_harvests` (off), with `harvest_sd` 0.15, `harvest_km` 15, and the multiplier clamped to 0.5–1.5. Node values are drawn from the run's `Rng`, as u32 uniforms through Box–Muller in `libm`, one field a year.
+- **Gate (Historical, 20 seeds a map): FAILED, top-10 vs off 12/20 on map 1.** Every other check passes on every map. Wasm runs at 30.9 ms/year, and the hash matches native.
+- **Reported:** `b_Y` is identified but tiny (about −0.007). The multiplier's own CV is 0.095. Details are in `docs/market/w1.md`.
+- **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped for the designer.
+Kind: model mechanism; stopped.
