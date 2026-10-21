@@ -48,6 +48,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v4 E1 re-run with D59 (ec149e0):** desertion still 11/20 on map 3 (failure 0.18 against 0.15). The model has no move from poor land to vacant good land. Decided D61: the implementer's resettlement rule (30 years after a plague, low-yield places send 2% a year to the partner with the most free food per head). Plague total regained after 48–50 years, and year 500 equals the Off run. If the trough looks too short in the viewer, the lever is more historical recurrences in the calendar (1375, 1390, 1407, 1438, 1464, 1479), not a slower growth rate.
 - **v4 E1 passed with D61 (8488d97):** desertion 20/20 on every map (lowest-yield quarter fails 0.17–0.23, highest 0.00); plague drop 0.36–0.37; total regained in about 45 years; year 500 at 1.04–1.05 of the Off run. Map 3 margins are thin (largest share 16/20, settlements 17/20; runs passing every check 11/20): watch at the milestone. E2 silting being gated.
 - **v4 E2 (fd5a661, D60):** the busiest shallow port was the largest city in every run, so silting at cost 3 reshuffled the top and failed map 1 spacing; the implementer passed it at cost 1.0, where map 3's port never loses rank. Decided D62: leave out the largest settlement, put `silt_cost` back to 3, and gate together with E3.
+- **v4 E2 + E3 passed (604e843, D62–D63):** with the capital left out, the silted port falls from rank 5 to 10–12 within a century (lost rank in 18–19 of 20 runs). Planted towns from year 150 (planting earlier redirected the whole hierarchy); survival 57–82%, accepted. E4 and the milestone under way.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
@@ -107,4 +108,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v4 E2 silting retargeted (D62).
+Last updated: 2026-10-21 — v4 E2 and E3 passed; E4 under way.
