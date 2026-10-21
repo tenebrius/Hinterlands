@@ -196,6 +196,7 @@ define_params! {
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
         shadow_drain: f32 = 0.0168, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
+        drain_radius_km: f32 = 8.0, [0, 40], "Distance, km, within which a much larger neighbour drains a place (with shadow_km, D53)";
         shadow_size_ratio: f32 = 3.0, [1, 20], "A neighbour drains only if this many times larger";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
     }
@@ -210,7 +211,7 @@ define_params! {
         shadow_weight: f32 = 4.3475847, [0, 10], "Urban shadow per 1,000 people within the shadow radius";
         shadow_radius: f32 = 10.0, [0, 40], "Travel cost within which a settlement casts a shadow (without shadow_km)";
         shadow_km: bool = false, [0, 1], "The urban shadow, in founding and in the growth drain, is measured in straight-line km between anchors (D52)";
-        shadow_radius_km: f32 = 10.0, [0, 40], "Distance, km, within which a settlement casts a shadow (with shadow_km)";
+        shadow_radius_km: f32 = 10.0, [0, 40], "Distance, km, within which a settlement casts a founding shadow (with shadow_km)";
         access_weight: f32 = 0.3, [0, 5], "Market access per 1,000 people beyond the shadow radius";
         access_decay: f32 = 0.05, [0, 0.5], "Decay of market access per unit cost";
         noise: f32 = 0.3083304, [0, 2], "Upper bound of the uniform noise term";

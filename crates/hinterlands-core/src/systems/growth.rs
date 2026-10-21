@@ -158,12 +158,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                     continue;
                 }
                 let sk = &state.settlements[k as usize];
-                // Distance into the shadow: straight-line km with `shadow_km`
-                // (D52), else travel cost.
+                // Distance into the shadow: straight-line km within
+                // `drain_radius_km` with `shadow_km` (D52, D53), else travel cost.
                 let (d, radius) = if p.shadow_km {
                     (
                         t.grid.dist_km(si.anchor as usize, sk.anchor as usize),
-                        p.shadow_radius_km,
+                        p.drain_radius_km,
                     )
                 } else {
                     (q.cost, p.shadow_radius)
