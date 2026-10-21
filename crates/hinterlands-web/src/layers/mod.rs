@@ -1,6 +1,7 @@
 //! Map layers, drawn in order. A layer reads the snapshot and terrain and never
 //! touches the simulation; adding one is a new file and a line in `all()`.
 
+mod buildings;
 mod dots;
 mod fields;
 mod labels;
@@ -142,6 +143,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(overlay_score::ScoreOverlay::default()),
         Box::new(routes::RoutesLayer::default()),
         Box::new(settlements::SettlementsLayer::default()),
+        Box::new(buildings::BuildingsLayer::default()),
         Box::new(dots::DotsLayer::default()),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,
