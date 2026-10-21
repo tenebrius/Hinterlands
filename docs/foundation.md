@@ -416,13 +416,20 @@ The simulation lane runs left to right through its gates; the map generation tra
 **Plan after v2** (designer, 21 October 2026). This replaces the table above where they differ.
 1. **v2.1 Kent resources and coppice.** The coppice rule for iron fuel (see Sites and production) comes first, with one re-run of the v2 gate. Then come the Kent resources (data only). Wealden iron, Maidstone ragstone and the estuary salt pans are added to Kent's `Terrain` through the importer, as a showcase of v2 on real ground. It is reported, not gated, and no expectation is set for any single site.
 2. **v3 Landscape.** The work comes in this order, with the steps in one version because each depends on the last:
-   - (a) **The shadow is measured in km, not travel cost.** Bosker & Buringh's bands and Bracton's spacing are distances. With the shadow in travel cost, every road deepens the shadow along itself, which works against the next step.
+   - (a) *(Tried and dropped, D52–D53.)* **The shadow is measured in km, not travel cost.** Bosker & Buringh's bands and Bracton's spacing are distances. With the shadow in travel cost, every road deepens the shadow along itself, which works against the next step.
      - **Change:** both uses of the shadow, the founding penalty and the growth drain (`shadow_drain`, with its linear fall-off), use the straight-line distance between anchors in km, against `shadow_radius_km`, which starts at 10. The access term stays in travel cost, because market access is about the cost of getting there.
      - **Validation:** a re-tune and full validation follow. A new golden hash is recorded.
      - **Expectation on Kent, pre-registered:** the share of settlements on or next to a Roman road reaches at least the land share (32%), against 21% now. Kent's inland spacing (6.0 km against 10.6) is reported.
      - **Stop:** if validation cannot be passed by tuning, stop and report.
      - **After the first attempt (D52):** with one radius, spacing and failure rate pulled against each other (map 1 spacing 8/20). Decided (D53): the two uses get two distances, each with its own footing. The founding shadow uses `shadow_radius_km`, about 15–18, matching Bosker & Buringh's bands around existing cities. The drain uses `drain_radius_km`, about 8, the distance people walked to a weekly market, within which a small place loses people to a larger one. The floor on the founding shadow (option 2) is declined: within a 15 km radius it would stop founding near any hamlet. The spacing check (8–15 km) stays as it is. If this fails validation after tuning, v3(a) is dropped (`shadow_km` stays off) and v3 continues with (b).
-   - (b) **Roads follow traffic.** They upgrade with edge load and decay slowly when it falls (Dalgaard et al. 2022: Roman roads largely persisted).
+   - (b) **Roads follow traffic.** They upgrade with edge load and decay slowly when it falls. Dalgaard et al. (2022) found Roman roads persisted where traffic kept them in use and faded where it did not.
+     - **Condition.** Each road cell carries a condition `q` in [0, 1]. Every `road_interval`, the paths of the top `road_pairs` trading pairs are raised to `q` = 1, as now. Every other road cell whose edge load is below `road_keep_load` loses `road_decay` of its condition (starting value 0.05 per step, about 200 years from full to gone). A cell below 0.1 stops being road. Initial roads (Roman, D32) start at `q` = 1 and follow the same rule.
+     - **Cost.** Moving along a road costs `land + q × (cost_road − land)` per km, so a fading road is slower before it disappears. The cost grid is rebuilt only at road steps, as now.
+     - **Gate.** All v2.1 checks pass. Total road length changes by less than 10% between years 300 and 500, a road network that settles rather than churns.
+     - **Reported.** The share of road cells abandoned during the run. On Kent, the share of Roman road cells still road at year 500, and the on-road share of settlements.
+     - **Stop.** If validation fails after tuning, stop and report.
+     - **Shadow note.** v3(a) was dropped (D53): in km form the drain is what spaces markets, so splitting it off did not help. The shadow stays in travel cost. Since the cost shadow pushes places off roads, the on-road share is the number to watch in (b).
+
    - (c) **Bridges at busy crossings,** using the free-crossing mechanism of D33.
    - (d) **Mills** add a few percent to their settlement's yield.
 
