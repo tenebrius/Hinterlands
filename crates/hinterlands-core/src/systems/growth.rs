@@ -15,6 +15,8 @@
 //! `handling_income` (D27) a place also earns a margin on the trade passing its
 //! anchor and on the trade transshipped there (break of bulk), in place of the
 //! through-traffic weight.
+//! For `resettle_years` after a plague, people leave places on poorer land than
+//! their partners' for the partner with the most vacant land per head (D61).
 //! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history, market;
 //! under v2 also avg_goods_in, avg_inflow, kind and the log entry for it.
 
@@ -189,6 +191,66 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             }
         }
     }
+    // Resettlement after a plague (D61; Dyer): for `resettle_years` after it
+    // strikes, a place whose local yield is below its partners' median sends
+    // `resettle_rate` of its people to the partner with the most free food per
+    // head within its cultivation reach.
+    let since = year.wrapping_sub(state.last_plague);
+    if p.growth_enabled
+        && p.events_mode != 0
+        && state.last_plague != crate::state::NONE
+        && since < p.resettle_years
+    {
+        let local: Vec<f32> = state
+            .settlements
+            .iter()
+            .map(|s| local_yield(t, s.anchor as usize))
+            .collect();
+        let free_per_head = |k: usize| {
+            let s = &state.settlements[k];
+            let free: f32 = s
+                .reach
+                .field_order
+                .iter()
+                .map(|&c| c as usize)
+                .filter(|&c| state.owner[c] == crate::state::NONE && t.is_land(c))
+                .map(|c| t.food_yield[c])
+                .sum();
+            free / s.pop.max(1.0)
+        };
+        for i in 0..m {
+            let mut ks: Vec<usize> = state.settlements[i]
+                .reach
+                .partners
+                .iter()
+                .filter_map(|q| idx_of.get(q.id as usize).copied())
+                .filter(|&k| k != u32::MAX && k as usize != i)
+                .map(|k| k as usize)
+                .collect();
+            if ks.is_empty() {
+                continue;
+            }
+            ks.sort_unstable();
+            ks.dedup();
+            let mut ys: Vec<f32> = ks.iter().map(|&k| local[k]).collect();
+            ys.sort_by(|a, b| a.total_cmp(b));
+            let median = ys[ys.len() / 2];
+            if local[i] >= median {
+                continue;
+            }
+            let best = ks
+                .iter()
+                .map(|&k| (free_per_head(k), k))
+                .max_by(|a, b| a.0.total_cmp(&b.0).then(b.1.cmp(&a.1)));
+            if let Some((f, k)) = best {
+                if f > 0.0 {
+                    let moved = p.resettle_rate * state.settlements[i].pop;
+                    delta[i] -= moved;
+                    delta[k] += moved;
+                }
+            }
+        }
+    }
     // The people a market actually gains or loses change its size.
     let mut market_delta = vec![0f32; m];
     for j in 0..m {
@@ -250,4 +312,16 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         }
         state.log.extend(outgrew);
     }
+}
+
+/// Mean yield of the land within 3 km of a cell (D58, D61).
+fn local_yield(t: &Terrain, cell: usize) -> f32 {
+    let (mut sum, mut n) = (0.0f32, 0u32);
+    for j in t.grid.disk(cell, 3.0) {
+        if t.is_land(j) {
+            sum += t.food_yield[j];
+            n += 1;
+        }
+    }
+    sum / n.max(1) as f32
 }

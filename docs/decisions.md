@@ -339,3 +339,20 @@ Kind: acceptance test (designer).
 - **When.** In historical mode the year is drawn when the window opens (`silt_from` 250, plus 0–`silt_window` 150), so the run's `Rng` stream is unchanged before year 250. In random mode it is drawn at `silt_interval` (200 years).
 - **Snapshot.** The silt costs are not in the snapshot's `Transport`, so the hash with events off is unchanged.
 Kind: model mechanism (designer's specification).
+
+## D61 — Resettlement after a plague (designer decision; Dyer)
+- **Rule.** For `resettle_years` (30) after a plague strikes, a settlement whose local yield is below its partners' median sends `resettle_rate` (2%) of its people a year to the partner with the most free food per head. Local yield is the land within 3 km of the anchor (D58). Free food is the unowned yield in the partner's cultivation reach.
+- **Where.** It runs in growth, only with events on and after a plague. The plague's `apply` records the year in `State.last_plague`.
+- **Tuning.** Both values stay at their starting values.
+- **E1 gate** (Historical, silting held off, 20 seeds a map): **PASSED**.
+  - Poor land deserted in 20/20 on every map: failure 248–300 of 0.23 / 0.23 / 0.17 in the lowest quarter of local yield, against 0.00 in the highest.
+  - Plague drop 0.37 / 0.37 / 0.36, 20/20.
+  - Recovery by 500: 1.84 / 1.78 / 1.91 of the pre-plague peak.
+  - Top-10 against Off 20/20, and every v3 check passes. Map 3's tightest checks are largest share (16/20) and settlement count (17/20).
+  - Runs passing every check: 15 / 19 / 11.
+- **Reported:**
+  - the pre-plague total is regained in 45 / 44 / 45 years;
+  - the total at year 500 against the same seed Off is 1.05 / 1.04 / 1.05;
+  - the famine dip is 0.23–0.24, regained in 15 years;
+  - the slowest run took 27.3 ms a year natively.
+Kind: model mechanism (designer decision).

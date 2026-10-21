@@ -67,6 +67,10 @@ pub struct ShockResult {
     /// Total at the end against the same seed with events off; filled in by
     /// `cmd_validate`.
     pub pop_vs_off: f32,
+    /// The silted port's rank by population the year it silted and 100 years
+    /// later (D60); NaN if there was no silting, or the later rank if the
+    /// place failed (then one past the last).
+    pub silt_rank: (f32, f32),
     /// Share of this run's top ten within 5 km of the same seed's top ten with
     /// events off; filled in by `cmd_validate`.
     pub overlap_off: f32,
@@ -283,6 +287,15 @@ pub fn run_one(
     let mut totals: Vec<f32> = vec![sim.state.total_pop()];
     let mut quartile: std::collections::BTreeMap<u32, u8> = Default::default();
     let mut failed: std::collections::BTreeSet<u32> = Default::default();
+    let mut silt: Option<(u32, u32, f32)> = None;
+    let mut silt_after = f32::NAN;
+    let rank_of = |sim: &Sim, id: u32| -> f32 {
+        let pop = sim.state.get(id).map(|s| s.pop);
+        match pop {
+            Some(p) => 1.0 + sim.state.settlements.iter().filter(|s| s.pop > p).count() as f32,
+            None => 1.0 + sim.state.settlements.len() as f32,
+        }
+    };
     for _ in 0..years {
         if shocks && sim.state.year == params.plague_year {
             quartile = yield_quarters(&sim);
@@ -291,6 +304,16 @@ pub fn run_one(
         if shocks {
             totals.push(sim.state.total_pop());
             let y = sim.state.year;
+            for e in &sim.state.log {
+                if matches!(e.kind, hinterlands_core::state::LogKind::Silted) && silt.is_none() {
+                    silt = Some((e.settlement, y, rank_of(&sim, e.settlement)));
+                }
+            }
+            if let Some((id, sy, _)) = silt {
+                if y == sy + 100 {
+                    silt_after = rank_of(&sim, id);
+                }
+            }
             if y > params.plague_year && y <= params.plague_year + 52 {
                 for e in &sim.state.log {
                     if matches!(e.kind, hinterlands_core::state::LogKind::Failed { .. }) {
@@ -354,7 +377,11 @@ pub fn run_one(
         hash: snap.hash(),
         median_pop,
         goods: goods_result(&sim),
-        shock: shocks.then(|| shock_result(params, &totals, &quartile, &failed)),
+        shock: shocks.then(|| {
+            let mut sh = shock_result(params, &totals, &quartile, &failed);
+            sh.silt_rank = (silt.map_or(f32::NAN, |s| s.2), silt_after);
+            sh
+        }),
         road_change: if params.traffic_roads {
             (road_len(&sim) - road_300).abs() / road_300.max(1.0)
         } else {
@@ -446,6 +473,7 @@ fn shock_result(
     ShockResult {
         plague_years: regained,
         pop_vs_off: f32::NAN,
+        silt_rank: (f32::NAN, f32::NAN),
         plague_drop: 1.0 - low / before.max(1.0),
         recovery: totals.last().copied().unwrap_or(0.0) / peak.max(1.0),
         fail_low: rate(0),
@@ -724,6 +752,23 @@ pub fn cmd_validate(args: &Args) {
                 med(sh.iter().map(|s| s.famine_dip).collect()),
                 med(sh.iter().map(|s| s.famine_years).filter(|x| x.is_finite()).collect())
             );
+            let silted: Vec<&&ShockResult> =
+                sh.iter().filter(|s| s.silt_rank.0.is_finite()).collect();
+            if !silted.is_empty() {
+                let worse = silted
+                    .iter()
+                    .filter(|s| s.silt_rank.1 > s.silt_rank.0)
+                    .count();
+                println!(
+                    "{:<20} {:>12} silted in {} runs; rank before {:.0}, 100 years after {:.0} (medians); lost rank in {}",
+                    "v4 silting",
+                    "(reported)",
+                    silted.len(),
+                    med(silted.iter().map(|s| s.silt_rank.0).collect()),
+                    med(silted.iter().map(|s| s.silt_rank.1).filter(|x| x.is_finite()).collect()),
+                    worse
+                );
+            }
         }
         if rs.iter().any(|r| r.bridges > 0) {
             println!(

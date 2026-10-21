@@ -251,6 +251,8 @@ define_params! {
         silt_cost: f32 = 3.0, [0, 50], "Extra cost of each land-water step at a silted harbour";
         silt_depth_m: f32 = 10.0, [0, 200], "Sea no deeper than this counts as a shallow coast";
         silt_interval: f32 = 200.0, [1, 5000], "Mean years between siltings (random mode)";
+        resettle_years: u32 = 30, [0, 200], "Years after a plague during which people leave poor land for vacant good land (D61)";
+        resettle_rate: f32 = 0.02, [0, 0.2], "Yearly share of a poor-land place's people who resettle";
         famine_interval: f32 = 120.0, [1, 2000], "Mean years between famines (random mode)";
         plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
     }

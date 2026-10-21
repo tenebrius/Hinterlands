@@ -71,6 +71,9 @@ impl Event {
                 first,
             } => {
                 let years = (*years).max(1);
+                if *first {
+                    state.last_plague = state.year;
+                }
                 for &(id, y) in shares {
                     let Some(i) = state.index_of(id) else { continue };
                     let s = &mut state.settlements[i];

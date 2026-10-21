@@ -323,6 +323,8 @@ pub struct State {
     /// silting, 0 before it is drawn.
     pub silt: Vec<f32>,
     pub silt_year: u32,
+    /// Year the last plague struck, or `NONE` (D61).
+    pub last_plague: u32,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -424,6 +426,7 @@ impl State {
             bridge_streak: if p.traffic_bridges { vec![0; n] } else { Vec::new() },
             silt: Vec::new(),
             silt_year: 0,
+            last_plague: NONE,
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],
