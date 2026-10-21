@@ -177,3 +177,11 @@ Kind: rendering.
 ## D37 — Rivers drawn as lines (rendering; R2 from the graphics-overhaul branch)
 Streams and navigable rivers are polylines along `flow_dir`, broken at sources and confluences, smoothed by two rounds of Chaikin corner cutting, and widened with drainage (`0.012 · flux^0.4` km, capped at 0.45 km). Navigable stretches are darker; in spring the seasons layer widens channels by half instead of tinting cells. Details: `docs/rendering.md`.
 Kind: rendering.
+
+## D38 — v2 goods: resource sites and production (G1, behind `goods_enabled`)
+Resource cells become sites in `State.sites` (ore gives iron, plus salt and stone). A new system, `production`, runs after cultivation. It gives each site a holder: the settlement anchored within `min_spacing_km` at the least travel cost. Output is `min(cap_g, prod_g × (holder's market size W + site_crew))` in grain units a year. Iron is fuel-bound: it asks `fuel_per_iron` of forest per unit, cultivation cuts that from the holder's woods nearest first, and output is capped by the fuel cut. Under `goods_enabled` the flat `resource_out` is retired.
+Two values the specification leaves open, chosen here:
+- the value of a good `v_g` is 1, because demand and output are both stated in grain units;
+- `fuel_per_iron` is 0.1 forest cell-units per unit. At 0.01 a mine's draw was below the regrowth of its woods; at 0.1 every working iron site's woods fall below the land mean by year 200.
+With goods off, the golden hash is unchanged.
+Kind: model mechanism behind a switch (v2 specification).

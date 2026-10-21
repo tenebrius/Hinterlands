@@ -190,3 +190,50 @@ pub fn cmd_failures(args: &Args) {
         }
     }
 }
+
+/// Goods report (v2): at each year in `--at`, every resource site with its
+/// holder and output, and for working iron sites the forest within 5 km
+/// against the mean forest on land.
+pub fn cmd_goods(args: &Args) {
+    let mut sim = make_sim(args);
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("200,500")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let years = *at.iter().max().unwrap_or(&500);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if !at.contains(&y) {
+            continue;
+        }
+        let t = &sim.terrain;
+        let st = &sim.state;
+        let land: Vec<usize> = (0..t.n()).filter(|&i| t.is_land(i)).collect();
+        let land_mean = land.iter().map(|&i| st.forest[i]).sum::<f32>() / land.len().max(1) as f32;
+        for s in &st.sites {
+            let (x, yy) = t.grid.xy(s.cell as usize);
+            let near: Vec<usize> = t
+                .grid
+                .disk(s.cell as usize, 5.0)
+                .filter(|&j| t.is_land(j))
+                .collect();
+            let forest = near.iter().map(|&j| st.forest[j]).sum::<f32>() / near.len().max(1) as f32;
+            println!(
+                "site {map} {seed} {y} {:?} {x} {yy} held {} output {:.1} potential {:.1} fuel {:.2}/{:.2} forest5km {:.3} land {:.3}",
+                s.good,
+                s.holder != hinterlands_core::state::NONE,
+                s.output,
+                s.potential,
+                s.fuel_got,
+                s.fuel_want,
+                forest,
+                land_mean
+            );
+        }
+    }
+}
