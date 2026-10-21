@@ -398,17 +398,17 @@ Written by the designer on 21 October 2026, after v3 passed validation (D55–D5
 
 **Gate.** Pass rates over 20 seeds on each of the three maps, 75% per check, with `Historical` events.
 - **Gated:**
-  - every v3 check at year 500, meaning the region recovers within 250 years of the plague;
+  - every v3 check at year 500, meaning the region recovers within 250 years of the plague. The stability check leaves out event years and the year after each (D58);
   - determinism with events, natively and in the browser;
   - total population falls by at least 25% within five years of year 248;
   - total population at year 500 is at least 90% of its peak before year 248;
-  - places in the lowest-yield quarter fail between years 248 and 300 at a higher rate than places in the highest quarter (the deserted villages; Beresford 1954, Dyer);
+  - places in the lowest-yield quarter fail between years 248 and 300 at a higher rate than places in the highest quarter (the deserted villages; Beresford 1954, Dyer). Yield is local, meaning the land within 3 km of the anchor; places within 8 km of a place over 2,000 are left out, because the urban drain there is a separate effect that falls mostly on good land (D58, D59);
   - the top-10 overlap between a run with events and the same seed without them is at least 0.5, so the old hierarchy comes back, mostly;
   - one year under 50 ms in release wasm.
 - **Reported:**
   - the silted port's rank 100 years after silting against its rank before;
   - the share of planted towns alive 100 years after planting (expected 30–70%);
-  - the depth and length of the famine dip;
+  - the depth and length of the famine dip, and the years taken after 248 to regain the pre-plague total. At E1 the population at year 500 was 1.7 times the pre-plague peak, so recovery is fast, and the trough is the number to watch;
   - the Kent regression.
 
 **Stages.** Each stage is built and checked alone, then reported. The next stage starts without waiting unless a check fails or the spec is unclear.
