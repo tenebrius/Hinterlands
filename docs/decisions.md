@@ -192,3 +192,7 @@ Check (3 maps × 6 seeds, years 200 and 500):
 - payments balance: goods worth 53,226 received, 52,405 paid (the difference is buyers capped at their marketed share), 48,253 arrived after loss;
 - amount-weighted median route cost: iron 19.7, salt 14.5, grain 13.3, stone 9.0; the full order holds in 22 of 24 runs that trade all four.
 Kind: model mechanism behind a switch (v2 specification).
+
+## D40 — v2 specialist settlements (G3, behind `goods_enabled`)
+At each founding step, for each good, the free resource site (no settlement within `min_spacing_km`) with the most reachable demand gets a hamlet of `found_pop` on the cell, if that demand would feed the founders. Migrants come from the nearest settlement that can spare them. Its kind is `Mine`, `Saltern` or `Quarry`, and the founding is logged as `Works`. Ordinary failure rules apply. `validate` gates "sites producing ≥ 2/3" and "largest not specialist" (trivially true with goods off). The gate failed with the starting values: production-constrained sales let salterns earn at the cap regardless of demand and grow into the largest places. The resolution is pending with the designer.
+Kind: model mechanism behind a switch (v2 specification).

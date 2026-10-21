@@ -27,6 +27,104 @@ pub struct RunResult {
     pub ms_per_year: f64,
     pub hash: u64,
     pub median_pop: f32,
+    /// v2 (goods on; neutral values with goods off).
+    pub goods: GoodsResult,
+}
+
+/// The v2 gate's measures at the final year.
+#[derive(Clone, Debug)]
+pub struct GoodsResult {
+    /// Share of resource sites with output (1 with goods off or no sites).
+    pub sites_share: f32,
+    pub largest_specialist: bool,
+    pub specialist_pops: Vec<f32>,
+    /// Payment grain arriving at producers as a share of all market inflow.
+    pub payment_share: f32,
+    /// Mean forest within 5 km of working iron sites, and on land.
+    pub iron_forest: (f32, f32),
+    /// Share of settlements over 2,000 on or next to a route carrying goods.
+    pub goods_route_share: f32,
+}
+
+fn goods_result(sim: &Sim) -> GoodsResult {
+    use hinterlands_core::state::{Good, Kind};
+    let (st, t, p) = (&sim.state, &sim.terrain, &sim.params);
+    let neutral = GoodsResult {
+        sites_share: 1.0,
+        largest_specialist: false,
+        specialist_pops: Vec::new(),
+        payment_share: f32::NAN,
+        iron_forest: (f32::NAN, f32::NAN),
+        goods_route_share: f32::NAN,
+    };
+    if !p.goods_enabled {
+        return neutral;
+    }
+    let sites_share = if st.sites.is_empty() {
+        1.0
+    } else {
+        st.sites.iter().filter(|s| s.output > 0.0).count() as f32 / st.sites.len() as f32
+    };
+    let largest_specialist = st
+        .settlements
+        .iter()
+        .max_by(|a, b| a.pop.total_cmp(&b.pop))
+        .is_some_and(|s| s.kind != Kind::Agrarian);
+    let specialist_pops = st
+        .settlements
+        .iter()
+        .filter(|s| s.kind != Kind::Agrarian)
+        .map(|s| s.pop)
+        .collect();
+    let mut arrived = 0.0f32;
+    let mut on_goods = vec![false; t.n()];
+    for f in &st.flows {
+        let Some(s) = st.get(f.from) else { continue };
+        let q = &s.reach.partners[f.partner_idx as usize];
+        if f.payment {
+            arrived += f.amount * (1.0 - p.transport_loss * q.cost).max(0.0);
+        }
+        if f.good.is_some() {
+            for &node in &q.path {
+                on_goods[st.cost.node_cell(node)] = true;
+            }
+        }
+    }
+    let market: f32 = st.settlements.iter().map(|s| s.market_in).sum();
+    let land: Vec<usize> = (0..t.n()).filter(|&i| t.is_land(i)).collect();
+    let land_mean = land.iter().map(|&i| st.forest[i]).sum::<f32>() / land.len().max(1) as f32;
+    let near: Vec<usize> = st
+        .sites
+        .iter()
+        .filter(|s| s.good == Good::Iron && s.output > 0.0)
+        .flat_map(|s| t.grid.disk(s.cell as usize, 5.0).filter(|&j| t.is_land(j)))
+        .collect();
+    let iron = if near.is_empty() {
+        f32::NAN
+    } else {
+        near.iter().map(|&j| st.forest[j]).sum::<f32>() / near.len() as f32
+    };
+    let big: Vec<_> = st.settlements.iter().filter(|s| s.pop > 2000.0).collect();
+    let goods_route_share = if big.is_empty() {
+        f32::NAN
+    } else {
+        big.iter()
+            .filter(|s| t.touches(s.anchor as usize, |j| on_goods[j]))
+            .count() as f32
+            / big.len() as f32
+    };
+    GoodsResult {
+        sites_share,
+        largest_specialist,
+        specialist_pops,
+        payment_share: if market > 0.0 {
+            arrived / market
+        } else {
+            f32::NAN
+        },
+        iron_forest: (iron, land_mean),
+        goods_route_share,
+    }
 }
 
 pub struct Check {
@@ -86,6 +184,17 @@ pub const CHECKS: &[Check] = &[
         target: "<5%/yr",
         ok: |r| r.max_change < 0.05,
     },
+    // v2 gate (pass trivially with goods off).
+    Check {
+        name: "sites producing",
+        target: ">=0.67",
+        ok: |r| r.goods.sites_share >= 2.0 / 3.0,
+    },
+    Check {
+        name: "largest not specialist",
+        target: "true",
+        ok: |r| !r.goods.largest_specialist,
+    },
 ];
 
 pub fn run_one(
@@ -138,6 +247,7 @@ pub fn run_one(
         ms_per_year,
         hash: snap.hash(),
         median_pop,
+        goods: goods_result(&sim),
     }
 }
 
@@ -215,6 +325,14 @@ pub fn cmd_validate(args: &Args) {
                     "siting" => r.m.siting_share,
                     "failure rate" => r.m.failure_rate,
                     "forest near cities" => r.m.forest_near_cities,
+                    "sites producing" => r.goods.sites_share,
+                    "largest not specialist" => {
+                        if r.goods.largest_specialist {
+                            0.0
+                        } else {
+                            1.0
+                        }
+                    }
                     _ => r.max_change,
                 }
             };
@@ -300,6 +418,42 @@ pub fn cmd_validate(args: &Args) {
             "",
             ""
         );
+        if params_goods(&rs) {
+            let med = |mut v: Vec<f32>| {
+                v.retain(|x| x.is_finite());
+                v.sort_by(|a, b| a.total_cmp(b));
+                v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
+            };
+            let mut pops: Vec<f32> = rs
+                .iter()
+                .flat_map(|r| r.goods.specialist_pops.clone())
+                .collect();
+            pops.sort_by(|a, b| a.total_cmp(b));
+            let q = |f: f32| {
+                pops.get(((pops.len() as f32 - 1.0) * f) as usize)
+                    .copied()
+                    .unwrap_or(f32::NAN)
+            };
+            println!(
+                "{:<20} {:>12} specialists per run {:.1}; size p10 {:.0}, median {:.0}, p90 {:.0}, max {:.0}",
+                "v2 (reported)",
+                "",
+                pops.len() as f32 / rs.len().max(1) as f32,
+                q(0.1),
+                q(0.5),
+                q(0.9),
+                pops.last().copied().unwrap_or(f32::NAN)
+            );
+            println!(
+                "{:<20} {:>12} payment share of market inflow {:.3}; iron forest {:.2} vs land {:.2}; >2k on goods route {:.2}",
+                "",
+                "",
+                med(rs.iter().map(|r| r.goods.payment_share).collect()),
+                med(rs.iter().map(|r| r.goods.iron_forest.0).collect()),
+                med(rs.iter().map(|r| r.goods.iron_forest.1).collect()),
+                med(rs.iter().map(|r| r.goods.goods_route_share).collect())
+            );
+        }
         println!(
             "runs passing every check: {full}/{}   slowest run {:.2} ms/year (native)",
             rs.len(),
@@ -336,4 +490,9 @@ pub fn top10_overlap(t: &hinterlands_core::Terrain, rs: &[&RunResult]) -> f32 {
     } else {
         sum / pairs as f32
     }
+}
+
+/// Whether these runs had goods on (v2 measures are then reported).
+fn params_goods(rs: &[&RunResult]) -> bool {
+    rs.iter().any(|r| r.goods.payment_share.is_finite())
 }
