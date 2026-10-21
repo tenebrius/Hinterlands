@@ -82,7 +82,7 @@ v1 rests on six models, each decades old, published, and reproduced by others. E
 | --- | --- | --- | --- |
 | Least-cost paths on a cost surface (Tobler 1993; ORBIS, Scheidel & Meeks 2012) | Travel cost between any two cells over terrain, rivers and sea, with mode cost ratios (sea 1 : downriver 5 : upriver 10 : cart \~50 in the Roman Price Edict; land : river : sea roughly 8 : 4 : 1 in medieval England) | The cost grid, roads, catchments, trade decay, break-of-bulk sites | Standard in archaeology and GIS; weak at predicting roads on flat open land (31% within 250 m in lowland Britain, 65% in highland) |
 | von Thünen land use (1826) | Where fields, woodland and pasture sit around a settlement: nearest and cheapest to reach first, stretched along cheap transport; a town’s size bounded by what it can reach | Cultivation and fuel, the food ceiling on growth | Textbook model; VEP and Artificial Anasazi place farm plots by the same cost logic and reproduce real settlement histories |
-| Gravity model of spatial interaction (Wilson 1970; Huff 1964) | Flow between places rises with both sizes and falls with travel cost | Yearly trade flows, food redistribution, route thickness | Estimated on Bronze Age merchant records with a distance elasticity close to modern trade (Barjamovic et al. 2019) |
+| Gravity model of spatial interaction (Wilson 1970; Huff 1964) | Flow between places rises with both sizes and falls with travel cost | Yearly trade flows, food delivered to markets, route thickness | Estimated on Bronze Age merchant records with a distance elasticity close to modern trade (Barjamovic et al. 2019) |
 | Rihll–Wilson urban dynamics (Rihll & Wilson 1987; Harris & Wilson 1978) | Settlement size grows with inflow and decays with maintenance cost; with increasing returns a few sites dominate | The growth rule and the emergence of hierarchy | Regenerated Athens, Corinth and Argos from 109 equal sites; results sensitive to the decay function (Evans & Rivers 2017) |
 | Central place spacing (Christaller 1933) and the New Economic Geography urban shadow (Krugman 1991; Bosker & Buringh 2017) | New settlements are suppressed near an existing larger one and favoured at a middle distance; markets about a half-day walk apart | The founding score: shadow and access terms, minimum spacing | Spacing documented in English market law (Bracton, 6⅔ miles) and measured for 259,776 European locations 800–1800 |
 | First-nature site factors (Bosker & Buringh 2017; Bleakley & Lin 2012) | Relative weights for water, river, coast and route crossings in founding; persistence of towns after their advantage is gone | Which villages become towns, through growth on market inflow and handling income; population inertia. Not founding: the Kent test showed these weights are city-scale, and hamlets are scored on food and water | Regression on all 1,588 European cities over 1,000 years; portage-site persistence in the US |
@@ -112,7 +112,7 @@ Edge costs, in km-equivalents, computed once and recomputed only when a road or 
 | Along a road | 0.5 | roads marked by the road step |
 | Along a navigable river, downstream | 0.2 | upstream 0.4 |
 | Sea, cell to cell | 0.08 |  |
-| Crossing a river (perpendicular) | +5 fixed | 0 at a ford or bridge; fords are cells where slope is low on both banks |
+| Crossing a river (perpendicular) | +5 fixed (+1 for a stream) | 0 at a ford; fords are cells where slope is low on both banks. Bridges are not yet applied (a v3 feedback); a road crossing a river still pays the fixed cost |
 | Stepping between land and water | +3 fixed | transshipment; this is what makes ports |
 
 **Settlement state (dynamic)**
@@ -130,14 +130,16 @@ Rank is derived from P: hamlet < 100, village < 500, town < 2,000, city above.
 
 **Yearly tick**
 
-1. **Cultivation.** Need is `P × 1` food units. Starting from the anchor, claim free cells in order of travel cost until yield covers need or the cost radius `R_cult = 4` km is reached; one prime cell feeds 150 people. Release the farthest cells when need falls. Claimed cells lose forest at 20% a year; released cells regain it at 2% a year. Produced food `F_i` is the sum of yield over owned cells × 150.
-2. **Trade flows.** For every pair within cost `C_max = 60`:
+Values given here are the tuned defaults for the generated maps, rounded; `docs/parameters.md` is authoritative.
+
+1. **Cultivation.** Need is `P × 1` food units. Starting from the anchor, claim free cells in order of travel cost until yield covers need or the cost radius `R_cult` is reached (1.3 on the generated maps); one prime cell feeds 150 people. Release the farthest cells when need falls. Claimed cells lose forest at 20% a year; released cells regain it at 2% a year. Produced food `F_i` is the sum of yield over owned cells × 150.
+2. **Trade flows.** For every pair within cost `C_max` (30 on the generated maps):
 
 ```latex
 T_{ij} = O_i \, \frac{W_j^{\alpha} e^{-\beta c_{ij}}}{\sum_k W_k^{\alpha} e^{-\beta c_{ik}}}
 ```
 
-`O_i` is what i sends to market: a fixed share `market_share` (0.49) of its produce plus the output of any resource cells it owns, sent whether or not any market needs it. The attraction is the market size `W_j`, not population; `α = 1.1`, `β` per the params file (0.2–0.3 on the generated maps). The sum includes j = i, so a place's own market takes its share. Food delivered to a market is first used to feed that market's own deficit, and the rest is redistributed to its sending settlements in deficit, less a loss of `0.5% × c_ij`. Each flow is assigned to the stored least-cost path between the pair; summing per edge gives route load. Gross market inflow `D_j` is everything delivered to j, including its own share.
+`O_i` is what i sends to market: a fixed share `market_share` (about 0.45) of its produce plus the output of any resource cells it owns, sent whether or not any market needs it. The attraction is the market size `W_j`, not population; `α` about 1.1, `β` about 0.14 on the generated maps. The sum includes j = i, so a place's own market takes its share. Food arrives less a loss of `transport_loss × c_ij` and is consumed at the market it reaches; it is not passed back to senders in deficit. Each flow is assigned to the stored least-cost path between the pair; summing per edge gives route load. Gross market inflow `D_j` is everything delivered to j, including its own share.
 
 3. **Growth.** Two equations, one for the market and one for the people. The market size follows the published Rihll–Wilson dynamic:
 
@@ -145,15 +147,15 @@ T_{ij} = O_i \, \frac{W_j^{\alpha} e^{-\beta c_{ij}}}{\sum_k W_k^{\alpha} e^{-\b
 W_j \leftarrow \max\big(W_{\min},\; W_j + \varepsilon\,(D_j + H_j - K\,W_j)\big)
 ```
 
-`D_j` is gross market inflow from the trade step. `H_j` is handling income: a margin `handling_margin` on goods that pass j's anchor on a stored path or are transshipped there (land–water or water–land at j), counted as food-equivalent. `ε = 0.05`; `K` is tuned per map set (3.5 on the generated maps) so an isolated fed village's market neither grows nor shrinks; `W_min` is a small floor. All places start at the same `W_0`, so hierarchy comes from competition, not from the starting state. Then population: farmers are fed by the fields; market people are fed by `D_j + H_j`; `P_j` grows at `r = 0.02` a year toward what both can feed, capped at 5% growth a year, and shrinks at `r × (1 − ratio)` when underfed, with the loss spread over 3 years for inertia. Newcomers to a market join the market people rather than becoming farmers, so an inland market no longer erases its own W by claiming more fields.
+`D_j` is gross market inflow from the trade step. `H_j` is handling income: a margin `handling_margin` on goods that pass j's anchor on a stored path or are transshipped there (land–water or water–land at j), counted as food-equivalent. `ε` is about 0.15 and `K` is tuned per map set (3.5 on the generated maps) so an isolated fed village's market neither grows nor shrinks; `W_min` is a small floor. All places start at the same `W_0`, so hierarchy comes from competition, not from the starting state. Then population: farmers are fed by the fields; market people are fed by `D_j + H_j`; `P_j` grows at `r = 0.02` a year toward what both can feed, capped at 5% growth a year, and shrinks at `r × (1 − ratio)` when underfed, with the loss spread over 3 years for inertia. Newcomers to a market join the market people rather than becoming farmers, so an inland market no longer erases its own W by claiming more fields.
 
 4. **Founding.** Every 5 years, score every free land cell that has a brook of at least 5 km² drainage or the coast within 3 km and no settlement within 3 km. At 1 km cells this admits nearly all land; dry ridge tops are kept out by the food term, not by the water filter. Hamlets are scored on food and water only; transport decides which villages become towns, through growth, not founding:
 
 ```latex
-S(x) = \text{food}_{4\text{km}} + w_{w1}\,\text{water}_{0} + w_{w2}\,\text{water}_{1} - \text{shadow} + \text{access} + \eta
+S(x) = w_{f}\,\text{food} + w_{w1}\,\text{water}_{0} + w_{w2}\,\text{water}_{1} - \text{shadow} + \text{access} + \eta
 ```
 
-`food_4km` is reachable yield within 4 km as a share of the maximum; `water_0` = 1 if a stream, river or coast is in the cell, `water_1` = 1 if within 1 km, with weights `w_w1`, `w_w2` per the params file; `shadow = 1.5 × Σ (P_k / 1000)` over settlements within 10 km cost; `access = 0.3 × Σ (P_k / 1000) e^{−0.05 c}` over settlements at 10–60 km; `η` is uniform noise in \[0, 0.3\]. There are no transport flags (hub, river, coast, road) in founding: Bosker & Buringh's weights are for cities, and villages followed farmland and water. Found one hamlet of 30 people at the best cell if its score exceeds the founding threshold, then at most two more per 5-year step. Migrants come from the nearest settlement with a food ratio above 1.1.
+`food` is free yield reachable within `R_cult`, weighted by `w_food`; `water_0` = 1 if a stream, river or coast is in the cell, `water_1` = 1 if within 1 km, with weights `w_w1`, `w_w2` per the params file; `shadow = shadow_weight × Σ (P_k / 1000)` over settlements within travel cost 10 (`shadow_weight` about 4.35); `access = 0.3 × Σ (P_k / 1000) e^{−0.05 c}` over settlements from cost 10 to `C_max`; `η` is uniform noise up to about 0.3. There are no transport flags (hub, river, coast, road) in founding: Bosker & Buringh's weights are for cities, and villages followed farmland and water. Found hamlets of 30 people at the best-scoring cells above the founding threshold, at most `max_found_per_step` (6) per 5-year step. Migrants come from the nearest settlement with a food ratio above 1.1.
 
 5. **Failure.** A settlement with P below 20 for 10 consecutive years, or not fed for 20, is removed; its fields are released and its people move to the nearest fed settlement.
 6. **Roads.** Every 10 years, take the 20 pairs with the largest `T_ij` whose path is not already a road and mark that path as road. Roads never decay in v1. Recompute edge costs and `cost_to`.
@@ -171,7 +173,7 @@ Verdict: v1 as specified is achievable by one developer in roughly 6–8 weeks o
 | One town swallows the map | α too high or β too low in the growth loop; trade inflow unbounded | Cap inflow growth per year (say 5%); α slider defaults to 1.15 and the headless run reports the rank-size slope every 50 years |
 | Nothing happens | Shadow too strong, founding threshold too high, or K too large | Site-score overlay shows the ceiling at a glance; founding logs the best score each step even when nothing is founded |
 | Oscillation | Cultivation claims and releases cells every year; trade flips between partners | 3-year smoothing on population loss; hysteresis on cultivation (release only when need drops 10%) |
-| Slow ticks | Dijkstra from every settlement every year; all-pairs flows | Bounded Dijkstra (cost cap 60) every 5 years; pairs filtered by cost; 200 settlements × 128² cells is well under 100 ms in Rust |
+| Slow ticks | Dijkstra from every settlement every year; all-pairs flows | Bounded Dijkstra (cost cap `C_max`) every 5 years; pairs filtered by cost; 200 settlements × 128² cells is well under 100 ms in Rust |
 | Roads look wrong on plains | Known weakness of least-cost paths on flat land | Accept it in v1; roads come from trade pairs, not terrain prediction; traffic-based upgrading is Later |
 | Scope creep | Goods, politics, agents, pretty rendering before the model behaves | Milestones gate on validation targets; Later items are not opened until v1 passes; derived view layers never touch state |
 | Untestable “looks wrong” | No definition of correct | Validation targets are numeric and checked headless; determinism makes regressions reproducible by seed |

@@ -291,3 +291,25 @@ Rochester and Canterbury do not appear. Settlements become *less* likely to sit 
 - (c) **A larger margin on through-traffic.**
 
 (a) and (b) are input or measurement corrections; (c) is tuning. Not tried: the test was run once, as pre-registered.
+
+### Designer's reading of the roads result
+
+The test was run once and reported as pre-registered, with a land-share baseline and a diagnostic separating the causes. It failed, and the failure is informative.
+
+1. **The expectation was a specification error, and it was the designer's.** It rested on Watling Street's river crossings being special. The brief said a crossing costs 0 "at a ford or bridge", but the model has fords only, and that was not checked before the expectation was written. Rule from now on: a pre-registration names the mechanism its expectation depends on, and the implementer confirms the code has it before the run.
+2. **Roman roads are the first Kent input with signal for small towns.** 47% of real towns sit on or next to one, against 32% of land; soil and terrain carried none. The model moves settlements *off* roads (20%), the opposite of the record. That is a model fault, not noise, and the shadow diagnostic points to its cause.
+3. **Options.** (a) is approved below, alone. (b), the shadow in km, has research footing (Bosker & Buringh's bands and Bracton's spacing are distances) and is the likely fix for point 2, but it changes the generated maps and needs a re-tune and full validation; it is the next candidate, decided after (a) reports. (c) is declined: raising a margin until the expected towns appear is tuning toward the answer.
+
+## Roman bridges as input data (pre-registered, before running)
+
+Written by the designer and committed before any run with bridges. This is a second test, not a rescue of the first: the roads test above stays recorded as failed.
+
+**Change.** Every cell where an Itiner-e road crosses a river or stream is a bridge: the fixed crossing cost there is 0, as at a ford. Bridges are input data in `Terrain`, derived by the importer from the road grid and the drainage, not placed by hand. A Roman road has to cross a river by bridge or ford, and Rochester's Roman bridge is attested. The model is unchanged; generated maps have no initial roads, so the golden hash must stay `68beae826cf800cd`. No parameter is re-tuned. This is input data, not the v3 mechanism of fords becoming bridges from traffic.
+
+**Check the input before running.** Report the number of bridge cells, and whether the Medway at Rochester and the Stour at Canterbury are navigable in the model at the bridge cell. If either is not, say so before the run: the transshipment term cannot act there, and the expectation for that site is then weak.
+
+**Expectation (the designer's).** The bridged crossings become junctions of land and water routes, so through-traffic and transshipment income settle there. Primary: a place of 1,000 or more within 3 km of Rochester in at least 5 of 20 seeds. Canterbury is reported against the same bar, but the expectation for it is weaker, because the navigable Stour historically ended at Fordwich, Canterbury's port 3 km downstream. The cost-based shadow still suppresses places along a road, so the share of settlements on roads is not expected to reach the land share under (a) alone.
+
+**How it will be scored.** The same tables as the roads test, against both v1.1 and v1.1 + roads on the same 20 seeds: Rochester and Canterbury counts; settlements on or next to a Roman road (all / 1,000+) against 32% of land and 47% of real towns; lowland AUC; count and spacing of inland places over 500; the largest city's site, with Gravesend's count stated. A fall in Gravesend's count below the 15 of v1.1 is a cost to report, not a reason to tune.
+
+**Stop.** Run once, then stop and report. If the expectation fails, nothing is tuned; the next decision is (b).
