@@ -45,6 +45,12 @@ pub struct RunResult {
     /// v5 (D64): grain bought by the outside ports plus imports sold, as a
     /// share of all gross market inflow, the last year; NaN with ports off.
     pub outside_share: f32,
+    /// v5 (D65): share of the people in places over 2,000 who live in coastal
+    /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
+    /// year 300 (1400), the mean absolute rank change to year 500 and how many
+    /// are still in the top ten.
+    pub coastal: (f32, f32),
+    pub top10_churn: (f32, u32),
 }
 
 /// The v4 gate's measures for one run with historical events.
@@ -301,6 +307,23 @@ pub fn run_one(
     let mut failed: std::collections::BTreeSet<u32> = Default::default();
     let mut silt: Option<(u32, u32, f32)> = None;
     let mut planted: Vec<(u32, u32)> = Vec::new();
+    let coastal_share = |sim: &Sim| {
+        let big: Vec<_> = sim.state.settlements.iter().filter(|s| s.pop > 2000.0).collect();
+        let all: f32 = big.iter().map(|s| s.pop).sum();
+        let coast: f32 = big
+            .iter()
+            .filter(|s| sim.terrain.is_coastal(s.anchor as usize))
+            .map(|s| s.pop)
+            .sum();
+        coast / all.max(1.0)
+    };
+    let ranks = |sim: &Sim| -> Vec<u32> {
+        let mut v: Vec<_> = sim.state.settlements.iter().collect();
+        v.sort_by(|a, b| b.pop.total_cmp(&a.pop).then(a.id.cmp(&b.id)));
+        v.iter().map(|s| s.id).collect()
+    };
+    let mut coastal = (f32::NAN, f32::NAN);
+    let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
     let rank_of = |sim: &Sim, id: u32| -> f32 {
@@ -350,6 +373,10 @@ pub fn run_one(
         }
         if sim.state.year == 300 {
             road_300 = road_len(&sim);
+            top_300 = ranks(&sim).into_iter().take(10).collect();
+        }
+        if sim.state.year == 200 {
+            coastal.0 = coastal_share(&sim);
         }
         let tot = sim.state.total_pop();
         // With events, the event years and the one after are not steady state
@@ -415,6 +442,27 @@ pub fn run_one(
             (road_len(&sim) - road_300).abs() / road_300.max(1.0)
         } else {
             f32::NAN
+        },
+        coastal: (coastal.0, coastal_share(&sim)),
+        top10_churn: {
+            let now = ranks(&sim);
+            let n = now.len() as f32;
+            let moves: Vec<f32> = top_300
+                .iter()
+                .enumerate()
+                .map(|(r, id)| {
+                    let later = now.iter().position(|x| x == id).map_or(n, |p| p as f32);
+                    (later - r as f32).abs()
+                })
+                .collect();
+            let kept = top_300
+                .iter()
+                .filter(|id| now.iter().take(10).any(|x| x == *id))
+                .count() as u32;
+            (
+                moves.iter().sum::<f32>() / moves.len().max(1) as f32,
+                kept,
+            )
         },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
@@ -819,6 +867,17 @@ pub fn cmd_validate(args: &Args) {
                     worse
                 );
             }
+        }
+        if rs.iter().any(|r| r.outside_share.is_finite()) {
+            println!(
+                "{:<20} {:>12} coastal share of people in places >2,000: 1300 {:.2}, 1600 {:.2}; top ten of 1400 by 1600: mean rank change {:.1}, still top ten {:.0}",
+                "v5",
+                "(reported)",
+                med(rs.iter().map(|r| r.coastal.0).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.coastal.1).collect()),
+                med(rs.iter().map(|r| r.top10_churn.0).collect()),
+                med(rs.iter().map(|r| r.top10_churn.1 as f32).collect())
+            );
         }
         if rs.iter().any(|r| r.bridges > 0) {
             println!(

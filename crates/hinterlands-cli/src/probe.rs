@@ -309,7 +309,8 @@ fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
 /// Roads report (v3): at each year in `--at`, the road cells and edges, the
 /// share of land that is road, the initial road cells still road, the road
 /// condition (p10, p50), the cells ever road and since abandoned, the bridges
-/// built and the share of settlements with a mill.
+/// built, the share of settlements with a mill, and with `--mask` (a 0/1 grid,
+/// e.g. Watling Street) the mask's cells still road.
 pub fn cmd_roads(args: &Args) {
     let mut sim = make_sim(args);
     let at: Vec<u32> = args
@@ -321,6 +322,14 @@ pub fn cmd_roads(args: &Args) {
     let years = *at.iter().max().unwrap_or(&500);
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
+    let mask: Option<Vec<bool>> = args.str("mask").map(|path| {
+        let text = std::fs::read_to_string(path).unwrap_or_else(|e| die(&format!("{path}: {e}")));
+        text.lines()
+            .filter(|l| l.starts_with(|c: char| c.is_ascii_digit()))
+            .flat_map(|l| l.split_whitespace())
+            .map(|v| v == "1")
+            .collect()
+    });
     let mut ever = sim.state.road.clone();
     while sim.state.year < years {
         sim.step(1);
@@ -345,12 +354,18 @@ pub fn cmd_roads(args: &Args) {
                 .copied()
                 .unwrap_or(0.0)
         };
+        // Cells of a 0/1 mask (e.g. Watling Street) still road.
+        let masked = mask.as_ref().map_or(String::new(), |m| {
+            let all = (0..t.n()).filter(|&i| m[i]).count();
+            let kept = (0..t.n()).filter(|&i| m[i] && st.road[i]).count();
+            format!(" mask_kept {kept}/{all}")
+        });
         let initial = t.initial_road.iter().filter(|&&r| r).count();
         let kept = (0..t.n())
             .filter(|&i| t.initial_road.get(i) == Some(&true) && st.road[i])
             .count();
         println!(
-            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {} bridges {} mill_share {:.2}",
+            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {} bridges {} mill_share {:.2}{masked}",
             cells as f32 / land as f32,
             st.road_edges.len(),
             q(0.1),

@@ -11,6 +11,7 @@ mod history;
 mod labels;
 mod lines;
 pub mod overlay_cost;
+mod outside;
 mod overlay_score;
 mod parish;
 mod relief;
@@ -177,6 +178,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(dots::DotsLayer::default()),
         Box::new(goods::GoodsLayer),
         Box::new(events::EventsLayer),
+        Box::new(outside::OutsideLayer),
         Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,
