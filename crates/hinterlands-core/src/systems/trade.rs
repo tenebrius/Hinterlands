@@ -306,13 +306,16 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
         .map(|s| s.food_prod + s.food_in - s.food_out)
         .collect();
     let need: Vec<f32> = state.settlements.iter().map(|s| s.need(p)).collect();
-    // A place in deficit draws on its own store first (D81).
+    // A place in deficit draws on its own store first (D81); with
+    // `store_smooth` it tops its food up to its growth target,
+    // `food_cap × need`, not just to need (D83).
     let mut deficit = 0f32;
     let mut drawn_own = 0f32;
     if stores {
+        let target = if p.store_smooth { p.food_cap } else { 1.0 };
         for (k, s) in state.settlements.iter_mut().enumerate() {
-            let d = (need[k] - held[k]).max(0.0);
-            deficit += d;
+            deficit += (need[k] - held[k]).max(0.0);
+            let d = (target * need[k] - held[k]).max(0.0);
             let t = d.min(s.store.max(0.0));
             if t > 0.0 {
                 s.store -= t;

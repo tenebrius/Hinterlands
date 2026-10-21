@@ -626,3 +626,10 @@ Kind: model mechanism behind a switch (designer's brief).
 - **Options** are in `docs/market/w1.md`.
 - **New validate reports:** population at 200 against no weather, and deficit met by own store and by relief.
 Kind: model mechanism behind a switch; stopped.
+
+## D83 — W1's last attempt: stores smooth consumption to the growth target (designer). Failed; W1 dropped
+- **Rule.** `store_smooth` (off): a place tops up its food from its own store to `food_cap × need`. Relief is unchanged.
+- **Gate at σ 0.15: FAILED.** Top-10 vs off is 13/20 on maps 1 and 2. Population at year 200 is 0.33–0.37 of the same seed without weather, and stores at 400 are 0.03–0.05.
+- **Cause.** The remaining asymmetry is in the market term of growth (D15). Positive pull is capped and only moves migrants; negative pull removes people. Harvest variance drains people through it even when every place is fed.
+- **Outcome, by the designer's rule:** W1 is dropped, and `local_harvests` and `store_smooth` stay off as the record.
+Kind: model mechanism behind a switch; dropped.

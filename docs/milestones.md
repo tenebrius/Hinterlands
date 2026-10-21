@@ -404,3 +404,34 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - golden `0e65d09ec147b5c7`;
   - the release wasm build gives the same hash (`?selftest=500`, 30.8 ms/year);
   - `data/real/experiments/relief.json` gives S2′'s `f5b32f88ee3fc22f`, and the earlier version files give theirs.
+
+## v6 — Markets, relief and stores (D69–D83): milestone
+- **On by default:**
+  - goods by the price equilibrium (S1, `market_goods`, D71–D73);
+  - grain relief (S2′, `grain_relief`, D80), with `shadow_drain` 0.025;
+  - grain stores (S3, `grain_stores`, D81), with `store_cap` 1.0 and `store_loss` 0.05.
+- **Kept off, as the record:**
+  - shadow prices (S0, `market_shadow`), for the Clark reports only;
+  - grain by equilibrium (S2, `market_grain`, D77–D79), stopped by the proposal's stop rule;
+  - local harvests (W1, `local_harvests`, `store_smooth`, D74–D76, D82, D83), dropped.
+- **`just test`:** passes. **Golden `0e65d09ec147b5c7`.** The release wasm build gives the same hash (`?selftest=500`, 30.3 ms/year; limit 50).
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Every check holds, with D73's goods gate.
+  - Runs passing every check: 14 / 17 / 15.
+- **Reported:**
+  - famine dip 0.17 / 0.17 / 0.18 (v5 0.24–0.25);
+  - plague drop 0.37, with the old hierarchy back (recovery 1.61–1.65);
+  - stores at 0.49–0.52 of need before 1315, 93–99% drawn down by 1317;
+  - relief: 87–90% of deficit met in normal years, 55–59% in 1315–17;
+  - outside trade 4.7–5.4%.
+- **Kent** (20 seeds, `map-outside.json`; scores in `docs/real/kent-v6/scores.md`), against v5:
+  - Watling Street cells still road at 1600: median 24% (20–31%), against 24%;
+  - largest city near Gravesend in 15 seeds, Milton Regis 3, Faversham 2 (v5 17 / 2 / 1); its share is 0.34 (0.35);
+  - on-road share: 29% (29%); 46% for places of 1,000 or more (41%);
+  - inland places over 500: 14 per seed at 10.5 km (10 at 12.0; real 29 at 10.6);
+  - lowland AUC: 0.51 / 0.54 / 0.49 (0.52 / 0.55 / 0.50).
+- **Screenshots** (`docs/screenshots/v6/`):
+  - map 1, seed 1, in 1316 (the famine, with the granaries chronicle line) and in 1450;
+  - a close view with granary bars in 1314;
+  - `docs/screenshots/s3-1318.png`.
+- **Version files:** `data/real/experiments/relief.json` (S2′, `f5b32f88ee3fc22f`), `v6-s1.json` (S1, `ec7a24a7caeac414`) and the earlier ones reproduce every earlier golden.
