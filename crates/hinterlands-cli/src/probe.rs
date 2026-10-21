@@ -193,7 +193,8 @@ pub fn cmd_failures(args: &Args) {
 
 /// Goods report (v2): at each year in `--at`, every resource site with its
 /// holder and output, and for working iron sites the forest within 5 km
-/// against the mean forest on land.
+/// against the mean forest on land; and every specialist founded or outgrown
+/// (`works` and `outgrew` lines).
 pub fn cmd_goods(args: &Args) {
     let mut sim = make_sim(args);
     let at: Vec<u32> = args
@@ -208,6 +209,18 @@ pub fn cmd_goods(args: &Args) {
     while sim.state.year < years {
         sim.step(1);
         let y = sim.state.year;
+        for e in &sim.state.log {
+            let (x, yy) = sim.terrain.grid.xy(e.anchor as usize);
+            match &e.kind {
+                LogKind::Works { good, .. } => {
+                    println!("works {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
+                }
+                LogKind::Outgrew { good } => {
+                    println!("outgrew {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
+                }
+                _ => {}
+            }
+        }
         if !at.contains(&y) {
             continue;
         }

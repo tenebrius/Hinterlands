@@ -243,3 +243,10 @@ Kind: change to the acceptance test (designer).
 - The chronicle names new works and specialists that outgrow their works.
 Golden hash: `b0de71500774acf8`, native and in the browser.
 Kind: change to the defaults (designer), and rendering.
+
+## D50 — v2.1: Kent's resource sites as data
+- `MapParams.resources_file` names a CSV of sites (`name,x_km,y_km,good`). When it is set, the DEM importer clears the random sites and places these. A site that falls in the sea moves to the nearest land cell within two cells; a site with none is dropped.
+- `data/real/kent/resources.csv` lists 17 sites with their source: 6 Wealden bloomeries (Bardown, Beauport Park, Ashdown, Lamberhurst, Mayfield, Burwash), 5 ragstone and sandstone quarries (Boughton Monchelsea, Allington, Hythe, Merstham, Bethersden) and 6 salt-making sites (Seasalter, Graveney, Milton Regis, New Romney, Pevensey, Tollesbury). Cowden is left out because no coordinates were found for it. `tools/real/resources_km.py` converts them to grid km in `resources_km.csv`. `data/real/kent/map-resources.json` is `map-bridges.json` plus this file.
+- The generated maps and the golden hash are unchanged.
+- Before this, Kent ran with the importer's 9 random sites (4 salt and 5 stone, no iron). The v2 milestone note that Kent had no resource sites was wrong and has been corrected.
+Kind: data and an importer option (reported, not gated, per the foundation's plan after v2).

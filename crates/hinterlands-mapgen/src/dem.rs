@@ -31,7 +31,55 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
             t.bridge = road_bridges(&t);
         }
     }
+    if let Some(res) = &mp.resources_file {
+        let s = std::fs::read_to_string(res).map_err(|e| format!("{res}: {e}"))?;
+        place_resources(&mut t, &s)?;
+    }
     Ok(t)
+}
+
+/// Resource sites from a CSV (`name,x_km,y_km,good`) in place of the random
+/// ones (D50). A site that falls in the sea moves to the nearest land cell
+/// within two cells; a site with none is dropped.
+fn place_resources(t: &mut Terrain, text: &str) -> Result<(), String> {
+    use hinterlands_core::terrain::Resource;
+    let g = t.grid;
+    t.resource = vec![Resource::None; t.n()];
+    for line in text.lines().skip(1).filter(|l| !l.trim().is_empty()) {
+        let f: Vec<&str> = line.split(',').map(str::trim).collect();
+        let [_, x, y, good] = f[..] else {
+            return Err(format!("resources: bad line {line}"));
+        };
+        let num = |v: &str| {
+            v.parse::<f32>()
+                .map_err(|_| format!("resources: bad number {v}"))
+        };
+        let kind = match good {
+            "iron" => Resource::Ore,
+            "salt" => Resource::Salt,
+            "stone" => Resource::Stone,
+            _ => return Err(format!("resources: unknown good {good}")),
+        };
+        let (cx, cy) = (
+            (num(x)? / g.cell_km).floor() as i32,
+            (num(y)? / g.cell_km).floor() as i32,
+        );
+        if cx < 0 || cy < 0 || cx >= g.w as i32 || cy >= g.h as i32 {
+            continue;
+        }
+        let c = g.idx(cx, cy);
+        let cell = if t.is_land(c) {
+            Some(c)
+        } else {
+            g.disk(c, 2.0 * g.cell_km)
+                .filter(|&j| t.is_land(j))
+                .min_by(|&a, &b| g.dist_km(c, a).total_cmp(&g.dist_km(c, b)).then(a.cmp(&b)))
+        };
+        if let Some(j) = cell {
+            t.resource[j] = kind;
+        }
+    }
+    Ok(())
 }
 
 /// Bridges where an initial road crosses a river or stream (D33): every river

@@ -600,3 +600,21 @@ Every gated v2 check now passes, and so does every per-seed check on every map. 
 The median stays in the report. The re-tuned values in `data/real/experiments/v2-candidate.json` become the v2 defaults when the milestone is recorded.
 
 **Next:** G4 (view, then the milestone) as specified, with goods on by default at the milestone and a new golden hash. Then v2.1, the Kent resources, as planned in `docs/foundation.md` ("Plan after v2").
+
+## v2.1: Kent with its real resource sites (D50)
+Kent is run with v2 defaults, `map-resources.json` (uniform soil, Roman roads and bridges, and the 17 sites of D50), 20 seeds and 500 years. The results are reported, not gated, and no expectation is set for any single site. Outputs are in `target/real/kent-res`, and the score is in `docs/real/kent-res/scores.md`.
+
+At year 500, each site sells in this many of the 20 seeds, with the median sold:
+- **Iron.** All six bloomeries sell in 20 of 20 seeds, but little: a median of 7 to 50 a year against potentials of 30 to 180. The fuel limits them. Forest within 5 km is 0.00 at every bloomery, against 0.31 on land overall: cultivation and the bloomeries' own fuel cut have cleared the Weald round them. This is the coppice-floor question already put to the designer.
+- **Salt.** Five pans sell in 20 of 20 seeds and Graveney in 19. The three at the edges of the market reach the capacity of 1,000: Tollesbury (Essex shore) sells 933, Seasalter 923 and Pevensey 765. Milton Regis sells 67, New Romney 31, and Graveney 391, which it shares with Seasalter next door.
+- **Stone.** The quarries sell in 9 to 15 of the 20 seeds. Hythe sells most, with a median of 197; Allington 74 and Bethersden 23. Boughton Monchelsea, 6 km from Allington, sells in 9 seeds with a median of 0, so it mostly loses the trade to its neighbour.
+- **Specialists alive at 500, per seed:** 1.6 salterns and 0.85 mines, with a median of 214 people and a maximum of 741. There are no quarries. Over the run, 195 of 323 salterns and 77 of 99 mines outgrew their kind (D44).
+
+The town pattern against v2 with the random sites:
+- Lowland AUC is 0.48 / 0.51 / 0.47 (all, 1,000 or more, under 1,000), against 0.47 / 0.54 / 0.43.
+- Inland towns found: 34%, against 37%.
+- Places on rivers: 45%, against 42%.
+- Inland places over 500: 25 per seed at 5.8 km, against 26 at 6.0. The real figure is 29 at 10.6 km.
+- Largest city: Gravesend in 11 seeds and Faversham in 9, against Gravesend 10 and Rochford 8. Faversham is beside the Seasalter–Graveney pans. The largest place's share is 0.25, against 0.28.
+
+The real sites move the largest city from the Essex shore to the north Kent salt coast in about half the seeds. The other measures stay within seed noise of v2.

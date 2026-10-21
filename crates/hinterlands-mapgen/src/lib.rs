@@ -75,6 +75,10 @@ pub struct MapParams {
     pub roads_file: Option<String>,
     /// Bridges wherever the initial roads cross a river or stream (D33).
     pub road_bridges: bool,
+    /// A CSV of resource sites (`name,x_km,y_km,good`, good one of iron, salt,
+    /// stone; e.g. from `tools/real/resources_km.py`), read by the DEM importer
+    /// in place of the random sites (D50).
+    pub resources_file: Option<String>,
 }
 
 impl Default for MapParams {
@@ -107,6 +111,7 @@ impl Default for MapParams {
             tpi_scale_m: 25.0,
             roads_file: None,
             road_bridges: false,
+            resources_file: None,
         }
     }
 }

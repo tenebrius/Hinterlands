@@ -203,4 +203,15 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - largest varies 0.05 / 0.45 / 0.00; river-corridor share 0.95 / 0.40 / 0.05.
 - Determinism: golden `b0de71500774acf8`; the release wasm build gives the same hash (`?selftest=500`).
 - Performance: 28.2 ms per year in the release wasm build; slowest native validation run 29.8 ms per year.
-- Kent regression (`just real`: uniform soil, Roman roads and bridges; Kent has no resource sites yet, so only the re-tuned values act): lowland AUC 0.47 / 0.54 / 0.43; inland towns found 37%; places on rivers 42%; inland places over 500: 26 per seed at 6.0 km (real 29 at 10.6); largest city at Gravesend in 10 of 20 seeds and Rochford in 8; largest share 0.28. (v1.2: 0.49 / 0.53 / 0.46; 39%; 32 at 6.2 km; Gravesend 10.)
+- Kent regression (`just real`: uniform soil, Roman roads and bridges; Kent's resources are the importer's 9 random sites, 4 salt and 5 stone with no iron, not real ones (corrected after v2; see v2.1)): lowland AUC 0.47 / 0.54 / 0.43; inland towns found 37%; places on rivers 42%; inland places over 500: 26 per seed at 6.0 km (real 29 at 10.6); largest city at Gravesend in 10 of 20 seeds and Rochford in 8; largest share 0.28. (v1.2: 0.49 / 0.53 / 0.46; 39%; 32 at 6.2 km; Gravesend 10.)
+
+## v2.1 — Kent resources as data (D50)
+- Real resource sites are now on Kent through the importer (`resources_file`): 6 Wealden bloomeries, 5 quarries and 6 salt-making sites (`data/real/kent/resources.csv`, with sources). The config is `data/real/kent/map-resources.json`. This step is reported, not gated.
+- `just test` passes, and the golden hash `b0de71500774acf8` is unchanged. Nothing on the generated maps changed, so the v2 `just validate` result stands.
+- Kent, 20 seeds, 500 years, v2 defaults:
+  - All 6 bloomeries and 5 of the 6 salt sites sell in every seed (Graveney in 19 of 20). The quarries sell in 9 to 15 of the 20 seeds.
+  - Iron is fuel-limited: forest within 5 km of every bloomery is 0.00.
+  - Per seed there are 1.6 salterns and 0.85 mines alive at year 500.
+  - Lowland AUC is 0.48 / 0.51 / 0.47, and inland towns found 34%.
+  - The largest city is at Gravesend in 11 seeds and Faversham in 9; its share is 0.25.
+  - Details are in `docs/real-terrain-experiments.md`.
