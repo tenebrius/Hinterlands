@@ -70,6 +70,11 @@ pub struct MapParams {
     pub tpi_radius_km: f32,
     /// Height difference, m, at which the valley-position effect is full.
     pub tpi_scale_m: f32,
+    /// An ESRI ASCII 0/1 grid of roads present at the start (e.g. Roman roads
+    /// from `tools/real/fetch_roads.py`), read by the DEM importer (D32).
+    pub roads_file: Option<String>,
+    /// Bridges wherever the initial roads cross a river or stream (D33).
+    pub road_bridges: bool,
 }
 
 impl Default for MapParams {
@@ -100,6 +105,8 @@ impl Default for MapParams {
             soil_tpi: 0.0,
             tpi_radius_km: 3.0,
             tpi_scale_m: 25.0,
+            roads_file: None,
+            road_bridges: false,
         }
     }
 }
@@ -133,6 +140,8 @@ pub fn blank(mp: &MapParams) -> Terrain {
         ford: vec![false; n],
         river_mouth: None,
         features: Vec::new(),
+        initial_road: Vec::new(),
+        bridge: Vec::new(),
     }
 }
 

@@ -150,3 +150,15 @@ Kind: change to the defaults and the acceptance test (owner/designer decision).
 ## D31 — Soil for imported maps; DEM cell count rounding
 `MapParams` gains `soil_file` (an ESRI ASCII soil-quality grid on the map's grid, read by the DEM importer) and `soil_tpi`, `tpi_radius_km` and `tpi_scale_m` (a valley-position factor on soil). Both are rescaled to the uniform mean yield, and both are off by default, so generated maps and the golden hash are unchanged. `tools/real/fetch_soil.py` builds a soil grid from ISRIC SoilGrids 2.0, filling built-up holes from the surrounding cells. The ESDB needs a request form, so it was not fetched. The importer now rounds a target cell count within 0.05 of a whole number (a 999.8 m source cell is 1 km); Kent imports at 128 × 128, where it had been 127 × 127. Results: `docs/real-terrain-experiments.md`.
 Kind: map import.
+
+## D32 — Initial roads as input data
+`Terrain.initial_road` holds roads present at the start (empty on generated maps, and left out of the serialised terrain when empty, so their hash is unchanged). `State` starts its road set from it. `MapParams.roads_file` names an ESRI ASCII 0/1 grid read by the DEM importer; `tools/real/fetch_roads.py` rasterises Itiner-e Roman roads (CC BY 4.0). The model is unchanged. The pre-registered Kent test (Rochester and Canterbury from Watling Street's river crossings) failed. Diagnosis and options are in `docs/real-terrain-experiments.md`.
+Kind: input data (owner/designer decision).
+
+## D33 — Bridges as input data
+`Terrain.bridge` marks river and stream cells with a bridge (empty on generated maps, and left out of the serialised terrain when empty). A crossing costs 0 at a ford or a bridge (`free_crossing`). With `MapParams.road_bridges`, the importer puts a bridge wherever an initial road crosses a river or stream; Kent has 52 (30 on navigable rivers). The pre-registered test (a place of 1,000+ within 3 km of Rochester in at least 5 of 20 seeds) failed at 1 of 20. Golden unchanged.
+Kind: input data (owner/designer decision).
+
+## D34 — Underfed places shed people instead of being deleted (switch `shed_unfed`, default off)
+The failure rule removed any settlement unfed for `fail_unfed_years`, at any size. In v1.1 it deletes about 170 settlements per generated run that had peaked at 1,000 or more. Under `shed_unfed`, an underfed place loses a third of `(1 − ratio) × P` a year (the leavers are lost), and only the low-population rule removes. Results: every per-seed check improves (runs passing every check 19/20/18 against 7/13/14), but the gated "largest city varies" check fails on maps 2 and 3 (0.20, 0.00). On Kent the Rochester expectation fails (1/20), because the bridge towns still starve, now by shrinking. Golden unchanged. Making it the default is the designer's decision (design authority delegated by the owner).
+Kind: model mechanism behind a switch (designer decision); default pending.

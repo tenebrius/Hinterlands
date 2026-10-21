@@ -1,7 +1,9 @@
 //! Failure. Most new markets fade (English market charters: 39% of 1300-era
 //! markets survived to c. 1600). A settlement below `fail_pop` for
 //! `fail_low_years`, or unfed for `fail_unfed_years`, is removed; its fields are
-//! released and its people move to the nearest fed settlement.
+//! released and its people move to the nearest fed settlement. With
+//! `shed_unfed` (D34) being unfed removes nothing: growth sheds the people the
+//! food does not feed, and only the low-population rule removes.
 //! Writes: settlements (removes), owner, tally, log.
 
 use crate::params::Params;
@@ -19,7 +21,7 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         let s = &state.settlements[i];
         let cause = if s.low_years >= p.fail_low_years {
             Some(FailCause::Depopulated)
-        } else if year.saturating_sub(s.last_fed) >= p.fail_unfed_years {
+        } else if !p.shed_unfed && year.saturating_sub(s.last_fed) >= p.fail_unfed_years {
             Some(FailCause::Starved)
         } else {
             None

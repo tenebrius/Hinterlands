@@ -104,11 +104,11 @@ pub fn dump(path: &str, t: &Terrain, snap: &Snapshot) {
     std::fs::write(path, out).unwrap_or_else(|e| crate::die(&format!("{path}: {e}")));
 }
 
-/// Write each cell's site class as CSV, `x,y,class`, with class one of sea,
-/// river (on or beside a navigable river), coast or inland.
+/// Write each cell's site class as CSV, `x,y,class,water,bridge`, with class one
+/// of sea, river (on or beside a navigable river), coast or inland.
 pub fn dump_cells(path: &str, t: &Terrain) {
     let g = t.grid;
-    let mut out = String::from("x,y,class\n");
+    let mut out = String::from("x,y,class,water,bridge\n");
     for i in 0..g.n() {
         let (x, y) = g.xy(i);
         let class = if t.is_sea(i) {
@@ -120,7 +120,16 @@ pub fn dump_cells(path: &str, t: &Terrain) {
         } else {
             "inland"
         };
-        out += &format!("{x},{y},{class}\n");
+        let water = match t.water[i] {
+            hinterlands_core::terrain::Water::None => "none",
+            hinterlands_core::terrain::Water::Stream => "stream",
+            hinterlands_core::terrain::Water::NavigableRiver => "navigable",
+            hinterlands_core::terrain::Water::Sea => "sea",
+        };
+        out += &format!(
+            "{x},{y},{class},{water},{}\n",
+            t.free_crossing(i) && !t.ford[i]
+        );
     }
     std::fs::write(path, out).unwrap_or_else(|e| crate::die(&format!("{path}: {e}")));
 }

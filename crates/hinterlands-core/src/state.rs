@@ -293,7 +293,12 @@ impl State {
     /// A world with no settlements yet; `init::populate` adds the starting hamlets.
     pub fn empty(t: &Terrain, p: &Params) -> Self {
         let n = t.n();
-        let road = vec![false; n];
+        // Roads given as input (D32) are there from the first year.
+        let road = if t.initial_road.len() == n {
+            t.initial_road.clone()
+        } else {
+            vec![false; n]
+        };
         let transport = Transport::from_params(p);
         let cost = CostGrid::build(t, &road, &transport);
         Self {

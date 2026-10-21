@@ -109,7 +109,7 @@ impl CostGrid {
             }
         };
         let cross = |j: usize| -> f32 {
-            if t.ford[j] {
+            if t.free_crossing(j) {
                 0.0
             } else {
                 match t.water[j] {
@@ -577,6 +577,17 @@ mod tests {
         t.ford[g.idx(6, 2)] = true;
         let ford = cost(&t, from, to).0;
         assert!((ford - 4.0).abs() < 1e-3, "free at a ford: {ford}");
+    }
+
+    #[test]
+    fn crossing_is_free_at_a_bridge() {
+        let mut t = coast_with_river(12, 5, 2);
+        let g = t.grid;
+        let (from, to) = (g.idx(6, 0), g.idx(6, 4) as u32);
+        t.bridge = vec![false; t.n()];
+        t.bridge[g.idx(6, 2)] = true;
+        let bridge = cost(&t, from, to).0;
+        assert!((bridge - 4.0).abs() < 1e-3, "free at a bridge: {bridge}");
     }
 
     #[test]

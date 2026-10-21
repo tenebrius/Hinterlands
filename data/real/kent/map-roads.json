@@ -1,0 +1,12 @@
+{
+  "soil_noise": 0.0,
+  "forest_noise": 0.0,
+  "inflows": [
+    [
+      0,
+      47,
+      9950
+    ]
+  ],
+  "roads_file": "data/real/kent/roads.asc"
+}
