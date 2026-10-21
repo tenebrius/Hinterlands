@@ -553,3 +553,36 @@ The shopping model did its job: oversupply is gone, and the payment share fell t
 - **Over-5,000 median on map 3 (1, needs 2):** this is a real v1.2 check failing with goods on, not a label. The spec allows the v1.2 parameters to be re-tuned in exactly this case, so it is the implementer's to fix by tuning, with every change recorded.
 
 **Next:** implement (D43), tune for map 3 if needed, re-run the gate once. If it passes, carry on to G4; if not, report. D42 is held for the graphics merge.
+
+### v2 gate after D44 and a re-tune (stopped: map 3 over-5,000 median)
+
+**Re-tune** (goods on, allowed by the specification because a v1.2 check failed). This was a search over α, K, ε, β, market share and stone demand on the three generated maps, 4 seeds each. The search now also scores the over-5,000 median. Best setting: α 1.088, K 3.39, ε 0.137, β 0.139, market share 0.487, stone demand 0.016 (`data/real/experiments/v2-candidate.json`). In the search it passed every per-seed check in every run.
+
+**Gate, 20 seeds per map:**
+- every per-seed check passes on every map; runs passing every check 20 / 20 / 18;
+- sites producing, median 0.87 / 0.80 / 0.73;
+- largest is not a specialist, 20/20 on each map;
+- top-10 overlap 0.43 / 0.39 / 0.50;
+- specialists per run 1.4 / 3.1 / 0.3, size median 60 / 90 / 28, max 404;
+- payment share of market inflow 0.026 / 0.027 / 0.025;
+- forest near iron 0.00 against land 0.41;
+- settlements over 2,000 on a goods route 1.00;
+- slowest run 24.8–27.6 ms a year, native.
+
+**Failing: map 3's over-5,000 median is 1.**
+
+Count of places over 5,000 per seed on map 3 (20 seeds, sorted):
+
+| Configuration | 1 | 2 | 3–4 | Median |
+| --- | ---: | ---: | ---: | ---: |
+| v1.2, goods off | 8 | 8 | 4 | 2 |
+| Goods on, starting values | 15 | 4 | 1 | 1 |
+| Goods on, re-tuned | 12 | 8 | 0 | 1 |
+
+Map 3 tends to a single dominant city (largest share 0.21; the largest city is the same in every seed). v1.2 passed this check there by one seed. Goods move a few more seeds to one city over 5,000, and the re-tune recovers some but not all of them.
+
+**For the designer:**
+- (a) another tuning round aimed at map 3, judged on 20 seeds; or
+- (b) treat this as a property of map 3. D20 already holds that one city over 5,000 is historically normal for a region this size, and the per-seed check (1–5 over 5,000) passes in every seed on every map. The median rule could be reported, not gated, on maps where v1.2 itself sits at the edge.
+
+No further tuning was tried.
