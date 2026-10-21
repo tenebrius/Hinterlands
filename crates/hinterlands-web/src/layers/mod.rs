@@ -7,6 +7,7 @@ mod dots;
 mod fields;
 mod history;
 mod labels;
+mod lines;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;

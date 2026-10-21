@@ -1,7 +1,7 @@
 //! Rivers as lines: each stream and river follows its drainage from cell to
 //! cell, smoothed, widening with the water it carries. Built once per terrain.
 
-use super::{DrawCtx, Layer, Swatch};
+use super::{lines, DrawCtx, Layer, Swatch};
 use egui::{Color32, Pos2, Rect, Shape, Stroke, Vec2};
 use hinterlands_core::terrain::{Terrain, Water};
 
@@ -85,47 +85,26 @@ fn chains(t: &Terrain) -> Vec<Chain> {
 }
 
 /// Two rounds of Chaikin corner cutting, endpoints kept so chains still meet.
-fn smooth(mut c: Chain) -> Chain {
-    for _ in 0..2 {
-        let k = c.pts.len();
-        if k < 3 {
-            break;
-        }
-        let mut pts = vec![c.pts[0]];
-        let mut width = vec![c.width[0]];
-        let mut nav = vec![c.navigable[0]];
-        for s in 0..k - 1 {
-            let (a, b) = (c.pts[s], c.pts[s + 1]);
-            let (wa, wb) = (c.width[s], c.width[s + 1]);
-            for f in [0.25, 0.75] {
-                if (s == 0 && f == 0.25) || (s == k - 2 && f == 0.75) {
-                    continue;
-                }
-                pts.push(a + (b - a) * f);
-                width.push(wa + (wb - wa) * f);
-                nav.push(if f < 0.5 {
-                    c.navigable[s]
-                } else {
-                    c.navigable[s + 1]
-                });
-            }
-        }
-        pts.push(c.pts[k - 1]);
-        width.push(c.width[k - 1]);
-        nav.push(c.navigable[k - 1]);
-        c = Chain {
-            pts,
-            width,
-            navigable: nav,
-            bounds: Rect::NOTHING,
-        };
-    }
+fn smooth(c: Chain) -> Chain {
+    let attr: Vec<(f32, bool)> = c
+        .width
+        .iter()
+        .copied()
+        .zip(c.navigable.iter().copied())
+        .collect();
+    let (pts, attr) = lines::chaikin(&c.pts, &attr, 2, |a, b, f| {
+        (a.0 + (b.0 - a.0) * f, if f < 0.5 { a.1 } else { b.1 })
+    });
     let mut bounds = Rect::NOTHING;
-    for p in &c.pts {
+    for p in &pts {
         bounds.extend_with(Pos2::new(p.x, p.y));
     }
-    c.bounds = bounds.expand(0.5);
-    c
+    Chain {
+        pts,
+        width: attr.iter().map(|a| a.0).collect(),
+        navigable: attr.iter().map(|a| a.1).collect(),
+        bounds: bounds.expand(0.5),
+    }
 }
 
 impl Layer for RiversLayer {
