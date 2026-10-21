@@ -158,3 +158,16 @@ The overhaul's planned steps are done. Ideas from the original proposal not yet 
 2. Fading between years at slow speeds, so forest, fields and footprints change smoothly.
 3. The same smooth base map in the CLI's headless PNG renderer (`render.rs`), so milestone screenshots match the browser.
 4. Rivers redrawn over roads inside towns (the D45 difference), if it is wanted.
+
+## Release view tidy (implementer, v5 release)
+Made by the implementer in the release pass, after R8 had been merged and handed over (D68). It touches layers the graphics session wrote, so it is recorded here.
+- **Sea lanes bundled.**
+  - `view.rs` keeps a `sea_lane` table, computed once per terrain: every sea cell within 4 km of land maps to the nearest sea cell next to the coast.
+  - `routes.rs` sums segment flows on the mapped cells, so parallel coastal paths draw as one lane whose width is the total flow. `goods.rs` and `outside.rs` map their paths the same way, so goods and imports run along that lane as thin coloured lines.
+  - Open-sea legs out to the map-edge ports keep their own cells.
+- **Settlement names take priority.**
+  - Each feature-name class (seas and bays, forests, ranges, rivers) first reserves the space the settlement names will take, by a dry run of the settlement placement. This happens only when settlement names are on.
+  - A feature name that collides then tries four nearby positions, then hides.
+- **Left for the graphics session.**
+  - Feature names still do not avoid each other across classes. "Dew Forest", moved off "Everelford", now crosses "River Wilking" at year 450 on map 1. A shared placer across the feature classes would fix it.
+  - Where routes leave the coastal lane for a port, a few separate strands remain.

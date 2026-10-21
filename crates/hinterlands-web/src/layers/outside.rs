@@ -39,7 +39,9 @@ impl Layer for OutsideLayer {
         let n = v.terrain.n() as u32;
         let z = d.camera.zoom;
         let on_map = |node: u32| -> Vec2 {
-            let (x, y) = g.xy((node % n) as usize);
+            let c = node % n;
+            let c = v.sea_lane.get(c as usize).copied().unwrap_or(c);
+            let (x, y) = g.xy(c as usize);
             vec2(x as f32 + 0.5, y as f32 + 0.5)
         };
         // Only the larger import flows, so the routes read rather than flood the

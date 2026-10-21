@@ -96,6 +96,10 @@ pub struct ViewState {
     pub road_km: f32,
     /// Bumped whenever the terrain changes, so cached layers rebuild.
     pub terrain_version: u64,
+    /// The cell each cell is drawn on when routes are drawn: a sea cell within
+    /// `LANE_KM` of land is drawn on the nearest sea cell next to the coast, so
+    /// parallel sea paths along a coast bundle into one lane. Drawing only.
+    pub sea_lane: Vec<u32>,
     pub status: String,
     /// First and last year each cell was cultivated in this session (NEVER if not).
     pub farm_first: Vec<u16>,
@@ -132,12 +136,14 @@ impl ViewState {
             leader: None,
             road_km: 0.0,
             terrain_version: 0,
+            sea_lane: Vec::new(),
             status: String::new(),
             farm_first: vec![NEVER; cells],
             farm_last: vec![NEVER; cells],
             season_fixed: None,
             year_phase: 0.0,
         };
+        v.sea_lane = sea_lanes(&v.terrain);
         v.record();
         v
     }
@@ -342,6 +348,7 @@ pub fn update(v: &mut ViewState, sim: &mut SimHandle, msg: Msg) {
             sim.new_map(seed);
             v.terrain = sim.terrain().clone();
             v.terrain_version += 1;
+            v.sea_lane = sea_lanes(&v.terrain);
             v.camera = None;
             v.selected = None;
             v.restart(sim);
@@ -360,6 +367,7 @@ pub fn update(v: &mut ViewState, sim: &mut SimHandle, msg: Msg) {
                 *sim = SimHandle::new(file.map_seed, file.sim_seed, file.params.clone());
                 v.terrain = sim.terrain().clone();
                 v.terrain_version += 1;
+                v.sea_lane = sea_lanes(&v.terrain);
                 v.params = file.params;
                 v.camera = None;
                 v.restart(sim);
@@ -372,4 +380,26 @@ pub fn update(v: &mut ViewState, sim: &mut SimHandle, msg: Msg) {
             Err(e) => v.status = format!("Could not load: {e}"),
         },
     }
+}
+
+/// Sea cells within this distance of land are drawn on the coastal lane.
+const LANE_KM: f32 = 4.0;
+
+/// For each cell, the cell its routes are drawn on (see `ViewState::sea_lane`).
+pub fn sea_lanes(t: &Terrain) -> Vec<u32> {
+    let g = t.grid;
+    let coastal_sea = |i: usize| {
+        t.is_sea(i) && (0..8).any(|d| g.neighbor(i, d).is_some_and(|j| t.is_land(j)))
+    };
+    (0..t.n())
+        .map(|i| {
+            if !t.is_sea(i) || coastal_sea(i) {
+                return i as u32;
+            }
+            g.disk(i, LANE_KM)
+                .filter(|&j| coastal_sea(j))
+                .min_by(|&a, &b| g.dist_km(i, a).total_cmp(&g.dist_km(i, b)).then(a.cmp(&b)))
+                .map_or(i as u32, |j| j as u32)
+        })
+        .collect()
 }

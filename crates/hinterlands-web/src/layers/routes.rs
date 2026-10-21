@@ -59,9 +59,11 @@ pub fn segments(d: &DrawCtx) -> BTreeMap<(u32, u32, bool), f32> {
 fn segments_of(v: &ViewState) -> BTreeMap<(u32, u32, bool), f32> {
     let n = v.terrain.n() as u32;
     let mut acc: BTreeMap<(u32, u32, bool), f32> = BTreeMap::new();
+    let lane = |c: u32| v.sea_lane.get(c as usize).copied().unwrap_or(c);
     for f in &v.snapshot.flows {
         for w in f.path.windows(2) {
-            let (a, b) = (w[0] % n, w[1] % n);
+            // Sea paths along a coast are drawn on one lane (see `sea_lane`).
+            let (a, b) = (lane(w[0] % n), lane(w[1] % n));
             if a == b {
                 continue;
             }

@@ -1,8 +1,10 @@
 # Hinterlands
 
-A self-running regional simulator. Given a map with terrain, water and resources and a few starting hamlets, it shows where settlements grow, shrink, appear and die over five centuries, and where fields are cultivated. Pre-industrial throughout: foot, cart, river boat and sailing ship. Rust, compiled to WebAssembly for the browser.
+A self-running regional simulator. Given a map with terrain, water and resources and ten starting hamlets, it shows where settlements are founded, grow, shrink and die over five centuries, 1100 to 1600: fields, markets, roads, works, famine and plague, and trade with the world beyond the sea. Pre-industrial throughout: foot, cart, river boat and sailing ship. Rust, compiled to WebAssembly for the browser.
 
-The brief is [`docs/foundation.md`](docs/foundation.md). Departures from it are in [`docs/decisions.md`](docs/decisions.md), the exact validation definitions in [`docs/validation.md`](docs/validation.md), and the record of each milestone, with its numbers, in [`docs/milestones.md`](docs/milestones.md).
+The brief is [`docs/foundation.md`](docs/foundation.md). Departures from it are in [`docs/decisions.md`](docs/decisions.md), the validation definitions in [`docs/validation.md`](docs/validation.md), each milestone's numbers in [`docs/milestones.md`](docs/milestones.md), and every parameter in [`docs/parameters.md`](docs/parameters.md).
+
+![Map 1, seed 1, 1600](docs/screenshots/release/map1-1600.png)
 
 ## Running it
 
@@ -11,59 +13,56 @@ just web            # build the browser app into dist/ (needs trunk and the wasm
 just serve          # build and serve on http://localhost:8080
 just run            # one 500-year headless run, metrics every 50 years
 just test           # unit tests, determinism and the golden snapshot hash
-just validate       # the validation table: 3 maps x 20 seeds x 500 years
-just real           # the Kent regression (Roman roads and bridges, 20 seeds, scored against the towns of c.1300)
+just validate       # the acceptance test: 3 maps × 20 seeds × 500 years
+just real           # the Kent regression, scored against the towns of c.1300
 ```
 
-![Map 1, seed 1, year 450](docs/screenshots/map1-seed1-year450.png)
-
-In the browser: press **Play**. The map fills in year by year. Click a cell to pin it in the inspector; drag to pan, scroll to zoom. The left panel has time controls and seeds, the inspector, layer toggles (including the travel-cost and site-score overlays), charts (rank-size and population), the chronicle of foundings and failures, and every model parameter as a slider. **Save** downloads the run (seeds, parameters and year); **Load** replays it exactly. Names label settlements (revealed by rank as you zoom), rivers, ranges, seas, bays and forests; each class has its own toggle, and the legend lists the symbols of the layers that are on. Close up, the 1.x layers draw the countryside and towns from the same snapshot: field strips with a three-field fallow rotation, the clearing frontier, pasture and coppice woodland, hedgerows and the ghost patterns of abandoned fields, footpaths, parish boundaries, hearth and charcoal smoke, seasons (spring high water, winter frost, ships in port), and site-earned buildings: churches, market squares, cathedrals, walls, water mills, quays and warehouses, and bridges where a crossing is busy. The page address takes `?map=N`, `?seed=N` and `?year=N` to open a given run at a given year, `?on=a,b` and `?off=a,b` to switch layers by id, `?season=0..3` to fix the season, and `?selftest=N` to log the snapshot hash and the time per year (compare with `hinterlands hash --years N`).
-
-The base map is drawn by a shader that interpolates the cells: smooth relief with hillshade, a coastline with shallows, forest that resolves into tree crowns close up, and rivers as lines that widen downstream. Fields, hedges, towns, walls, quays and seasons are drawn the same way, roads, routes, footpaths and boundaries are smoothed lines, and labels are set in EB Garamond (SIL Open Font License). `?on=terrain&off=relief,rivers` shows the original cell view. The rendering overhaul, and what comes next, is in [`docs/rendering.md`](docs/rendering.md).
+In the browser, press **Play**. The **What you are watching** panel says what each phase of the run shows. The other controls:
+- **Map:** drag to pan, scroll to zoom. Hover over a place for a card; click to pin it in the inspector.
+- **Panels:** the chronicle (with filters), charts and the event timeline, goods, and every parameter as a slider.
+- **Save and Load:** Save downloads the run; Load replays it exactly.
+- **Address:** `?map=N`, `?seed=N` and `?year=N` open a run at a year; `?on=a,b` and `?off=a,b` switch layers; `?selftest=N` logs the snapshot hash and the time a year.
 
 ## The model in one page
 
-The world is a grid of 1 km cells (128 × 128 by default) generated from a seed: relief, thermal erosion, stream-power incision, drainage with navigable rivers, fords and harbours, soil yield and natural forest. Settlements are points with one population number. Each year runs six systems in a fixed order.
+The world is a grid of cells (1 km, 128 × 128 by default), generated from a seed or imported from a real elevation model. It has relief, erosion, drainage with navigable rivers, fords and harbours, soil yield, natural forest, and salt, iron and stone sites. Settlements are points with a population and a market size. Each year runs the systems below in a fixed order, from one seeded random generator, so a run is fixed by its seeds and parameters.
 
-**Travel cost** (Tobler 1993; ORBIS). Every move costs km-equivalents: land 1.0 per km scaled by Tobler's slope factor, road 0.5, river 0.2 downstream and 0.4 upstream, sea 0.08. Fixed costs apply for crossing a river away from a ford (5), stepping between land and boat (3, doubled on open coast), and moving cargo between river barge and sea ship at a mouth (2). Ports, heads of navigation and fords appear as cost minima without special rules. Each settlement keeps its least-cost paths to every other settlement within cost 30.
+| Mechanism | What it does | Source |
+| --- | --- | --- |
+| **Travel cost** | Each move costs km-equivalents: land with a slope factor, road, river (down and up), and sea, plus fixed costs to cross a river away from a ford, to board or leave a boat, and to transship at a river mouth. Each place keeps its least-cost paths to the places within reach. | Tobler 1993; ORBIS (Scheidel & Meeks) |
+| **Cultivation** | A place claims free cells nearest first until its harvest, less what it sends to market, feeds it. Fields lose their forest; fuel is cut nearest first; abandoned land regrows. A stream among the fields gives a mill (+3%). | von Thünen 1826; Village Ecodynamics Project |
+| **Production** | Salt works, iron mines and quarries are worked by the place that holds them. Iron burns coppiced charcoal from the holder's woods, capped by regrowth. | Weber 1909 |
+| **Trade** | A fixed share of each harvest goes to markets in proportion to `W^α · exp(−β c)`, W being the market's size. Goods are bought by the shopping model and paid in grain. Flows ride the stored paths, and the places they pass earn a margin, more where cargo is transshipped. | Wilson 1970; Rihll & Wilson 1987; Huff 1964; Bleakley & Lin 2012 |
+| **Outside world** | One port per open-sea map edge buys a fixed amount of grain a year and is the only seller of imports, bought by market people and paid in grain. | Fujita & Mori 1996 |
+| **Growth** | Villages grow by natural increase on a surplus and shed people when short. Markets grow by `ε(D − K·W)`, with migrants drawn from their partners. A small place near a much larger one is drained (the urban shadow). | Rihll & Wilson 1987; Bosker & Buringh 2017 |
+| **Founding** | Every five years the free cells with water at hand are scored for free farmland, less the shadow of larger neighbours, plus market access, plus noise. The best become hamlets. A free resource site with demand in reach gets a specialist hamlet. | Artificial Anasazi (Dean et al. 2002); Christaller 1933 |
+| **Failure** | An underfed place sheds the people it cannot feed. A place below 20 people for 12 years is removed. Most new foundations fail. | Village Ecodynamics Project |
+| **Roads and bridges** | The busiest routes become road. A road whose traffic falls away loses condition and fades. A busy river crossing gets a bridge that never decays. | Dalgaard et al. 2022 |
+| **Shocks** (calendar from 1100) | The Great Famine of 1315–17 cuts yields by 40%. The Black Death of 1348 kills about 40%, with recurrences in 1361 and 1369. Survivors then leave poor land for vacant good land. One harbour (not the largest place) silts up between 1350 and 1500, and lords plant a town every 50 years from 1250. | Jordan 1996; Benedictow 2004; Dyer; Beresford 1967 |
+| **Better ships** | Sea cost per km falls by 30% between 1300 and 1500. | Unger 1980 (cog, hulk, carrack) |
 
-(Since v1.1: D26–D30. Market size is a settlement's own state; places earn a margin on trade they handle; founding scores food and water only.)
-
-**1. Cultivation** (von Thünen; VEP). A settlement claims free cells in order of walking cost, within a cultivation radius, until its harvest, less what it sends to market, covers its need with a margin. It releases its farthest cells when it needs fewer. Fields lose their forest; fuel is cut nearest first; abandoned land regrows. One prime cell feeds 150 people.
-
-**2. Trade** (Wilson 1970; Rihll & Wilson 1987; Barjamovic et al. 2019). Each settlement sends a fixed share of its harvest (rents, tithes, sales), plus any resource output, to markets, its own included, in proportion to `W_j^α · exp(−β·c_ij)`. `W_j` is the settlement's market size: the traders and craftsmen its market supports, a state of its own that every place starts with. Food arrives less a loss per unit cost. Flows are laid on the stored paths, giving route loads, route junctions (hubs) and the points where cargo changes mode.
-
-**3. Growth** (Rihll & Wilson 1987; Bleakley & Lin 2012; Fujita & Mori 1996). Villages grow by natural increase when they have a surplus, at most `r_grow` a year, and shrink when short of food. Markets grow by the Rihll–Wilson term `ε(D − K·W)`. `D` is everything sold at the market, plus a margin on the trade passing the place and a larger one on trade transshipped there (break of bulk). The people come as migrants from its partners, and W moves with them. A small place near a much larger one loses people to it (the urban shadow).
-
-**4. Founding** (Artificial Anasazi; VEP; Christaller). Every five years every free cell with a brook (5 km² of drainage) or the coast within 3 km and no settlement within 3 km is scored for free food nearby and water at hand (a brook or river in the cell, or within 1 km), less the shadow of larger neighbours, plus access to markets beyond it, plus noise. The best few become hamlets, peopled from the nearest well-fed settlement. Transport does not place villages; it decides, through trade and growth, which villages become towns.
-
-**5. Failure.** An underfed place sheds a third of the people its food does not feed each year (since v1.2). A settlement below 20 people for 12 years is removed; its fields are released and its people move to the nearest fed settlement. Most new foundations fail, and a failed market town falls back to the village its fields feed.
-
-**6. Roads** (Dalgaard et al. 2022). Every ten years the largest trade flows whose path is not yet road become roads, and travel costs are rebuilt.
-
-**Goods** (v2; Weber 1909; Huff 1964; Wilson 1971). Salt works on the coast, iron mines in the uplands and quarries in the hills produce salt, iron and stone, worked by the settlement that holds the site. Iron burns charcoal from its holder's woods. Every settlement buys its yearly demand for each good from the working sites, shared by capacity and closeness, and pays in grain out of its marketed share, so no food is created. Goods and payments travel the routes, and the towns they pass earn handling income. A free site with enough demand in reach gets a specialist hamlet: a mine, salt works or quarry. A specialist whose goods sales fall below a quarter of its income becomes an ordinary town.
-
-**Names.** Settlements are named when founded, and natural features when the map is generated, from a hash of the place and its features (-ford at a ford, -mouth at a river mouth, -port on a harbour, -hurst in woodland, -don on high ground). Naming never touches the run's random generator.
-
-Everything drawn on screen (footprints, routes, trade traffic, labels, overlays, charts) is derived from the year's snapshot and never feeds back.
+Names come from a hash of the place and its features (-ford at a ford, -mouth at a river mouth), never from the run's random generator. Everything drawn on screen is derived from each year's snapshot and never feeds back.
 
 ## Validation
 
-v1 passes when every check in [`docs/validation.md`](docs/validation.md) holds in at least 75% of 20 seeds on each of three generated maps, the aggregate checks (contingency, median count over 5,000) pass on each map, and runs are deterministic. Current results are in [`docs/milestones.md`](docs/milestones.md). The river-corridor share of the largest city is reported, not gated (D30). Known limit: trade has one tier; an optional outside world (D25) is off by default.
+**The gate.** Every check in [`docs/validation.md`](docs/validation.md) must hold in at least 75% of 20 seeds on each of three generated maps, with historical events on:
+- the v1 hierarchy checks: counts, rank-size slope, market spacing, failure rate, siting, forest and stability;
+- goods: sites producing, and no specialist as the largest place;
+- a settled road network;
+- the plague's fall and recovery, the desertion of poor land, and the old hierarchy returning;
+- outside trade between 3% and 20% of market inflow.
 
-**Real terrain.** v1 was also run unchanged on real elevation for Kent and the lower Thames and scored against the 70 towns of c.1300 (`just real`; report in [`docs/real-terrain.md`](docs/real-terrain.md)). In v1 it found the ports and river towns but placed inland market towns no better than chance. The test found three errors in the specification, corrected in v1.1: the market attractor, the transport weights in founding, and the water-supply rule ([`docs/real-terrain-experiments.md`](docs/real-terrain-experiments.md)). In v1.1 the largest city forms on the tidal Thames in 15 of 20 seeds, and villages and towns cover the land between the rivers. A soil layer (SoilGrids) and a valley-floor proxy did not improve where the small inland towns are placed: with this data no static feature points toward them.
+Runs are deterministic, natively and in the browser; `cargo test` checks the golden hash.
 
-**Determinism.** A run is fixed by `(map seed, run seed, parameters)`. The same inputs give a bit-identical final snapshot natively and in the browser; `cargo test` checks the golden hash.
-
-## Parameters
-
-Every parameter, with its default, range and meaning, is printed by `cargo run --release -p hinterlands-cli -- params`. The table is in [`docs/parameters.md`](docs/parameters.md).
+**Real terrain.** The model is also run on real elevation for Kent and the lower Thames, with Roman roads and the real salt, iron and stone sites, and scored against the 70 towns of c.1300 (`just real`; [`docs/real-terrain-experiments.md`](docs/real-terrain-experiments.md)).
+- **Where it does well:** it finds the tidal ports and the river towns, and the largest city forms on the Thames estuary near Gravesend.
+- **Where it falls short:** it places the small inland market towns barely better than chance, and Watling Street mostly fades, since the model carries Continental goods by sea.
 
 ## Layout
 
 | Crate | Contents |
 | --- | --- |
-| `hinterlands-core` | `Terrain`, `State`, `Params`, `Snapshot`, the six systems, metrics, inspector queries. No I/O. |
-| `hinterlands-mapgen` | Map generation as a pipeline of passes; ESRI ASCII DEM import with edge inflows. |
-| `hinterlands-cli` | `run`, `validate`, `sweep`, `search`, `render`, `bench`, `hash`, `params`, ground-truth scoring. |
-| `hinterlands-web` | The egui viewer: `SimHandle`, `ViewState`/`Msg`, layers and panels. |
+| `hinterlands-core` | `Terrain`, `State`, `Params`, `Snapshot`, the systems and the event queue, metrics, inspector queries. No I/O. |
+| `hinterlands-mapgen` | Map generation as a pipeline of passes; ESRI ASCII DEM import with roads, soils, resources and outside ports. |
+| `hinterlands-cli` | `run`, `validate`, `sweep`, `search`, `render`, `hash`, `params`, and the probes (`goods`, `roads`, `desertion`). |
+| `hinterlands-web` | The egui viewer: `SimHandle`, `ViewState` and `Msg`, map layers and side panels. |
