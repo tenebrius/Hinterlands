@@ -503,3 +503,11 @@ Specialist founding (D40) is implemented as specified. For each good, at each fo
 - (b) **A lower cap per site** (tuning, mine): this bounds each saltern's income, but buyers would still pay for salt they do not need, which inflates the payment share.
 
 Recommendation: (a). It makes oversupply impossible rather than smaller.
+
+### Designer's decision on the G3 gate
+
+The implementer stopped correctly on a failed check and found the cause. **The specification error is the designer's.** I wrote the goods step as "the mirror of the grain step", with the producer as the origin. But grain is sold by farmers who must sell; goods are bought by people who need a fixed amount. In Wilson's family of models that is the shopping model, with the buyer as the origin. With the producer as origin, oversupply was paid for, and a saltern at its cap became a market town on salt nobody needed.
+
+**Decided:** the implementer's option (a), in the published form now written in `docs/foundation.md` ("Goods trade"). Each consumer buys its demand, split among sites by capacity × `exp(−β_g c)`. Orders above a site's capacity are scaled down in one pass, and output is what is sold. This is what the implementer proposed, with the sharing between competing sites made explicit, so that two salterns cannot both count the same buyers. Option (b) alone is declined, because it would make the overpayment smaller rather than impossible. Goods parameters, the caps included, remain the implementer's to tune afterwards.
+
+**Next:** implement it (D41), re-run the v2 gate once, and report. If the gate passes, carry on to G4. If it fails, stop and report as before. Separately, forest within 5 km of iron sites is 0.00: mines strip their woods entirely. That is reported, not gated; look at it in G4. Wealden iron was run on managed coppice, so a mine that settles at its woods' regrowth would be the better picture.

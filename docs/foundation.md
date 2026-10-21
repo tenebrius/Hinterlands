@@ -339,11 +339,16 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
 - **Iron is fuel-bound.** Smelting is the weight-losing step Weber places at the fuel source. Each unit of iron draws `fuel_per_iron` (0.1, D38) of forest, which cultivation (the owner of forest) adds to the holder's fuel demand and cuts nearest first, as for household fuel. Iron output is capped by the fuel actually obtained the year before. A mine whose woods are gone declines.
 - Under v2 the old `resource_out` (a flat 50 per owned resource cell) is retired.
 
-**Goods trade** (in the trade system). Production-constrained gravity, the mirror of the grain step: each holder ships all its output to consumers in proportion to `demand_k × exp(−β_g c_jk)`, over the pairs within `C_max`, along the stored paths.
-- **Payment is grain.** A consumer pays `v_g` per unit received out of its marketed share `O_i`, capped at `O_i`, and that grain travels to the producer as an ordinary food flow, with the usual loss per unit cost. What is left of `O_i` goes to markets as now.
+**Goods trade** (in the trade system). The buyer is the origin: this is Wilson's shopping model (Huff 1964; Wilson 1971), in which each zone spends a fixed amount, shared among the places that sell. It is the right form for goods because demand is fixed and supply is not.
+- Each consumer `k` buys its demand for good `g`, split among the working sites in proportion to `S_j × exp(−β_g c_jk)` over the pairs within `C_max`. `S_j` is the site's capacity this year, `min(cap_g, prod_g × (W + site_crew))`, and iron's fuel cap applies.
+- If the orders reaching a site exceed its capacity, every order to that site is scaled down to fit. The unmet part stays unmet, and there is no second pass. A site's output is what it sells.
+- Competing sites therefore share the market (Weber's market areas), and supply beyond demand earns nothing. The holder's own demand is served first, without travel or payment.
+- **Payment is grain.** A consumer pays one grain unit per unit received out of its marketed share `O_i`, capped at `O_i`. That grain travels to the producer as an ordinary food flow, on the buyer's path, with the usual loss per unit cost. What is left of `O_i` goes to markets as now.
 - So no food is created: a specialist place is fed by real grain deliveries, which count in its gross inflow `D_j`, and it grows by the same Rihll–Wilson rule as any market.
 - Goods and the grain paying for them load the routes. Handling and transshipment income (D27) apply to them as to grain, at the goods' value. This is how towns between ore and people grow.
 - Complementarity (Barjamovic et al. 2019) needs no extra term: goods flow only from the places that have them.
+
+(Until D41 the producer was the origin and sold its whole output whatever the demand. That let a saltern earn at its cap and grow into the regional market town: a specification error, corrected here.)
 
 **Specialist settlements** (in founding and failure).
 - At each founding step, a resource cell with no settlement within `min_spacing_km` gets a hamlet of `found_pop` on the cell if the demand it could reach, `Σ_k demand_k × exp(−β_g c)`, would feed the founders. At most one per resource type per step, with migrants found as usual.
