@@ -280,3 +280,48 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - Lowland AUC: 0.52 / 0.53 / 0.51.
   - Largest city: Gravesend 10, Faversham 9, Milton Regis 1.
   - Details: `docs/real/kent-v3/scores.md`.
+
+## v4 — Shocks: famine, plague, silting, planted towns (D57–D63)
+- **Events.** On by default in Historical mode (`events_mode` 1, year 0 = 1100):
+  - the Great Famine, 215–217;
+  - plague in 248, recurring in 261 and 269 at a third of the first mortality;
+  - one harbour silting between 250 and 400, never at the largest place (D62);
+  - a planted town every 50 years from 1250 (D63).
+- **Resettlement after a plague (D61):** 30 years at 2% a year.
+- **Event values:** `famine_loss` 0.4, `plague_mortality` 0.4 ± 0.1 over 2 years, `silt_cost` 3, `plant_pop` 200 with W = 5 × W₀, `plant_from` 150.
+- **Gate measures (D58, D59):**
+  - stability leaves out the event years;
+  - desertion compares quarters of local yield, among places beyond 8 km of any place over 2,000;
+  - top-10 is compared with the same seed run with events Off.
+- **`just validate` (Historical, 20 seeds a map): PASSED.** This is the combined E2 + E3 gate, whose parameters are now the defaults. Every check holds:
+  - plague drop ≥ 25%: 20/20;
+  - recovery by 500 ≥ 90%: 20/20;
+  - poor land deserted: 20/20;
+  - top-10 against Off: 17 / 18 / 16;
+  - market spacing: 18 / 18 / 20.
+
+  Runs passing every check: 15 / 14 / 16.
+- **Reported:**
+  - plague drop 0.37, the pre-plague total regained in 44–47 years;
+  - total at year 500 against Off: 1.03–1.04;
+  - famine dip 0.24, regained in 15 years;
+  - silted port's median rank 5 → 10–12 a century later, falling in 18–19 of 20 runs;
+  - planted towns alive 100 years after planting: 0.82 / 0.70 / 0.57.
+- **Determinism:**
+  - golden `2c5e9c5c90ab1d43`;
+  - the release wasm build gives the same hash (`?selftest=500`, 27.6 ms/year, under the 50 ms gate);
+  - `data/real/experiments/v3.json` (events off) gives v3's `171ec4461a912a1d`, and the earlier experiment files give their versions' hashes.
+- **View:**
+  - a new layer, `layers/events.rs`: plague tint, silted-harbour mark, planted-town pennant;
+  - a new panel, `panels/events.rs`: an event timeline under the population chart;
+  - the chronicle and the time panel show calendar years.
+
+  Screenshots: `docs/screenshots/v4-year450.png` and `v4-plague-1349.png`.
+- **Kent regression** (20 seeds, `map-resources.json`), against v3:
+  - on-road share: 30% (30%); 45% (49%) for places of 1,000 or more;
+  - inland places over 500: 10 per seed at 11.9 km (12 at 10.4; real 29 at 10.6);
+  - settlements per seed: 453 (445);
+  - lowland AUC: 0.52 / 0.57 / 0.49 (0.52 / 0.53 / 0.51);
+  - largest city: Gravesend 13, Milton Regis 4, Faversham 3; its share is 0.33 (0.28).
+
+  Scores are in `docs/real/kent-v4/scores.md`.
