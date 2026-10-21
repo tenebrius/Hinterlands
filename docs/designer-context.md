@@ -35,6 +35,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **G1 done (1317aa6, D38):** held sites all produce; forest within 5 km of iron sites 0.17 against a land mean of 0.66 by year 200; `v_g` = 1, `fuel_per_iron` 0.1 accepted. Only ~38% of sites have a holder, so the ≥ 2/3 gate rests on G3 specialists. D36–D37 are the rendering merge from the graphics session.
 - **G2 done (D39):** payments balance (goods 53,226 received, 52,405 paid, 1.5% short where buyers hit their marketed share); median route cost iron 19.7 > salt 14.5 > grain 13.3 > stone 9.0, full order in 22 of 24 runs. Accepted.
 - **G3 gate failed (a362721, D40):** salterns at the 1,000 cap became the largest place in 18/20 (map 1) and 11/20 (map 2) seeds. Spec error (mine, rule 7). Corrected to the shopping model with capacity scaling (D41); one re-run of the gate, then G4 if it passes. Forest near iron sites 0.00 to look at in G4.
+- **Gate re-run with the shopping model (0c326ed, D41):** oversupply gone (payment share 3%), but the largest place is a "saltern" in 19/20 (map 1) seeds: salterns founded on the best harbour sites grow into the city and keep the label. Decided (D43): the kind follows the economy (specialist only while goods sales ≥ 25% of inflow), and the gate tests that. Map 3's over-5,000 median (1) is for the implementer to tune. D42 is reserved for the graphics merge.
 - **Later options, not scheduled:** Kent resources as data (Wealden iron, ragstone, estuary salt); the outside world as a seller; the shadow in km; Kent inland spacing (6.2 km against 10.6).
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
@@ -57,6 +58,7 @@ Judgement rules that now stand:
 
 - **Pass rates, not single runs.** Each check passes in at least 75 % of 20 seeds on every map. A single seed on a range edge is noise.
 - **A check the model cannot meet for structural reasons gets reconsidered, not tuned toward.** The corridor check went from gated to reported because, with a populated middle tier, which river gets the big city is contingent (Evans & Rivers 2017). The per-seed siting check carries the transport claim.
+- **Define a gate on what it is for, not on a label.** A check on a category is only as good as the rule that assigns the category.
 - **Judge placement where the inputs have signal; judge count and spacing where they do not.** Score the inputs directly against the ground truth before blaming the model.
 - **Second-nature inputs (roads, initial towns) are data in `Terrain`, not model changes.** They go in through the importer.
 - **Keep the three-crate boundary.** Pure `core` with no I/O; `Snapshot` is the only thing the viewer and CLI read; systems write only their own outputs; one `ViewState`, one `Msg` enum in the UI.
@@ -93,4 +95,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v2 G3 gate failed; goods trade corrected to buyer-origin (D41).
+Last updated: 2026-10-21 — v2 gate re-run failed on a label; kind now follows the economy (D43).

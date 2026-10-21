@@ -196,3 +196,20 @@ Kind: model mechanism behind a switch (v2 specification).
 ## D40 — v2 specialist settlements (G3, behind `goods_enabled`)
 At each founding step, for each good, the free resource site (no settlement within `min_spacing_km`) with the most reachable demand gets a hamlet of `found_pop` on the cell, if that demand would feed the founders. Migrants come from the nearest settlement that can spare them. Its kind is `Mine`, `Saltern` or `Quarry`, and the founding is logged as `Works`. Ordinary failure rules apply. `validate` gates "sites producing ≥ 2/3" and "largest not specialist" (trivially true with goods off). The gate failed with the starting values: production-constrained sales let salterns earn at the cap regardless of demand and grow into the largest places. The resolution is pending with the designer.
 Kind: model mechanism behind a switch (v2 specification).
+
+## D41 — Goods trade by the shopping model (designer decision; replaces D39's producer-origin flows)
+Buyers are the origin (Huff 1964; Wilson 1971). A holder's own demand is met first from its own sites, without travel or payment. The rest of each buyer's demand is split among working sites in proportion to `capacity × exp(−β_g c)`. Orders beyond a site's capacity are scaled down to fit in one pass, and unmet demand stays unmet. A site's output is what it sells (`Site.sold`, written by trade). Grain payment and route loading are as in D39. The v2 gate re-run still fails ("largest not specialist" 1/20 and 12/20 on maps 1 and 2): the largest specialists are salterns founded on the best coastal city sites, which grow into the city that grows there without goods and keep their kind. See `docs/real-terrain-experiments.md`.
+Kind: model mechanism behind a switch (designer decision).
+
+## D42 — Fields, pasture, hedges and seasons drawn in the relief shader (rendering; R3 from the graphics-overhaul branch)
+The 1.x countryside layers drew one square per cell. The relief shader now draws them per pixel from two per-year textures, land use and plots, with the same rules for which cell is what (strip direction is one shared function, `countryside::strip_orientation`):
+- fields get one smooth, roughened outline per block, with furlongs and reversed-S strips close in;
+- hedges follow the outlines and the boundaries between holdings;
+- pasture sits under fields and fields under forest;
+- season tints are per pixel.
+Each part draws only while its own layer is on. The per-cell layers stand down only while the shader runs. Sheep, coppice and stumps stay in egui. Details: `docs/rendering.md`.
+Kind: rendering.
+
+## D43 — Roads, routes and trade drawn as smoothed lines (rendering; R4 from the graphics-overhaul branch)
+Route segments are joined into chains by kind (water, land trade off roads, roads). Chains break only at junctions, ends, changes of kind and settlement centres, and are smoothed with the same Chaikin corner cutting as rivers (shared in `lines.rs`). Wide roads are drawn cased, land trade off roads as dashed tracks, water trade as a pale line. Trade dots follow the smoothed lines, and their positions are cached in map space. The 2% share rule and the dot trip, cargo and speed rules are unchanged. Details: `docs/rendering.md`.
+Kind: rendering.

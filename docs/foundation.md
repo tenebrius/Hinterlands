@@ -354,6 +354,7 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
 - At each founding step, a resource cell with no settlement within `min_spacing_km` gets a hamlet of `found_pop` on the cell if the demand it could reach, `Σ_k demand_k × exp(−β_g c)`, would feed the founders. At most one per resource type per step, with migrants found as usual.
 - Its `kind` is `Mine`, `Saltern` or `Quarry`. It cultivates like any settlement, and its newcomers join the market people, who work the site.
 - It fails by the ordinary rules (it sheds when underfed and is removed below `fail_pop`). There are no special cases.
+- **The kind follows the economy** (D43). A specialist stays one while its goods sales are at least `specialist_share` (0.25) of its gross inflow, averaged over 10 years. Below that it becomes an ordinary settlement for good: it still holds and works its site, and the chronicle records it ("1340. Mereport has outgrown its salt works."). This is the history of the wich towns and the mining boroughs, places that began on a resource and became market towns.
 
 **Switch.** All of v2 sits behind `goods_enabled`, off until the v2 milestone passes. With it off, the golden hash stays `2b00434da9781880`.
 
@@ -367,7 +368,7 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
 - **Gated:**
   - all v1.2 checks still pass;
   - at least two thirds of resource sites have output at year 500;
-  - no specialist settlement is the largest place;
+  - the largest place is not a specialist, meaning a place whose goods sales are at least a quarter of its inflow (D43);
   - one year under 50 ms in release wasm;
   - determinism, natively and in the browser.
 - **Reported:**
@@ -376,7 +377,7 @@ Written by the designer on 21 October 2026, after v1.2 passed validation (D35). 
   - forest within 5 km of iron sites against the land mean;
   - the share of settlements over 2,000 on a route carrying goods.
 
-**Tuning.** The goods parameters above are starting values and are the implementer's to tune. The v1.2 parameters are re-tuned only if a v1.2 check fails, and every change goes in the milestone note. Kent has no resource layer, so its regression should not change. Placing Kent's Wealden iron, ragstone and estuary salt as data is a later option, not part of v2.
+**Tuning.** The goods parameters above are starting values and are the implementer's to tune. The v1.2 parameters are re-tuned only if a v1.2 check fails with goods on, as the over-5,000 median on map 3 does now (goods payments take about 3% of marketed grain away from the market towns). Every change goes in the milestone note. Kent has no resource layer, so its regression should not change. Placing Kent's Wealden iron, ragstone and estuary salt as data is a later option, not part of v2.
 
 ## Future versions
 

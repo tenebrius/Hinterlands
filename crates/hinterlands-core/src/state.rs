@@ -49,7 +49,8 @@ impl Good {
 }
 
 /// A resource site and what it produced this year (v2, D38). Production writes
-/// holder, potential, output and fuel_want; cultivation writes fuel_got.
+/// holder, potential, output (capacity) and fuel_want; cultivation writes
+/// fuel_got; trade writes sold.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Site {
     pub cell: u32,
@@ -58,8 +59,11 @@ pub struct Site {
     pub holder: u32,
     /// Output the site's workers could reach this year, grain units.
     pub potential: f32,
-    /// Output this year, grain units.
+    /// Capacity this year, grain units (the iron fuel cap applied).
     pub output: f32,
+    /// What the site sold this year, its holder's own use included (written by
+    /// trade, D41): a site's output is what it sells.
+    pub sold: f32,
     /// Fuel the site asks of the holder's woods for next year (iron only).
     pub fuel_want: f32,
     /// Fuel cut for the site this year.
@@ -390,6 +394,7 @@ impl State {
                         holder: NONE,
                         potential: 0.0,
                         output: 0.0,
+                        sold: 0.0,
                         fuel_want: 0.0,
                         fuel_got: 0.0,
                     })

@@ -511,3 +511,45 @@ The implementer stopped correctly on a failed check and found the cause. **The s
 **Decided:** the implementer's option (a), in the published form now written in `docs/foundation.md` ("Goods trade"). Each consumer buys its demand, split among sites by capacity × `exp(−β_g c)`. Orders above a site's capacity are scaled down in one pass, and output is what is sold. This is what the implementer proposed, with the sharing between competing sites made explicit, so that two salterns cannot both count the same buyers. Option (b) alone is declined, because it would make the overpayment smaller rather than impossible. Goods parameters, the caps included, remain the implementer's to tune afterwards.
 
 **Next:** implement it (D41), re-run the v2 gate once, and report. If the gate passes, carry on to G4. If it fails, stop and report as before. Separately, forest within 5 km of iron sites is 0.00: mines strip their woods entirely. That is reported, not gated; look at it in G4. Wealden iron was run on managed coppice, so a mine that settles at its woods' regrowth would be the better picture.
+
+### Re-run with the shopping model (D41): the gate fails again, on a label
+
+Goods trade is rewritten as specified. Buyers are the origin. A holder's own demand is met first from its own sites. The rest of each buyer's demand is split among working sites in proportion to `capacity × exp(−β_g c)`, orders beyond a site's capacity are scaled down in one pass, and unmet demand stays unmet. A site's output is what it sells: trade writes `Site.sold`, and "sites producing" now counts sites that sold anything. Payment and route loading are unchanged. With goods off, the golden hash is unchanged.
+
+| | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| v1.2 per-seed checks | pass | pass | pass |
+| Over 5,000 median ≥ 2 | 2 | 2 | **1** |
+| Top-10 overlap ≤ 0.80 | 0.38 | 0.41 | 0.48 |
+| Sites producing ≥ 2/3 (median) | 0.87 | 0.73 | 0.73 |
+| **Largest is not a specialist** | **1/20** | **12/20** | 20/20 |
+| Specialists per run; size median / p90 / max | 8.7; 347 / 6,909 / 13,459 | 6.7; 211 / 3,357 / 15,387 | 7.9; 426 / 2,071 / 4,025 |
+| Payment share of market inflow | 0.031 | 0.029 | 0.030 |
+| Forest within 5 km of iron / land | 0.00 / 0.42 | 0.00 / 0.42 | 0.00 / 0.41 |
+| Settlements > 2,000 on a goods route | 1.00 | 1.00 | 1.00 |
+| Slowest run, native | 29.4 ms/year | 27.5 | 28.8 |
+
+The shopping model removes oversupply. The payment share falls from 7% to 3%, and salt sites now sell 340–520 against a capacity of 1,000.
+
+**But the largest places are still salterns, and salt no longer explains them.** In map 1, seed 1, the saltern Mereport at (20, 75) has 12,446 people and receives 11,689 food a year, of which salt sales bring about 516 (4%). The rest is ordinary grain trade drawn by its market size. Without goods (v1.2, same map and seed), the largest place is Wenenford at (18, 70), 11,870 people, a coastal city 5 km away. On map 2, the largest place is on the same coastal cell with and without goods.
+
+So the gate is catching a label, not an oversized works. Salt sites are placed on the coast, next to the best city sites. A saltern founded early on such a spot grows into the city that would have grown there anyway, and keeps the kind `Saltern` for life.
+
+**For the designer:** what "specialist" means in the gate. Options:
+- (a) **The kind follows the economy:** a specialist becomes an ordinary settlement once goods sales are a small share of its inflow (salt towns and mining towns that became market towns);
+- (b) **Gate on the economy, not the label:** no settlement whose goods sales are most of its inflow is the largest place;
+- (c) **Keep the label, and keep specialists off the best town sites**, for example by not founding works where an ordinary founding would score higher.
+
+(a) or (b) measure what the gate is for. (c) changes where works go.
+
+### Designer's decision on the re-run
+
+The shopping model did its job: oversupply is gone, and the payment share fell to 3%. The remaining failure is in how the gate was defined, and the definition was the designer's. "Specialist" was a label set at founding and never revisited, so a saltern on the best harbour site grew into the city that would have grown there anyway and was still counted as salt works. The implementer's reading is right: the gate was catching a label.
+
+**Decided: (a), with the gate measured the same way, so (b) follows from it.**
+- A specialist stays one while its goods sales are at least 25% of its gross inflow (10-year average). Below that it becomes ordinary for good, still working its site, and the chronicle notes it. The wich towns and mining boroughs did exactly this.
+- The gate "largest is not a specialist" therefore tests the economy: no place living mainly on goods sales is the largest.
+- (c) is declined. Salt belongs on harbour coasts, and a port growing beside its salt pans is a good thing to watch.
+- **Over-5,000 median on map 3 (1, needs 2):** this is a real v1.2 check failing with goods on, not a label. The spec allows the v1.2 parameters to be re-tuned in exactly this case, so it is the implementer's to fix by tuning, with every change recorded.
+
+**Next:** implement (D43), tune for map 3 if needed, re-run the gate once. If it passes, carry on to G4; if not, report. D42 is held for the graphics merge.

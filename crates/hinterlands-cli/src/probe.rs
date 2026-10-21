@@ -225,7 +225,7 @@ pub fn cmd_goods(args: &Args) {
                 .collect();
             let forest = near.iter().map(|&j| st.forest[j]).sum::<f32>() / near.len().max(1) as f32;
             println!(
-                "site {map} {seed} {y} {:?} {x} {yy} held {} output {:.1} potential {:.1} fuel {:.2}/{:.2} forest5km {:.3} land {:.3}",
+                "site {map} {seed} {y} {:?} {x} {yy} held {} output {:.1} potential {:.1} fuel {:.2}/{:.2} forest5km {:.3} land {:.3} sold {:.1}",
                 s.good,
                 s.holder != hinterlands_core::state::NONE,
                 s.output,
@@ -233,7 +233,8 @@ pub fn cmd_goods(args: &Args) {
                 s.fuel_got,
                 s.fuel_want,
                 forest,
-                land_mean
+                land_mean,
+                s.sold
             );
         }
     }
