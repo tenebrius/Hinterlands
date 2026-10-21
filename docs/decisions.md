@@ -169,3 +169,11 @@ Kind: model mechanism behind a switch (designer decision); default pending.
 3. Kent's standard configuration is uniform soil with Roman roads and bridges (`just real`). Kent is a regression report at each milestone, and Rochester is closed as a target.
 Golden hash: `2b00434da9781880`, native and in the browser.
 Kind: change to the defaults and the acceptance test (designer, with design authority delegated by the owner).
+
+## D36 — Smooth relief drawn by a shader (rendering; R1 from the graphics-overhaul branch)
+The base map is drawn by a fragment shader through an `egui_glow` paint callback. Per-cell elevation, signed distance to the coast, yield and hillshade, plus the year's forest cover, go up as float textures and are interpolated bicubically. The result: a noisy coastline from the distance field, shaded shallows, yield- and height-tinted land under a Horn hillshade, and forest as a tint, clumps or tree crowns by zoom. Patterns come from an integer hash of map position. The old cell texture (`TerrainLayer`) stays, off by default, and is the fallback if the shader cannot compile (`?on=terrain&off=relief,rivers`). Details: `docs/rendering.md`.
+Kind: rendering.
+
+## D37 — Rivers drawn as lines (rendering; R2 from the graphics-overhaul branch)
+Streams and navigable rivers are polylines along `flow_dir`, broken at sources and confluences, smoothed by two rounds of Chaikin corner cutting, and widened with drainage (`0.012 · flux^0.4` km, capped at 0.45 km). Navigable stretches are darker; in spring the seasons layer widens channels by half instead of tinting cells. Details: `docs/rendering.md`.
+Kind: rendering.
