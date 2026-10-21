@@ -1,5 +1,7 @@
 {
   "coppice": false,
   "shadow_km": false,
-  "traffic_roads": false
+  "traffic_roads": false,
+  "traffic_bridges": false,
+  "mills": false
 }

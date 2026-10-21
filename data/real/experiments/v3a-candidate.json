@@ -7,5 +7,7 @@
   "noise": 0.47511095,
   "epsilon": 0.123899415,
   "k_maint": 3.1675544,
-  "traffic_roads": false
+  "traffic_roads": false,
+  "traffic_bridges": false,
+  "mills": false
 }

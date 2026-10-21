@@ -34,6 +34,12 @@ pub struct RunResult {
     pub road_change: f32,
     /// Share of cells ever road that are no longer road at the end.
     pub road_abandoned: f32,
+    /// v3 (D55, D56): bridges built; share of places of 1,000 or more, and of
+    /// all settlements, within 2 km of one; share of settlements with a mill.
+    pub bridges: u32,
+    pub near_bridge_big: f32,
+    pub near_bridge_all: f32,
+    pub mill_share: f32,
 }
 
 /// The v2 gate's measures at the final year.
@@ -273,6 +279,11 @@ pub fn run_one(
         } else {
             f32::NAN
         },
+        bridges: snap.bridges.len() as u32,
+        near_bridge_big: near_bridge(&snap, t, 1000.0),
+        near_bridge_all: near_bridge(&snap, t, 0.0),
+        mill_share: snap.settlements.iter().filter(|s| s.mill).count() as f32
+            / snap.settlements.len().max(1) as f32,
         road_abandoned: {
             let ever_n = ever.iter().filter(|&&e| e).count();
             let gone = ever
@@ -283,6 +294,20 @@ pub fn run_one(
             gone as f32 / ever_n.max(1) as f32
         },
     }
+}
+
+/// Share of settlements of at least `min_pop` within 2 km of a model bridge.
+fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> f32 {
+    let places: Vec<_> = snap.settlements.iter().filter(|s| s.pop >= min_pop).collect();
+    let near = places
+        .iter()
+        .filter(|s| {
+            snap.bridges
+                .iter()
+                .any(|&b| t.grid.dist_km(s.anchor as usize, b as usize) <= 2.0)
+        })
+        .count();
+    near as f32 / places.len().max(1) as f32
 }
 
 fn passes(r: &RunResult) -> bool {
@@ -494,6 +519,28 @@ pub fn cmd_validate(args: &Args) {
                 "",
                 v[v.len() / 2],
                 v[v.len() - 1]
+            );
+        }
+        let med = |mut v: Vec<f32>| {
+            v.sort_by(|a, b| a.total_cmp(b));
+            v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
+        };
+        if rs.iter().any(|r| r.bridges > 0) {
+            println!(
+                "{:<20} {:>12} bridges per run {:.0}; within 2 km of one: places >=1,000 {:.2}, all settlements {:.2}",
+                "v3 bridges",
+                "(reported)",
+                med(rs.iter().map(|r| r.bridges as f32).collect()),
+                med(rs.iter().map(|r| r.near_bridge_big).collect()),
+                med(rs.iter().map(|r| r.near_bridge_all).collect())
+            );
+        }
+        if rs.iter().any(|r| r.mill_share > 0.0) {
+            println!(
+                "{:<20} {:>12} share of settlements with a mill {:.2}",
+                "v3 mills",
+                "(reported)",
+                med(rs.iter().map(|r| r.mill_share).collect())
             );
         }
         println!(

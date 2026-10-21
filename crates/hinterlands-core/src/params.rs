@@ -234,6 +234,11 @@ define_params! {
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
+    "Mills" => {
+        mills: bool = true, [0, 1], "A settlement with a stream or river among its fields has a mill (D56)";
+        mill_area: f32 = 20.0, [0, 10000], "Least drainage, km2, of a field's stream for a mill";
+        mill_bonus: f32 = 0.03, [0, 0.5], "Yield gained by a settlement with a mill, as a share";
+    }
     "View" => {
         density_per_cell: f32 = 1500.0, [100, 20000], "People per built-up cell in the drawn footprint (rendering only)";
         ruin_years: u32 = 60, [0, 255], "Years an abandoned built-up cell stays visible as a ruin";
@@ -245,6 +250,9 @@ define_params! {
         traffic_roads: bool = true, [0, 1], "Roads follow traffic: road cells carry a condition that fades where traffic falls (D54)";
         road_keep_load: f32 = 800.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
         road_decay: f32 = 0.05, [0, 1], "Condition a little-used road cell loses each road step";
+        traffic_bridges: bool = true, [0, 1], "A busy road crossing of a river or stream becomes a bridge (D55)";
+        bridge_load: f32 = 1600.0, [0, 100000], "Trade value a year over a road crossing that counts towards a bridge";
+        bridge_steps: u32 = 3, [1, 20], "Road steps in a row at bridge_load before a bridge is built";
     }
 }
 

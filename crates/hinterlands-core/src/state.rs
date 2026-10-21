@@ -172,6 +172,8 @@ pub struct Settlement {
     pub transship: f32,
     /// Grain received this year as payment for goods sold (v2; written by trade).
     pub goods_in: f32,
+    /// A stream or river with enough drainage among the fields (D56; cultivation).
+    pub mill: bool,
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -205,6 +207,7 @@ impl Settlement {
             market: 0.0,
             transship: 0.0,
             goods_in: 0.0,
+            mill: false,
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
             food_ratio: 1.0,
@@ -300,6 +303,11 @@ pub struct State {
     /// With `traffic_roads` (D54): each cell's road condition, 0 where there is
     /// no road; empty otherwise.
     pub road_q: Vec<f32>,
+    /// With `traffic_bridges` (D55): bridges the model has built, and the road
+    /// steps in a row each river crossing has carried `bridge_load`; empty
+    /// otherwise.
+    pub bridge: Vec<bool>,
+    pub bridge_streak: Vec<u8>,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -394,6 +402,8 @@ impl State {
             road,
             road_edges: Vec::new(),
             road_q,
+            bridge: if p.traffic_bridges { vec![false; n] } else { Vec::new() },
+            bridge_streak: if p.traffic_bridges { vec![0; n] } else { Vec::new() },
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],
@@ -447,10 +457,13 @@ impl State {
     }
 
     pub fn rebuild_costs(&mut self, t: &Terrain) {
-        self.cost = if self.road_q.is_empty() {
+        self.cost = if self.road_q.is_empty() && self.bridge.is_empty() {
             CostGrid::build(t, &self.road, &self.transport)
+        } else if self.road_q.is_empty() {
+            let q: Vec<f32> = self.road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
+            CostGrid::build_with_condition(t, &q, &self.bridge, &self.transport)
         } else {
-            CostGrid::build_with_condition(t, &self.road_q, &self.transport)
+            CostGrid::build_with_condition(t, &self.road_q, &self.bridge, &self.transport)
         };
     }
 

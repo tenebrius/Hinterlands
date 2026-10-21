@@ -2,8 +2,9 @@
 //! claims free cells in order of walking cost until produce, less the marketed
 //! share, covers need times the margin, and releases its farthest cells when produce exceeds the target by the
 //! hysteresis share. Fuel is cut nearest first, for households and, under v2, for
-//! the iron sites a settlement holds (D38). Writes: owner, fields, forest,
-//! food_prod, resource_out, sites' fuel_got.
+//! the iron sites a settlement holds (D38). A settlement with a stream or river
+//! among its fields has a mill, which adds `mill_bonus` to its produce (D56).
+//! Writes: owner, fields, forest, food_prod, mill, resource_out, sites' fuel_got.
 
 use crate::params::Params;
 use crate::state::{State, NONE};
@@ -55,7 +56,18 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 }
             }
         }
-        s.food_prod = produce;
+        // A mill on a stream or river among the fields (D56).
+        let cell_km2 = t.grid.cell_km * t.grid.cell_km;
+        s.mill = p.mills
+            && s.fields.iter().any(|&c| {
+                let c = c as usize;
+                t.is_river(c) && t.flux[c] * cell_km2 >= p.mill_area
+            });
+        s.food_prod = if s.mill {
+            produce * (1.0 + p.mill_bonus)
+        } else {
+            produce
+        };
         // Under v2 resource sites produce through `production`; the flat
         // resource output is retired.
         s.resource_out = if p.goods_enabled { 0.0 } else { 1.0 }

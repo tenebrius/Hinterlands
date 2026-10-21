@@ -1,24 +1,22 @@
 //! Site-earned buildings and river crossings, derived from each year's snapshot
 //! (1.x layer; drawing only, nothing feeds back). A settlement earns a church as
 //! a village, a market square as a town, walls as a city, and a cathedral as the
-//! largest city or one over 8,000; a water mill beside a stream; a quay where a
-//! town meets a navigable river or the sea, with warehouses once its trade is
-//! heavy. Road crossings of rivers become bridges where traffic is heavy; quieter
-//! crossings at fords are drawn as fords.
+//! largest city or one over 8,000; a water mill where the model gives it one
+//! (D56); a quay where a town meets a navigable river or the sea, with
+//! warehouses once its trade is heavy. Road crossings of rivers are drawn as
+//! bridges where the model has built one (D55) or the map has one (D33), and
+//! as fords at fords.
 
 use super::routes::segments;
 use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, Pos2, Shape, Stroke, Vec2};
 use hinterlands_core::state::{Rank, NONE};
-use hinterlands_core::terrain::Water;
 use std::collections::BTreeMap;
 
 const STONE: Color32 = Color32::from_rgb(232, 224, 206);
 const OUTLINE: Color32 = Color32::from_rgb(70, 55, 45);
 const WALL: Color32 = Color32::from_rgb(150, 140, 125);
 const QUAY: Color32 = Color32::from_rgb(92, 64, 40);
-/// A crossing becomes a bridge when its traffic is this share of the busiest segment.
-const BRIDGE_SHARE: f32 = 0.04;
 const CATHEDRAL_POP: f32 = 8000.0;
 const WAREHOUSE_TRADE: f32 = 1500.0;
 
@@ -80,16 +78,16 @@ impl BuildingsLayer {
             } else if s.rank >= Rank::Village {
                 out.push(Glyph::Church(c + Vec2::new(0.28, 0.26)));
             }
-            // A water mill on a stream beside the settlement.
-            if s.rank >= Rank::Village {
+            // The model's mill (D56), drawn on the nearest stream or river
+            // beside the settlement, or by the settlement itself.
+            if s.mill {
                 let stream = cells
                     .iter()
+                    .chain(std::iter::once(&a))
                     .flat_map(|&b| (0..8).filter_map(move |k| g.neighbor(b, k)))
-                    .find(|&j| t.water[j] == Water::Stream);
-                if let Some(j) = stream {
-                    let p = centre(g.w, j);
-                    out.push(Glyph::Mill(p + (c - p) * 0.3));
-                }
+                    .find(|&j| t.is_river(j));
+                let p = stream.map_or(c + Vec2::new(-0.35, 0.3), |j| centre(g.w, j));
+                out.push(Glyph::Mill(p + (c - p) * 0.3));
             }
             // Quays along the edges of built cells that face navigable water.
             if s.rank >= Rank::Town {
@@ -145,7 +143,6 @@ impl BuildingsLayer {
         // leaves by the other (road neighbours off the river, on opposite sides).
         // Roads running along a river through river cells are not crossings.
         let seg = segments(d);
-        let max = seg.values().copied().fold(1.0f32, f32::max);
         let mut banks: BTreeMap<u32, Vec<(Vec2, f32)>> = BTreeMap::new();
         for &(a, b) in &snap.road_edges {
             let flow = seg.get(&(a, b, false)).copied().unwrap_or(0.0);
@@ -169,9 +166,11 @@ impl BuildingsLayer {
                     }
                 }
             }
-            let Some((flow, angle)) = best else { continue };
+            let Some((_, angle)) = best else { continue };
             let p = centre(g.w, r as usize);
-            if flow >= BRIDGE_SHARE * max {
+            let bridged = snap.bridges.binary_search(&r).is_ok()
+                || t.bridge.get(r as usize).copied().unwrap_or(false);
+            if bridged {
                 out.push(Glyph::Bridge(p, angle));
             } else if t.ford[r as usize] {
                 out.push(Glyph::Ford(p, angle));

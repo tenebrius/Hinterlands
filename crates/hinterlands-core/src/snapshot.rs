@@ -33,6 +33,13 @@ pub struct SettlementView {
     /// Grain received for goods sold this year (v2); left out when zero.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub goods_in: f32,
+    /// Has a mill (v3, D56); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub mill: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 fn agrarian() -> Kind {
@@ -96,6 +103,9 @@ pub struct Snapshot {
     /// Resource sites (v2); left out of the bytes with goods off.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sites: Vec<SiteView>,
+    /// Cells the model has bridged (v3, D55), ascending; left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bridges: Vec<u32>,
 }
 
 impl Snapshot {
@@ -123,6 +133,7 @@ impl Snapshot {
                 pop_50_ago: s.history.first().copied().unwrap_or(s.pop),
                 kind: s.kind,
                 goods_in: s.goods_in,
+                mill: s.mill,
             })
             .collect();
         let flows = state
@@ -177,6 +188,10 @@ impl Snapshot {
             } else {
                 Vec::new()
             },
+            bridges: (0..state.bridge.len())
+                .filter(|&i| state.bridge[i])
+                .map(|i| i as u32)
+                .collect(),
         }
     }
 

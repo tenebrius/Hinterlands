@@ -6,7 +6,10 @@
 //! whose trade load this step is below `road_keep_load` loses `road_decay`,
 //! and a cell below 0.1 stops being road (Dalgaard et al. 2022: Roman roads
 //! persisted where traffic kept them in use). Initial roads start at 1.
-//! Writes: road, road_q, road_edges, cost.
+//! With `traffic_bridges` (D55) a road cell on a river or stream, not a ford,
+//! that carries `bridge_load` for `bridge_steps` road steps in a row gets a
+//! bridge, which is never removed. Writes: road, road_q, road_edges, bridge,
+//! bridge_streak, cost.
 
 use crate::params::Params;
 use crate::state::State;
@@ -64,18 +67,23 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         built += 1;
         changed = true;
     }
-    if p.traffic_roads {
-        changed |= decay(state, t, p, &raised);
+    if p.traffic_roads || p.traffic_bridges {
+        let load = cell_load(state, t);
+        if p.traffic_roads {
+            changed |= decay(state, p, &raised, &load);
+        }
+        if p.traffic_bridges {
+            changed |= bridges(state, t, p, &load);
+        }
     }
     if changed {
         state.rebuild_costs(t);
     }
 }
 
-/// Fading of little-used roads (D54). Returns whether any condition changed.
-fn decay(state: &mut State, t: &Terrain, p: &Params, raised: &[bool]) -> bool {
+/// The trade value crossing each land cell this year.
+fn cell_load(state: &State, t: &Terrain) -> Vec<f32> {
     let n = t.n() as u32;
-    // The trade value crossing each land cell this year.
     let mut load = vec![0f32; t.n()];
     for f in &state.flows {
         if f.amount <= 0.0 {
@@ -90,9 +98,14 @@ fn decay(state: &mut State, t: &Terrain, p: &Params, raised: &[bool]) -> bool {
             }
         }
     }
+    load
+}
+
+/// Fading of little-used roads (D54). Returns whether any condition changed.
+fn decay(state: &mut State, p: &Params, raised: &[bool], load: &[f32]) -> bool {
     let mut changed = false;
     let mut gone = false;
-    for c in 0..t.n() {
+    for c in 0..load.len() {
         if !state.road[c] || raised[c] || load[c] >= p.road_keep_load {
             continue;
         }
@@ -113,3 +126,23 @@ fn decay(state: &mut State, t: &Terrain, p: &Params, raised: &[bool]) -> bool {
     changed
 }
 
+
+/// Bridges at busy crossings (D55). Returns whether one was built.
+fn bridges(state: &mut State, t: &Terrain, p: &Params, load: &[f32]) -> bool {
+    let mut built = false;
+    for c in 0..t.n() {
+        if state.bridge[c] || !t.is_river(c) || t.free_crossing(c) {
+            continue;
+        }
+        if state.road[c] && load[c] >= p.bridge_load {
+            state.bridge_streak[c] = state.bridge_streak[c].saturating_add(1);
+        } else {
+            state.bridge_streak[c] = 0;
+        }
+        if u32::from(state.bridge_streak[c]) >= p.bridge_steps {
+            state.bridge[c] = true;
+            built = true;
+        }
+    }
+    built
+}

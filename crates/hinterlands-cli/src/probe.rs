@@ -308,7 +308,8 @@ fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
 
 /// Roads report (v3): at each year in `--at`, the road cells and edges, the
 /// share of land that is road, the initial road cells still road, the road
-/// condition (p10, p50), and the cells ever road and since abandoned.
+/// condition (p10, p50), the cells ever road and since abandoned, the bridges
+/// built and the share of settlements with a mill.
 pub fn cmd_roads(args: &Args) {
     let mut sim = make_sim(args);
     let at: Vec<u32> = args
@@ -349,13 +350,16 @@ pub fn cmd_roads(args: &Args) {
             .filter(|&i| t.initial_road.get(i) == Some(&true) && st.road[i])
             .count();
         println!(
-            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {}",
+            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {} bridges {} mill_share {:.2}",
             cells as f32 / land as f32,
             st.road_edges.len(),
             q(0.1),
             q(0.5),
             ever.iter().filter(|&&e| e).count(),
-            (0..t.n()).filter(|&i| ever[i] && !st.road[i]).count()
+            (0..t.n()).filter(|&i| ever[i] && !st.road[i]).count(),
+            st.bridge.iter().filter(|&&b| b).count(),
+            st.settlements.iter().filter(|s| s.mill).count() as f32
+                / st.settlements.len().max(1) as f32
         );
     }
 }

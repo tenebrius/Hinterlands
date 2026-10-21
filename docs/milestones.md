@@ -243,3 +243,31 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - Settlements per seed: 445 (v2.1: 238).
   - Road length change 300→500: 13.6% (reported).
   - Details: `docs/real-terrain-experiments.md`.
+
+## v3 — Landscape: roads follow traffic, bridges, mills (D54–D56; v3(a) dropped, D53)
+- **Mechanisms, all on by default:**
+  - `traffic_roads` (D54): a road's condition fades where trade falls.
+  - `traffic_bridges` (D55): a busy road crossing gets a permanent bridge.
+  - `mills` (D56): a stream among a settlement's fields gives +3% yield.
+- **Values:** `road_keep_load` 800, `road_decay` 0.05, `bridge_load` 1,600, `bridge_steps` 3, `mill_area` 20 km², `mill_bonus` 0.03. No model value was re-tuned.
+- **`just validate`, 20 seeds a map: PASSED.**
+  - Settlements: median 308 / 313 / 309.
+  - Over 2,000: 7 / 7 / 7.
+  - Rank-size slope: −1.18 / −1.18 / −1.18.
+  - Market spacing: 9.5 / 11.0 / 11.7 km (15/20, 19/20, 20/20).
+  - Failure rate: 0.48 / 0.49 / 0.47.
+  - Largest share on map 3: 0.22 (19/20).
+  - Runs passing every check: 15 / 19 / 19.
+  - Road length change 300→500: 3.1% / 4.0% / 2.8% (20/20 on every map).
+- **Reported:**
+  - Road cells abandoned: 0.41 / 0.41 / 0.41.
+  - Bridges per run: 14 / 17 / 15.
+  - Places of 1,000 or more within 2 km of a bridge: 0.11 / 0.25 / 0.44, against 0.01–0.02 of all settlements.
+  - Settlements with a mill: 0.41 / 0.41 / 0.38.
+- **Determinism:**
+  - golden `171ec4461a912a1d`;
+  - the release wasm build gives the same hash (`?selftest=500`, 23.7 ms/year);
+  - `data/real/experiments/v3b.json` gives v3(b)'s `0b590b3b017b63d0`;
+  - the v1, v1.2, v2 and v2.1 files reproduce their hashes.
+- **Viewer:** bridges and mills come from the model. Screenshot: `docs/screenshots/v3-year450.png`.
+- **Kent regression:** to follow.

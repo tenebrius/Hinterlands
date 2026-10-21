@@ -287,3 +287,19 @@ Kind: designer decision (scope); no change to the defaults.
 - **Reproducibility.** The earlier experiment files pin `traffic_roads` off. `data/real/experiments/v21.json` reproduces v2.1's `f67bf8565c500fda`.
 Golden hash: `0b590b3b017b63d0`, native and in the browser.
 Kind: model mechanism (designer's specification), on by default.
+
+## D55 — v3(c): bridges at busy crossings (designer's specification)
+- With `traffic_bridges` (on), at each road step a road cell on a river or stream, not already a ford or an input bridge, counts the road steps in a row on which its trade load reached `bridge_load` (1,600 = 2 × `road_keep_load`). The load is the same per-cell trade value as D54's. At `bridge_steps` (3) it becomes a bridge.
+- A bridge is crossed at no cost, through the free-crossing rule of D33. It is never removed, even if its road fades.
+- Model bridges are state (`bridge`, `bridge_streak`) and go to the cost grid with the road condition. The snapshot lists them (`bridges`).
+- **Viewer.** It draws a road crossing as a bridge where the model has built one or the map has one (D33), and as a ford at a ford. The view's own traffic rule is gone.
+- **Validation,** with mills (D56), 20 seeds a map: PASSED (see the v3 milestone). Bridges per run: median 14 / 17 / 15. Places of 1,000 or more within 2 km of a bridge: 0.11 / 0.25 / 0.44, against 0.01 / 0.02 / 0.02 of all settlements.
+Kind: model mechanism (designer's specification), on by default.
+
+## D56 — v3(d): mills (designer's specification)
+- With `mills` (on), cultivation gives a settlement a mill when one of its fields is a stream or river cell with drainage of at least `mill_area` (20 km²). Drainage is `flux × cell_km²`.
+- A mill raises the settlement's food produce by `mill_bonus` (3%). The cells it claims are chosen on the produce without the bonus, as before.
+- The snapshot carries each settlement's `mill`, left out of the bytes when false. The viewer draws the model's mill, on the nearest stream or river beside the settlement.
+- **Note.** On the generated maps (1 km cells), a stream needs a flux of at least `stream_area` (60 cells, 60 km²), so `mill_area` at 20 km² never binds: every stream field gives a mill. It would bind on finer grids or with a higher threshold.
+- Share of settlements with a mill: 0.41 / 0.41 / 0.38.
+Kind: model mechanism (designer's specification), on by default.
