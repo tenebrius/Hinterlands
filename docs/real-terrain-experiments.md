@@ -148,3 +148,59 @@ Settlements by size band, share inland (land is 72% inland):
 **The founding correction did not spread villages inland on Kent.** New hamlets are still two-thirds on river or coast sites.
 
 **Why: the water filter, not the score.** A founding site must have a stream, a river or the coast within 1 km (`water_radius_km`). Streams begin at 60 km² of drainage (`stream_area`), so on a 1 km grid only about 760 of Kent's 11,500 land cells carry a stream or river. Most of the Weald and the Downs is never a candidate, whatever its score. Real villages used springs, wells and small brooks well below 60 km² of drainage. On Kent's uniform soil, the food term also has little to work with, as the designer anticipated.
+
+## Water supply at brook scale, one re-tune of A + B (designer-approved round)
+
+**Change (D29, switch `spring_water`).** The water filter for founding (and for the starting hamlets) becomes a looser filter plus a score term. A site is allowed if a brook, meaning a cell with at least `brook_area` = 5 km² of drainage, or the sea lies within `supply_radius_km` = 3 km. Water then enters the score as `w_water_cell` for a brook or river in the cell, and `w_water_near` for one, or the sea, within 1 km. No wells layer. Transport stays out of founding (D28). One re-tune on the generated maps (56 settings × 3 maps × 3 seeds); best: w_water_cell 1.14, w_water_near 0.43, w_food 1.10, noise 0.31, threshold 0.33, shadow weight 4.35, K 3.50, α 1.095, β 0.142, ε 0.145, transship margin 0.24, handling margin 0.046. Parameters: `data/real/experiments/market-handling-founding-brooks.json`.
+
+**Land eligible for founding:**
+
+| Map | v1 rule (any stream ≥ 60 km², river or sea within 1 km) | Brook rule (brook ≥ 5 km² or sea within 3 km) |
+| --- | ---: | ---: |
+| Kent | 22% | 100% |
+| Generated map 1 / 2 / 3 | 26% / 27% / 26% | 100% / 100% / 100% |
+
+On 1 km cells, almost every cell has a cell with 5 km² of drainage within 3 km, so the brook rule excludes nothing: not ridge tops, and not plateaus. In practice the filter is gone and water acts only through the score term. If the designer wants dry ground kept out, the radius or threshold has to tighten. With 1 km cells the 1 km adjacency bonus is the effective rule.
+
+### Validation on the generated maps (20 seeds per map): FAILED, on the river-corridor check only
+
+| Check | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Settlements | 20/20 | 20/20 | 20/20 |
+| Over 2,000 | 16/20 | 18/20 | 19/20 |
+| Over 5,000 (median) | 19/20 (2) | 20/20 (2) | 20/20 (2) |
+| Largest share | 20/20 | 20/20 | 20/20 |
+| Rank-size slope | 19/20 | 15/20 | 20/20 |
+| Market spacing | 15/20 | 18/20 | 17/20 |
+| Siting, failure, forest, stability | pass | pass | pass |
+| River-corridor city over 5,000 (≥ 0.80; fallback 0.60) | **0.35** | **0.40** | **0.45** |
+| Runs passing every check | 7/20 | 13/20 | 14/20 |
+
+Every per-seed check passes on every map. The middle tier is back: 198 / 217 / 197 settlements, about 10 over 2,000 and 2 over 5,000. The river-corridor aggregate falls further, to 0.35–0.45, below the 0.6 fallback too. Villages and towns now fill the land between the rivers, and one of the two cities over 5,000 lands off the main river corridor in more than half the seeds.
+
+Performance: founding now scores every land cell, so a year takes 30 ms native, against 18 in v1. This needs optimising before it becomes the default.
+
+### Kent (20 seeds)
+
+| Run | AUC vs lowland: all / ≥1,000 / <1,000 | Inland towns found | Model places: river / coast / inland | Spearman | Inland places >500: spacing, count | Largest city near (seeds) | Largest share |
+| --- | --- | ---: | --- | ---: | --- | --- | ---: |
+| v1 | 0.48 / 0.54 / 0.44 | 29% | 49% / 13% / 38% | 0.08 | 10.1 km, 16 | estuary mouths | 0.21 |
+| A + B | 0.49 / 0.61 / 0.42 | 27% | 54% / – / – | 0.15 | 10.3 km, 11 | Gravesend 15 | 0.28 |
+| A + B + founding | 0.47 / 0.56 / 0.42 | 28% | 42% / 22% / 36% | 0.15 | 10.4 km, 12 | Gravesend 12 | 0.26 |
+| A + B + founding + brooks | 0.43 / 0.55 / 0.36 | 29% | 31% / 14% / 55% | 0.16 | 9.3 km, 20 | Faversham 7, Gravesend 7 | 0.24 |
+| Real | | | 26% / 9% / 66% | | 10.6 km, 29 | London | ≈0.3 |
+
+Settlements by size band, share inland (land is 72% inland):
+
+| Run | Under 100 | 100–500 | 500–2,000 | 2,000+ |
+| --- | --- | --- | --- | --- |
+| v1 | 58 per seed, 28% inland | 72, 34% | 37, 38% | 5, 6% |
+| A + B + founding | 87, 33% | 44, 37% | 30, 36% | 7, 23% |
+| A + B + founding + brooks | 118, 70% | 77, 61% | 32, 52% | 9, 52% |
+
+**What this round shows.** The brook rule does what it was meant to do for the pattern:
+- villages now cover the land in proportion to it;
+- the site mix of the model's top places (55% inland) is close to the real one (66%);
+- inland places over 500 rise from 12 to 20 per seed, at 9.3 km spacing against the real 10.6.
+
+The model still does not find the *right* inland places: inland towns are found 29% of the time, and the small-town AUC against lowland falls to 0.36. Its inland towns sit on higher ground than the real ones, which lie in the valleys. On Kent the founding score has nothing that prefers a valley floor: soil is uniform, and yield varies only with slope. The real Kent's valley loams, Weald clay and chalk downland differ a great deal. The soil map the designer deferred is now the input this test needs.
