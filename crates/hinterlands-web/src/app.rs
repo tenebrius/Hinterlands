@@ -120,7 +120,7 @@ impl App {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
             // `&shadow=1` turns on the shadow market (v6 S0), `&goods=0` the
             // shopping model instead of goods by the equilibrium (S1), and
-            // `&harvests=1` local harvests (W1), to time them.
+            // `&harvests=1` local harvests (W1), to time them; `&relief=1` below.
             let mut params = Params::default();
             params.market_shadow = url_param("shadow") == Some(1);
             if let Some(g) = url_param("goods") {
@@ -129,30 +129,27 @@ impl App {
             if url_param("harvests") == Some(1) {
                 params.local_harvests = true;
             }
+            // `&relief=1`: grain relief (S2′) with its tuned shadow drain.
+            if url_param("relief") == Some(1) {
+                params.grain_relief = true;
+                params.shadow_drain = 0.025;
+            }
             let mut probe = SimHandle::new(1, 1, params);
             let start = web_time_now();
             probe.step(years);
             let ms = (web_time_now() - start) / years.max(1) as f64;
             let line = format!(
                 "selftest map 1 seed 1 years {years}{} hash {:016x} {ms:.1} ms/year",
-                format!(
-                    "{}{}{}",
-                    if url_param("shadow") == Some(1) {
-                        " shadow"
-                    } else {
-                        ""
-                    },
-                    if url_param("goods") == Some(0) {
-                        " shopping"
-                    } else {
-                        ""
-                    },
-                    if url_param("harvests") == Some(1) {
-                        " harvests"
-                    } else {
-                        ""
-                    }
-                ),
+                [
+                    ("shadow", 1, " shadow"),
+                    ("goods", 0, " shopping"),
+                    ("harvests", 1, " harvests"),
+                    ("relief", 1, " relief"),
+                ]
+                .iter()
+                .filter(|(k, v, _)| url_param(k) == Some(*v))
+                .map(|(_, _, tag)| *tag)
+                .collect::<String>(),
                 probe.snapshot().hash()
             );
             log::warn!("{line}");

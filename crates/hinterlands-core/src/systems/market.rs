@@ -603,6 +603,7 @@ pub fn goods_trade(
             good,
             payment: false,
             import: b.g == 4,
+            relief: false,
         });
         // Under S2 payment is in value and travels no path (D78).
         if !p.market_grain {
@@ -615,6 +616,7 @@ pub fn goods_trade(
                 good: None,
                 payment: true,
                 import: false,
+                relief: false,
             });
         }
         if b.from >= m {

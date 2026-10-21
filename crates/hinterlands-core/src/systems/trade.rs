@@ -170,6 +170,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 good: None,
                 payment: false,
                 import: false,
+                relief: false,
             });
         }
     }
@@ -275,6 +276,103 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         }
     }
     state.flows = flows;
+    if p.grain_relief {
+        relief(state, p, &idx_of);
+    } else {
+        state.relief_stats = [0.0; 4];
+    }
+}
+
+/// Grain relief (S2′, D80). After trade, each place's food is
+/// `A = food_prod + food_in − food_out`. What a place holds above
+/// `food_cap × need` is surplus, otherwise lost; what it lacks below need is
+/// its deficit. Each place in deficit draws its deficit from the surplus
+/// holders among its partners in proportion to `S_j exp(−β c)`, shopping-model
+/// style; orders beyond a holder's surplus are scaled down in one pass, and
+/// what is not met stays unmet. It arrives less the transport loss. Nobody
+/// pays. Relief counts in the food accounts but not in `market_in`, and its
+/// flows load the routes but earn no handling. Writes food_in, food_out,
+/// flows (relief) and relief_stats.
+fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
+    let m = state.settlements.len();
+    let held: Vec<f32> = state
+        .settlements
+        .iter()
+        .map(|s| s.food_prod + s.food_in - s.food_out)
+        .collect();
+    let need: Vec<f32> = state.settlements.iter().map(|s| s.need(p)).collect();
+    let surplus: Vec<f32> = (0..m)
+        .map(|i| (held[i] - p.food_cap * need[i]).max(0.0))
+        .collect();
+    // Orders: (receiver, holder, quantity, cost, receiver's partner index).
+    let mut orders: Vec<(usize, usize, f32, f32, u32)> = Vec::new();
+    let mut ordered = vec![0f32; m];
+    let mut deficit = 0f32;
+    let mut ws: Vec<(usize, f32, f32, u32)> = Vec::new();
+    for k in 0..m {
+        let d = (need[k] - held[k]).max(0.0);
+        if d <= 0.0 {
+            continue;
+        }
+        deficit += d;
+        ws.clear();
+        let mut total = 0f32;
+        for (pi, q) in state.settlements[k].reach.partners.iter().enumerate() {
+            let Some(&j) = idx_of.get(q.id as usize) else {
+                continue;
+            };
+            if j == u32::MAX || surplus[j as usize] <= 0.0 {
+                continue;
+            }
+            let w = surplus[j as usize] * libm::expf(-p.beta * q.cost);
+            total += w;
+            ws.push((j as usize, w, q.cost, pi as u32));
+        }
+        if total <= 0.0 {
+            continue;
+        }
+        for &(j, w, c, pi) in &ws {
+            let q = d * w / total;
+            ordered[j] += q;
+            orders.push((k, j, q, c, pi));
+        }
+    }
+    let scale: Vec<f32> = (0..m)
+        .map(|j| {
+            if ordered[j] > surplus[j] {
+                surplus[j] / ordered[j]
+            } else {
+                1.0
+            }
+        })
+        .collect();
+    let (mut sent_all, mut arrived_all) = (0f32, 0f32);
+    let mut sent_by = vec![0f32; m];
+    for &(k, j, q, c, pi) in &orders {
+        let sent = q * scale[j];
+        if sent <= 0.0 {
+            continue;
+        }
+        let arrived = sent * (1.0 - p.transport_loss * c).max(0.0);
+        sent_by[j] += sent;
+        sent_all += sent;
+        arrived_all += arrived;
+        state.settlements[j].food_out += sent;
+        state.settlements[k].food_in += arrived;
+        state.flows.push(Flow {
+            from: state.settlements[k].id,
+            to: state.settlements[j].id,
+            amount: sent,
+            food: sent,
+            partner_idx: pi,
+            good: None,
+            payment: false,
+            import: false,
+            relief: true,
+        });
+    }
+    let lost: f32 = (0..m).map(|j| surplus[j] - sent_by[j]).sum();
+    state.relief_stats = [deficit, sent_all, arrived_all, lost];
 }
 
 /// Value of one unit of a good in grain.
@@ -462,6 +560,7 @@ fn goods(
             good: Some(good),
             payment: false,
             import: false,
+            relief: false,
         });
         let pay = worth * scale[i];
         if pay <= 0.0 {
@@ -483,6 +582,7 @@ fn goods(
             good: None,
             payment: true,
             import: false,
+            relief: false,
         });
     }
     for (site, s) in state.sites.iter_mut().zip(sold) {
@@ -560,6 +660,7 @@ fn outside(
                 good: None,
                 payment: false,
                 import: true,
+                relief: false,
             });
             flows.push(Flow {
                 from: s.id,
@@ -570,6 +671,7 @@ fn outside(
                 good: None,
                 payment: true,
                 import: false,
+                relief: false,
             });
         }
         paid[i] += want;
@@ -616,6 +718,7 @@ fn outside(
                 good: None,
                 payment: false,
                 import: false,
+                relief: false,
             });
             // Paid in imports, which come back the same way.
             flows.push(Flow {
@@ -627,6 +730,7 @@ fn outside(
                 good: None,
                 payment: false,
                 import: true,
+                relief: false,
             });
             sold[i] += q;
             food_out[i] += q;

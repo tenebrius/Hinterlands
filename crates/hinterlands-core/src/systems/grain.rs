@@ -489,6 +489,7 @@ pub fn trade(
                 good: None,
                 payment: false,
                 import: false,
+                relief: false,
             });
         }
     }

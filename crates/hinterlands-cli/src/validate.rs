@@ -45,6 +45,10 @@ pub struct RunResult {
     /// v5 (D64): grain bought by the outside ports plus imports sold, as a
     /// share of all gross market inflow, the last year; NaN with ports off.
     pub outside_share: f32,
+    /// S2′ (D80): relief arrived per year, the share of deficit met outside
+    /// and in the famine (1315–17), and surplus lost above `food_cap` per
+    /// year; `None` with relief off.
+    pub relief: Option<[f32; 4]>,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
     /// year 300 (1400), the mean absolute rank change to year 500 and how many
@@ -346,6 +350,9 @@ pub fn run_one(
         v.iter().map(|s| s.id).collect()
     };
     let mut coastal = (f32::NAN, f32::NAN);
+    // Relief: deficit and arrived outside the famine, then in it, then all
+    // arrived and all lost.
+    let mut relief_acc = [0f32; 6];
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -361,6 +368,17 @@ pub fn run_one(
             quartile = yield_quarters(&sim);
         }
         sim.step(1);
+        if params.grain_relief {
+            let [d, _, a, l] = sim.state.relief_stats;
+            let y = sim.state.year - 1;
+            let famine =
+                (params.famine_year..params.famine_year + params.famine_years).contains(&y);
+            let k = if famine { 2 } else { 0 };
+            relief_acc[k] += d;
+            relief_acc[k + 1] += a;
+            relief_acc[4] += a;
+            relief_acc[5] += l;
+        }
         if shocks {
             totals.push(sim.state.total_pop());
             let y = sim.state.year;
@@ -446,7 +464,17 @@ pub fn run_one(
     let mut pops: Vec<f32> = snap.settlements.iter().map(|s| s.pop).collect();
     pops.sort_by(|a, b| a.total_cmp(b));
     let median_pop = pops.get(pops.len() / 2).copied().unwrap_or(0.0);
+    let ratio = |a: f32, d: f32| if d > 0.0 { a / d } else { f32::NAN };
+    let relief = params.grain_relief.then(|| {
+        [
+            relief_acc[4] / years.max(1) as f32,
+            ratio(relief_acc[1], relief_acc[0]),
+            ratio(relief_acc[3], relief_acc[2]),
+            relief_acc[5] / years.max(1) as f32,
+        ]
+    });
     RunResult {
+        relief,
         map_seed,
         sim_seed,
         m,
@@ -915,6 +943,24 @@ pub fn cmd_validate(args: &Args) {
                 med(rs.iter().map(|r| r.coastal.1).collect()),
                 med(rs.iter().map(|r| r.top10_churn.0).collect()),
                 med(rs.iter().map(|r| r.top10_churn.1 as f32).collect())
+            );
+        }
+        if rs.iter().any(|r| r.relief.is_some()) {
+            let at = |k: usize| {
+                med(rs
+                    .iter()
+                    .filter_map(|r| r.relief.map(|v| v[k]))
+                    .filter(|x| x.is_finite())
+                    .collect())
+            };
+            println!(
+                "{:<20} {:>12} relief arrived per year {:.0}; deficit met: normal years {:.2}, 1315-17 {:.2}; surplus lost above food_cap per year {:.0}",
+                "S2' relief",
+                "(reported)",
+                at(0),
+                at(1),
+                at(2),
+                at(3)
             );
         }
         if rs.iter().any(|r| r.bridges > 0) {

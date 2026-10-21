@@ -296,6 +296,10 @@ pub struct Flow {
     pub payment: bool,
     /// Imports from an outside port (v5, D64), carried on the buyer's path.
     pub import: bool,
+    /// Grain relief (S2′, D80): surplus drawn by a place in deficit, carried
+    /// on the receiver's path; `from` is the receiver.
+    #[serde(default)]
+    pub relief: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -405,6 +409,10 @@ pub struct State {
     pub port_grain: Vec<f32>,
     #[serde(default)]
     pub grain_stats: GrainStats,
+    /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
+    /// relief arrived, and surplus left above `food_cap × need` (lost).
+    #[serde(default)]
+    pub relief_stats: [f32; 4],
     /// The shadow solve's grain arcs, as `market_arcs` (D77).
     #[serde(default)]
     pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
@@ -575,6 +583,7 @@ impl State {
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
+            relief_stats: [0.0; 4],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],

@@ -238,6 +238,7 @@ define_params! {
     }
     "Market" => {
         market_goods: bool = true, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
+        grain_relief: bool = false, [0, 1], "After trade, places in deficit draw on surplus above food_cap that would otherwise be lost, unpaid (v6 S2', D80)";
         market_grain: bool = false, [0, 1], "Grain trades by the price equilibrium, paid from budgets of sales, rents, fees and goods (v6 S2, D78)";
         grain_premium: bool = true, [0, 1], "Under market_grain, market size W^alpha is a premium on the buyer side (decision 4; off is option 1, W as demand only)";
         rent_share: f32 = 0.48655713, [0, 0.9], "Under market_grain, share of each place's grain sales paid as rent and tithe to markets, in value (D77)";

@@ -90,6 +90,9 @@ pub struct FlowView {
     /// Imports from an outside port (v5); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub import: bool,
+    /// Grain relief (S2′, D80); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub relief: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -169,6 +172,7 @@ impl Snapshot {
                     good: f.good,
                     payment: f.payment,
                     import: f.import,
+                    relief: f.relief,
                 })
             })
             .collect();

@@ -589,3 +589,16 @@ Kind: model mechanism behind a switch; stopped.
 - **Clark:** R² 0.25–0.37 (fails); `b_P` 1.10–1.18; `b_Y` mostly positive.
 - **State.** `market_grain` stays off, and the golden is unchanged. Stopped.
 Kind: model mechanism (designer decision); stopped.
+
+## D80 — S2 stopped (designer); S2′ grain relief built and gated
+- **The designer's decision.** S2 is stopped by the proposal's stop rule. `market_grain` stays off, with its code kept as the record. S1 stays the default, and Clark is reported on shadow prices only.
+- **S2′, grain relief** (`grain_relief`, off). After trade, places in deficit draw their deficit, unpaid and shopping-model style, on what partners hold above `food_cap × need`. Relief counts as food but not as market inflow, and loads routes without handling.
+- **Gate: PASSED** with `shadow_drain` 0.025 (from 0.015). With the defaults, map 1 spacing was 14/20.
+  - Wasm 30.9 ms/year, with the same hash natively and in the browser (`f5b32f88ee3fc22f`).
+- **Reported:**
+  - relief of 1,500–2,000 a year;
+  - 86–88% of deficit met in normal years, but 6–8% in 1315–17, so the famine dip is unchanged at 0.24–0.25;
+  - failure rate 0.47–0.48 (S1 0.46–0.48);
+  - 5,300–5,800 a year still lost above `food_cap`.
+- **Details:** `docs/market/relief.md`.
+Kind: model mechanism behind a switch (designer decision).
