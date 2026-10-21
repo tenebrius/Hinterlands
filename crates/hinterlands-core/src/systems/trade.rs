@@ -2,13 +2,17 @@
 //! Rihll–Wilson form: each settlement sends a fixed marketed share of its harvest,
 //! plus its resource output, to markets in proportion to
 //! `W_j^alpha * exp(-beta * c_ij)`, where `W_j` is the non-farming population, its own market included with weight `home_weight` (D13).
+//! With `outside_enabled` (D25) the outside world is one more partner, of fixed
+//! size `outside_size` and its own decay `outside_beta`: it buys marketed produce,
+//! which leaves the map, and sends `outside_out` of goods to the settlements in
+//! proportion to their pull, along the same paths.
 //! Food arrives less a loss per unit cost. Flows are assigned to the stored
 //! least-cost paths, giving the load on each cell and the route junctions (hubs).
-//! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through.
+//! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in.
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
-use crate::state::{Flow, State};
+use crate::state::{Flow, State, OUTSIDE};
 use crate::terrain::Terrain;
 use crate::Rng;
 
@@ -23,6 +27,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.food_in = 0.0;
         s.food_out = 0.0;
         s.through = 0.0;
+        s.market_in = 0.0;
     }
     state.flows.clear();
     state.cell_load.iter_mut().for_each(|x| *x = 0.0);
@@ -46,12 +51,22 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let mut trade_in = vec![0f32; m];
     let mut food_in = vec![0f32; m];
     let mut food_out = vec![0f32; m];
+    let mut market_in = vec![0f32; m];
     let mut flows = Vec::new();
-    // (destination index, partner index, weight, cost)
+    // (destination index, partner index, weight, cost); usize::MAX is the outside.
     let mut weights: Vec<(usize, u32, f32, f32)> = Vec::new();
+    let outside_pull = libm::powf(p.outside_size, p.alpha);
+    // Imports from the outside: (settlement index, partner index, weight).
+    let mut imports: Vec<(usize, u32, f32)> = Vec::new();
 
     for i in 0..m {
         let s = &state.settlements[i];
+        if p.outside_enabled {
+            if let Some(k) = s.reach.partners.iter().position(|q| q.id == OUTSIDE) {
+                let c = s.reach.partners[k].cost;
+                imports.push((i, k as u32, attract[i] * libm::expf(-p.outside_beta * c)));
+            }
+        }
         let food = s.food_prod * p.market_share;
         let out = food + s.resource_out;
         if out <= 0.0 {
@@ -61,6 +76,14 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         // A home-market weight keeps grain at home when markets are far or small.
         let mut total = attract[i] * p.home_weight;
         for (k, partner) in s.reach.partners.iter().enumerate() {
+            if partner.id == OUTSIDE {
+                if p.outside_enabled {
+                    let w = outside_pull * libm::expf(-p.outside_beta * partner.cost);
+                    total += w;
+                    weights.push((usize::MAX, k as u32, w, partner.cost));
+                }
+                continue;
+            }
             let Some(&j) = idx_of.get(partner.id as usize) else {
                 continue;
             };
@@ -74,19 +97,51 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if total <= 0.0 {
             continue;
         }
+        // Produce sold at the home market counts towards that market's turnover.
+        market_in[i] += food * attract[i] * p.home_weight / total;
         for &(j, k, w, c) in &weights {
             let share = w / total;
             let amount = out * share;
             let sent = food * share;
+            if j == usize::MAX {
+                // Sold off the map.
+                food_out[i] += sent;
+                flows.push(Flow {
+                    from: s.id,
+                    to: OUTSIDE,
+                    amount,
+                    food: sent,
+                    partner_idx: k,
+                });
+                continue;
+            }
             let delivered = sent * (1.0 - p.transport_loss * c).max(0.0);
             trade_in[j] += amount - sent;
             food_out[i] += sent;
             food_in[j] += delivered;
+            market_in[j] += delivered;
             flows.push(Flow {
                 from: s.id,
                 to: state.settlements[j].id,
                 amount,
                 food: sent,
+                partner_idx: k,
+            });
+        }
+    }
+
+    // Goods from the outside, shared by pull and closeness; recorded on the
+    // importer's own path to the sea edge.
+    let total_import: f32 = imports.iter().map(|x| x.2).sum();
+    if total_import > 0.0 {
+        for &(i, k, w) in &imports {
+            let amount = p.outside_out * w / total_import;
+            trade_in[i] += amount;
+            flows.push(Flow {
+                from: state.settlements[i].id,
+                to: OUTSIDE,
+                amount,
+                food: 0.0,
                 partner_idx: k,
             });
         }
@@ -117,6 +172,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.trade_in = trade_in[i];
         s.food_in = food_in[i];
         s.food_out = food_out[i];
+        s.market_in = market_in[i];
         s.through = state.cell_load[s.anchor as usize];
     }
     state.flows = flows;

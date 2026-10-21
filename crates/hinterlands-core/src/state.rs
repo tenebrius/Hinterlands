@@ -8,6 +8,8 @@ use crate::terrain::Terrain;
 use serde::{Deserialize, Serialize};
 
 pub const NONE: u32 = u32::MAX;
+/// Partner id of the outside world (D25).
+pub const OUTSIDE: u32 = u32::MAX - 1;
 /// Quantisation of stored travel costs: hundredths of a km-equivalent.
 pub const COST_SCALE: f32 = 100.0;
 pub const COST_UNREACHED: u16 = u16::MAX;
@@ -108,6 +110,9 @@ pub struct Settlement {
     pub food_out: f32,
     pub trade_in: f32,
     pub through: f32,
+    /// Gross market inflow: food delivered to this market plus the share of its
+    /// own harvest sold at home (Rihll–Wilson's D_j).
+    pub market_in: f32,
     pub food_ratio: f32,
     /// Population over the last 51 years, oldest first.
     pub history: Vec<f32>,
@@ -134,6 +139,7 @@ impl Settlement {
             food_out: 0.0,
             trade_in: 0.0,
             through: 0.0,
+            market_in: 0.0,
             food_ratio: 1.0,
             history: Vec::new(),
             reach: Reach::default(),
@@ -231,8 +237,33 @@ pub struct State {
     pub tally: Tally,
     /// Event queue applied at the start of each year; empty in v1.
     pub events: Vec<Event>,
+    /// Water-layer graph node of the outside world: the map-edge sea cell
+    /// nearest the main river mouth (D25). Used only when `outside_enabled`.
+    #[serde(default)]
+    pub outside: Option<u32>,
     #[serde(skip)]
     pub scratch: Dijkstra,
+}
+
+/// The map-edge sea cell nearest the main river mouth (or the map centre),
+/// as a water-layer node.
+fn outside_node(t: &Terrain) -> Option<u32> {
+    let g = t.grid;
+    let (mx, my) = match t.river_mouth {
+        Some(m) => g.xy(m as usize),
+        None => (g.w as i32 / 2, g.h as i32 / 2),
+    };
+    (0..t.n())
+        .filter(|&i| {
+            let (x, y) = g.xy(i);
+            let edge = x == 0 || y == 0 || x as u32 == g.w - 1 || y as u32 == g.h - 1;
+            edge && t.is_sea(i)
+        })
+        .min_by_key(|&i| {
+            let (x, y) = g.xy(i);
+            ((x - mx).pow(2) + (y - my).pow(2), i)
+        })
+        .map(|i| (t.n() + i) as u32)
 }
 
 impl State {
@@ -262,6 +293,7 @@ impl State {
             log: Vec::new(),
             tally: Tally::default(),
             events: Vec::new(),
+            outside: outside_node(t),
             scratch: Dijkstra::new(n),
         }
     }

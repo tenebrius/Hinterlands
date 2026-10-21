@@ -2,7 +2,7 @@
 //! cultivation and fuel orders, and the stored paths to trading partners.
 
 use crate::params::Params;
-use crate::state::{Partner, Reach, State, COST_SCALE, COST_UNREACHED};
+use crate::state::{Partner, Reach, State, COST_SCALE, COST_UNREACHED, OUTSIDE};
 use crate::terrain::Terrain;
 
 /// Recompute every settlement's reach.
@@ -58,6 +58,17 @@ pub fn refresh_one(state: &mut State, t: &Terrain, p: &Params, idx: usize) {
                 id: other.id,
                 cost: c,
                 path: dj.path_to(other.anchor),
+            });
+        }
+    }
+
+    if let Some(node) = state.outside.filter(|_| p.outside_enabled) {
+        let c = dj.dist[node as usize];
+        if c <= p.c_max {
+            reach.partners.push(Partner {
+                id: OUTSIDE,
+                cost: c,
+                path: dj.path_to(node),
             });
         }
     }

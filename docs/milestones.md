@@ -124,3 +124,9 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - Robust to a 10 km edge exclusion and to `nav_area` 800 km² (AUC 0.56 / 0.65 / 0.51).
 - Generated maps unchanged: golden `afd6c175b193443b`.
 - Report: `docs/real-terrain.md`. Reproduce with `just real`.
+
+## Real-terrain experiments (after v1)
+
+- Exp 2, `gross_inflow` (D24): lowland AUC 0.46 / 0.53 / 0.42 (v1 0.48 / 0.54 / 0.44); inland towns found 28% (29%). No effect: the attractor, not the inflow, blocks inland markets.
+- Exp 1, `outside_enabled` (D25): no London in any variant. Size 5,000 halves the region (49,000 against 95,000); size 1,000 puts a top-3 place near London in 8 of 20 seeds (5 in v1); seller-only moves the largest city to the lower Thames and Medway in 9 of 20 seeds (3 in v1).
+- Both switches default off; golden `afd6c175b193443b` unchanged. Write-up and proposals (market size as its own state; income from handling trade): `docs/real-terrain-experiments.md`.

@@ -206,6 +206,36 @@ def main():
     for lab, sel in (("All", np.ones(k, bool)), ("1,000 or more", big), ("Under 1,000", ~big)):
         md.append(f"| {lab} ({int(sel.sum())}) | {auc(cells(sel), land_f):.2f} | {auc(cells(sel), low_f):.2f} | {cells(sel).mean():.2f} | {land_f.mean():.2f} |")
     md.append("")
+    # The largest real town: does the model put its largest places there?
+    top_i = int(np.argmax(real_pop))
+    near_top = []
+    largest_at = []
+    for sxy, spop, top in sims:
+        dl = np.sqrt(((sxy - real_xy[top_i]) ** 2).sum(1))
+        within = np.where(dl <= 10)[0]
+        near_top.append(int(within.min()) + 1 if len(within) else None)
+        d0 = np.sqrt(((real_xy - sxy[0]) ** 2).sum(1))
+        largest_at.append((towns[int(d0.argmin())]["name"], float(d0.min()), float(dl[0])))
+    md.append(f"## Largest city: {towns[top_i]['name']}")
+    md.append("")
+    ranks = [r for r in near_top if r is not None]
+    md.append(
+        f"Seeds whose largest model place is within 10 km of {towns[top_i]['name']}: "
+        f"{sum(r == 1 for r in ranks)} of {len(sims)}; a top-3 place within 10 km: "
+        f"{sum(r <= 3 for r in ranks)}; any top-{k} place within 10 km: {len(ranks)}. "
+        f"Median distance from the model's largest place to {towns[top_i]['name']}: "
+        f"{np.median([x[2] for x in largest_at]):.0f} km."
+    )
+    md.append("")
+    from collections import Counter
+    near = Counter(n_ for n_, _, _ in largest_at)
+    md.append(
+        "Nearest real town to the model's largest place, by seeds: "
+        + ", ".join(f"{n_} {c}" for n_, c in near.most_common())
+        + "."
+    )
+    md.append("")
+
     cpath = os.path.join(runs, "cells.csv")
     if os.path.exists(cpath):
         cls = np.full((ny, nx), "", dtype=object)

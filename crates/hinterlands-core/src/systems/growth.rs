@@ -4,7 +4,10 @@
 //! inflow `D_j` is net food imports plus `through_weight` times non-food trade
 //! received and trade passing through. A positive term is met by migrants drawn
 //! from the town's partners, so villages grow by demography and towns by
-//! migration, and small places near big ones are drained.
+//! migration, and small places near big ones are drained. With `gross_inflow`
+//! (D24) the inflow is the gross market inflow instead of net food imports, as in
+//! the published model: a market grows on what is sold there whether or not the
+//! place itself is short of food.
 //! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history.
 
 use crate::params::Params;
@@ -46,8 +49,12 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         natural[i] = gain * s.pop - s.smoothed_loss;
 
         let urban = crate::systems::trade::urban_pop(s, p);
-        let net_food = (s.food_in - s.food_out).max(0.0);
-        let inflow = net_food + p.through_weight * (s.trade_in + s.through);
+        let market = if p.gross_inflow {
+            s.market_in
+        } else {
+            (s.food_in - s.food_out).max(0.0)
+        };
+        let inflow = market + p.through_weight * (s.trade_in + s.through);
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }

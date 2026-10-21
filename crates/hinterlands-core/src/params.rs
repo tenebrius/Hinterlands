@@ -149,6 +149,10 @@ define_params! {
         home_weight: f32 = 0.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
         market_share: f32 = 0.49, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
+        outside_enabled: bool = false, [0, 1], "An outside world off the sea edge trades with the region (D25)";
+        outside_size: f32 = 5000.0, [0, 100000], "Market size W of the outside world";
+        outside_beta: f32 = 0.05, [0.005, 0.5], "Distance decay of trade with the outside world";
+        outside_out: f32 = 2000.0, [0, 50000], "Goods the outside world sends into the region per year";
     }
     "Growth" => {
         growth_enabled: bool = true, [0, 1], "Run the growth system";
@@ -158,6 +162,7 @@ define_params! {
         epsilon: f32 = 0.3, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
         k_maint: f32 = 1.0, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
         through_weight: f32 = 0.025, [0, 2], "Weight of trade passing through and non-food trade in inflow";
+        gross_inflow: bool = false, [0, 1], "Markets grow on gross market inflow, as published Rihll-Wilson, not net food imports (D24)";
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";

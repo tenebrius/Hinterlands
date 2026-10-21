@@ -45,7 +45,7 @@ Everything drawn on screen (footprints, routes, trade traffic, labels, overlays,
 
 v1 passes when every check in [`docs/validation.md`](docs/validation.md) holds in at least 75% of 20 seeds on each of three generated maps, the aggregate checks (contingency, median count over 5,000) pass on each map, and runs are deterministic. Current results are in [`docs/milestones.md`](docs/milestones.md). Known limit: trade has one tier with one distance decay, so it gives regional markets but little long-distance transfer traffic; the largest city sits on the main river corridor or the coast rather than at the main mouth (see D20).
 
-**Real terrain.** v1 was also run unchanged on real elevation for Kent and the lower Thames and scored against the 70 towns of c.1300 (`just real`; report in [`docs/real-terrain.md`](docs/real-terrain.md)). It finds the ports and river towns but places inland market towns no better than chance, and London does not form without long-distance trade.
+**Real terrain.** v1 was also run unchanged on real elevation for Kent and the lower Thames and scored against the 70 towns of c.1300 (`just real`; report in [`docs/real-terrain.md`](docs/real-terrain.md)). It finds the ports and river towns but places inland market towns no better than chance, and London does not form without long-distance trade. Two follow-up experiments, gross market inflow and an outside world, are behind switches that default off ([`docs/real-terrain-experiments.md`](docs/real-terrain-experiments.md)).
 
 **Determinism.** A run is fixed by `(map seed, run seed, parameters)`. The same inputs give a bit-identical final snapshot natively and in the browser; `cargo test` checks the golden hash.
 

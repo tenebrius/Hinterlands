@@ -36,6 +36,12 @@ Frequency map: share of seeds with a top-K model place within 3 km of a cell. AU
 | 1,000 or more (27) | 0.63 | 0.54 | 0.25 | 0.15 |
 | Under 1,000 (43) | 0.53 | 0.44 | 0.19 | 0.15 |
 
+## Largest city: London (City)
+
+Seeds whose largest model place is within 10 km of London (City): 0 of 20; a top-3 place within 10 km: 5; any top-70 place within 10 km: 20. Median distance from the model's largest place to London (City): 70 km.
+
+Nearest real town to the model's largest place, by seeds: Maldon 7, Rochford 3, Dover 2, Colchester 2, Fordwich 1, Rayleigh 1, Dartford 1, Sandwich 1, Rochester 1, Gravesend 1.
+
 ## By site
 
 Site of the real towns and of the model's top places (within a cell of a navigable river, else of the coast, else inland).

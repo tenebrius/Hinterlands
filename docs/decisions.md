@@ -115,3 +115,11 @@ For the real-terrain test (`docs/real-terrain.md`), the DEM importer changes in 
 3. `MapParams.soil_noise` and `forest_noise` set the amplitude of the noise in soil yield and natural forest. On an imported map with no soil map they are 0 (uniform), so no invented fertile patch biases the test.
 The defaults reproduce the generated maps exactly; the golden hash is unchanged.
 Kind: map import.
+
+## D24 — Experiment: markets grow on gross inflow (switch, default off)
+`gross_inflow` makes the Rihll–Wilson growth term use the gross market inflow (food delivered to a market plus the share of its own harvest sold there) instead of net food imports, as in the published model. On Kent it changed nothing (lowland AUC 0.46 / 0.53 / 0.42, against 0.48 / 0.54 / 0.44 for v1): inland places receive almost no market inflow because the attraction is the derived non-farming population, which stays near zero wherever there is free land. Kept as a switch; the proposed follow-up (market size as its own state) is in `docs/real-terrain-experiments.md`.
+Kind: experiment behind a switch; flagged shape change if adopted.
+
+## D25 — Experiment: the outside world (switch, default off)
+As allowed by D20: `outside_enabled` adds one virtual partner on the map-edge sea cell nearest the main river mouth, with fixed size `outside_size`, its own decay `outside_beta` and the usual trade range. It buys marketed produce, which leaves the map, and sends `outside_out` of goods into the region by pull and closeness; both load the routes. On Kent no variant formed London: as a strong buyer it halves the region's population, and as a seller its goods count only at `through_weight` in growth. Numbers in `docs/real-terrain-experiments.md`.
+Kind: experiment behind a switch (a Later item, v5, tried early with approval).
