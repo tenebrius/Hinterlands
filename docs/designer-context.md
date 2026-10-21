@@ -66,8 +66,14 @@ The implementer's reports are careful and honest; they include negative results 
 
 Plain, specific, no cheerleading. Short replies to short questions. Decisions stated as decisions, with the reason in one or two sentences. Credit the implementer's findings explicitly, and own the designer's mistakes the same way.
 
+## Sessions
+
+Messages go by the channel rules in `CLAUDE.md`.
+- Designer: `session_01FV7PafZcE8MXsZnCyjBuYd`
+- Implementer: `session_014BA7MX2NmHLKnGyB3DXHv5`
+
 ## Keeping this file current
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — after D32 (Roman roads test failed); Roman bridges test pre-registered; foundation corrected against the code. Golden still `68beae826cf800cd`.
+Last updated: 2026-10-21 — after D32 (Roman roads test failed); Roman bridges test pre-registered and its input check in (D33: 52 bridges, Rochester on the navigable Medway, Canterbury on a stream); foundation corrected against the code; session channel set up. Golden still `68beae826cf800cd`.
