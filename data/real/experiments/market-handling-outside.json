@@ -1,0 +1,18 @@
+{
+  "market_state": true,
+  "handling_income": true,
+  "home_weight": 1.0,
+  "alpha": 1.0813004,
+  "beta": 0.12432706,
+  "k_maint": 3.544669,
+  "epsilon": 0.15221697,
+  "market_share": 0.4484705,
+  "market_w0": 4.6169,
+  "shadow_drain": 0.0168,
+  "handling_margin": 0.028732145,
+  "transship_margin": 0.2597812,
+  "fuel_per_capita": 0.00070602755,
+  "outside_enabled": true,
+  "outside_size": 0.0,
+  "outside_out": 20000.0
+}

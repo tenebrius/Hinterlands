@@ -66,3 +66,46 @@ Population is then farmers plus the market's people, so newcomers to a market no
 Order: A first, as the v1.1 candidate, scored on Kent with this table and also run through the full validation on the three generated maps. A v1.1 fix must keep v1 passing. Then B with the outside world. About a day each.
 
 Both switches added here stay in the code, default off; v1 results and the golden hash are unchanged.
+
+## v1.1 candidates: A (market size as its own state) and B (income from handling trade)
+
+Approved by the designer. Both are in the code behind switches that still default off, because neither setting yet passes the full validation on the generated maps.
+
+**A, `market_state` (D26).**
+- Each settlement has a market size W_j, in people. It starts at `market_w0` with a floor of `market_floor`, and grows or shrinks by ε(D_j − K·W_j) on gross market inflow.
+- W_j moves with the migrants the market actually gains or loses.
+- Attraction uses W_j in place of the derived non-farming population.
+- The home self-term is on (`home_weight` 1), as in the published model.
+
+**B, `handling_income` (D27).** Inflow gains a margin on trade passing the anchor (`handling_margin`) and on trade changing mode within a cell of it (`transship_margin`: boat to land, or river barge to sea ship). This replaces the 2.5% through-traffic weight; the yearly growth cap still applies.
+
+### Kent (20 seeds; v1 defaults otherwise unless stated)
+
+| Run | AUC vs lowland: all / ≥1,000 / <1,000 | Inland towns found | Model places on rivers | Spearman | Inland places >500: spacing, count per seed | Largest city near (seeds) | Largest share |
+| --- | --- | ---: | ---: | ---: | --- | --- | ---: |
+| v1 | 0.48 / 0.54 / 0.44 | 29% | 49% | 0.08 | 10.1 km, 16 | Maldon 7, Rochford 3, Dover 2, Colchester 2, … | 0.21 |
+| A, α 1.05, K 2 | 0.49 / 0.64 / 0.39 | 26% | 41% | 0.17 | 11.6 km, 10 | | |
+| A, α 1.1, K 2 | 0.49 / 0.61 / 0.41 | 27% | 31% | 0.14 | 13.7 km, 10 | | |
+| A + B, tuned on generated maps | 0.49 / 0.61 / 0.42 | 27% | 54% | 0.15 | 10.3 km, 11 | **Gravesend 15**, Dartford 1, Barking 1, … | 0.28 |
+| A + B + outside world (seller) | 0.48 / 0.61 / 0.39 | 26% | 54% | 0.16 | 10.3 km, 10 | **Gravesend 16**, Dartford 1, Barking 1, … | 0.29 |
+
+Real: inland towns over 500, nearest-neighbour spacing 10.6 km, 29 towns. The full scores are in `docs/real/kent/experiments/` and the parameter files in `data/real/experiments/market-*.json`.
+
+What A and B do on Kent:
+- **The larger towns improve.** Lowland AUC rises from 0.54 to 0.61–0.64, and rank agreement doubles.
+- **B puts the largest city on the tidal Thames.** It sits at Gravesend in 15–16 of 20 seeds, where v1 put it at the estuary mouths. This is the outcome the designer accepted for now: the model has no notion of a first bridge, so the city stops at the head of easy sea navigation, not at Southwark. Its share of the region's people is 0.28, against 0.21 in v1; it does not capture everything. (The real London's share of this region was roughly 0.3.)
+- **The small inland towns do not return** (inland towns found 26–27%, small-town AUC about 0.40). A consolidates the middle of the hierarchy: places of 500–2,000 fall from 37 to 18 per seed.
+
+**Why the small inland towns stay missing: founding.** Even hamlets of under 100 people are placed mostly by water, 72% of them on river or coast sites against 28% of the land. The founding score rewards transport (navigable river, coast, hub, road) for every new settlement. Markets can only grow where settlements exist, and few exist inland. This is the next spec question for the designer. Villages were placed by farmland and water supply; transport decided which villages became towns. In the model, transport decides both.
+
+### Validation on the generated maps (A + B, the best of two searches; 20 seeds per map)
+
+| Check | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Settlements, over 2,000, over 5,000, largest share, spacing, siting, failure rate, forest, stability | pass | pass | pass |
+| Rank-size slope (≥ 15/20) | **12/20** | 15/20 | 20/20 |
+| River-corridor city over 5,000 (≥ 0.80 of seeds) | **0.60** | **0.70** | **0.65** |
+| Median count over 5,000 (≥ 2) | 2 | 2 | **1** |
+| Runs passing every check | 10/20 | 10/20 | 16/20 |
+
+K per map: the searches tuned one value for all three maps; the best is K = 3.54 (α 1.081, β 0.124, ε 0.152, market share 0.448, handling margin 0.029, transship margin 0.26). The earlier A-only setting on Kent used K = 2. Validation fails on the river-corridor city: with A the hierarchy is flatter, with one or two cities over 5,000, and one of them is on the main river corridor in about two thirds of seeds, against the 0.80 required. v1 had 0.95 / 0.85 / 1.00.

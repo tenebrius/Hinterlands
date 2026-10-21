@@ -123,3 +123,11 @@ Kind: experiment behind a switch; flagged shape change if adopted.
 ## D25 — Experiment: the outside world (switch, default off)
 As allowed by D20: `outside_enabled` adds one virtual partner on the map-edge sea cell nearest the main river mouth, with fixed size `outside_size`, its own decay `outside_beta` and the usual trade range. It buys marketed produce, which leaves the map, and sends `outside_out` of goods into the region by pull and closeness; both load the routes. On Kent no variant formed London: as a strong buyer it halves the region's population, and as a seller its goods count only at `through_weight` in growth. Numbers in `docs/real-terrain-experiments.md`.
 Kind: experiment behind a switch (a Later item, v5, tried early with approval).
+
+## D26 — Market size as its own state (switch, default off; v1.1 candidate, designer-approved)
+`market_state` makes Rihll–Wilson's W_j a state of each settlement, in people. It starts at `market_w0` with a floor of `market_floor`, moves by ε(D_j − K·W_j) on gross market inflow (the home self-term included), and changes only with the migrants the market actually gains or loses. Attraction uses W_j. This corrects the specification, whose W, the non-farming population, let a place become a market only after it ran out of land. Results and validation status are in `docs/real-terrain-experiments.md`; not yet the default, because validation on the generated maps does not pass.
+Kind: correction of the growth equation and settlement state (owner/designer decision); default pending validation.
+
+## D27 — Income from handling trade (switch, default off; v1.1 candidate, designer-approved)
+`handling_income` adds to a place's inflow a margin on the trade passing its anchor (`handling_margin`) and on the trade changing mode within a cell of it (`transship_margin`: boarding or leaving a boat, river barge to sea ship). This is break of bulk as an income (Bleakley & Lin 2012; Fujita & Mori 1996), and it replaces the through-traffic weight for that trade. The yearly growth cap still applies.
+Kind: model mechanism (owner/designer decision); default pending validation.

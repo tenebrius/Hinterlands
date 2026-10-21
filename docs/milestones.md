@@ -130,3 +130,9 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - Exp 2, `gross_inflow` (D24): lowland AUC 0.46 / 0.53 / 0.42 (v1 0.48 / 0.54 / 0.44); inland towns found 28% (29%). No effect: the attractor, not the inflow, blocks inland markets.
 - Exp 1, `outside_enabled` (D25): no London in any variant. Size 5,000 halves the region (49,000 against 95,000); size 1,000 puts a top-3 place near London in 8 of 20 seeds (5 in v1); seller-only moves the largest city to the lower Thames and Medway in 9 of 20 seeds (3 in v1).
 - Both switches default off; golden `afd6c175b193443b` unchanged. Write-up and proposals (market size as its own state; income from handling trade): `docs/real-terrain-experiments.md`.
+
+## v1.1 candidates A and B (in progress)
+
+- A (`market_state`, D26) and B (`handling_income`, D27) behind switches, default off; golden `afd6c175b193443b` unchanged.
+- Best A + B setting (two searches on the generated maps): K 3.54, α 1.081, β 0.124, ε 0.152, market share 0.448, handling margin 0.029, transship margin 0.26. Validation FAILED: river-corridor city 0.60 / 0.70 / 0.65 (needs 0.80); rank-size slope 12/20 on map 1; median over 5,000 is 1 on map 3. Runs passing every check 10/10/16 of 20.
+- Kent with that setting: lowland AUC 0.49 / 0.61 / 0.42 (v1 0.48 / 0.54 / 0.44); inland towns found 27% (29%); largest city at Gravesend in 15 of 20 seeds (v1: never on the tidal Thames); largest share 0.28 (0.21).
