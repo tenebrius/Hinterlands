@@ -116,3 +116,11 @@ All drawn from the snapshot (and, for hedgerows and ghost fields, the farming hi
 4. Seasons (follows the clock when playing at up to 4 years a second, cycles when paused, or fixed from the Time panel): field colours, spring high water, autumn woods, winter frost and snow, ships in port in winter. Hedgerows round fields farmed 50 years or more; abandoned fields keep fading strips and hedges for 200 years.
 
 The legend lists only layers drawn at the current zoom. New URL options: `?on=`, `?off=`, `?season=`.
+
+## Real terrain — Kent and the lower Thames (after v1)
+
+- v1 defaults, unchanged, on SRTM elevation for lon −0.29 to 1.55, lat 50.76 to 51.911 (128 × 128 km), with the Thames entering at the west edge (9,950 km²) and uniform soil (D23). Run seeds 1–20, 500 years. Scored against 70 towns of c.1300 (`data/real/kent/towns.csv`).
+- Model top 70 against the real 70: within 5 km 0.37 (random land 0.37, random lowland 0.30); real top 10 with a model top-15 place within 10 km 0.43 (0.29, 0.38); Spearman 0.08 (−0.03, 0.20). Frequency-map AUC against land 0.57 (towns of 1,000 or more 0.63; under 1,000 0.53); against lowland 0.48 / 0.54 / 0.44. Model places on navigable rivers 49% (real 26%); real river towns found 63%, inland 29%. Nearest-neighbour spacing real 8.6 km, model 7.1, random 6.9.
+- Robust to a 10 km edge exclusion and to `nav_area` 800 km² (AUC 0.56 / 0.65 / 0.51).
+- Generated maps unchanged: golden `afd6c175b193443b`.
+- Report: `docs/real-terrain.md`. Reproduce with `just real`.

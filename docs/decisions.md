@@ -107,3 +107,11 @@ Kind: change to the acceptance test and the v1 view, by the owner.
 ## D22 — Town footprints stay off navigable rivers
 Cells are 1 km and a river cell is land with a river through it, so settlements may sit on one, as towns sit astride rivers. But the drawn footprint grew over navigable-river cells and painted the river out, so towns looked built in the water. Footprints now grow along the banks and never onto a navigable-river cell (a settlement centred on one keeps that cell), and the viewer draws the river or stream channel across any built-up cell it passes through. Footprints are rendering-only; the simulation is unchanged (the golden hash changes only because footprints are in the snapshot).
 Kind: rendering.
+
+## D23 — Real-terrain import: open sea, edge inflows, uniform soil
+For the real-terrain test (`docs/real-terrain.md`), the DEM importer changes in three ways:
+1. Only cells at or below zero that join the open sea at the map edge are sea. A 1 km average can put a tidal river or a marsh at 0 m, and a one-cell inland sea there stopped the Thames at Woolwich. Such pockets are now land at 0.5 m.
+2. `MapParams.inflows` adds drainage that enters across the map edge, so a river whose catchment lies mostly off the map (the Thames: 9,950 km² above Teddington) is as large as it really is.
+3. `MapParams.soil_noise` and `forest_noise` set the amplitude of the noise in soil yield and natural forest. On an imported map with no soil map they are 0 (uniform), so no invented fertile patch biases the test.
+The defaults reproduce the generated maps exactly; the golden hash is unchanged.
+Kind: map import.

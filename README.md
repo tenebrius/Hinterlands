@@ -12,6 +12,7 @@ just serve          # build and serve on http://localhost:8080
 just run            # one 500-year headless run, metrics every 50 years
 just test           # unit tests, determinism and the golden snapshot hash
 just validate       # the validation table: 3 maps x 20 seeds x 500 years
+just real           # the real-terrain test on Kent (20 seeds, scored against the towns of c.1300)
 ```
 
 ![Map 1, seed 1, year 450](docs/screenshots/map1-seed1-year450.png)
@@ -44,6 +45,8 @@ Everything drawn on screen (footprints, routes, trade traffic, labels, overlays,
 
 v1 passes when every check in [`docs/validation.md`](docs/validation.md) holds in at least 75% of 20 seeds on each of three generated maps, the aggregate checks (contingency, median count over 5,000) pass on each map, and runs are deterministic. Current results are in [`docs/milestones.md`](docs/milestones.md). Known limit: trade has one tier with one distance decay, so it gives regional markets but little long-distance transfer traffic; the largest city sits on the main river corridor or the coast rather than at the main mouth (see D20).
 
+**Real terrain.** v1 was also run unchanged on real elevation for Kent and the lower Thames and scored against the 70 towns of c.1300 (`just real`; report in [`docs/real-terrain.md`](docs/real-terrain.md)). It finds the ports and river towns but places inland market towns no better than chance, and London does not form without long-distance trade.
+
 **Determinism.** A run is fixed by `(map seed, run seed, parameters)`. The same inputs give a bit-identical final snapshot natively and in the browser; `cargo test` checks the golden hash.
 
 ## Parameters
@@ -55,6 +58,6 @@ Every parameter, with its default, range and meaning, is printed by `cargo run -
 | Crate | Contents |
 | --- | --- |
 | `hinterlands-core` | `Terrain`, `State`, `Params`, `Snapshot`, the six systems, metrics, inspector queries. No I/O. |
-| `hinterlands-mapgen` | Map generation as a pipeline of passes; ESRI ASCII DEM import. |
+| `hinterlands-mapgen` | Map generation as a pipeline of passes; ESRI ASCII DEM import with edge inflows. |
 | `hinterlands-cli` | `run`, `validate`, `sweep`, `search`, `render`, `bench`, `hash`, `params`, ground-truth scoring. |
 | `hinterlands-web` | The egui viewer: `SimHandle`, `ViewState`/`Msg`, layers and panels. |

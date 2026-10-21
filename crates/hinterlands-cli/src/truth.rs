@@ -76,6 +76,55 @@ pub fn score(path: &str, t: &Terrain, snap: &Snapshot) {
     );
 }
 
+/// Write every settlement as CSV, `name,x_km,y_km,pop,founded,site`, with
+/// coordinates of the anchor cell's centre in the same frame as the truth file.
+pub fn dump(path: &str, t: &Terrain, snap: &Snapshot) {
+    let g = t.grid;
+    let mut out = String::from("name,x_km,y_km,pop,founded,site\n");
+    for s in &snap.settlements {
+        let i = s.anchor as usize;
+        let (x, y) = g.xy(i);
+        let site = if t.is_nav(i) || t.touches(i, |j| t.is_nav(j)) {
+            "river"
+        } else if t.is_coastal(i) {
+            "coast"
+        } else {
+            "inland"
+        };
+        out += &format!(
+            "{},{:.1},{:.1},{:.0},{},{}\n",
+            s.name,
+            (x as f32 + 0.5) * g.cell_km,
+            (y as f32 + 0.5) * g.cell_km,
+            s.pop,
+            s.founded,
+            site
+        );
+    }
+    std::fs::write(path, out).unwrap_or_else(|e| crate::die(&format!("{path}: {e}")));
+}
+
+/// Write each cell's site class as CSV, `x,y,class`, with class one of sea,
+/// river (on or beside a navigable river), coast or inland.
+pub fn dump_cells(path: &str, t: &Terrain) {
+    let g = t.grid;
+    let mut out = String::from("x,y,class\n");
+    for i in 0..g.n() {
+        let (x, y) = g.xy(i);
+        let class = if t.is_sea(i) {
+            "sea"
+        } else if t.is_nav(i) || t.touches(i, |j| t.is_nav(j)) {
+            "river"
+        } else if t.is_coastal(i) {
+            "coast"
+        } else {
+            "inland"
+        };
+        out += &format!("{x},{y},{class}\n");
+    }
+    std::fs::write(path, out).unwrap_or_else(|e| crate::die(&format!("{path}: {e}")));
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

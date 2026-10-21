@@ -48,6 +48,14 @@ pub struct MapParams {
     pub n_ore: u32,
     pub n_salt: u32,
     pub n_stone: u32,
+    /// Amplitude of the noise in soil yield (0 gives uniform soil, as on an
+    /// imported DEM with no soil map).
+    pub soil_noise: f32,
+    /// Amplitude of the noise in natural forest cover.
+    pub forest_noise: f32,
+    /// Drainage entering across the map edge: `[x, y, km²]` added at that cell,
+    /// for rivers whose catchment lies mostly off an imported map.
+    pub inflows: Vec<[f32; 3]>,
 }
 
 impl Default for MapParams {
@@ -70,6 +78,9 @@ impl Default for MapParams {
             n_ore: 6,
             n_salt: 4,
             n_stone: 5,
+            soil_noise: 0.45,
+            forest_noise: 0.5,
+            inflows: Vec::new(),
         }
     }
 }
@@ -214,7 +225,7 @@ pub fn fluvial_incision(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
         ..mp.clone()
     };
     for _ in 0..mp.incision_iters {
-        fill_and_route(t);
+        fill_and_route(t, &[]);
         let mut cut = vec![0f32; n];
         for i in 0..n {
             let Some(j) = t.downstream(i) else { continue };
@@ -233,7 +244,7 @@ pub fn fluvial_incision(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
 }
 
 /// Fill depressions, set flow directions and accumulate drainage area.
-fn fill_and_route(t: &mut Terrain) {
+fn fill_and_route(t: &mut Terrain, inflows: &[[f32; 3]]) {
     let g = t.grid;
     let n = g.n();
     for i in 0..n {
@@ -252,6 +263,11 @@ fn fill_and_route(t: &mut Terrain) {
     for &i in &order {
         t.flux[i] += area * (1.0 + t.elevation[i] / 1500.0);
     }
+    for &[x, y, km2] in inflows {
+        if g.in_bounds(x as i32, y as i32) {
+            t.flux[g.idx(x as i32, y as i32)] += km2;
+        }
+    }
     for &i in &order {
         if let Some(j) = t.downstream(i) {
             if t.water[j] != Water::Sea {
@@ -268,7 +284,7 @@ pub fn hydrology(t: &mut Terrain, mp: &MapParams, _rng: &mut Rng) {
     let g = t.grid;
     let n = g.n();
     let cell_m = g.cell_km * 1000.0;
-    fill_and_route(t);
+    fill_and_route(t, &mp.inflows);
     let mut order: Vec<usize> = (0..n).filter(|&i| t.water[i] != Water::Sea).collect();
     order.sort_by(|&a, &b| t.elevation[b].total_cmp(&t.elevation[a]).then(a.cmp(&b)));
 
@@ -410,13 +426,13 @@ pub fn land_cover(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
         let (u, v) = (x as f32 / w, y as f32 / h);
         let e = t.elevation[i];
         let s = t.slope[i];
-        let base = (0.6 + 0.45 * soil.fbm(u * 5.0, v * 5.0, 4)).clamp(0.15, 1.0);
+        let base = (0.6 + mp.soil_noise * soil.fbm(u * 5.0, v * 5.0, 4)).clamp(0.15, 1.0);
         let slope_f = (1.0 - s / 0.15).clamp(0.0, 1.0);
         let elev_f = libm::powf((1.0 - e / 1100.0).clamp(0.0, 1.0), 0.8);
         let near_river = t.touches(i, |j| t.is_river(j));
         let flood = if near_river && s < 0.03 { 0.25 } else { 0.0 };
         t.food_yield[i] = (base * slope_f * elev_f + flood * slope_f).clamp(0.0, 1.0);
-        let cover = 0.8 + 0.5 * wood.fbm(u * 4.0 + 7.0, v * 4.0, 4);
+        let cover = 0.8 + mp.forest_noise * wood.fbm(u * 4.0 + 7.0, v * 4.0, 4);
         let alpine = 1.0 - smoothstep(800.0, 1300.0, e) * 0.8;
         t.forest0[i] = (cover * alpine).clamp(0.1, 1.0);
     }

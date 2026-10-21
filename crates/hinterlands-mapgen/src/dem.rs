@@ -1,18 +1,21 @@
 //! Real terrain: import an ESRI ASCII grid (e.g. SRTM resampled in GIS), resample
 //! it to the chosen cell size, and run the hydrology and land-cover passes on it.
+//! `MapParams` supplies the hydrology thresholds, edge inflows and the soil and
+//! forest noise (zero for a fair test on real ground with no soil map); its
+//! size and cell fields are taken from the grid.
 
 use crate::{blank, hydrology, land_cover, MapParams};
 use hinterlands_core::grid::Grid;
 use hinterlands_core::{rng_from_seed, Terrain};
 
-pub fn import_dem(path: &str, cell_km: f32) -> Result<Terrain, String> {
+pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    import_asc(&text, cell_km)
+    import_asc(&text, cell_km, mp)
 }
 
 /// Parse an `.asc` grid. `cellsize` is read in metres; cells at or below zero,
 /// and NODATA cells, become sea.
-pub fn import_asc(text: &str, cell_km: f32) -> Result<Terrain, String> {
+pub fn import_asc(text: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, String> {
     let mut lines = text.lines();
     let mut header = std::collections::BTreeMap::new();
     let mut first_data = None;
@@ -57,7 +60,7 @@ pub fn import_asc(text: &str, cell_km: f32) -> Result<Terrain, String> {
         w,
         h,
         cell_km,
-        ..MapParams::default()
+        ..mp.clone()
     };
     let mut t = blank(&mp);
     t.grid = Grid::new(w, h, cell_km);
@@ -81,6 +84,33 @@ pub fn import_asc(text: &str, cell_km: f32) -> Result<Terrain, String> {
             }
             let e = sum / cnt as f32;
             t.elevation[t.grid.idx(tx as i32, ty as i32)] = if e <= 0.0 { e.min(-1.0) } else { e };
+        }
+    }
+    // Sea is what joins the open sea at the map edge; low inland pockets (a
+    // tidal river averaged over a cell, a marsh) are land just above sea level.
+    let g = t.grid;
+    let mut open = vec![false; g.n()];
+    let mut stack: Vec<usize> = (0..g.n())
+        .filter(|&i| {
+            let (x, y) = g.xy(i);
+            let edge = x == 0 || y == 0 || x as u32 == w - 1 || y as u32 == h - 1;
+            edge && t.elevation[i] <= 0.0
+        })
+        .collect();
+    while let Some(i) = stack.pop() {
+        if open[i] {
+            continue;
+        }
+        open[i] = true;
+        stack.extend(
+            (0..8)
+                .filter_map(|d| g.neighbor(i, d))
+                .filter(|&j| !open[j] && t.elevation[j] <= 0.0),
+        );
+    }
+    for i in 0..g.n() {
+        if !open[i] && t.elevation[i] <= 0.0 {
+            t.elevation[i] = 0.5;
         }
     }
     let mut rng = rng_from_seed(0);

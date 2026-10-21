@@ -1,0 +1,9 @@
+{
+  "name": "Kent and the lower Thames",
+  "west": -0.29,
+  "south": 50.76,
+  "east": 1.55,
+  "north": 51.911,
+  "cells": [128, 128],
+  "fetch": "python3 -I tools/real/fetch_dem.py -0.29 50.76 1.55 51.911 128 128 data/real/kent/kent.asc"
+}

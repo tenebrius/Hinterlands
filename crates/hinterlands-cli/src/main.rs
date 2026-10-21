@@ -17,7 +17,7 @@ hinterlands <command> [options]
 
 commands:
   run       --map-seed N --seed N --years 500 [--params p.json] [--every 50]
-            [--png out.png] [--snapshot out.bin] [--truth truth.csv] [--dem file.asc]
+            [--png out.png] [--snapshot out.bin] [--truth truth.csv] [--towns out.csv] [--cells out.csv] [--dem file.asc]
   validate  [--maps 3] [--seeds 20] [--years 500] [--params p.json] [--threads N]
   render    --map-seed N --png out.png [--seed N --years N] [--layer terrain|yield|forest|score|cost]
   bench     [--map-seed N] [--seed N] [--years 500]
@@ -91,7 +91,8 @@ pub fn make_sim(args: &Args) -> Sim {
                 .str("cell-km")
                 .map(|v| v.parse().unwrap_or(1.0))
                 .unwrap_or(1.0);
-            hinterlands_mapgen::import_dem(path, km).unwrap_or_else(|e| die(&e))
+            hinterlands_mapgen::import_dem(path, km, &load_map_params(args))
+                .unwrap_or_else(|e| die(&e))
         }
         None => generate(args.u64("map-seed", 1), &load_map_params(args)),
     };
@@ -258,6 +259,12 @@ fn cmd_run(args: &Args) {
     if let Some(path) = args.str("truth") {
         truth::score(path, &sim.terrain, &snap);
     }
+    if let Some(path) = args.str("towns") {
+        truth::dump(path, &sim.terrain, &snap);
+    }
+    if let Some(path) = args.str("cells") {
+        truth::dump_cells(path, &sim.terrain);
+    }
 }
 
 /// The largest settlements' accounts, for diagnosing the model.
@@ -314,7 +321,9 @@ fn cmd_render(args: &Args) {
         v.parse::<usize>()
             .unwrap_or_else(|_| die("--from: cell index"))
     });
-    let img = render::render(&sim.terrain, Some(&snap), layer, 4, from);
+    // `--bare` draws the terrain alone, without settlements, fields or roads.
+    let shown = args.str("bare").is_none().then_some(&snap);
+    let img = render::render(&sim.terrain, shown, layer, 4, from);
     std::fs::write(path, img).unwrap_or_else(|e| die(&format!("{path}: {e}")));
     let t = &sim.terrain;
     let land = (0..t.n()).filter(|&i| t.is_land(i)).count();

@@ -1,0 +1,6 @@
+{
+  "soil_noise": 0.0,
+  "forest_noise": 0.0,
+  "nav_area": 800.0,
+  "inflows": [[0, 47, 9950]]
+}

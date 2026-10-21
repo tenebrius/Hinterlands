@@ -1,0 +1,71 @@
+name,lat,lon,population,tier,basis
+London (City),51.5156,-0.0931,80000,city,published estimate c.1300 70000-80000 (Keene); 1377 poll tax 23314 taxpayers; Dyer 2000
+Canterbury,51.2800,1.0800,10000,city,published estimate c.1300 c.10000; 1377 poll tax 2574 taxpayers; Dyer 2000
+Colchester,51.8917,0.9030,4000,large_town,1377 poll tax 2955 taxpayers; Dyer 2000; pre-plague level lower than 1377 per Britnell 1986 (cloth growth after 1350)
+Rochester,51.3750,0.5000,1900,town,city and see; 1377 poll tax 570 taxpayers; Dyer 2000; x1.9 x1.75
+Sandwich,51.2747,1.3389,4000,large_town,borough; Cinque Port head; leading wool/wine port c.1300; Cinque Ports not in 1377 tax; tier estimate
+Winchelsea,50.9251,0.7088,3500,large_town,New Winchelsea planted 1288; Ancient Town of Cinque Ports; 500+ households 14th c; tier estimate
+Dover,51.1295,1.3089,3000,large_town,borough; Cinque Port head; tier estimate
+New Romney,50.9850,0.9410,2500,town,borough; Cinque Port head; major port before 1287 storm; tier estimate
+Rye,50.9500,0.7300,2500,town,borough; Ancient Town of Cinque Ports; tier estimate
+Lewes,50.8747,0.0117,2500,town,borough; Warenne castle and priory; county market; tier estimate
+Hythe,51.0716,1.0840,2000,town,borough; Cinque Port head; tier estimate
+Hastings,50.8550,0.5833,2000,town,borough; Cinque Port head; harbour decaying c.1300; tier estimate
+Maidstone,51.2720,0.5290,2000,town,archbishop's town; chartered market; tier estimate
+Faversham,51.3177,0.8928,2000,town,borough; limb of Dover; abbey town and port; tier estimate
+Maldon,51.7318,0.6758,2000,town,borough charter 1171; port; tier estimate
+Lydd,50.9509,0.9064,1500,town,corporate limb of New Romney; tier estimate
+Chelmsford,51.7300,0.4800,1500,town,planned town; market grant 1199; Britnell; tier estimate
+New Shoreham,50.8340,-0.2730,1500,town,borough and port (New Shoreham); Wikipedia coord is modern Shoreham-by-Sea; tier estimate
+Battle,50.9200,0.4800,1200,town,abbey borough; market; Searle 1974; tier estimate
+Tonbridge,51.1987,0.2764,1200,town,castle borough; market; tier estimate
+Dartford,51.4444,0.2172,1200,town,market town on Watling Street; tier estimate
+Hertford,51.7966,-0.0774,1200,town,county borough; market; tier estimate
+Ware,51.8108,-0.0314,1200,town,market town and Lea port; market grant 1199; tier estimate
+Croydon,51.3714,-0.1038,1000,town,archbishop's market town; market grant 1276; tier estimate
+Reigate,51.2370,-0.2060,1000,town,seigneurial borough; Warenne castle; tier estimate
+Folkestone,51.0792,1.1794,1000,town,limb of Dover; market; tier estimate
+Bishop's Stortford,51.8720,0.1725,1000,town,bishop of London's borough; market; tier estimate
+Seaford,50.7700,0.1000,800,small_town,borough; limb of Hastings; port; tier estimate
+East Grinstead,51.1286,-0.0144,800,small_town,borough by 1235; burgage plots; market; tier estimate
+Milton Regis,51.3500,0.7500,800,small_town,royal manor market town; tier estimate
+Barking,51.5400,0.0800,800,small_town,abbey town; market; fishing; tier estimate
+Waltham Abbey,51.6846,0.0004,800,small_town,abbey market town; tier estimate
+Pevensey,50.8206,0.3381,600,small_town,borough; limb of Hastings; tier estimate
+Fordwich,51.2950,1.1260,600,small_town,corporate limb of Sandwich; port of Canterbury; tier estimate
+Tenterden,51.0696,0.6898,600,small_town,Wealden market town; later limb of Rye (1449); Everitt; tier estimate
+Ashford,51.1465,0.8676,600,small_town,market by later 13th c; Everitt; tier estimate
+Sevenoaks,51.2781,0.1874,600,small_town,archbishop's market town; Everitt; tier estimate
+West Malling,51.2917,0.4152,600,small_town,Malling; abbey market town; Everitt; tier estimate
+Cranbrook,51.0967,0.5356,600,small_town,Wealden market; market grant 1290; Everitt; tier estimate
+Gravesend,51.4415,0.3685,600,small_town,market grant 1268; Thames ferry; tier estimate
+Romford,51.5768,0.1801,600,small_town,market grant 1247; tier estimate
+Coggeshall,51.8717,0.6913,600,small_town,abbey market town; market grant 1256; tier estimate
+Braintree,51.8780,0.5500,600,small_town,bishop of London's planned town; market grant 1199; tier estimate
+Great Dunmow,51.8710,0.3640,600,small_town,market town; tier estimate
+Wye,51.1833,0.9372,500,small_town,royal/Battle Abbey manor market town; Everitt; tier estimate
+Witham,51.7978,0.6373,500,small_town,Templar new town (Newland) 1212; tier estimate
+Brentwood,51.6200,0.3050,500,small_town,new market town; market grant 1227; tier estimate
+Chipping Barnet,51.6552,-0.1997,500,small_town,St Albans abbey market; market grant 1199; tier estimate
+Bletchingley,51.2410,-0.0990,500,small_town,small seigneurial borough; tier estimate
+Westerham,51.2713,0.0701,400,small_town,market; Everitt; tier estimate
+Charing,51.2107,0.7949,400,small_town,archbishop's market village; Everitt; tier estimate
+Wrotham,51.3083,0.3085,400,small_town,archbishop's market; Everitt; tier estimate
+Lenham,51.2380,0.7160,400,small_town,market; Everitt; tier estimate
+Elham,51.1528,1.1111,400,small_town,market grant 1251; Everitt; tier estimate
+Wingham,51.2724,1.2171,400,small_town,archbishop's market; Everitt; tier estimate
+Bromley,51.4070,0.0210,400,small_town,bishop of Rochester's market; market grant 1205; tier estimate
+Robertsbridge,50.9900,0.4700,400,small_town,market grant 1253; tier estimate
+Hailsham,50.8647,0.2577,400,small_town,market grant 1252; tier estimate
+Mayfield,51.0200,0.2600,400,small_town,archbishop's market; market grant 1261; parish coord; tier estimate
+Cuckfield,51.0096,-0.1407,400,small_town,market grant 1255; tier estimate
+Crawley,51.1092,-0.1872,400,small_town,market grant 1202; tier estimate
+Epping,51.7004,0.1087,400,small_town,market grant 1253; tier estimate
+Billericay,51.6280,0.4184,400,small_town,market town; tier estimate
+Rayleigh,51.5864,0.6049,400,small_town,castle market town; market by 1181; tier estimate
+Rochford,51.5821,0.7065,400,small_town,market grant 1257; tier estimate
+Harlow,51.7790,0.1280,400,small_town,Bury St Edmunds market; market grant 1218; tier estimate
+Chipping Ongar,51.7030,0.2440,400,small_town,castle market town; tier estimate
+Hoddesdon,51.7590,-0.0150,400,small_town,market grant 1253; tier estimate
+Sawbridgeworth,51.8140,0.1500,400,small_town,market grant 1222; tier estimate
+Hatfield,51.7636,-0.2258,400,small_town,bishop of Ely's market; tier estimate
