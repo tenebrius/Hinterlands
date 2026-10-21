@@ -1,6 +1,6 @@
 //! Base map: relief, water, land cover and forest, as one texture per year.
 
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, ColorImage, TextureHandle, TextureOptions};
 use hinterlands_core::terrain::{Terrain, Water};
 
@@ -73,6 +73,23 @@ impl Layer for TerrainLayer {
     }
     fn name(&self) -> &'static str {
         "Terrain and forest"
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![
+            (
+                Swatch::Fill(Color32::from_rgb(143, 186, 92)),
+                "Good farmland",
+            ),
+            (Swatch::Fill(Color32::from_rgb(189, 173, 133)), "Poor land"),
+            (Swatch::Fill(Color32::from_rgb(52, 104, 52)), "Forest"),
+            (Swatch::Fill(Color32::from_rgb(224, 224, 224)), "Mountains"),
+            (Swatch::Fill(Color32::from_rgb(97, 148, 224)), "Stream"),
+            (
+                Swatch::Fill(Color32::from_rgb(26, 77, 199)),
+                "Navigable river",
+            ),
+            (Swatch::Fill(Color32::from_rgb(46, 87, 143)), "Sea"),
+        ]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;

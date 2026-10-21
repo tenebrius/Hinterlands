@@ -49,6 +49,7 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         state.log.push(LogEntry {
             year,
             settlement: dead.id,
+            name: dead.name.clone(),
             anchor: dead.anchor,
             pop: dead.pop,
             kind: LogKind::Failed {

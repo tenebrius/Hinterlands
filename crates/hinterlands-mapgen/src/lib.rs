@@ -4,6 +4,7 @@
 //! slot into `PIPELINE` without touching anything else.
 
 mod dem;
+mod features;
 mod noise;
 
 pub use dem::{import_asc, import_dem};
@@ -82,6 +83,7 @@ pub const PIPELINE: &[(&str, Pass)] = &[
     ("fluvial_incision", fluvial_incision),
     ("hydrology", hydrology),
     ("land_cover", land_cover),
+    ("features", features::name_features),
 ];
 
 pub fn blank(mp: &MapParams) -> Terrain {
@@ -100,6 +102,7 @@ pub fn blank(mp: &MapParams) -> Terrain {
         harbour: vec![false; n],
         ford: vec![false; n],
         river_mouth: None,
+        features: Vec::new(),
     }
 }
 

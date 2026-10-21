@@ -1,5 +1,7 @@
 //! The validation table from the foundation document, run headless over several
-//! maps and seeds in parallel. Definitions are in `docs/validation.md`.
+//! maps and seeds in parallel. Definitions are in `docs/validation.md`. A check
+//! passes when it holds in at least 75% of seeds on every map; map 1 seed 1 is
+//! the determinism golden.
 
 use crate::{load_map_params, load_params, Args};
 use hinterlands_core::metrics::{self, Metrics};
@@ -213,7 +215,8 @@ pub fn cmd_validate(args: &Args) {
             let mut vals: Vec<f32> = rs.iter().map(|r| value(r)).collect();
             vals.sort_by(|a, b| a.total_cmp(b));
             let med = vals.get(vals.len() / 2).copied().unwrap_or(f32::NAN);
-            let canon_ok = canon.is_some_and(|r| (c.ok)(r));
+            // v1 rule (D21): each check passes in at least 75% of the seeds on every map.
+            let rate_ok = pass * 4 >= rs.len() * 3;
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
                 c.name,
@@ -222,9 +225,9 @@ pub fn cmd_validate(args: &Args) {
                 med,
                 pass,
                 rs.len(),
-                if canon_ok { "ok" } else { "FAIL" }
+                if rate_ok { "ok" } else { "FAIL" }
             );
-            all_ok &= canon_ok;
+            all_ok &= rate_ok;
         }
         let full = rs.iter().filter(|r| passes(r)).count();
         let anchors: Vec<usize> = rs.iter().filter_map(|r| r.largest_anchor).collect();

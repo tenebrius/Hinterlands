@@ -98,3 +98,8 @@ On the simulation designer's advice, accepted by the owner:
 2. Over 5,000 per run is 1–5, with the median over 20 seeds per map at least 2. A 16,000 km² region with one city over 5,000 is historically normal; 2–5 was scaled from all of England. The second city is not to be bought by pushing the failure rate over its ceiling.
 3. **Not built in v1:** a long-distance trade tier (an "outside world" reached by sea). This is the known limit of single-tier trade: one β cannot give both regional markets and long-distance transfer traffic. It is "sea trade between coasts", a Later (v5) item. After v1 passes, an optional experiment is allowed: one virtual settlement on a sea-edge cell with a fixed size and its own low β, behind a toggle that defaults off, to inform whether v2 or v5 should bring it forward.
 Kind: change to the acceptance test, by the owner.
+
+## D21 — v1 is judged on pass rates; names and a legend join the v1 view (owner/designer decision)
+1. A check passes when it holds in at least 75% of 20 seeds on every map; aggregate checks are computed over the same 20 seeds. The default run (map 1, seed 1) is kept only as the determinism golden. A single seed at 15.8 km against a 15 km spacing ceiling is noise, and loosening the shadow to rescue it made the other maps worse.
+2. The v1 view adds names: settlements are named at founding; rivers, ranges, seas, bays and large forests are named at generation. Labels can be toggled per class and are sized by rank, and a legend is built from the active layers. Names are derived from a hash of the site and its features, not from the run's random generator, so naming does not change the simulation.
+Kind: change to the acceptance test and the v1 view, by the owner.

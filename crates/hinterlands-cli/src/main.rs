@@ -252,8 +252,9 @@ fn print_detail(snap: &hinterlands_core::Snapshot, t: &hinterlands_core::Terrain
             if snap.hub[a] { "H" } else { "" }
         );
         println!(
-            "{:>4} {:>9} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>5.2} {:>6} {}",
+            "{:>4} {:<14} {:>9} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>7.0} {:>5.2} {:>6} {}",
             s.id,
+            s.name,
             format!("{:?}", t.grid.xy(a)),
             s.pop,
             s.food_prod,
@@ -297,6 +298,15 @@ fn cmd_render(args: &Args) {
         .map(|i| t.food_yield[i])
         .sum::<f32>()
         / land as f32;
+    for f in &t.features {
+        println!(
+            "  {:?} {:<28} at {:?}, size {:.0}",
+            f.kind,
+            f.name,
+            t.grid.xy(f.label_cell as usize),
+            f.size
+        );
+    }
     println!(
         "land {land} cells, navigable {nav}, stream {stream}, fords {fords}, harbours {harb}, mean yield {mean_yield:.2}, river mouth {:?}",
         t.river_mouth.map(|c| t.grid.xy(c as usize))

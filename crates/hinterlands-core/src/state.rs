@@ -86,6 +86,7 @@ impl Reach {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Settlement {
     pub id: u32,
+    pub name: String,
     pub anchor: u32,
     pub pop: f32,
     pub founded: u32,
@@ -114,9 +115,10 @@ pub struct Settlement {
 }
 
 impl Settlement {
-    pub fn new(id: u32, anchor: u32, pop: f32, year: u32, initial: bool) -> Self {
+    pub fn new(id: u32, name: String, anchor: u32, pop: f32, year: u32, initial: bool) -> Self {
         Self {
             id,
+            name,
             anchor,
             pop,
             founded: year,
@@ -182,6 +184,7 @@ pub enum LogKind {
 pub struct LogEntry {
     pub year: u32,
     pub settlement: u32,
+    pub name: String,
     pub anchor: u32,
     pub pop: f32,
     pub kind: LogKind,
@@ -267,6 +270,12 @@ impl State {
         self.settlements.binary_search_by_key(&id, |s| s.id).ok()
     }
 
+    /// A settlement's name, or `#id` if it no longer exists.
+    pub fn name_of(&self, id: u32) -> String {
+        self.get(id)
+            .map_or_else(|| format!("#{id}"), |s| s.name.clone())
+    }
+
     pub fn get(&self, id: u32) -> Option<&Settlement> {
         self.index_of(id).map(|i| &self.settlements[i])
     }
@@ -290,7 +299,10 @@ impl State {
     ) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
-        let mut s = Settlement::new(id, anchor, pop, self.year, initial);
+        let taken: std::collections::BTreeSet<String> =
+            self.settlements.iter().map(|s| s.name.clone()).collect();
+        let name = crate::names::settlement_name(t, anchor as usize, id as u64, &taken);
+        let mut s = Settlement::new(id, name, anchor, pop, self.year, initial);
         s.history.push(pop);
         self.settlements.push(s);
         let idx = self.settlements.len() - 1;

@@ -1,6 +1,6 @@
 //! Cultivated cells, tinted.
 
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, ColorImage, TextureHandle, TextureOptions};
 use hinterlands_core::state::NONE;
 
@@ -16,6 +16,12 @@ impl Layer for FieldsLayer {
     }
     fn name(&self) -> &'static str {
         "Fields"
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![(
+            Swatch::Fill(Color32::from_rgb(236, 206, 96)),
+            "Cultivated fields",
+        )]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;

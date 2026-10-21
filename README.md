@@ -14,7 +14,9 @@ just test           # unit tests, determinism and the golden snapshot hash
 just validate       # the validation table: 3 maps x 20 seeds x 500 years
 ```
 
-In the browser: press **Play**. The map fills in year by year. Click a cell to pin it in the inspector; drag to pan, scroll to zoom. The left panel has time controls and seeds, the inspector, layer toggles (including the travel-cost and site-score overlays), charts (rank-size and population), the chronicle of foundings and failures, and every model parameter as a slider. **Save** downloads the run (seeds, parameters and year); **Load** replays it exactly.
+![Map 1, seed 1, year 450](docs/screenshots/map1-seed1-year450.png)
+
+In the browser: press **Play**. The map fills in year by year. Click a cell to pin it in the inspector; drag to pan, scroll to zoom. The left panel has time controls and seeds, the inspector, layer toggles (including the travel-cost and site-score overlays), charts (rank-size and population), the chronicle of foundings and failures, and every model parameter as a slider. **Save** downloads the run (seeds, parameters and year); **Load** replays it exactly. Names label settlements (revealed by rank as you zoom), rivers, ranges, seas, bays and forests; each class has its own toggle, and the legend lists the symbols of the layers that are on. The page address takes `?map=N`, `?seed=N` and `?year=N` to open a given run at a given year, and `?selftest=N` to log the snapshot hash and the time per year (compare with `hinterlands hash --years N`).
 
 ## The model in one page
 
@@ -34,7 +36,13 @@ The world is a grid of 1 km cells (128 × 128 by default) generated from a seed:
 
 **6. Roads** (Dalgaard et al. 2022). Every ten years the largest trade flows whose path is not yet road become roads, and travel costs are rebuilt.
 
-Everything drawn on screen (footprints, routes, trade traffic, overlays, charts) is derived from the year's snapshot and never feeds back.
+**Names.** Settlements are named when founded, and natural features when the map is generated, from a hash of the place and its features (-ford at a ford, -mouth at a river mouth, -port on a harbour, -hurst in woodland, -don on high ground). Naming never touches the run's random generator.
+
+Everything drawn on screen (footprints, routes, trade traffic, labels, overlays, charts) is derived from the year's snapshot and never feeds back.
+
+## Validation
+
+v1 passes when every check in [`docs/validation.md`](docs/validation.md) holds in at least 75% of 20 seeds on each of three generated maps, the aggregate checks (contingency, median count over 5,000) pass on each map, and runs are deterministic. Current results are in [`docs/milestones.md`](docs/milestones.md). Known limit: trade has one tier with one distance decay, so it gives regional markets but little long-distance transfer traffic; the largest city sits on the main river corridor or the coast rather than at the main mouth (see D20).
 
 **Determinism.** A run is fixed by `(map seed, run seed, parameters)`. The same inputs give a bit-identical final snapshot natively and in the browser; `cargo test` checks the golden hash.
 

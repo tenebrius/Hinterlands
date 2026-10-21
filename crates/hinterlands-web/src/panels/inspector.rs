@@ -26,11 +26,7 @@ impl Panel for Inspector {
         let (x, y) = t.grid.xy(cell);
         if let Some(s) = query::settlement_near(snap, t, cell, 1.0) {
             let rank = 1 + snap.settlements.iter().filter(|o| o.pop > s.pop).count();
-            ui.strong(format!(
-                "Settlement #{} — {} (rank {rank})",
-                s.id,
-                s.rank.name()
-            ));
+            ui.strong(format!("{} — {} (rank {rank})", s.name, s.rank.name()));
             egui::Grid::new("settlement").num_columns(2).show(ui, |ui| {
                 ui.label("Population");
                 ui.label(format!("{:.0}", s.pop));
@@ -67,8 +63,10 @@ impl Panel for Inspector {
             if !partners.is_empty() {
                 ui.label("Main trading partners:");
                 for (id, f) in partners {
-                    let pop = snap.settlement(id).map_or(0.0, |o| o.pop);
-                    ui.label(format!("  #{id} ({pop:.0} people): {f:.0}/yr"));
+                    let (name, pop) = snap
+                        .settlement(id)
+                        .map_or((format!("#{id}"), 0.0), |o| (o.name.clone(), o.pop));
+                    ui.label(format!("  {name} ({pop:.0} people): {f:.0}/yr"));
                 }
             }
             ui.separator();
@@ -77,6 +75,13 @@ impl Panel for Inspector {
             "Cell ({x}, {y}) — {}",
             query::describe_cell(t, cell)
         ));
+        for f in t
+            .features
+            .iter()
+            .filter(|f| f.cells.contains(&(cell as u32)))
+        {
+            ui.label(&f.name);
+        }
         ui.label(format!(
             "Elevation {:.0} m, yield {:.2}, forest {:.0}%",
             t.elevation[cell].max(0.0),
@@ -84,12 +89,17 @@ impl Panel for Inspector {
             snap.forest[cell] as f32 / 2.55
         ));
         if let Some(owner) = snap.settlement(snap.owner[cell]) {
-            ui.label(format!("Field of #{}", owner.id));
+            ui.label(format!("Field of {}", owner.name));
         }
         if t.is_land(cell) && v.selected == Some(cell) {
             let r = query::site_report(snap, t, &v.params, cell);
             if let Some((id, c)) = r.nearest {
-                ui.label(format!("Travel cost to nearest settlement (#{id}): {c:.1}"));
+                let name = snap
+                    .settlement(id)
+                    .map_or(format!("#{id}"), |o| o.name.clone());
+                ui.label(format!(
+                    "Travel cost to nearest settlement ({name}): {c:.1}"
+                ));
             }
             let reasons: Vec<String> = r
                 .parts
@@ -120,11 +130,13 @@ impl Panel for Inspector {
         if !routes.is_empty() {
             ui.separator();
             ui.label("Routes through this cell:");
+            let nm = |id: u32| {
+                snap.settlement(id)
+                    .map_or(format!("#{id}"), |o| o.name.clone())
+            };
             for (a, b, f, water) in routes {
-                ui.label(format!(
-                    "  #{a} → #{b}: {f:.0}/yr by {}",
-                    if water { "water" } else { "land" }
-                ));
+                let by = if water { "water" } else { "land" };
+                ui.label(format!("  {} → {}: {f:.0}/yr by {by}", nm(a), nm(b)));
             }
         }
         Vec::new()

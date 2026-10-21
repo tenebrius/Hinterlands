@@ -3,7 +3,7 @@
 
 use super::overlay_cost::heat;
 use super::terrain::to_color;
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, ColorImage, TextureHandle, TextureOptions};
 
 #[derive(Default)]
@@ -21,6 +21,15 @@ impl Layer for ScoreOverlay {
     }
     fn default_on(&self) -> bool {
         false
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![(
+            Swatch::Ramp(
+                Color32::from_rgb(26, 26, 89),
+                Color32::from_rgb(255, 242, 102),
+            ),
+            "Site score (dim: below threshold)",
+        )]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;

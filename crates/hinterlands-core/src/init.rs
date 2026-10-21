@@ -31,6 +31,7 @@ pub fn populate(state: &mut State, t: &Terrain, p: &Params) {
         state.log.push(LogEntry {
             year: 0,
             settlement: id,
+            name: state.name_of(id),
             anchor: cell as u32,
             pop: p.initial_pop,
             kind: LogKind::Initial,

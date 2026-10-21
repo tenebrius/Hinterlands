@@ -11,6 +11,7 @@ pub const FLOW_VIEW_MIN: f32 = 1.0;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SettlementView {
     pub id: u32,
+    pub name: String,
     pub anchor: u32,
     pub pop: f32,
     pub rank: Rank,
@@ -65,6 +66,7 @@ impl Snapshot {
             .iter()
             .map(|s| SettlementView {
                 id: s.id,
+                name: s.name.clone(),
                 anchor: s.anchor,
                 pop: s.pop,
                 rank: s.rank(),

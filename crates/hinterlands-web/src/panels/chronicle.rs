@@ -1,4 +1,5 @@
-//! The chronicle: foundings and failures, newest first, with year and cause.
+//! The chronicle: foundings and failures in plain prose, newest first.
+//! Clicking an entry selects the place on the map.
 
 use super::Panel;
 use crate::view::{Msg, ViewState};
@@ -22,45 +23,47 @@ impl Panel for Chronicle {
         let mut out = Vec::new();
         let t = &v.snapshot.tally;
         ui.label(format!(
-            "Founded {} · failed {} of those",
+            "Founded {} · {} of those have failed",
             t.founded, t.failed
         ));
+        // Names of places that no longer exist come from the chronicle itself.
+        let name_of = |id: u32| {
+            v.snapshot
+                .settlement(id)
+                .map(|s| s.name.clone())
+                .or_else(|| {
+                    v.chronicle
+                        .iter()
+                        .find(|c| c.settlement == id)
+                        .map(|c| c.name.clone())
+                })
+        };
         egui::ScrollArea::vertical()
             .max_height(260.0)
             .id_salt("chronicle")
             .show(ui, |ui| {
                 for e in v.chronicle.iter().rev().take(300) {
-                    let (x, y) = v.terrain.grid.xy(e.anchor as usize);
                     let text = match &e.kind {
-                        LogKind::Initial => {
-                            format!("{:>4}  #{} settled at ({x},{y})", e.year, e.settlement)
-                        }
-                        LogKind::Founded { score, donor } => {
-                            format!(
-                                "{:>4}  #{} founded at ({x},{y}) from #{donor}, score {score:.2}",
-                                e.year, e.settlement
-                            )
+                        LogKind::Initial => format!("{}. {} is settled.", e.year, e.name),
+                        LogKind::Founded { donor, .. } => {
+                            let from = name_of(*donor).unwrap_or_else(|| "elsewhere".into());
+                            format!("{}. {} is founded by settlers from {from}.", e.year, e.name)
                         }
                         LogKind::Failed { cause, moved_to } => {
                             let why = match cause {
-                                FailCause::Depopulated => "dwindled",
-                                FailCause::Starved => "starved",
+                                FailCause::Depopulated => "dwindled away",
+                                FailCause::Starved => "could not feed itself",
                             };
-                            let to =
-                                moved_to.map_or(String::new(), |m| format!("; people to #{m}"));
-                            format!(
-                                "{:>4}  #{} at ({x},{y}) {why} ({:.0} left{to})",
-                                e.year, e.settlement, e.pop
-                            )
+                            let to = moved_to.and_then(name_of).map_or_else(
+                                || "; its people scattered".to_string(),
+                                |m| format!("; its people went to {m}"),
+                            );
+                            format!("{}. {} {why}{to}.", e.year, e.name)
                         }
                     };
-                    if ui
-                        .add(
-                            egui::Label::new(egui::RichText::new(text).monospace().small())
-                                .sense(egui::Sense::click()),
-                        )
-                        .clicked()
-                    {
+                    let label = egui::Label::new(egui::RichText::new(text).small())
+                        .sense(egui::Sense::click());
+                    if ui.add(label).clicked() {
                         out.push(Msg::Select(Some(e.anchor as usize)));
                     }
                 }

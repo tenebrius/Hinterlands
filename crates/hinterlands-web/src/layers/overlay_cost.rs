@@ -1,7 +1,7 @@
 //! Overlay: travel cost from the selected cell, in 10-unit bands.
 
 use super::terrain::{mix, to_color};
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, ColorImage, TextureHandle, TextureOptions};
 use hinterlands_core::cost::{CostGrid, Dijkstra};
 
@@ -29,6 +29,15 @@ impl Layer for CostOverlay {
     }
     fn default_on(&self) -> bool {
         false
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![(
+            Swatch::Ramp(
+                Color32::from_rgb(255, 242, 102),
+                Color32::from_rgb(26, 26, 89),
+            ),
+            "Travel cost: low to high",
+        )]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;

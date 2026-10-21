@@ -7,6 +7,7 @@ pub mod footprint;
 pub mod grid;
 pub mod init;
 pub mod metrics;
+pub mod names;
 pub mod params;
 pub mod query;
 pub mod reach;

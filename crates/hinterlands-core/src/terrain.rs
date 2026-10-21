@@ -43,6 +43,8 @@ pub struct Terrain {
     pub ford: Vec<bool>,
     /// The navigable-river cell with the largest flux that discharges to sea.
     pub river_mouth: Option<u32>,
+    /// Named rivers, ranges, seas, bays and forests.
+    pub features: Vec<crate::names::Feature>,
 }
 
 impl Terrain {
@@ -63,6 +65,7 @@ impl Terrain {
             harbour: vec![false; n],
             ford: vec![false; n],
             river_mouth: None,
+            features: Vec::new(),
         }
     }
 

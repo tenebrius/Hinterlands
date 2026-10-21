@@ -21,9 +21,10 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 ## Pass rule
 
-`hinterlands validate --maps 3 --seeds 20` runs maps 1–3, 20 seeds each.
+`hinterlands validate --maps 3 --seeds 20` runs maps 1–3, 20 seeds each. v1 passes when (D21):
 
-- Per map, the canonical run (seed 1) must pass every per-run check.
-- Per map, the contingency check and the over-5,000 median must pass.
-- Determinism must pass.
-- The pass rate of each check over all 20 seeds is reported, so a canonical pass that rests on a lucky seed is visible. The target for v1 is that every check passes in at least 75% of seeds on every map.
+- every per-run check holds in at least 75% of the 20 seeds (15 of 20) on every map;
+- the aggregate checks (contingency, and the over-5,000 median), computed over the same 20 seeds, pass on every map;
+- determinism passes. Map 1 seed 1 is the determinism golden; it is not otherwise special.
+
+The "seed 1" column is shown for reference only.

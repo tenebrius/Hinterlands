@@ -3,6 +3,7 @@
 
 mod dots;
 mod fields;
+mod labels;
 pub mod overlay_cost;
 mod overlay_score;
 mod routes;
@@ -29,8 +30,108 @@ pub trait Layer {
     fn default_on(&self) -> bool {
         true
     }
-    /// Overlays are exclusive views toggled from the layer panel.
     fn draw(&mut self, d: &DrawCtx);
+    /// Symbols this layer draws, for the legend.
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        Vec::new()
+    }
+}
+
+/// How a legend entry is drawn.
+#[derive(Clone, Copy)]
+pub enum Swatch {
+    Fill(egui::Color32),
+    Line(egui::Color32, f32),
+    Dot(egui::Color32),
+    Ramp(egui::Color32, egui::Color32),
+}
+
+/// The legend's own toggle; the app draws it from the other visible layers.
+pub struct LegendLayer;
+
+impl Layer for LegendLayer {
+    fn id(&self) -> &'static str {
+        "legend"
+    }
+    fn name(&self) -> &'static str {
+        "Legend"
+    }
+    fn draw(&mut self, _d: &DrawCtx) {}
+}
+
+/// Paint the legend for the visible layers in the map's lower-left corner.
+pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
+    use egui::{Color32, FontId, Rect, Stroke};
+    let items: Vec<(Swatch, &str)> = layers
+        .iter()
+        .filter(|l| d.view.layer_on(l.id()))
+        .flat_map(|l| l.legend())
+        .collect();
+    if items.is_empty() {
+        return;
+    }
+    let row = 16.0;
+    let col_w = 190.0;
+    let rows = items.len().div_ceil(2);
+    let size = egui::vec2(2.0 * col_w + 8.0, rows as f32 * row + 8.0);
+    let box_rect = Rect::from_min_size(d.rect.right_bottom() - size - egui::vec2(10.0, 10.0), size);
+    d.painter.rect_filled(
+        box_rect,
+        4.0,
+        Color32::from_rgba_unmultiplied(250, 247, 240, 225),
+    );
+    d.painter.rect_stroke(
+        box_rect,
+        4.0,
+        Stroke::new(1.0, Color32::from_gray(150)),
+        egui::StrokeKind::Inside,
+    );
+    for (k, (sw, text)) in items.iter().enumerate() {
+        let (c, r) = (k / rows, k % rows);
+        let y = box_rect.top() + 4.0 + r as f32 * row + row / 2.0;
+        let sx = box_rect.left() + 8.0 + c as f32 * col_w;
+        let swatch = Rect::from_min_max(egui::pos2(sx, y - 5.0), egui::pos2(sx + 22.0, y + 5.0));
+        match *sw {
+            Swatch::Fill(c) => {
+                d.painter.rect_filled(swatch, 2.0, c);
+            }
+            Swatch::Line(c, w) => {
+                d.painter.line_segment(
+                    [swatch.left_center(), swatch.right_center()],
+                    Stroke::new(w, c),
+                );
+            }
+            Swatch::Dot(c) => {
+                d.painter.circle_filled(swatch.center(), 4.0, c);
+            }
+            Swatch::Ramp(a, b) => {
+                for i in 0..11 {
+                    let t = i as f32 / 10.0;
+                    let mixc = Color32::from_rgb(
+                        (a.r() as f32 + (b.r() as f32 - a.r() as f32) * t) as u8,
+                        (a.g() as f32 + (b.g() as f32 - a.g() as f32) * t) as u8,
+                        (a.b() as f32 + (b.b() as f32 - a.b() as f32) * t) as u8,
+                    );
+                    let x0 = swatch.left() + t * 20.0;
+                    d.painter.rect_filled(
+                        Rect::from_min_max(
+                            egui::pos2(x0, swatch.top()),
+                            egui::pos2(x0 + 2.0, swatch.bottom()),
+                        ),
+                        0.0,
+                        mixc,
+                    );
+                }
+            }
+        }
+        d.painter.text(
+            egui::pos2(sx + 30.0, y),
+            egui::Align2::LEFT_CENTER,
+            *text,
+            FontId::proportional(11.5),
+            Color32::from_gray(40),
+        );
+    }
 }
 
 pub fn all() -> Vec<Box<dyn Layer>> {
@@ -42,5 +143,21 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(routes::RoutesLayer::default()),
         Box::new(settlements::SettlementsLayer::default()),
         Box::new(dots::DotsLayer::default()),
+        Box::new(labels::LabelsLayer {
+            class: labels::Class::Waters,
+        }),
+        Box::new(labels::LabelsLayer {
+            class: labels::Class::Forests,
+        }),
+        Box::new(labels::LabelsLayer {
+            class: labels::Class::Ranges,
+        }),
+        Box::new(labels::LabelsLayer {
+            class: labels::Class::Rivers,
+        }),
+        Box::new(labels::LabelsLayer {
+            class: labels::Class::Settlements,
+        }),
+        Box::new(LegendLayer),
     ]
 }

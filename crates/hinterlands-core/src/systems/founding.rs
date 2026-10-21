@@ -148,6 +148,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
         state.log.push(LogEntry {
             year: state.year,
             settlement: id,
+            name: state.name_of(id),
             anchor: cell as u32,
             pop: p.found_pop,
             kind: LogKind::Founded {

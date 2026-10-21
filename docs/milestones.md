@@ -96,3 +96,12 @@ Defaults retuned with `search` (3 maps × 4 seeds per sample): `found_threshold`
 | Largest city to main mouth (median, reported) | 25.2 km | 24.3 km | 14.4 km |
 
 Every check passes in at least 80% of seeds on every map, and the corridor, median-over-5,000 and determinism checks pass on all maps. The one failure is the canonical run (map 1, seed 1), whose market spacing is 15.8 km against a 15 km ceiling. Raised with the owner: whether v1 is judged on the canonical seed, as the foundation says, or on pass rates over seeds.
+
+## M6 — Release v1
+
+- Pass rule changed to pass rates (D21). **`hinterlands validate --maps 3 --seeds 20`: validation PASSED.** Seeds passing each check, maps 1 / 2 / 3: settlements 20/20/20; over 2,000 20/19/19; over 5,000 20/20/20 (median 3/4/3); largest share 20/20/20; rank-size slope 20/20/20 (median −1.00/−1.02/−1.02); market spacing 17/18/17; siting 20/20/20; failure rate 20/20/20 (median 0.63/0.61/0.63); forest near cities 16/20/17; stability 20/20/20. Contingency (a) 0.70/0.75/0.80, (b) river corridor 0.95/0.85/1.00. Runs passing every check 14/17/15 of 20. Largest city to main mouth (reported): 25/24/14 km.
+- Determinism: golden `b32e192f165a9523` (map 1, seed 1, defaults, 500 years); the release wasm build gives the same hash.
+- Performance: 18.7 ms per simulated year in the release wasm build (headless Chromium); 17–19 ms native.
+- Viewer: roads drawn along the segments they were built on and thickened by traffic, quiet roads and minor routes faded, town blocks with houses when zoomed, names for settlements and natural features with a toggle per class, a two-column legend from the active layers, chronicle in prose, `?map=`/`?seed=`/`?year=` URL options.
+- Seed and params: defaults as committed (`docs/parameters.md`), map seeds 1–3, run seeds 1–20.
+- Deferred: the outside-world sea market experiment (D20), and every Later and 1.x item.

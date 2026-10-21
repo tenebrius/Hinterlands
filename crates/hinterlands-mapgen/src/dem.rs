@@ -86,5 +86,6 @@ pub fn import_asc(text: &str, cell_km: f32) -> Result<Terrain, String> {
     let mut rng = rng_from_seed(0);
     hydrology(&mut t, &mp, &mut rng);
     land_cover(&mut t, &mp, &mut rng);
+    crate::features::name_features(&mut t, &mp, &mut rng);
     Ok(t)
 }

@@ -4,7 +4,7 @@
 //! Dots are capped per route, with more cargo per dot when flows are large.
 //! The simulation never sees the dots.
 
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, Pos2};
 use hinterlands_core::terrain::Terrain;
 
@@ -86,6 +86,16 @@ impl Layer for DotsLayer {
     }
     fn name(&self) -> &'static str {
         "Trade traffic"
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![
+            (Swatch::Dot(Mode::Cart.color()), "Cart (about 1 t)"),
+            (Swatch::Dot(Mode::Barge.color()), "River barge (about 25 t)"),
+            (
+                Swatch::Dot(Color32::from_rgb(235, 235, 235)),
+                "Sea ship (about 100 t)",
+            ),
+        ]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;

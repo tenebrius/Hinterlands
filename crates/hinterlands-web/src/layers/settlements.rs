@@ -1,7 +1,7 @@
 //! Settlements as built-up footprints (from the snapshot), ruins in grey, and a
 //! marker with a size label at each anchor of a town or larger.
 
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, ColorImage, Stroke, TextureHandle, TextureOptions};
 use hinterlands_core::state::{Rank, NONE};
 
@@ -17,6 +17,19 @@ impl Layer for SettlementsLayer {
     }
     fn name(&self) -> &'static str {
         "Settlements"
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![
+            (
+                Swatch::Fill(Color32::from_rgb(196, 160, 120)),
+                "Built-up area",
+            ),
+            (Swatch::Fill(Color32::from_rgb(125, 115, 104)), "Ruins"),
+            (
+                Swatch::Dot(Color32::from_rgb(120, 30, 22)),
+                "Settlement centre",
+            ),
+        ]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;
@@ -73,15 +86,6 @@ impl Layer for SettlementsLayer {
                 Color32::from_rgb(120, 30, 22),
                 Stroke::new(1.0, Color32::from_rgb(250, 235, 220)),
             );
-            if s.rank >= Rank::Town && z > 4.0 {
-                d.painter.text(
-                    p + egui::vec2(r + 2.0, -r),
-                    egui::Align2::LEFT_BOTTOM,
-                    format!("{:.0}", s.pop),
-                    egui::FontId::proportional(11.0),
-                    Color32::from_rgb(30, 20, 15),
-                );
-            }
         }
     }
 }

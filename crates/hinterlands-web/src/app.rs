@@ -178,6 +178,9 @@ impl App {
                 layer.draw(&d);
             }
         }
+        if self.view.layer_on("legend") {
+            layers::draw_legend(&d, &self.layers);
+        }
         out
     }
 }

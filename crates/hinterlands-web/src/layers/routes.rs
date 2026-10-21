@@ -3,7 +3,7 @@
 //! follows the yearly trade flow over it. Land trade off the roads, and minor
 //! water routes, are drawn faintly or not at all, so the main corridors read.
 
-use super::{DrawCtx, Layer};
+use super::{DrawCtx, Layer, Swatch};
 use egui::{Color32, Stroke};
 use std::collections::BTreeMap;
 
@@ -39,6 +39,22 @@ impl Layer for RoutesLayer {
     }
     fn name(&self) -> &'static str {
         "Roads and trade routes"
+    }
+    fn legend(&self) -> Vec<(Swatch, &'static str)> {
+        vec![
+            (
+                Swatch::Line(Color32::from_rgb(122, 80, 42), 3.0),
+                "Road (width: trade)",
+            ),
+            (
+                Swatch::Line(Color32::from_rgba_unmultiplied(110, 70, 35, 90), 2.0),
+                "Land trade off-road",
+            ),
+            (
+                Swatch::Line(Color32::from_rgb(175, 228, 255), 3.0),
+                "River and sea trade",
+            ),
+        ]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;
