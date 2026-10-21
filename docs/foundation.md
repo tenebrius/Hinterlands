@@ -418,6 +418,47 @@ Written by the designer on 21 October 2026, after v3 passed validation (D55–D5
 3. **E3** Planted towns. Check: the survival share (reported); the gate still holds.
 4. **E4** View and milestone. The chronicle gets plain lines ("1348. The pestilence came; Harthorpe lost 4,100 of its people.", "1290. The harbour at Wenenford silted.", "1250. Lord's town planted at Newport."). The map gets a brief plague tint, a silted-harbour mark and a planted-town symbol. A timeline strip of events goes under the population chart. All of it goes in new layer and panel files, as in v2.
 
+## v5 specification: the outside world
+
+Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last simulation version. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
+
+**Outside ports.**
+- Map generation marks one outside port on each open-sea map edge, at the sea cell nearest the busiest coastline. On imported maps the importer reads them from a file: for Kent, the Continent (off Dover) and the North Sea (off the Thames mouth).
+- Each outside port is a fixed partner in the existing machinery, with two roles:
+  1. **A buyer of grain** with a fixed demand, `outside_grain` in grain units a year, through the shopping model (D41), so it buys a fixed amount rather than everything on offer. Paid in imports (below).
+  2. **The only seller of a fifth good, imports** (wine, cloth, spices), demanded by market people only, `import_demand` per market person, with a high value density (`ρ` 10). Paid in grain like any good.
+- The trade rides the stored paths, so the ports and towns on those routes earn handling and transshipment income on it. This is what Watling Street lacked: traffic through Dover to the Continent.
+- D25's outside world, which bought everything by gravity and halved the population, is replaced by this. Its parameters are retired.
+
+**Better ships.** Transport cost ratios drift during the run, as decision 3 of the architecture allowed for (ratios live in `State`). In the Historical calendar, sea cost per km falls by `ship_gain` (30%) in a straight line between 1300 and 1500, for the cog, the hulk and then the carrack. River, road and land costs stay fixed. The cost grid is rebuilt at road steps, as now. Expected: coastal ports take a larger share late in the run, and some inland towns lose rank.
+
+**Gate.** As in v4, 20 seeds a map, 75% per check, Historical mode.
+- **Gated:**
+  - every v4 check;
+  - determinism;
+  - under 50 ms a year in wasm;
+  - outside trade (grain bought plus imports sold) between 3% and 20% of all market inflow.
+- **Reported:**
+  - the coastal share of population in places over 2,000, at 1300 and at 1600;
+  - rank change of the top 10 between 1400 and 1600;
+  - on Kent, the share of Watling Street cells still road at 1600 and the largest city's site.
+
+**Stages.**
+1. **O1** Outside ports and imports.
+2. **O2** Ship drift.
+3. **O3** View and milestone: imports shown as a sixth colour of route, outside ports drawn as ships at the map edge, and a chronicle line when sea costs fall ("1450. Larger ships now sail the coast."); then the milestone.
+
+As before, report after each stage and carry on unless a check fails or the spec is unclear.
+
+**After v5: release.**
+- Update the README to the full model.
+- Bring `docs/parameters.md` up to date.
+- Add a short guided start in the viewer: a "what you are watching" panel.
+- Make a final screenshot set.
+- Freeze the golden hash.
+
+No new mechanisms after that.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
@@ -482,7 +523,7 @@ The simulation lane runs left to right through its gates; the map generation tra
 
    Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
 3. **v4 Shocks.** Specified below, in "v4 specification: shocks".
-4. **v5 World** will be decided after v4. The outside world as a seller, tried in D25 without effect, is folded into v5's sea trade and not done before it.
+4. **v5 The outside world.** Specified below, in "v5 specification: the outside world". It is the last simulation version. Joined regions, coarse routing, way-stations, pastoral highlands and per-region parameters are dropped, since they are the scale-up that sinks projects of this kind.
 
 **Map generation track.** v1 ships noise, thermal erosion, hydrology and yield. Later passes, in order of effect on realism: hydraulic erosion with floodplains and deltas as the best land; lakes and marshes; coastline detail; a rain-shadow climate with biomes from temperature and moisture; resources placed by geology; tectonic plates giving ranges a direction. Each is a new pass in the pipeline and changes nothing else.
 
