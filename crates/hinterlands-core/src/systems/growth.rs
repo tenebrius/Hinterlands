@@ -7,7 +7,12 @@
 //! migration, and small places near big ones are drained. With `gross_inflow`
 //! (D24) the inflow is the gross market inflow instead of net food imports, as in
 //! the published model: a market grows on what is sold there whether or not the
-//! place itself is short of food.
+//! place itself is short of food. With `market_state` (D26) `W_j` is the
+//! settlement's own market size, not its derived non-farming population, and
+//! moves with the people the market gains or loses; the inflow is gross. With
+//! `handling_income` (D27) a place also earns a margin on the trade passing its
+//! anchor and on the trade transshipped there (break of bulk), in place of the
+//! through-traffic weight.
 //! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history.
 
 use crate::params::Params;
@@ -48,13 +53,24 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.smoothed_loss += (loss - s.smoothed_loss) / p.loss_years.max(1.0);
         natural[i] = gain * s.pop - s.smoothed_loss;
 
-        let urban = crate::systems::trade::urban_pop(s, p);
-        let market = if p.gross_inflow {
+        let urban = if p.market_state {
+            s.market.max(p.market_floor)
+        } else {
+            crate::systems::trade::urban_pop(s, p)
+        };
+        let market = if p.gross_inflow || p.market_state {
             s.market_in
         } else {
             (s.food_in - s.food_out).max(0.0)
         };
-        let inflow = market + p.through_weight * (s.trade_in + s.through);
+        let inflow = if p.handling_income {
+            market
+                + p.through_weight * s.trade_in
+                + p.handling_margin * s.through
+                + p.transship_margin * s.transship
+        } else {
+            market + p.through_weight * (s.trade_in + s.through)
+        };
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }
@@ -142,20 +158,27 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
             }
         }
     }
+    // The people a market actually gains or loses change its size.
+    let mut market_delta = vec![0f32; m];
     for j in 0..m {
         if pull[j] < 0.0 {
             delta[j] += pull[j];
+            market_delta[j] += pull[j];
         }
         for &(i, a) in &asked[j] {
             let moved = a * scale[i];
             delta[i] -= moved;
             delta[j] += moved;
+            market_delta[j] += moved;
         }
     }
 
     for (i, s) in state.settlements.iter_mut().enumerate() {
         if p.growth_enabled {
             s.pop = (s.pop + delta[i]).max(0.0);
+            if p.market_state {
+                s.market = (s.market + market_delta[i]).min(s.pop).max(p.market_floor);
+            }
         }
         if s.pop < p.fail_pop {
             s.low_years += 1;

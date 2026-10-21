@@ -210,6 +210,10 @@ def main():
     top_i = int(np.argmax(real_pop))
     near_top = []
     largest_at = []
+    shares = []
+    for path in files:
+        pops = [float(r["pop"]) for r in csv.DictReader(open(path))]
+        shares.append(max(pops) / sum(pops) if pops else 0.0)
     for sxy, spop, top in sims:
         dl = np.sqrt(((sxy - real_xy[top_i]) ** 2).sum(1))
         within = np.where(dl <= 10)[0]
@@ -224,7 +228,8 @@ def main():
         f"{sum(r == 1 for r in ranks)} of {len(sims)}; a top-3 place within 10 km: "
         f"{sum(r <= 3 for r in ranks)}; any top-{k} place within 10 km: {len(ranks)}. "
         f"Median distance from the model's largest place to {towns[top_i]['name']}: "
-        f"{np.median([x[2] for x in largest_at]):.0f} km."
+        f"{np.median([x[2] for x in largest_at]):.0f} km. "
+        f"Largest place's share of the region's people (median): {np.median(shares):.2f}."
     )
     md.append("")
     from collections import Counter
@@ -262,6 +267,38 @@ def main():
             nr, nm = int(sel.sum()), sum(x == c for x in msite)
             fr = found[sel].mean() / len(files) if nr else 0.0
             md.append(f"| {c} | {nr} | {nr / k:.0%} | {nm / len(files):.1f} | {nm / len(msite):.0%} | {fr:.0%} |")
+        md.append("")
+
+        # Spacing of inland markets: each inland place over 500 people to the
+        # nearest other place over 500 (any site); medians.
+        def inland_spacing(xy, pop, sites):
+            big = pop >= 500
+            pts = xy[big]
+            out = []
+            for q, (x, y) in enumerate(xy):
+                if not big[q] or sites[q] != "inland":
+                    continue
+                d = np.sqrt(((pts - [x, y]) ** 2).sum(1))
+                d = d[d > 0]
+                if len(d):
+                    out.append(d.min())
+            return out
+
+        real_sp = inland_spacing(real_xy, real_pop, rsite)
+        model_sp, counts = [], []
+        for path in files:
+            allp = [r for r in csv.DictReader(open(path)) if inside(float(r["x_km"]), float(r["y_km"]))]
+            xy = np.array([[float(r["x_km"]), float(r["y_km"])] for r in allp])
+            pp = np.array([float(r["pop"]) for r in allp])
+            sp = inland_spacing(xy, pp, [site(x, y) for x, y in xy])
+            counts.append(len(sp))
+            if sp:
+                model_sp.append(float(np.median(sp)))
+        md.append(
+            f"Inland places over 500 people, nearest other place over 500 (median): real {np.median(real_sp):.1f} km "
+            f"({len(real_sp)} towns); model {np.median(model_sp) if model_sp else float('nan'):.1f} km "
+            f"(median over seeds; {np.median(counts):.0f} such places per seed)."
+        )
         md.append("")
 
     md.append(

@@ -113,6 +113,12 @@ pub struct Settlement {
     /// Gross market inflow: food delivered to this market plus the share of its
     /// own harvest sold at home (Rihll–Wilson's D_j).
     pub market_in: f32,
+    /// Market size W_j (D26), in people: the traders and craftsmen the market
+    /// supports. Its own state, as in Rihll–Wilson, used when `market_state` is on.
+    pub market: f32,
+    /// Trade changing mode (boat to land, river to sea) within a cell of the
+    /// anchor this year: what a port handles (D27).
+    pub transship: f32,
     pub food_ratio: f32,
     /// Population over the last 51 years, oldest first.
     pub history: Vec<f32>,
@@ -140,6 +146,8 @@ impl Settlement {
             trade_in: 0.0,
             through: 0.0,
             market_in: 0.0,
+            market: 0.0,
+            transship: 0.0,
             food_ratio: 1.0,
             history: Vec::new(),
             reach: Reach::default(),
@@ -335,6 +343,7 @@ impl State {
             self.settlements.iter().map(|s| s.name.clone()).collect();
         let name = crate::names::settlement_name(t, anchor as usize, id as u64, &taken);
         let mut s = Settlement::new(id, name, anchor, pop, self.year, initial);
+        s.market = p.market_w0.min(pop);
         s.history.push(pop);
         self.settlements.push(s);
         let idx = self.settlements.len() - 1;

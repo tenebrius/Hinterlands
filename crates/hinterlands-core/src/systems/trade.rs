@@ -8,7 +8,8 @@
 //! proportion to their pull, along the same paths.
 //! Food arrives less a loss per unit cost. Flows are assigned to the stored
 //! least-cost paths, giving the load on each cell and the route junctions (hubs).
-//! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in.
+//! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in,
+//! transship.
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
@@ -28,6 +29,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.food_out = 0.0;
         s.through = 0.0;
         s.market_in = 0.0;
+        s.transship = 0.0;
     }
     state.flows.clear();
     state.cell_load.iter_mut().for_each(|x| *x = 0.0);
@@ -46,7 +48,14 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let attract: Vec<f32> = state
         .settlements
         .iter()
-        .map(|s| libm::powf(urban_pop(s, p) + p.urban_seed, p.alpha))
+        .map(|s| {
+            let w = if p.market_state {
+                s.market.max(p.market_floor)
+            } else {
+                urban_pop(s, p) + p.urban_seed
+            };
+            libm::powf(w, p.alpha)
+        })
         .collect();
     let mut trade_in = vec![0f32; m];
     let mut food_in = vec![0f32; m];
@@ -150,9 +159,21 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Assign flows to paths: load per cell, and the directions routes use there.
     let grid = t.grid;
     let mut dirs = vec![0u16; t.n()];
+    // Where cargo changes mode: boarding or leaving a boat, or barge to sea ship.
+    let mut transship = vec![0f32; t.n()];
     for f in &flows {
         let s = &state.settlements[idx_of[f.from as usize] as usize];
         let path = &s.reach.partners[f.partner_idx as usize].path;
+        for w in path.windows(2).filter(|_| p.handling_income) {
+            let (a, b) = (w[0], w[1]);
+            let (wa, wb) = (state.cost.is_water_node(a), state.cost.is_water_node(b));
+            let (ca, cb) = (state.cost.node_cell(a), state.cost.node_cell(b));
+            if wa != wb {
+                transship[if wa { cb } else { ca }] += f.amount;
+            } else if wa && t.is_nav(ca) != t.is_nav(cb) {
+                transship[if t.is_nav(ca) { ca } else { cb }] += f.amount;
+            }
+        }
         let mark = f.amount >= p.hub_min_flow;
         for q in 1..path.len().saturating_sub(1) {
             let cell = state.cost.node_cell(path[q]);
@@ -174,6 +195,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.food_out = food_out[i];
         s.market_in = market_in[i];
         s.through = state.cell_load[s.anchor as usize];
+        let a = s.anchor as usize;
+        s.transship = transship[a]
+            + (0..8)
+                .filter_map(|d| grid.neighbor(a, d))
+                .map(|j| transship[j])
+                .sum::<f32>();
     }
     state.flows = flows;
 }

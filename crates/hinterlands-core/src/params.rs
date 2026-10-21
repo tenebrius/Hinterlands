@@ -163,6 +163,12 @@ define_params! {
         k_maint: f32 = 1.0, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";
         through_weight: f32 = 0.025, [0, 2], "Weight of trade passing through and non-food trade in inflow";
         gross_inflow: bool = false, [0, 1], "Markets grow on gross market inflow, as published Rihll-Wilson, not net food imports (D24)";
+        market_state: bool = false, [0, 1], "Market size W is its own state, grown on gross market inflow (Rihll-Wilson; D26)";
+        market_w0: f32 = 10.0, [0, 200], "Market size of a new settlement, in people";
+        market_floor: f32 = 1.0, [0.01, 50], "Least market size, so a losing market keeps a defined pull";
+        handling_income: bool = false, [0, 1], "Places earn a margin on trade passing or transshipped there, as food-equivalent inflow (D27)";
+        handling_margin: f32 = 0.05, [0, 0.5], "Share of the value of trade passing a place's anchor that it keeps";
+        transship_margin: f32 = 0.15, [0, 1], "Share of the value of trade transshipped at a place that it keeps";
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
