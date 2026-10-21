@@ -138,6 +138,7 @@ pub fn blank(mp: &MapParams) -> Terrain {
         river_mouth: None,
         features: Vec::new(),
         initial_road: Vec::new(),
+        bridge: Vec::new(),
     }
 }
 

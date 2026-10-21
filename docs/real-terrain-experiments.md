@@ -313,3 +313,12 @@ Written by the designer and committed before any run with bridges. This is a sec
 **How it will be scored.** The same tables as the roads test, against both v1.1 and v1.1 + roads on the same 20 seeds: Rochester and Canterbury counts; settlements on or next to a Roman road (all / 1,000+) against 32% of land and 47% of real towns; lowland AUC; count and spacing of inland places over 500; the largest city's site, with Gravesend's count stated. A fall in Gravesend's count below the 15 of v1.1 is a cost to report, not a reason to tune.
 
 **Stop.** Run once, then stop and report. If the expectation fails, nothing is tuned; the next decision is (b).
+
+### Input check (implementer, before the run)
+
+The mechanism is now in the code. `Terrain.bridge` is input data, and `free_crossing` makes a crossing cost 0 at a ford or a bridge. A unit test (`crossing_is_free_at_a_bridge`) covers it. The importer marks a bridge on every river or stream cell an Itiner-e road passes through, and on both cells where the road slips diagonally between two linked river cells. The golden hash is unchanged: `68beae826cf800cd`.
+
+- **Bridge cells:** 52; 30 on navigable rivers, 22 on streams.
+- **Rochester:** two bridge cells on the **navigable** Medway, at (54, 57) and (55, 57), 2.2 km from Rochester. The mechanism can act there.
+- **Canterbury:** three bridge cells within 2 km, all on a **stream**. In the model the Stour is not navigable at Canterbury; the nearest navigable cell is 8.2 km away. The transshipment term cannot act at Canterbury, so the expectation there is weak, as the designer anticipated.
+- **Also bridged on a navigable river:** the Medway at Maidstone, 0.6 km away, on the road towards Lympne.

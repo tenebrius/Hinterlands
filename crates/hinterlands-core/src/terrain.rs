@@ -50,6 +50,11 @@ pub struct Terrain {
     /// the serialised terrain when empty, so generated maps keep their hash.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub initial_road: Vec<bool>,
+    /// River and stream cells with a bridge, crossed at no extra cost as at a
+    /// ford: input data (Roman roads' crossings, D33); empty on generated maps
+    /// and left out of the serialised terrain when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bridge: Vec<bool>,
 }
 
 impl Terrain {
@@ -72,6 +77,7 @@ impl Terrain {
             river_mouth: None,
             features: Vec::new(),
             initial_road: Vec::new(),
+            bridge: Vec::new(),
         }
     }
 
@@ -112,6 +118,11 @@ impl Terrain {
 
     /// True if `a` flows into `b` or `b` into `a`.
     #[inline]
+    /// A crossing here costs nothing: a ford or a bridge.
+    pub fn free_crossing(&self, i: usize) -> bool {
+        self.ford[i] || self.bridge.get(i).copied().unwrap_or(false)
+    }
+
     pub fn flow_linked(&self, a: usize, b: usize) -> bool {
         self.downstream(a) == Some(b) || self.downstream(b) == Some(a)
     }

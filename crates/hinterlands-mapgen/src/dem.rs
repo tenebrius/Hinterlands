@@ -27,8 +27,38 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
             ));
         }
         t.initial_road = (0..t.n()).map(|i| r[i] > 0.5 && t.is_land(i)).collect();
+        t.bridge = road_bridges(&t);
     }
     Ok(t)
+}
+
+/// Bridges where an initial road crosses a river or stream (D33): every river
+/// cell on the road, and, where the road steps diagonally between two linked
+/// river cells without touching either, both of those cells.
+fn road_bridges(t: &Terrain) -> Vec<bool> {
+    let g = t.grid;
+    let mut bridge: Vec<bool> = (0..t.n())
+        .map(|i| t.initial_road[i] && t.is_river(i))
+        .collect();
+    for i in 0..t.n() {
+        if !t.initial_road[i] {
+            continue;
+        }
+        for d in [1usize, 3, 5, 7] {
+            let Some(j) = g.neighbor(i, d) else { continue };
+            if !t.initial_road[j] {
+                continue;
+            }
+            let (dx, dy) = hinterlands_core::grid::DIRS[d];
+            let (x, y) = g.xy(i);
+            let (a, b) = (g.idx(x + dx, y), g.idx(x, y + dy));
+            if t.is_river(a) && t.is_river(b) && t.flow_linked(a, b) {
+                bridge[a] = true;
+                bridge[b] = true;
+            }
+        }
+    }
+    bridge
 }
 
 /// The values of an ESRI ASCII grid, row by row from the north.
