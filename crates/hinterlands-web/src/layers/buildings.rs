@@ -193,6 +193,9 @@ impl Layer for BuildingsLayer {
     fn name(&self) -> &'static str {
         "Buildings and bridges"
     }
+    fn shown_at(&self, zoom: f32) -> bool {
+        zoom >= 4.0
+    }
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
         vec![
             (Swatch::Fill(STONE), "Church, square, cathedral"),

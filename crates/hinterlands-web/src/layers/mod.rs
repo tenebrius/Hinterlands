@@ -2,6 +2,7 @@
 //! touches the simulation; adding one is a new file and a line in `all()`.
 
 mod buildings;
+mod countryside;
 mod dots;
 mod fields;
 mod labels;
@@ -32,6 +33,10 @@ pub trait Layer {
         true
     }
     fn draw(&mut self, d: &DrawCtx);
+    /// Whether the layer draws anything at this zoom (for the legend).
+    fn shown_at(&self, _zoom: f32) -> bool {
+        true
+    }
     /// Symbols this layer draws, for the legend.
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
         Vec::new()
@@ -65,7 +70,7 @@ pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
     use egui::{Color32, FontId, Rect, Stroke};
     let items: Vec<(Swatch, &str)> = layers
         .iter()
-        .filter(|l| d.view.layer_on(l.id()))
+        .filter(|l| d.view.layer_on(l.id()) && l.shown_at(d.camera.zoom))
         .flat_map(|l| l.legend())
         .collect();
     if items.is_empty() {
@@ -73,8 +78,9 @@ pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
     }
     let row = 16.0;
     let col_w = 190.0;
-    let rows = items.len().div_ceil(2);
-    let size = egui::vec2(2.0 * col_w + 8.0, rows as f32 * row + 8.0);
+    let cols = if items.len() > 16 { 3 } else { 2 };
+    let rows = items.len().div_ceil(cols);
+    let size = egui::vec2(cols as f32 * col_w + 8.0, rows as f32 * row + 8.0);
     let box_rect = Rect::from_min_size(d.rect.right_bottom() - size - egui::vec2(10.0, 10.0), size);
     d.painter.rect_filled(
         box_rect,
@@ -139,6 +145,15 @@ pub fn all() -> Vec<Box<dyn Layer>> {
     vec![
         Box::new(terrain::TerrainLayer::default()),
         Box::new(fields::FieldsLayer::default()),
+        Box::new(countryside::CountrysideLayer::new(
+            countryside::Kind::Grazing,
+        )),
+        Box::new(countryside::CountrysideLayer::new(
+            countryside::Kind::Strips,
+        )),
+        Box::new(countryside::CountrysideLayer::new(
+            countryside::Kind::Frontier,
+        )),
         Box::new(overlay_cost::CostOverlay::default()),
         Box::new(overlay_score::ScoreOverlay::default()),
         Box::new(routes::RoutesLayer::default()),
