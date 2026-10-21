@@ -250,3 +250,11 @@ Kind: change to the defaults (designer), and rendering.
 - The generated maps and the golden hash are unchanged.
 - Before this, Kent ran with the importer's 9 random sites (4 salt and 5 stone, no iron). The v2 milestone note that Kent had no resource sites was wrong and has been corrected.
 Kind: data and an importer option (reported, not gated, per the foundation's plan after v2).
+
+## D51 — v2.1: coppice for iron fuel (designer decision)
+- With `coppice` (on by default), an iron site's fuel cut leaves `coppice_floor` (0.3) of forest standing on each cell. Household fuel and field clearing are unchanged.
+- Iron output is also capped by the regrowth above the floor: the sum of `regrow_rate × (forest0 − coppice_floor)` over the uncultivated cells of the holder's fuel catchment, divided by `fuel_per_iron`. The site asks only that much fuel. A mine therefore settles at a steady output, and a mine with a small catchment stays small.
+- `data/real/experiments/v2.json` (`coppice` off) reproduces v2's golden `b0de71500774acf8`.
+- Gate re-run, 20 seeds a map: validation passed, with every check at 19/20 or better. Iron output per held site at year 500, median (4 seeds a map): 25 / 18 / 28, against 47 / 38 / 43 without coppice. Forest within 5 km of iron sites: 0.19 / 0.22 / 0.17 against a land mean of 0.46 / 0.45 / 0.44; it was 0.00 without coppice.
+Golden hash: `f67bf8565c500fda`, native and in the browser.
+Kind: model mechanism behind a switch (designer decision).

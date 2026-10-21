@@ -205,13 +205,15 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - Performance: 28.2 ms per year in the release wasm build; slowest native validation run 29.8 ms per year.
 - Kent regression (`just real`: uniform soil, Roman roads and bridges; Kent's resources are the importer's 9 random sites, 4 salt and 5 stone with no iron, not real ones (corrected after v2; see v2.1)): lowland AUC 0.47 / 0.54 / 0.43; inland towns found 37%; places on rivers 42%; inland places over 500: 26 per seed at 6.0 km (real 29 at 10.6); largest city at Gravesend in 10 of 20 seeds and Rochford in 8; largest share 0.28. (v1.2: 0.49 / 0.53 / 0.46; 39%; 32 at 6.2 km; Gravesend 10.)
 
-## v2.1 — Kent resources as data (D50)
-- Real resource sites are now on Kent through the importer (`resources_file`): 6 Wealden bloomeries, 5 quarries and 6 salt-making sites (`data/real/kent/resources.csv`, with sources). The config is `data/real/kent/map-resources.json`. This step is reported, not gated.
-- `just test` passes, and the golden hash `b0de71500774acf8` is unchanged. Nothing on the generated maps changed, so the v2 `just validate` result stands.
-- Kent, 20 seeds, 500 years, v2 defaults:
-  - All 6 bloomeries and 5 of the 6 salt sites sell in every seed (Graveney in 19 of 20). The quarries sell in 9 to 15 of the 20 seeds.
-  - Iron is fuel-limited: forest within 5 km of every bloomery is 0.00.
-  - Per seed there are 1.6 salterns and 0.85 mines alive at year 500.
-  - Lowland AUC is 0.48 / 0.51 / 0.47, and inland towns found 34%.
-  - The largest city is at Gravesend in 11 seeds and Faversham in 9; its share is 0.25.
+## v2.1 — Coppice and Kent resources (D50, D51)
+- **Coppice (D51), on by default.** Iron fuel is cut only down to 0.3, and iron output is capped by the regrowth above that floor in the holder's woods.
+- **Gate re-run** (`just validate`, 20 seeds a map): **PASSED**. Every check passes in at least 19 of 20 seeds per map; market spacing on map 1 is 19/20. Runs passing every check: 19/20/20. Top-10 overlap: 0.43/0.38/0.48. The over-5,000 median (reported) is 2/2/2.
+- **Iron, 4 seeds a map:** median output per held site 25 / 18 / 28, against 47 / 38 / 43 without coppice. Forest within 5 km of iron sites is 0.19 / 0.22 / 0.17, against a land mean of 0.46 / 0.45 / 0.44. Without coppice it was 0.00.
+- **Determinism:** golden `f67bf8565c500fda`, and the release wasm build gives the same hash (`?selftest=500`, 25.9 ms/year). `data/real/experiments/v2.json` (coppice off) gives v2's `b0de71500774acf8`.
+- **Kent resources (D50), reported, not gated.** Real resource sites are on Kent through the importer (`resources_file`): 6 Wealden bloomeries, 5 quarries and 6 salt-making sites (`data/real/kent/resources.csv`, with sources). The config is `data/real/kent/map-resources.json`.
+- **Kent, 20 seeds:**
+  - All 6 bloomeries sell in every seed, at 12 to 38 a year, capped by their woods. The salt pans sell in 18 to 20 seeds, three of them at the 1,000 cap. The quarries sell in 10 to 14 seeds.
+  - There are 1.6 salterns and 1.0 mines per seed at year 500.
+  - Lowland AUC is 0.49 / 0.53 / 0.46, and inland towns found 34%.
+  - The largest city is at Gravesend in 10 seeds and Faversham in 10.
   - Details are in `docs/real-terrain-experiments.md`.

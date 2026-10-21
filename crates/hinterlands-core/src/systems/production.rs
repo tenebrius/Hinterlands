@@ -3,7 +3,9 @@
 //! Its output, in grain units a year, is `min(cap, prod × (holder's market
 //! people + site_crew))`. Iron is fuel-bound: it asks `fuel_per_iron` of forest
 //! per unit, which cultivation cuts from the holder's woods, and its output is
-//! capped by the fuel cut. Writes: sites (holder, potential, output, fuel_want).
+//! capped by the fuel cut. With `coppice` (D51) it is also capped by the
+//! yearly regrowth above `coppice_floor` on the uncultivated cells of the
+//! holder's fuel catchment. Writes: sites (holder, potential, output, fuel_want).
 
 use crate::params::Params;
 use crate::state::{Good, State, NONE};
@@ -28,7 +30,10 @@ pub fn prod(p: &Params, g: Good) -> f32 {
 
 pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let State {
-        settlements, sites, ..
+        settlements,
+        sites,
+        owner,
+        ..
     } = state;
     for site in sites.iter_mut() {
         site.holder = NONE;
@@ -51,10 +56,21 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         site.potential = cap(p, site.good).min(prod(p, site.good) * workers);
         site.output = site.potential;
         if site.good == Good::Iron {
-            site.output = site
-                .potential
-                .min(site.fuel_got / p.fuel_per_iron.max(1e-9));
-            site.fuel_want = site.potential * p.fuel_per_iron;
+            let fpi = p.fuel_per_iron.max(1e-9);
+            let mut most = site.potential;
+            if p.coppice {
+                let regrowth: f32 = s
+                    .reach
+                    .fuel_order
+                    .iter()
+                    .map(|&c| c as usize)
+                    .filter(|&c| owner[c] == NONE)
+                    .map(|c| p.regrow_rate * (t.forest0[c] - p.coppice_floor).max(0.0))
+                    .sum();
+                most = most.min(regrowth / fpi);
+            }
+            site.output = most.min(site.fuel_got / fpi);
+            site.fuel_want = most * p.fuel_per_iron;
         }
     }
 }

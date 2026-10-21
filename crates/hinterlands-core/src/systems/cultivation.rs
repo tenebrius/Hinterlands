@@ -108,7 +108,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 break;
             }
             let ci = c as usize;
-            let take = forest[ci].min(p.max_fuel_take).min(demand);
+            // Coppice (D51): the woods are cut only down to the floor.
+            let floor = if p.coppice { p.coppice_floor } else { 0.0 };
+            let take = (forest[ci] - floor)
+                .max(0.0)
+                .min(p.max_fuel_take)
+                .min(demand);
             forest[ci] -= take;
             demand -= take;
         }
