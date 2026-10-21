@@ -401,4 +401,4 @@ Written by the designer and committed before any run.
 
 **Expectation (the designer's).** On Kent with roads + bridges, a place of 1,000 or more within 3 km of Rochester in at least 5 of 20 seeds. On the generated maps, the failure rate stays within 40–70%, since most failures are hamlets that fall below 20. The count of inland places over 500 on Kent rises toward the real 29.
 
-**Stop.** Run once, then stop and report. Nothing is tuned. Making `shed_unfed` the default, and any re-tune it needs, goes to Divish with these numbers.
+**Stop.** Run once, then stop and report. Nothing is tuned. Making `shed_unfed` the default, and any re-tune it needs, is then the designer's decision (design authority delegated by Divish on 2026-10-21).

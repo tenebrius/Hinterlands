@@ -11,6 +11,11 @@ There are two roles on this project and they are kept separate.
 
 The owner is Divish. He has had projects of this kind fail before from over-ambition, so the standing instruction is: **small, proven, gated**. Every mechanism comes from a recognised published model where one exists. Nothing from a later version is started before the current one passes its checks. When in doubt, cut.
 
+**Design authority (Divish, 2026-10-21).** The designer has full control of the design requirements: defaults, the acceptance test, scope, versions and the order of work. The aim is a **semi-realistic but satisfying** simulation that keeps moving forward; realism is a means, not the goal. So:
+- Decide, don't escalate. Record every such decision in `docs/decisions.md` or `docs/foundation.md`, and tell Divish of major changes of direction.
+- Weigh each round by what it adds to the simulation someone watches, not only by what it adds to a score. A real-terrain miss is worth chasing only when the fix improves the model in general.
+- "Small, proven, gated" still holds: it is how the project keeps moving, not a brake on it.
+
 ## Where the project stands
 
 - **v1 released**, then **v1.1 released** after the Kent real-terrain test. Validation passes on all three generated maps at the 75 % pass-rate rule. Golden determinism hash at v1.1: `68beae826cf800cd` (same natively and in the browser). One year runs in about 21 ms natively, 28 ms in the browser, within the 50 ms budget.
@@ -24,7 +29,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - Roman roads are the **first Kent input with signal for small towns** (47% of real towns against 32% of land). The model moving settlements off roads is a model fault.
 - **Roman bridges test failed too (D33).** 52 bridges, 30 on navigable rivers; Rochester 1/20 (bar 5), usually no settlement near the bridge at all; Canterbury bridged only on a stream. Roads and bridges stay Kent options, not defaults (Gravesend 15 → 8 with roads).
 - **Rochester diagnostic (e1d287e, `hinterlands probe`):** founding does choose the bridge (14 of 20 seeds), towns reach 1,000–4,280, and 14 of 15 are then deleted by the "unfed for 20 years" failure rule; the cost shadow keeps the site empty afterwards. Both earlier readings were wrong (mine and the implementer's).
-- **Failure rule is a spec error (mine):** written for hamlets, applied to towns, and it misreads the 39% market-survival figure (markets lapsed; places stayed). Corrected rule pre-registered as switch `shed_unfed`: underfed places shed a third of the unfed gap a year; removal only below `fail_pop`. Rochester expectation re-set for that round (≥5/20 with roads + bridges). Making it the default goes to Divish.
+- **Failure rule is a spec error (mine):** written for hamlets, applied to towns, and it misreads the 39% market-survival figure (markets lapsed; places stayed). Corrected rule pre-registered as switch `shed_unfed`: underfed places shed a third of the unfed gap a year; removal only below `fail_pop`. Rochester expectation re-set for that round (≥5/20 with roads + bridges). Making it the default is my decision (design authority, 2026-10-21).
 - (b), the shadow in km: still a known defect, not pursued.
 - **Agreed next steps**, in order: (1) the `shed_unfed` round: scale check, generated-map validation, Kent; (2) the outside world as a seller, pre-registered by me after (1); (3) v2, goods and specialists.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
@@ -82,4 +87,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — after the Rochester diagnostic (e1d287e); failure-rule correction `shed_unfed` pre-registered. Golden still `68beae826cf800cd`.
+Last updated: 2026-10-21 — Divish delegated full control of the design requirements to the designer; `shed_unfed` round running. Golden still `68beae826cf800cd`.
