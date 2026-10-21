@@ -416,7 +416,11 @@ The simulation lane runs left to right through its gates; the map generation tra
 **Plan after v2** (designer, 21 October 2026). This replaces the table above where they differ.
 1. **v2.1 Kent resources and coppice.** The coppice rule for iron fuel (see Sites and production) comes first, with one re-run of the v2 gate. Then come the Kent resources (data only). Wealden iron, Maidstone ragstone and the estuary salt pans are added to Kent's `Terrain` through the importer, as a showcase of v2 on real ground. It is reported, not gated, and no expectation is set for any single site.
 2. **v3 Landscape.** The work comes in this order, with the steps in one version because each depends on the last:
-   - (a) **The shadow is measured in km, not travel cost.** Bosker & Buringh's bands and Bracton's spacing are distances. With the shadow in travel cost, every road deepens the shadow along itself, which works against the next step. A re-tune and full validation are needed, and Kent's inland spacing (6.2 km against 10.6) is reported.
+   - (a) **The shadow is measured in km, not travel cost.** Bosker & Buringh's bands and Bracton's spacing are distances. With the shadow in travel cost, every road deepens the shadow along itself, which works against the next step.
+     - **Change:** both uses of the shadow, the founding penalty and the growth drain (`shadow_drain`, with its linear fall-off), use the straight-line distance between anchors in km, against `shadow_radius_km`, which starts at 10. The access term stays in travel cost, because market access is about the cost of getting there.
+     - **Validation:** a re-tune and full validation follow. A new golden hash is recorded.
+     - **Expectation on Kent, pre-registered:** the share of settlements on or next to a Roman road reaches at least the land share (32%), against 21% now. Kent's inland spacing (6.0 km against 10.6) is reported.
+     - **Stop:** if validation cannot be passed by tuning, stop and report.
    - (b) **Roads follow traffic.** They upgrade with edge load and decay slowly when it falls (Dalgaard et al. 2022: Roman roads largely persisted).
    - (c) **Bridges at busy crossings,** using the free-crossing mechanism of D33.
    - (d) **Mills** add a few percent to their settlement's yield.
