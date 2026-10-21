@@ -10,7 +10,21 @@ use hinterlands_core::{rng_from_seed, Terrain};
 
 pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    import_asc(&text, cell_km, mp)
+    let mut mp = mp.clone();
+    if let Some(soil) = &mp.soil_file {
+        let s = std::fs::read_to_string(soil).map_err(|e| format!("{soil}: {e}"))?;
+        mp.soil_grid = read_grid(&s)?;
+    }
+    import_asc(&text, cell_km, &mp)
+}
+
+/// The values of an ESRI ASCII grid, row by row from the north.
+fn read_grid(text: &str) -> Result<Vec<f32>, String> {
+    text.lines()
+        .filter(|l| l.trim_start().starts_with(|c: char| c.is_ascii_digit() || c == '-'))
+        .flat_map(|l| l.split_whitespace())
+        .map(|v| v.parse::<f32>().map_err(|_| format!("soil grid: bad value {v}")))
+        .collect()
 }
 
 /// Parse an `.asc` grid. `cellsize` is read in metres; cells at or below zero,
@@ -54,14 +68,30 @@ pub fn import_asc(text: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
 
     // Average the source cells that fall in each target cell.
     let scale = cell_km / src_km;
-    let w = ((ncols as f32 / scale).floor() as u32).max(1);
-    let h = ((nrows as f32 / scale).floor() as u32).max(1);
+    // A whole number of target cells, allowing for a source cell size given
+    // to the nearest decimetre (999.8 m is 1 km).
+    let fit = |v: f32| {
+        let r = v.round();
+        if (v - r).abs() < 0.05 {
+            r
+        } else {
+            v.floor()
+        }
+    };
+    let w = (fit(ncols as f32 / scale) as u32).max(1);
+    let h = (fit(nrows as f32 / scale) as u32).max(1);
     let mp = MapParams {
         w,
         h,
         cell_km,
         ..mp.clone()
     };
+    if !mp.soil_grid.is_empty() && mp.soil_grid.len() != (w * h) as usize {
+        return Err(format!(
+            "soil grid has {} cells, the map {w} x {h}",
+            mp.soil_grid.len()
+        ));
+    }
     let mut t = blank(&mp);
     t.grid = Grid::new(w, h, cell_km);
     for ty in 0..h {

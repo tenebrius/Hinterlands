@@ -56,6 +56,20 @@ pub struct MapParams {
     /// Drainage entering across the map edge: `[x, y, km²]` added at that cell,
     /// for rivers whose catchment lies mostly off an imported map.
     pub inflows: Vec<[f32; 3]>,
+    /// An ESRI ASCII grid of soil quality on the map's grid (e.g. from
+    /// `tools/real/fetch_soil.py`), read by the DEM importer. When set, it
+    /// replaces the soil noise, rescaled to the same mean yield.
+    pub soil_file: Option<String>,
+    /// The soil grid itself, filled from `soil_file` by the importer.
+    #[serde(skip)]
+    pub soil_grid: Vec<f32>,
+    /// Weight of valley position in soil (a topographic position index: height
+    /// above the mean within `tpi_radius_km`). Valley floors, standing in for
+    /// alluvial soils, gain yield and spurs lose it; 0 turns it off.
+    pub soil_tpi: f32,
+    pub tpi_radius_km: f32,
+    /// Height difference, m, at which the valley-position effect is full.
+    pub tpi_scale_m: f32,
 }
 
 impl Default for MapParams {
@@ -81,6 +95,11 @@ impl Default for MapParams {
             soil_noise: 0.45,
             forest_noise: 0.5,
             inflows: Vec::new(),
+            soil_file: None,
+            soil_grid: Vec::new(),
+            soil_tpi: 0.0,
+            tpi_radius_km: 3.0,
+            tpi_scale_m: 25.0,
         }
     }
 }
@@ -416,6 +435,38 @@ pub fn land_cover(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
     let soil = Perlin::new(rng);
     let wood = Perlin::new(rng);
     let (w, h) = (g.w as f32, g.h as f32);
+    // Soil before slope and height: noise, or a soil grid, optionally shaded by
+    // valley position; a grid or valley term is rescaled to the noise-free mean.
+    let mut base: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = g.xy(i);
+            let (u, v) = (x as f32 / w, y as f32 / h);
+            match mp.soil_grid.get(i) {
+                Some(&q) if q > 0.0 => q,
+                _ => (0.6 + mp.soil_noise * soil.fbm(u * 5.0, v * 5.0, 4)).clamp(0.15, 1.0),
+            }
+        })
+        .collect();
+    if mp.soil_tpi > 0.0 {
+        let tpi: Vec<f32> = (0..n)
+            .map(|i| {
+                let (sum, cnt) = g
+                    .disk(i, mp.tpi_radius_km)
+                    .fold((0.0, 0.0), |(s, c), j| (s + t.elevation[j].max(0.0), c + 1.0));
+                t.elevation[i].max(0.0) - sum / cnt
+            })
+            .collect();
+        for i in 0..n {
+            base[i] *= 1.0 + mp.soil_tpi * (-tpi[i] / mp.tpi_scale_m).clamp(-1.0, 1.0);
+        }
+    }
+    if !mp.soil_grid.is_empty() || mp.soil_tpi > 0.0 {
+        let land: Vec<usize> = (0..n).filter(|&i| !t.is_sea(i)).collect();
+        let mean = land.iter().map(|&i| base[i]).sum::<f32>() / land.len().max(1) as f32;
+        for &i in &land {
+            base[i] = (base[i] * 0.6 / mean.max(1e-6)).clamp(0.05, 1.0);
+        }
+    }
     for i in 0..n {
         if t.is_sea(i) {
             t.food_yield[i] = 0.0;
@@ -426,7 +477,7 @@ pub fn land_cover(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
         let (u, v) = (x as f32 / w, y as f32 / h);
         let e = t.elevation[i];
         let s = t.slope[i];
-        let base = (0.6 + mp.soil_noise * soil.fbm(u * 5.0, v * 5.0, 4)).clamp(0.15, 1.0);
+        let base = base[i];
         let slope_f = (1.0 - s / 0.15).clamp(0.0, 1.0);
         let elev_f = libm::powf((1.0 - e / 1100.0).clamp(0.0, 1.0), 0.8);
         let near_river = t.touches(i, |j| t.is_river(j));
