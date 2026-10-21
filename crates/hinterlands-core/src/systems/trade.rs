@@ -9,7 +9,7 @@
 //! Food arrives less a loss per unit cost. Flows are assigned to the stored
 //! least-cost paths, giving the load on each cell and the route junctions (hubs).
 //! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in,
-//! transship.
+//! transship, sites' sold.
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
@@ -32,6 +32,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.transship = 0.0;
     }
     state.flows.clear();
+    for site in state.sites.iter_mut() {
+        site.sold = 0.0;
+    }
     state.cell_load.iter_mut().for_each(|x| *x = 0.0);
     state.hub.iter_mut().for_each(|x| *x = false);
     if !p.trade_enabled {
@@ -266,13 +269,17 @@ pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
     }
 }
 
-/// Production-constrained gravity for goods, with grain payment. Returns the
-/// grain each settlement paid. A buyer pays `value × quantity`, capped at its
-/// marketed share; the payment reaches the producer less the usual loss and
-/// counts in its gross market inflow. Goods consumed by the holder itself are
-/// not paid for and do not travel.
+/// Goods by the shopping model (Huff 1964; Wilson 1971; D41). Each consumer
+/// buys its demand for a good, its holder's own sites first without travel or
+/// payment, the rest split among the working sites in proportion to
+/// `capacity × exp(−β_g c)`. Orders beyond a site's capacity are scaled down to
+/// fit in one pass; unmet demand stays unmet. A buyer pays `value × quantity` in
+/// grain out of its marketed share, capped at that share; the payment reaches the
+/// producer less the usual loss and counts in its gross market inflow. Writes
+/// each site's `sold`. Returns the grain each settlement paid.
+#[allow(clippy::too_many_arguments)]
 fn goods(
-    state: &State,
+    state: &mut State,
     p: &Params,
     idx_of: &[u32],
     food_in: &mut [f32],
@@ -281,46 +288,90 @@ fn goods(
     flows: &mut Vec<Flow>,
 ) -> Vec<f32> {
     let m = state.settlements.len();
-    // (producer, buyer, good, quantity, cost, producer's partner index)
-    let mut shipments: Vec<(usize, usize, Good, f32, f32, u32)> = Vec::new();
-    for site in &state.sites {
-        if site.output <= 0.0 {
-            continue;
-        }
-        let Some(&j) = idx_of.get(site.holder as usize) else {
-            continue;
-        };
-        if j == u32::MAX {
-            continue;
-        }
-        let j = j as usize;
-        let s = &state.settlements[j];
-        let b = beta(p, site.good);
-        let home = demand(s, p, site.good);
-        let mut total = home;
-        let mut ws: Vec<(usize, f32, f32, u32)> = Vec::new();
-        for (k, q) in s.reach.partners.iter().enumerate() {
-            let Some(&i) = idx_of.get(q.id as usize) else {
-                continue;
-            };
-            if i == u32::MAX {
-                continue;
+    let settlement_of = |id: u32| -> Option<usize> {
+        idx_of
+            .get(id as usize)
+            .copied()
+            .filter(|&j| j != u32::MAX)
+            .map(|j| j as usize)
+    };
+    // Capacity left at each site after its holder's own use.
+    let mut left: Vec<f32> = state.sites.iter().map(|s| s.output.max(0.0)).collect();
+    let mut sold = vec![0f32; state.sites.len()];
+    // Sites by holder index, for the holder's own use and for lookups by partner.
+    let mut by_holder: Vec<Vec<usize>> = vec![Vec::new(); m];
+    for (si, site) in state.sites.iter().enumerate() {
+        if site.output > 0.0 {
+            if let Some(j) = settlement_of(site.holder) {
+                by_holder[j].push(si);
             }
-            let w = demand(&state.settlements[i as usize], p, site.good) * libm::expf(-b * q.cost);
-            total += w;
-            ws.push((i as usize, w, q.cost, k as u32));
-        }
-        if total <= 0.0 {
-            continue;
-        }
-        for (i, w, c, k) in ws {
-            shipments.push((j, i, site.good, site.output * w / total, c, k));
         }
     }
+    let mut want = vec![[0f32; 3]; m];
+    for i in 0..m {
+        let s = &state.settlements[i];
+        for g in Good::ALL {
+            let mut d = demand(s, p, g);
+            for &si in &by_holder[i] {
+                if state.sites[si].good == g && d > 0.0 {
+                    let own = d.min(left[si]);
+                    left[si] -= own;
+                    sold[si] += own;
+                    d -= own;
+                }
+            }
+            want[i][g.index()] = d;
+        }
+    }
+    // Orders: (buyer, site, quantity, cost, buyer's partner index).
+    let mut orders: Vec<(usize, usize, f32, f32, u32)> = Vec::new();
+    let mut ordered = vec![0f32; state.sites.len()];
+    let mut ws: Vec<(usize, f32, f32, u32)> = Vec::new();
+    for i in 0..m {
+        for g in Good::ALL {
+            let d = want[i][g.index()];
+            if d <= 0.0 {
+                continue;
+            }
+            let b = beta(p, g);
+            ws.clear();
+            let mut total = 0.0;
+            for (k, q) in state.settlements[i].reach.partners.iter().enumerate() {
+                let Some(j) = settlement_of(q.id) else {
+                    continue;
+                };
+                for &si in &by_holder[j] {
+                    if state.sites[si].good == g && left[si] > 0.0 {
+                        let w = left[si] * libm::expf(-b * q.cost);
+                        total += w;
+                        ws.push((si, w, q.cost, k as u32));
+                    }
+                }
+            }
+            if total <= 0.0 {
+                continue;
+            }
+            for &(si, w, c, k) in &ws {
+                let q = d * w / total;
+                ordered[si] += q;
+                orders.push((i, si, q, c, k));
+            }
+        }
+    }
+    // Orders beyond capacity are scaled down to fit.
+    let fill: Vec<f32> = (0..state.sites.len())
+        .map(|si| {
+            if ordered[si] > left[si] {
+                left[si] / ordered[si]
+            } else {
+                1.0
+            }
+        })
+        .collect();
     // What each buyer owes, and the share of it its marketed grain can pay.
     let mut bill = vec![0f32; m];
-    for &(_, i, g, q, _, _) in &shipments {
-        bill[i] += value(p, g) * q;
+    for &(i, si, q, _, _) in &orders {
+        bill[i] += value(p, state.sites[si].good) * q * fill[si];
     }
     let scale: Vec<f32> = (0..m)
         .map(|i| {
@@ -333,16 +384,36 @@ fn goods(
         })
         .collect();
     let mut paid = vec![0f32; m];
-    for &(j, i, g, q, c, k) in &shipments {
-        let (pj, pi) = (&state.settlements[j], &state.settlements[i]);
-        let worth = value(p, g) * q;
+    for &(i, si, q, c, k) in &orders {
+        let q = q * fill[si];
+        if q <= 0.0 {
+            continue;
+        }
+        sold[si] += q;
+        let good = state.sites[si].good;
+        let Some(j) = settlement_of(state.sites[si].holder) else {
+            continue;
+        };
+        let (buyer, producer) = (&state.settlements[i], &state.settlements[j]);
+        let worth = value(p, good) * q;
+        // Goods travel on the producer's path to the buyer when it has one,
+        // else on the buyer's path the other way.
+        let (from, to, idx) = match producer
+            .reach
+            .partners
+            .iter()
+            .position(|r| r.id == buyer.id)
+        {
+            Some(fwd) => (producer.id, buyer.id, fwd as u32),
+            None => (buyer.id, producer.id, k),
+        };
         flows.push(Flow {
-            from: pj.id,
-            to: pi.id,
+            from,
+            to,
             amount: worth,
             food: 0.0,
-            partner_idx: k,
-            good: Some(g),
+            partner_idx: idx,
+            good: Some(good),
             payment: false,
         });
         let pay = worth * scale[i];
@@ -354,21 +425,19 @@ fn goods(
         let delivered = pay * (1.0 - p.transport_loss * c).max(0.0);
         food_in[j] += delivered;
         market_in[j] += delivered;
-        // The payment travels on the buyer's own path to the producer when it
-        // has one, else on the producer's path the other way.
-        let (from, to, idx) = match pi.reach.partners.iter().position(|q| q.id == pj.id) {
-            Some(back) => (pi.id, pj.id, back as u32),
-            None => (pj.id, pi.id, k),
-        };
+        // The payment travels on the buyer's own path to the producer.
         flows.push(Flow {
-            from,
-            to,
+            from: buyer.id,
+            to: producer.id,
             amount: pay,
             food: pay,
-            partner_idx: idx,
+            partner_idx: k,
             good: None,
             payment: true,
         });
+    }
+    for (site, s) in state.sites.iter_mut().zip(sold) {
+        site.sold = s;
     }
     paid
 }

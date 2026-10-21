@@ -34,7 +34,7 @@ pub struct RunResult {
 /// The v2 gate's measures at the final year.
 #[derive(Clone, Debug)]
 pub struct GoodsResult {
-    /// Share of resource sites with output (1 with goods off or no sites).
+    /// Share of resource sites that sold anything (1 with goods off or no sites).
     pub sites_share: f32,
     pub largest_specialist: bool,
     pub specialist_pops: Vec<f32>,
@@ -63,7 +63,7 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     let sites_share = if st.sites.is_empty() {
         1.0
     } else {
-        st.sites.iter().filter(|s| s.output > 0.0).count() as f32 / st.sites.len() as f32
+        st.sites.iter().filter(|s| s.sold > 0.0).count() as f32 / st.sites.len() as f32
     };
     let largest_specialist = st
         .settlements
@@ -96,7 +96,7 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     let near: Vec<usize> = st
         .sites
         .iter()
-        .filter(|s| s.good == Good::Iron && s.output > 0.0)
+        .filter(|s| s.good == Good::Iron && s.sold > 0.0)
         .flat_map(|s| t.grid.disk(s.cell as usize, 5.0).filter(|&j| t.is_land(j)))
         .collect();
     let iron = if near.is_empty() {
