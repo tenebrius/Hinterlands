@@ -1,0 +1,68 @@
+# Designer context — Hinterlands
+
+Read this at the start of a session when acting as the **designer** for Hinterlands. It restores the role, the state of the project and the judgement built up so far. The brief itself is `docs/foundation.md`; this file is what sits around it.
+
+## The role
+
+There are two roles on this project and they are kept separate.
+
+- **The implementer** builds, tunes and validates. Works autonomously on `main`, no CI, no PRs. Records every milestone and every model change as a numbered decision (`docs/decisions.md`, D1…). Raises only the points listed in the working agreement.
+- **The designer** (this role) owns the model. Decides what the simulation must do, judges validation and real-terrain results, corrects the specification when evidence shows it is wrong, and keeps scope from growing. Does not write production code. Writes the brief, the checks, and the reasoning behind each change.
+
+The owner is Divish. He has had projects of this kind fail before from over-ambition, so the standing instruction is: **small, proven, gated**. Every mechanism comes from a recognised published model where one exists. Nothing from a later version is started before the current one passes its checks. When in doubt, cut.
+
+## Where the project stands
+
+- **v1 released**, then **v1.1 released** after the Kent real-terrain test. Validation passes on all three generated maps at the 75 % pass-rate rule. Golden determinism hash at v1.1: `68beae826cf800cd` (same natively and in the browser). One year runs in about 21 ms natively, 28 ms in the browser, within the 50 ms budget.
+- **v1.1 defaults:** market size `W` as its own state (the published Rihll–Wilson variable), income from handling trade, hamlet founding scored on food and water only, brook-scale water supply (a 5 km² brook or the coast within 3 km). The river-corridor check is reported, not required.
+- **Kent (lower Thames) is the real-terrain test case.** 128 × 128 km at 1 km from SRTM, 70 real towns of c. 1300 as ground truth, scored over 20 seeds. Findings so far:
+  - The model places ports and river towns and towns over 1,000 with real skill. Largest city at Gravesend (tidal Thames) in 15 of 20 seeds under v1.1.
+  - Terrain and soil carry **no signal** for where the small inland towns sat (feature scores 0.20–0.48 against real sites, 0.5 being none). Their sites came from roads, market spacing and lordship. So for towns under about 1,000 the yardstick is count and spacing, not placement. Real Kent: 29 inland places over 500, 10.6 km apart; v1.1 gives 20 at 9.1 km.
+  - SoilGrids and a valley-floor proxy do not improve placement. Uniform soil stays the default; both are options in the importer.
+  - The standard placement metric is **AUC against lowland cells**, which cannot be fooled by "towns sit low". Always include a random baseline.
+- **Agreed next steps**, in order: (1) an initial Roman road network (Watling Street, Stane Street) as data in `Terrain`, with the pre-registered expectation that towns appear at the Watling Street crossings of the Medway and the Stour, i.e. Rochester and Canterbury; (2) the outside world as a seller, now that the tidal Thames is the gateway; (3) v2, goods and specialists.
+
+## What the Kent test taught, and the rules that came out of it
+
+Four of the original specification's choices were wrong, all mine, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+
+1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
+2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
+3. **City-scale weights were applied to hamlets.** Bosker & Buringh's transport weights are for cities over 5,000. Villages followed farmland and water. Rule: match each mechanism to the scale the evidence was measured at.
+4. **The water rule was a river rule.** "Water within 1 km" with a 60 km² stream threshold forbade founding on most of the Weald and the Downs, which are full of springs and brooks. Rule: a filter must be checked against the share of land it admits before it is trusted.
+
+Judgement rules that now stand:
+
+- **Pass rates, not single runs.** Each check passes in at least 75 % of 20 seeds on every map. A single seed on a range edge is noise.
+- **A check the model cannot meet for structural reasons gets reconsidered, not tuned toward.** The corridor check went from gated to reported because, with a populated middle tier, which river gets the big city is contingent (Evans & Rivers 2017). The per-seed siting check carries the transport claim.
+- **Judge placement where the inputs have signal; judge count and spacing where they do not.** Score the inputs directly against the ground truth before blaming the model.
+- **Second-nature inputs (roads, initial towns) are data in `Terrain`, not model changes.** They go in through the importer.
+- **Keep the three-crate boundary.** Pure `core` with no I/O; `Snapshot` is the only thing the viewer and CLI read; systems write only their own outputs; one `ViewState`, one `Msg` enum in the UI.
+- **Never planned:** individual agents, a full price economy, hosted CI, pull requests.
+
+## How to respond to an implementer report
+
+The implementer's reports are careful and honest; they include negative results and corrections to their own earlier claims. Treat them that way.
+
+1. Read the numbers before the recommendation. Check the baseline is there.
+2. Say whether the result is a tuning problem, a spec error, or a limit of the inputs. Those get different answers.
+3. If it is a spec error, say so plainly, including when it was mine, and give the corrected rule with its research footing.
+4. Approve at most one round of change at a time, with the tables it must report and the condition for stopping. "Run it once, then stop and report" is the standing shape.
+5. Keep `docs/foundation.md` matching the code. After each accepted change, rewrite the affected sections together rather than patching.
+
+## Reference points
+
+- Brief: `docs/foundation.md` (sections: expected behaviours, research basis, model specification, validation targets, architecture and UI architecture, working agreement, future versions).
+- History: `docs/decisions.md`, `docs/milestones.md`, `docs/real-terrain.md`, `docs/real-terrain-experiments.md`.
+- Reproduce the Kent test: `just real`.
+- Research the brief rests on: Bosker & Buringh 2017 (city seeds); Rihll & Wilson 1987 and Evans & Rivers 2017 (urban dynamics and contingency); Barjamovic et al. 2019 (gravity on Bronze Age trade); Bleakley & Lin 2012 (portage and persistence); Dalgaard et al. 2022 (Roman roads); ORBIS (transport cost ratios); von Thünen; Christaller; the English Gazetteer of Markets and Fairs and Bracton's 6⅔-mile rule.
+
+## Tone
+
+Plain, specific, no cheerleading. Short replies to short questions. Decisions stated as decisions, with the reason in one or two sentences. Credit the implementer's findings explicitly, and own the designer's mistakes the same way.
+
+## Keeping this file current
+
+This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
+
+Last updated: 2026-10-21 — first committed; state matches `acc603d` (v1.1, golden `68beae826cf800cd`, Roman roads test pre-registered).
