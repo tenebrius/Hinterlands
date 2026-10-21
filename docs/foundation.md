@@ -680,6 +680,13 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **If W1 fails again, it is dropped.** `local_harvests` stays off for good, v6 closes without weather, and the weather code stays behind its switch as the record. Option B (a smoothed food ratio, changing D15) and option C (σ 0.05) are declined: B reworks growth, and C is too small to matter.
 - **Either way, report, then record the v6 milestone:** defaults, golden hash, validation, wasm timing, Kent, and screenshots in 1316 and 1450.
 
+**v6 closed (f12337e, golden `0e65d09ec147b5c7`, 30.3 ms a year in wasm).** The defaults are goods by price (S1), grain relief (S2′) and stores (S3). The famine dip is 0.17–0.18 against v5's 0.24–0.25. Kept off as the record: the S0 shadow (used for reports), S2 priced grain, W1 weather and store smoothing.
+
+**S4 and S5 (D84).**
+- **S5 (coin, projects, mayors) is dropped.** It needs settlements to hold and spend money from budgets. S2 showed that paying for what towns now receive free breaks the hierarchy the whole model rests on.
+- **S4 (goods in use) is not scheduled.** Iron raising yields and stone feeding bridges each add a positive feedback, and the W1 finding shows how the growth rule turns uneven effects into drift. It would be reconsidered only after the growth rule's asymmetry is dealt with.
+- **One item is open, the owner's to confirm:** a single attempt at weather with the market pull on the 10-year average inflow (`avg_inflow`), which addresses the asymmetry W1 found. It would be validated without weather first, then gated with weather at σ 0.15, and dropped if it fails.
+
 
 ## Future versions
 
