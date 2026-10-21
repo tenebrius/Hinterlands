@@ -674,6 +674,12 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **Tuning.** If a v5 check fails, the implementer may tune `σ` down to 0.10 and the store values within their ranges, recording each change.
 - **Stop** and report. If W1 passes, it becomes the default, and v6 closes with a milestone. S4 and S5 are decided then.
 
+**W1 third gate (1928344) and the designer's decision (D83).** With relief and stores on, W1 still fails the top-10 check on every map. Population at year 200 is 0.30–0.34 of the run without weather (pre-registered: within 20%), and stores at year 400 are 0.06–0.08 (pre-registered: ≥ 0.2). σ 0.10 fails too. Clark in shadow mode is in range (`b_Y` −0.011 to −0.015). The implementer's diagnosis is right. Stores act only below need, but growth runs up to a food ratio of 1.2. A bad year slows growth without ever drawing on the store, and a good year fills a store that is never used. It is the same asymmetry as before, one level up.
+- **Decided: option A, as the last attempt for W1.** A place tops up its food from its own store to `food_cap × need`, its growth target, not just to need. Households drew on stores to keep their consumption level through poor years, not only to avert hunger, so this is consumption smoothing. It is the direct use of the store that D81 meant. The store then smooths growth as well as famine, and good years pay for bad ones. Relief still covers deficits below need only.
+- **Re-gate once at σ 0.15,** with the same gate and the same pre-registered expectations. The fallback to σ 0.10 is allowed as before.
+- **If W1 fails again, it is dropped.** `local_harvests` stays off for good, v6 closes without weather, and the weather code stays behind its switch as the record. Option B (a smoothed food ratio, changing D15) and option C (σ 0.05) are declined: B reworks growth, and C is too small to matter.
+- **Either way, report, then record the v6 milestone:** defaults, golden hash, validation, wasm timing, Kent, and screenshots in 1316 and 1450.
+
 
 ## Future versions
 
