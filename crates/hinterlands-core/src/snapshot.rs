@@ -83,6 +83,9 @@ pub struct FlowView {
     /// Grain paid for goods (v2).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub payment: bool,
+    /// Imports from an outside port (v5); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub import: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -112,6 +115,9 @@ pub struct Snapshot {
     /// Anchors of silted harbours (v4, D60), in order; left out when none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub silted: Vec<u32>,
+    /// Outside port cells (v5, D64); left out when there are none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ports: Vec<u32>,
 }
 
 impl Snapshot {
@@ -157,6 +163,7 @@ impl Snapshot {
                     path: s.reach.partners[f.partner_idx as usize].path.clone(),
                     good: f.good,
                     payment: f.payment,
+                    import: f.import,
                 })
             })
             .collect();
@@ -196,6 +203,11 @@ impl Snapshot {
                 Vec::new()
             },
             silted: state.silted_ports.clone(),
+            ports: state
+                .outside
+                .iter()
+                .map(|&node| node - t.n() as u32)
+                .collect(),
             bridges: (0..state.bridge.len())
                 .filter(|&i| state.bridge[i])
                 .map(|i| i as u32)

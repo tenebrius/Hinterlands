@@ -8,8 +8,15 @@ use crate::terrain::Terrain;
 use serde::{Deserialize, Serialize};
 
 pub const NONE: u32 = u32::MAX;
-/// Partner id of the outside world (D25).
+/// Partner id of outside port 0 (v5, D64); port k is `OUTSIDE - k`.
 pub const OUTSIDE: u32 = u32::MAX - 1;
+/// Most outside ports a map can have (one per side).
+pub const MAX_PORTS: u32 = 4;
+
+/// The outside port a partner id names, if it is one.
+pub fn port_of(id: u32) -> Option<usize> {
+    (id <= OUTSIDE && id > OUTSIDE - MAX_PORTS).then(|| (OUTSIDE - id) as usize)
+}
 /// Quantisation of stored travel costs: hundredths of a km-equivalent.
 pub const COST_SCALE: f32 = 100.0;
 pub const COST_UNREACHED: u16 = u16::MAX;
@@ -242,6 +249,8 @@ pub struct Flow {
     pub good: Option<Good>,
     /// Grain paid for goods (v2), travelling from the buyer to the producer.
     pub payment: bool,
+    /// Imports from an outside port (v5, D64), carried on the buyer's path.
+    pub import: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -357,10 +366,12 @@ pub struct State {
     /// A famine lasts while `year < famine_until`, taking `famine_loss` of yield.
     pub famine_until: u32,
     pub famine_loss: f32,
-    /// Water-layer graph node of the outside world: the map-edge sea cell
-    /// nearest the main river mouth (D25). Used only when `outside_enabled`.
+    /// Outside ports as water-layer nodes (v5, D64); empty unless `outside_ports`.
     #[serde(default)]
-    pub outside: Option<u32>,
+    pub outside: Vec<u32>,
+    /// This year's grain bought by the outside ports and imports sold (D64).
+    #[serde(default)]
+    pub outside_trade: (f32, f32),
     /// Resource sites, in cell order (v2).
     #[serde(default)]
     pub sites: Vec<Site>,
@@ -383,25 +394,62 @@ pub struct FoodCache {
     pub min_per_km: f32,
 }
 
-/// The map-edge sea cell nearest the main river mouth (or the map centre),
-/// as a water-layer node.
-fn outside_node(t: &Terrain) -> Option<u32> {
+/// Outside ports (v5, D64) as water-layer nodes: the terrain's own when it
+/// has them (imported maps), else one per open-sea map edge (a side with at
+/// least three sea cells), at the edge sea cell nearest the busiest coast. The
+/// busiest coast is taken as the harbour cell with the most yield within 10 km:
+/// the coast that can carry the most people. Ties go to the lower cell.
+fn outside_ports(t: &Terrain) -> Vec<u32> {
     let g = t.grid;
-    let (mx, my) = match t.river_mouth {
-        Some(m) => g.xy(m as usize),
-        None => (g.w as i32 / 2, g.h as i32 / 2),
+    let n = t.n() as u32;
+    if !t.outside_ports.is_empty() {
+        return t.outside_ports.iter().map(|&c| n + c).collect();
+    }
+    let busiest = (0..t.n())
+        .filter(|&i| t.harbour[i])
+        .map(|i| {
+            let y: f32 = g
+                .disk(i, 10.0)
+                .filter(|&j| t.is_land(j))
+                .map(|j| t.food_yield[j])
+                .sum();
+            (y, i)
+        })
+        .max_by(|a, b| a.0.total_cmp(&b.0).then(b.1.cmp(&a.1)))
+        .map(|(_, i)| i);
+    let Some(coast) = busiest else {
+        return Vec::new();
     };
-    (0..t.n())
-        .filter(|&i| {
-            let (x, y) = g.xy(i);
-            let edge = x == 0 || y == 0 || x as u32 == g.w - 1 || y as u32 == g.h - 1;
-            edge && t.is_sea(i)
-        })
-        .min_by_key(|&i| {
-            let (x, y) = g.xy(i);
-            ((x - mx).pow(2) + (y - my).pow(2), i)
-        })
-        .map(|i| (t.n() + i) as u32)
+    let (w, h) = (g.w as i32, g.h as i32);
+    let sides: [fn(i32, i32, i32, i32) -> bool; 4] = [
+        |_, y, _, _| y == 0,
+        |x, _, w, _| x == w - 1,
+        |_, y, _, h| y == h - 1,
+        |x, _, _, _| x == 0,
+    ];
+    let mut out = Vec::new();
+    for side in sides {
+        let cells: Vec<usize> = (0..t.n())
+            .filter(|&i| {
+                let (x, y) = g.xy(i);
+                side(x, y, w, h) && t.is_sea(i)
+            })
+            .collect();
+        if cells.len() < 3 {
+            continue;
+        }
+        let best = cells
+            .iter()
+            .copied()
+            .min_by(|&a, &b| g.dist_km(a, coast).total_cmp(&g.dist_km(b, coast)).then(a.cmp(&b)));
+        if let Some(c) = best {
+            let node = n + c as u32;
+            if !out.contains(&node) {
+                out.push(node);
+            }
+        }
+    }
+    out
 }
 
 impl State {
@@ -451,7 +499,12 @@ impl State {
             events: Vec::new(),
             famine_until: 0,
             famine_loss: 0.0,
-            outside: outside_node(t),
+            outside_trade: (0.0, 0.0),
+            outside: if p.outside_ports {
+                outside_ports(t)
+            } else {
+                Vec::new()
+            },
             sites: (0..n)
                 .filter_map(|i| {
                     Good::of(t.resource[i]).map(|good| Site {

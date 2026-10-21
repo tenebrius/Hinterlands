@@ -79,6 +79,9 @@ pub struct MapParams {
     /// stone; e.g. from `tools/real/resources_km.py`), read by the DEM importer
     /// in place of the random sites (D50).
     pub resources_file: Option<String>,
+    /// A CSV of outside ports (`name,x_km,y_km`), read by the DEM importer
+    /// (v5, D64); each is placed at the map-edge sea cell nearest the point.
+    pub outside_file: Option<String>,
 }
 
 impl Default for MapParams {
@@ -112,6 +115,7 @@ impl Default for MapParams {
             roads_file: None,
             road_bridges: false,
             resources_file: None,
+            outside_file: None,
         }
     }
 }
@@ -147,6 +151,7 @@ pub fn blank(mp: &MapParams) -> Terrain {
         features: Vec::new(),
         initial_road: Vec::new(),
         bridge: Vec::new(),
+        outside_ports: Vec::new(),
     }
 }
 

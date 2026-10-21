@@ -42,6 +42,9 @@ pub struct RunResult {
     pub mill_share: f32,
     /// v4 (D57), with historical events; `None` with events off.
     pub shock: Option<ShockResult>,
+    /// v5 (D64): grain bought by the outside ports plus imports sold, as a
+    /// share of all gross market inflow, the last year; NaN with ports off.
+    pub outside_share: f32,
 }
 
 /// The v4 gate's measures for one run with historical events.
@@ -264,6 +267,12 @@ pub const CHECKS: &[Check] = &[
         target: ">=0.50",
         ok: |r| r.shock.as_ref().is_none_or(|s| s.overlap_off >= 0.5),
     },
+    // v5 gate (D64; passes trivially with outside ports off).
+    Check {
+        name: "outside trade",
+        target: "3-20%",
+        ok: |r| r.outside_share.is_nan() || (0.03..=0.20).contains(&r.outside_share),
+    },
     // v3 gate (D54; passes trivially with traffic roads off).
     Check {
         name: "road length 300-500",
@@ -404,6 +413,13 @@ pub fn run_one(
         }),
         road_change: if params.traffic_roads {
             (road_len(&sim) - road_300).abs() / road_300.max(1.0)
+        } else {
+            f32::NAN
+        },
+        outside_share: if params.outside_ports {
+            let (g, i) = sim.state.outside_trade;
+            let inflow: f32 = sim.state.settlements.iter().map(|s| s.market_in).sum();
+            (g + i) / inflow.max(1.0)
         } else {
             f32::NAN
         },
@@ -619,6 +635,7 @@ pub fn cmd_validate(args: &Args) {
                         }
                     }
                     "road length 300-500" => r.road_change,
+                    "outside trade" => r.outside_share,
                     "plague drop" => r.shock.as_ref().map_or(f32::NAN, |s| s.plague_drop),
                     "recovery by 500" => r.shock.as_ref().map_or(f32::NAN, |s| s.recovery),
                     "poor land deserted" => r

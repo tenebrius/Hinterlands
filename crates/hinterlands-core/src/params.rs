@@ -149,10 +149,6 @@ define_params! {
         home_weight: f32 = 1.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
         market_share: f32 = 0.48655713, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
-        outside_enabled: bool = false, [0, 1], "An outside world off the sea edge trades with the region (D25)";
-        outside_size: f32 = 5000.0, [0, 100000], "Market size W of the outside world";
-        outside_beta: f32 = 0.05, [0.005, 0.5], "Distance decay of trade with the outside world";
-        outside_out: f32 = 2000.0, [0, 50000], "Goods the outside world sends into the region per year";
     }
     "Goods" => {
         goods_enabled: bool = true, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";
@@ -233,6 +229,12 @@ define_params! {
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
+    }
+    "Outside" => {
+        outside_ports: bool = false, [0, 1], "Outside ports at the open-sea map edges buy grain and sell imports (v5, D64)";
+        outside_grain: f32 = 300.0, [0, 100000], "Grain each outside port buys a year, grain units";
+        import_demand: f32 = 0.05, [0, 2], "Imports wanted a year per market person, grain units";
+        rho_import: f32 = 10.0, [0.1, 50], "Value density of imports: distance decay is beta / rho";
     }
     "Events" => {
         events_mode: u32 = 1, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";

@@ -31,6 +31,10 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
             t.bridge = road_bridges(&t);
         }
     }
+    if let Some(f) = &mp.outside_file {
+        let s = std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?;
+        t.outside_ports = read_outside(&t, &s)?;
+    }
     if let Some(res) = &mp.resources_file {
         let s = std::fs::read_to_string(res).map_err(|e| format!("{res}: {e}"))?;
         place_resources(&mut t, &s)?;
@@ -80,6 +84,43 @@ fn place_resources(t: &mut Terrain, text: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Outside ports from a CSV (`name,x_km,y_km`): each at the sea cell on the map
+/// edge nearest the point (D64). Ties go to the lower cell.
+fn read_outside(t: &Terrain, text: &str) -> Result<Vec<u32>, String> {
+    let g = t.grid;
+    let edge: Vec<usize> = (0..t.n())
+        .filter(|&i| {
+            let (x, y) = g.xy(i);
+            t.is_sea(i) && (x == 0 || y == 0 || x as u32 == g.w - 1 || y as u32 == g.h - 1)
+        })
+        .collect();
+    let mut out = Vec::new();
+    for line in text.lines().skip(1).filter(|l| !l.trim().is_empty()) {
+        let f: Vec<&str> = line.split(',').map(str::trim).collect();
+        let [_, x, y] = f[..] else {
+            return Err(format!("outside ports: bad line {line}"));
+        };
+        let num = |v: &str| {
+            v.parse::<f32>()
+                .map_err(|_| format!("outside ports: bad number {v}"))
+        };
+        let (px, py) = (num(x)? / g.cell_km, num(y)? / g.cell_km);
+        let best = edge.iter().copied().min_by(|&a, &b| {
+            let d = |i: usize| {
+                let (cx, cy) = g.xy(i);
+                (cx as f32 + 0.5 - px).powi(2) + (cy as f32 + 0.5 - py).powi(2)
+            };
+            d(a).total_cmp(&d(b)).then(a.cmp(&b))
+        });
+        if let Some(c) = best {
+            if !out.contains(&(c as u32)) {
+                out.push(c as u32);
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Bridges where an initial road crosses a river or stream (D33): every river

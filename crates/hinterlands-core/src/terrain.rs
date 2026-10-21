@@ -55,6 +55,12 @@ pub struct Terrain {
     /// and left out of the serialised terrain when empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub bridge: Vec<bool>,
+    /// Outside ports given as input (v5, D64): sea cells at the map edge where
+    /// trade leaves the region, e.g. the Continent off Dover. Empty on
+    /// generated maps, whose ports are chosen at the start of a run; left out
+    /// of the serialised terrain when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outside_ports: Vec<u32>,
 }
 
 impl Terrain {
@@ -77,6 +83,7 @@ impl Terrain {
             river_mouth: None,
             features: Vec::new(),
             initial_road: Vec::new(),
+            outside_ports: Vec::new(),
             bridge: Vec::new(),
         }
     }

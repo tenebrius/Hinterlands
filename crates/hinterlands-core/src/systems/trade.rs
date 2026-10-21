@@ -2,10 +2,9 @@
 //! Rihll–Wilson form: each settlement sends a fixed marketed share of its harvest,
 //! plus its resource output, to markets in proportion to
 //! `W_j^alpha * exp(-beta * c_ij)`, where `W_j` is the non-farming population, its own market included with weight `home_weight` (D13).
-//! With `outside_enabled` (D25) the outside world is one more partner, of fixed
-//! size `outside_size` and its own decay `outside_beta`: it buys marketed produce,
-//! which leaves the map, and sends `outside_out` of goods to the settlements in
-//! proportion to their pull, along the same paths.
+//! With `outside_ports` (v5, D64) ports at the open-sea edges buy a fixed amount
+//! of grain and are the only sellers of imports, both by the shopping model;
+//! the grain leaves the map along the stored paths.
 //! Food arrives less a loss per unit cost. Flows are assigned to the stored
 //! least-cost paths, giving the load on each cell and the route junctions (hubs).
 //! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in,
@@ -13,7 +12,7 @@
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
-use crate::state::{Flow, Good, State, OUTSIDE};
+use crate::state::{port_of, Flow, Good, State};
 use crate::terrain::Terrain;
 use crate::Rng;
 
@@ -66,11 +65,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let mut food_out = vec![0f32; m];
     let mut market_in = vec![0f32; m];
     let mut flows = Vec::new();
-    // (destination index, partner index, weight, cost); usize::MAX is the outside.
+    // (destination index, partner index, weight, cost).
     let mut weights: Vec<(usize, u32, f32, f32)> = Vec::new();
-    let outside_pull = libm::powf(p.outside_size, p.alpha);
-    // Imports from the outside: (settlement index, partner index, weight).
-    let mut imports: Vec<(usize, u32, f32)> = Vec::new();
 
     // Goods (v2, D39): each site's output goes to consumers in proportion to
     // demand × exp(−β_g c), and they pay for it in grain out of their marketed
@@ -88,17 +84,20 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     } else {
         vec![0f32; m]
     };
+    // The outside world (v5, D64): imports bought and grain sold to the ports,
+    // out of what is left of each marketed share.
+    let (paid, to_ports) = if p.outside_ports && !state.outside.is_empty() {
+        outside(state, p, paid, &mut market_in, &mut food_out, &mut flows)
+    } else {
+        state.outside_trade = (0.0, 0.0);
+        (paid, vec![0f32; m])
+    };
 
     for i in 0..m {
         let s = &state.settlements[i];
-        if p.outside_enabled {
-            if let Some(k) = s.reach.partners.iter().position(|q| q.id == OUTSIDE) {
-                let c = s.reach.partners[k].cost;
-                imports.push((i, k as u32, attract[i] * libm::expf(-p.outside_beta * c)));
-            }
-        }
-        // What is left of the marketed share after paying for goods.
-        let food = (s.food_prod * p.market_share - paid[i]).max(0.0);
+        // What is left of the marketed share after paying for goods and
+        // imports and selling to the ports.
+        let food = (s.food_prod * p.market_share - paid[i] - to_ports[i]).max(0.0);
         let out = food + s.resource_out;
         if out <= 0.0 {
             continue;
@@ -107,14 +106,6 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         // A home-market weight keeps grain at home when markets are far or small.
         let mut total = attract[i] * p.home_weight;
         for (k, partner) in s.reach.partners.iter().enumerate() {
-            if partner.id == OUTSIDE {
-                if p.outside_enabled {
-                    let w = outside_pull * libm::expf(-p.outside_beta * partner.cost);
-                    total += w;
-                    weights.push((usize::MAX, k as u32, w, partner.cost));
-                }
-                continue;
-            }
             let Some(&j) = idx_of.get(partner.id as usize) else {
                 continue;
             };
@@ -134,20 +125,6 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             let share = w / total;
             let amount = out * share;
             let sent = food * share;
-            if j == usize::MAX {
-                // Sold off the map.
-                food_out[i] += sent;
-                flows.push(Flow {
-                    from: s.id,
-                    to: OUTSIDE,
-                    amount,
-                    food: sent,
-                    partner_idx: k,
-                    good: None,
-                    payment: false,
-                });
-                continue;
-            }
             let delivered = sent * (1.0 - p.transport_loss * c).max(0.0);
             trade_in[j] += amount - sent;
             food_out[i] += sent;
@@ -161,25 +138,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 partner_idx: k,
                 good: None,
                 payment: false,
-            });
-        }
-    }
-
-    // Goods from the outside, shared by pull and closeness; recorded on the
-    // importer's own path to the sea edge.
-    let total_import: f32 = imports.iter().map(|x| x.2).sum();
-    if total_import > 0.0 {
-        for &(i, k, w) in &imports {
-            let amount = p.outside_out * w / total_import;
-            trade_in[i] += amount;
-            flows.push(Flow {
-                from: state.settlements[i].id,
-                to: OUTSIDE,
-                amount,
-                food: 0.0,
-                partner_idx: k,
-                good: None,
-                payment: false,
+                import: false,
             });
         }
     }
@@ -417,6 +376,7 @@ fn goods(
             partner_idx: idx,
             good: Some(good),
             payment: false,
+            import: false,
         });
         let pay = worth * scale[i];
         if pay <= 0.0 {
@@ -437,6 +397,7 @@ fn goods(
             partner_idx: k,
             good: None,
             payment: true,
+            import: false,
         });
     }
     for (site, s) in state.sites.iter_mut().zip(sold) {
@@ -446,4 +407,138 @@ fn goods(
         s.goods_in = g;
     }
     paid
+}
+
+/// Trade with the outside ports (v5, D64), by the shopping model (D41).
+/// Imports: each settlement wants `import_demand` per market person, split
+/// among the ports it reaches by `exp(−β/ρ_imp c)`, and pays in grain out of
+/// what is left of its marketed share; the grain leaves the map. Grain: each
+/// port buys `outside_grain` a year, split among the settlements that reach it
+/// by what they have left to sell × `exp(−β c)`, capped at that; the seller is
+/// paid in imports, which count in its gross market inflow. Both kinds of
+/// trade ride the settlements' stored paths to the port. Returns the grain each
+/// settlement paid (goods and imports) and sold to the ports; writes the year's
+/// totals to `outside_trade`.
+fn outside(
+    state: &mut State,
+    p: &Params,
+    mut paid: Vec<f32>,
+    market_in: &mut [f32],
+    food_out: &mut [f32],
+    flows: &mut Vec<Flow>,
+) -> (Vec<f32>, Vec<f32>) {
+    let m = state.settlements.len();
+    let budget = |i: usize, paid: &[f32]| {
+        (state.settlements[i].food_prod * p.market_share - paid[i]).max(0.0)
+    };
+    let b_imp = p.beta / p.rho_import.max(1e-6);
+    let mut imported = 0.0f32;
+    for i in 0..m {
+        let s = &state.settlements[i];
+        let w = if p.market_state {
+            s.market.max(0.0)
+        } else {
+            urban_pop(s, p)
+        };
+        let want = (p.import_demand * w).min(budget(i, &paid));
+        if want <= 0.0 {
+            continue;
+        }
+        let ports: Vec<(u32, f32)> = s
+            .reach
+            .partners
+            .iter()
+            .enumerate()
+            .filter(|(_, q)| port_of(q.id).is_some())
+            .map(|(k, q)| (k as u32, libm::expf(-b_imp * q.cost)))
+            .collect();
+        let total: f32 = ports.iter().map(|x| x.1).sum();
+        if total <= 0.0 {
+            continue;
+        }
+        for &(k, wt) in &ports {
+            let q = want * wt / total;
+            let to = s.reach.partners[k as usize].id;
+            // The imports come in, and the grain that pays for them goes out,
+            // both on the buyer's path to the port.
+            flows.push(Flow {
+                from: s.id,
+                to,
+                amount: q,
+                food: 0.0,
+                partner_idx: k,
+                good: None,
+                payment: false,
+                import: true,
+            });
+            flows.push(Flow {
+                from: s.id,
+                to,
+                amount: q,
+                food: q,
+                partner_idx: k,
+                good: None,
+                payment: true,
+                import: false,
+            });
+        }
+        paid[i] += want;
+        food_out[i] += want;
+        imported += want;
+    }
+    // Grain bought by the ports.
+    let mut sold = vec![0f32; m];
+    let mut bought = 0.0f32;
+    for (port, _) in state.outside.iter().enumerate() {
+        let id = crate::state::OUTSIDE - port as u32;
+        let mut offers: Vec<(usize, u32, f32, f32)> = Vec::new();
+        for i in 0..m {
+            let left = budget(i, &paid) - sold[i];
+            if left <= 0.0 {
+                continue;
+            }
+            if let Some(k) = state.settlements[i].reach.partners.iter().position(|q| q.id == id) {
+                let c = state.settlements[i].reach.partners[k].cost;
+                offers.push((i, k as u32, left * libm::expf(-p.beta * c), left));
+            }
+        }
+        let total: f32 = offers.iter().map(|x| x.2).sum();
+        if total <= 0.0 {
+            continue;
+        }
+        for &(i, k, wt, left) in &offers {
+            let q = (p.outside_grain * wt / total).min(left);
+            if q <= 0.0 {
+                continue;
+            }
+            let s = &state.settlements[i];
+            flows.push(Flow {
+                from: s.id,
+                to: id,
+                amount: q,
+                food: q,
+                partner_idx: k,
+                good: None,
+                payment: false,
+                import: false,
+            });
+            // Paid in imports, which come back the same way.
+            flows.push(Flow {
+                from: s.id,
+                to: id,
+                amount: q,
+                food: 0.0,
+                partner_idx: k,
+                good: None,
+                payment: false,
+                import: true,
+            });
+            sold[i] += q;
+            food_out[i] += q;
+            market_in[i] += q;
+            bought += q;
+        }
+    }
+    state.outside_trade = (bought, imported);
+    (paid, sold)
 }

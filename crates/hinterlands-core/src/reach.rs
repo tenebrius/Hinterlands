@@ -62,11 +62,12 @@ pub fn refresh_one(state: &mut State, t: &Terrain, p: &Params, idx: usize) {
         }
     }
 
-    if let Some(node) = state.outside.filter(|_| p.outside_enabled) {
+    // Outside ports (v5, D64) are partners like any other place.
+    for (k, &node) in state.outside.iter().enumerate() {
         let c = dj.dist[node as usize];
         if c <= p.c_max {
             reach.partners.push(Partner {
-                id: OUTSIDE,
+                id: OUTSIDE - k as u32,
                 cost: c,
                 path: dj.path_to(node),
             });
