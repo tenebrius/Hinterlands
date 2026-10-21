@@ -297,6 +297,10 @@ pub struct State {
     pub road: Vec<bool>,
     /// Cell pairs a road runs between, sorted; for drawing only (costs use `road`).
     pub road_edges: Vec<(u32, u32)>,
+    /// With `traffic_roads` (D54): the averaged trade load on each land edge
+    /// that has carried any, and the condition (0..1] of each road edge.
+    pub road_load: std::collections::BTreeMap<(u32, u32), f32>,
+    pub road_cond: std::collections::BTreeMap<(u32, u32), f32>,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -384,6 +388,8 @@ impl State {
             owner: vec![NONE; n],
             road,
             road_edges: Vec::new(),
+            road_load: Default::default(),
+            road_cond: Default::default(),
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],

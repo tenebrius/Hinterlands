@@ -305,3 +305,52 @@ fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
     }
     println!("{line}");
 }
+
+/// Roads report (v3): at each year in `--at`, the road cells and edges, the
+/// share of land that is road, the initial road cells still road, and with `traffic_roads` the edge load
+/// quantiles over edges that carry any traffic.
+pub fn cmd_roads(args: &Args) {
+    let mut sim = make_sim(args);
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("100,250,500")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let years = *at.iter().max().unwrap_or(&500);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if !at.contains(&y) {
+            continue;
+        }
+        let t = &sim.terrain;
+        let st = &sim.state;
+        let land = (0..t.n()).filter(|&i| t.is_land(i)).count().max(1);
+        let cells = st.road.iter().filter(|&&r| r).count();
+        let mut loads: Vec<f32> = st.road_load.values().copied().collect();
+        loads.sort_by(f32::total_cmp);
+        let q = |f: f32| {
+            loads
+                .get(((loads.len() as f32 - 1.0) * f) as usize)
+                .copied()
+                .unwrap_or(0.0)
+        };
+        let initial = t.initial_road.iter().filter(|&&r| r).count();
+        let kept = (0..t.n())
+            .filter(|&i| t.initial_road.get(i) == Some(&true) && st.road[i])
+            .count();
+        println!(
+            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} loaded {} load p50 {:.1} p90 {:.1} p99 {:.1} max {:.1}",
+            cells as f32 / land as f32,
+            st.road_edges.len(),
+            loads.len(),
+            q(0.5),
+            q(0.9),
+            q(0.99),
+            loads.last().copied().unwrap_or(0.0)
+        );
+    }
+}
