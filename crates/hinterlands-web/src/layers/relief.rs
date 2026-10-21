@@ -1,14 +1,21 @@
 //! Smooth relief: the base map drawn by a fragment shader that interpolates the
 //! cells instead of painting squares. Coast, shallows, hillshade and the forest
-//! canopy are derived per pixel from the cell values. If the shader cannot be
-//! built the layer falls back to the cell texture of `TerrainLayer`.
+//! canopy are derived per pixel from the cell values, and so are the farmed
+//! countryside (field strips, pasture, hedgerows, old fields) and the season
+//! tints, each drawn only while its own layer is on. If the shader cannot be
+//! built the layer falls back to the cell texture of `TerrainLayer`, and the
+//! countryside layers draw their cells as before.
 
+use super::countryside::{hash, strip_orientation};
 use super::terrain::TerrainLayer;
 use super::{DrawCtx, Layer, Swatch};
+use crate::view::{ViewState, NEVER};
 use eframe::egui_glow;
 use eframe::glow::{self, HasContext};
 use egui::Color32;
+use hinterlands_core::state::NONE;
 use hinterlands_core::terrain::Terrain;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 const VERT: &str = r#"
@@ -24,6 +31,18 @@ const FRAG: &str = include_str!("relief.frag");
 
 /// How far the coast distance field is searched, in cells.
 const COAST_REACH: i32 = 6;
+/// Years of farming before a field is hedged, and years an abandoned field stays visible.
+const ESTABLISHED: u32 = 50;
+const GHOST_YEARS: u32 = 200;
+
+/// Set when the shader could not be built, so the cell layers take over again.
+static FAILED: AtomicBool = AtomicBool::new(false);
+
+/// True while the shader draws the base map, fields, hedges and seasons; the
+/// countryside layers then skip their per-cell versions of those.
+pub fn active(v: &ViewState) -> bool {
+    v.layer_on("relief") && !FAILED.load(Ordering::Relaxed)
+}
 
 #[derive(Default)]
 pub struct ReliefLayer {
@@ -39,10 +58,12 @@ struct Gpu {
     program: Option<glow::Program>,
     vao: Option<glow::VertexArray>,
     land: Option<glow::Texture>,
-    forest: Option<glow::Texture>,
+    cover: Option<glow::Texture>,
+    plot: Option<glow::Texture>,
     /// Data waiting to be uploaded on the next paint.
     land_data: Option<Vec<f32>>,
-    forest_data: Option<Vec<f32>>,
+    cover_data: Option<Vec<f32>>,
+    plot_data: Option<Vec<f32>>,
     size: (i32, i32),
     failed: bool,
 }
@@ -54,6 +75,13 @@ struct Frame {
     p0: [f32; 2],
     p1: [f32; 2],
     px: f32,
+    year: f32,
+    /// 0 spring .. 3 winter, or -1 with the seasons layer off.
+    season: i32,
+    /// The season the field colours follow, whether or not the seasons layer is on.
+    field_season: i32,
+    /// Which countryside layers are on: fields, strips, pasture, hedgerows and old fields.
+    show: [f32; 4],
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -98,6 +126,54 @@ pub fn land_data(t: &Terrain) -> Vec<f32> {
     out
 }
 
+/// Per cell for this year, two textures' worth.
+/// Cover: forest, cultivated, pasture, abandoned-field fade.
+/// Plot: owner (hashed to 0..1, -1 for none), strip direction plus 2 x rotation,
+/// hedged (farmed for 50 years), flood meadow.
+fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
+    let t = &v.terrain;
+    let g = t.grid;
+    let snap = &v.snapshot;
+    let year = snap.year;
+    let horizontal = strip_orientation(v);
+    let mut cover = Vec::with_capacity(t.n() * 4);
+    let mut plot = Vec::with_capacity(t.n() * 4);
+    for i in 0..t.n() {
+        let built = snap.built[i] != NONE;
+        let owned = snap.owner[i] != NONE;
+        let forest = snap.forest[i] as f32 / 255.0;
+        let farmed = owned && !built;
+        let pasture = t.is_land(i)
+            && !owned
+            && !built
+            && forest < 0.35
+            && (0..8).any(|k| g.neighbor(i, k).is_some_and(|j| snap.owner[j] != NONE));
+        let ghost = if !owned && !built && t.is_land(i) && v.farm_last[i] != NEVER {
+            let age = year.saturating_sub(v.farm_last[i] as u32);
+            if age == 0 || age > GHOST_YEARS {
+                0.0
+            } else {
+                1.0 - age as f32 / GHOST_YEARS as f32
+            }
+        } else {
+            0.0
+        };
+        cover.extend_from_slice(&[forest, farmed as u8 as f32, pasture as u8 as f32, ghost]);
+        let owner = if farmed {
+            (hash(snap.owner[i] as usize, 3) & 0xffff) as f32 / 65536.0
+        } else {
+            -1.0
+        };
+        let orient = horizontal[i] as u8 as f32 + 2.0 * (hash(i, 7) % 3) as f32;
+        let hedged = farmed
+            && v.farm_first[i] != NEVER
+            && year.saturating_sub(v.farm_first[i] as u32) >= ESTABLISHED;
+        let meadow = t.is_land(i) && t.slope[i] < 0.02 && t.touches(i, |j| t.is_nav(j));
+        plot.extend_from_slice(&[owner, orient, hedged as u8 as f32, meadow as u8 as f32]);
+    }
+    (cover, plot)
+}
+
 impl Gpu {
     unsafe fn init(&mut self, gl: &glow::Context) -> Result<(), String> {
         let header = if gl.version().is_embedded {
@@ -128,22 +204,12 @@ impl Gpu {
         self.program = Some(program);
         self.vao = Some(gl.create_vertex_array()?);
         self.land = Some(gl.create_texture()?);
-        self.forest = Some(gl.create_texture()?);
+        self.cover = Some(gl.create_texture()?);
+        self.plot = Some(gl.create_texture()?);
         Ok(())
     }
 
-    unsafe fn upload(
-        gl: &glow::Context,
-        tex: glow::Texture,
-        size: (i32, i32),
-        rgba: bool,
-        data: &[f32],
-    ) {
-        let (internal, format) = if rgba {
-            (glow::RGBA32F, glow::RGBA)
-        } else {
-            (glow::R32F, glow::RED)
-        };
+    unsafe fn upload(gl: &glow::Context, tex: glow::Texture, size: (i32, i32), data: &[f32]) {
         gl.bind_texture(glow::TEXTURE_2D, Some(tex));
         for p in [glow::TEXTURE_MIN_FILTER, glow::TEXTURE_MAG_FILTER] {
             gl.tex_parameter_i32(glow::TEXTURE_2D, p, glow::NEAREST as i32);
@@ -156,11 +222,11 @@ impl Gpu {
         gl.tex_image_2d(
             glow::TEXTURE_2D,
             0,
-            internal as i32,
+            glow::RGBA32F as i32,
             size.0,
             size.1,
             0,
-            format,
+            glow::RGBA,
             glow::FLOAT,
             glow::PixelUnpackData::Slice(Some(&bytes)),
         );
@@ -175,28 +241,48 @@ impl Gpu {
                 if let Err(e) = self.init(gl) {
                     log::error!("relief shader unavailable, drawing cells instead: {e}");
                     self.failed = true;
+                    FAILED.store(true, Ordering::Relaxed);
                     return;
                 }
             }
-            let (Some(program), Some(land), Some(forest)) = (self.program, self.land, self.forest)
+            let (Some(program), Some(land), Some(cover), Some(plot)) =
+                (self.program, self.land, self.cover, self.plot)
             else {
                 return;
             };
-            if let Some(data) = self.land_data.take() {
-                Self::upload(gl, land, self.size, true, &data);
-            }
-            if let Some(data) = self.forest_data.take() {
-                Self::upload(gl, forest, self.size, false, &data);
+            for (tex, data) in [
+                (land, self.land_data.take()),
+                (cover, self.cover_data.take()),
+                (plot, self.plot_data.take()),
+            ] {
+                if let Some(data) = data {
+                    Self::upload(gl, tex, self.size, &data);
+                }
             }
             gl.use_program(Some(program));
             gl.bind_vertex_array(self.vao);
-            gl.active_texture(glow::TEXTURE1);
-            gl.bind_texture(glow::TEXTURE_2D, Some(forest));
-            gl.active_texture(glow::TEXTURE0);
-            gl.bind_texture(glow::TEXTURE_2D, Some(land));
+            for (unit, tex) in [
+                (glow::TEXTURE2, plot),
+                (glow::TEXTURE1, cover),
+                (glow::TEXTURE0, land),
+            ] {
+                gl.active_texture(unit);
+                gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+            }
             let at = |name: &str| gl.get_uniform_location(program, name);
             gl.uniform_1_i32(at("u_land").as_ref(), 0);
-            gl.uniform_1_i32(at("u_forest").as_ref(), 1);
+            gl.uniform_1_i32(at("u_cover").as_ref(), 1);
+            gl.uniform_1_i32(at("u_plot").as_ref(), 2);
+            gl.uniform_1_f32(at("u_year").as_ref(), f.year);
+            gl.uniform_1_i32(at("u_season").as_ref(), f.season);
+            gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
+            gl.uniform_4_f32(
+                at("u_show").as_ref(),
+                f.show[0],
+                f.show[1],
+                f.show[2],
+                f.show[3],
+            );
             gl.uniform_2_f32(at("u_grid").as_ref(), f.grid[0], f.grid[1]);
             gl.uniform_2_f32(at("u_p0").as_ref(), f.p0[0], f.p0[1]);
             gl.uniform_2_f32(at("u_p1").as_ref(), f.p1[0], f.p1[1]);
@@ -254,13 +340,9 @@ impl Layer for ReliefLayer {
         }
         let key = (v.terrain_version, v.snapshot.year);
         if self.key != Some(key) {
-            gpu.forest_data = Some(
-                v.snapshot
-                    .forest
-                    .iter()
-                    .map(|&f| f as f32 / 255.0)
-                    .collect(),
-            );
+            let (cover, plot) = year_data(v);
+            gpu.cover_data = Some(cover);
+            gpu.plot_data = Some(plot);
             self.key = Some(key);
         }
         drop(gpu);
@@ -277,6 +359,14 @@ impl Layer for ReliefLayer {
             p0: [p0.x, p0.y],
             p1: [p1.x, p1.y],
             px: d.camera.zoom * d.ctx.pixels_per_point(),
+            year: v.snapshot.year as f32,
+            season: if v.layer_on("seasons") {
+                v.season_index(d.time) as i32
+            } else {
+                -1
+            },
+            field_season: v.season_index(d.time) as i32,
+            show: ["fields", "strips", "grazing", "history"].map(|id| v.layer_on(id) as u8 as f32),
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

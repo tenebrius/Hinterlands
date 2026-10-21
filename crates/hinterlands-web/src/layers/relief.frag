@@ -9,8 +9,17 @@ precision highp sampler2D;
 // r: elevation (m), g: signed distance to the coast (cells, land positive),
 // b: food yield, a: hillshade (1 on the flat).
 uniform sampler2D u_land;
-// r: forest cover 0..1 this year.
-uniform sampler2D u_forest;
+// This year, r: forest cover, g: cultivated, b: pasture, a: abandoned-field fade.
+uniform sampler2D u_cover;
+// This year, r: owner (hashed, -1 for none), g: strip direction + 2 x rotation,
+// b: hedged (farmed 50 years), a: flood meadow.
+uniform sampler2D u_plot;
+uniform float u_year;
+// 0 spring .. 3 winter; u_season is -1 with the seasons layer off.
+uniform int u_season;
+uniform int u_field_season;
+// Layers on: fields, strips, pasture, hedgerows and old fields.
+uniform vec4 u_show;
 uniform vec2 u_grid;
 // Map coordinates (cells) of the top-left and bottom-right of the drawn rect.
 uniform vec2 u_p0;
@@ -25,8 +34,12 @@ vec4 land_at(ivec2 c) {
     return texelFetch(u_land, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0);
 }
 
-float forest_at(ivec2 c) {
-    return texelFetch(u_forest, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0).r;
+vec4 cover_at(ivec2 c) {
+    return texelFetch(u_cover, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0);
+}
+
+vec4 plot_at(ivec2 c) {
+    return texelFetch(u_plot, clamp(c, ivec2(0), ivec2(u_grid) - 1), 0);
 }
 
 // Catmull-Rom weights.
@@ -57,14 +70,25 @@ vec4 land_smooth(vec2 p) {
         + wy.z * land_row(ib, 1, wx) + wy.w * land_row(ib, 2, wx);
 }
 
-float forest_smooth(vec2 p) {
+vec4 cover_smooth(vec2 p) {
     vec2 q = p - 0.5;
     vec2 b = floor(q);
     vec2 f = smoothstep(0.0, 1.0, q - b);
     ivec2 ib = ivec2(b);
     return mix(
-        mix(forest_at(ib), forest_at(ib + ivec2(1, 0)), f.x),
-        mix(forest_at(ib + ivec2(0, 1)), forest_at(ib + ivec2(1, 1)), f.x),
+        mix(cover_at(ib), cover_at(ib + ivec2(1, 0)), f.x),
+        mix(cover_at(ib + ivec2(0, 1)), cover_at(ib + ivec2(1, 1)), f.x),
+        f.y);
+}
+
+vec4 plot_smooth(vec2 p) {
+    vec2 q = p - 0.5;
+    vec2 b = floor(q);
+    vec2 f = smoothstep(0.0, 1.0, q - b);
+    ivec2 ib = ivec2(b);
+    return mix(
+        mix(plot_at(ib), plot_at(ib + ivec2(1, 0)), f.x),
+        mix(plot_at(ib + ivec2(0, 1)), plot_at(ib + ivec2(1, 1)), f.x),
         f.y);
 }
 
@@ -140,10 +164,24 @@ vec3 sea_color(vec4 s, float coast) {
     return c;
 }
 
+// Crop, second crop and fallow strip colours by season (spring, summer, autumn, winter).
+const vec3 FIELDS[12] = vec3[12](
+    vec3(132.0, 176.0, 86.0) / 255.0, vec3(118.0, 160.0, 76.0) / 255.0, vec3(150.0, 186.0, 106.0) / 255.0,
+    vec3(226.0, 196.0, 98.0) / 255.0, vec3(206.0, 172.0, 80.0) / 255.0, vec3(160.0, 178.0, 110.0) / 255.0,
+    vec3(186.0, 152.0, 98.0) / 255.0, vec3(170.0, 136.0, 86.0) / 255.0, vec3(150.0, 160.0, 100.0) / 255.0,
+    vec3(140.0, 118.0, 92.0) / 255.0, vec3(126.0, 104.0, 80.0) / 255.0, vec3(136.0, 142.0, 108.0) / 255.0);
+const vec3 HEDGE = vec3(44.0, 92.0, 40.0) / 255.0;
+
+// Field boundaries follow the cells, but wander so furlongs are not squares.
+vec2 warp(vec2 p) {
+    return p + (vec2(vnoise(p * 2.0, 51), vnoise(p * 2.0, 53)) - 0.5) * 0.35;
+}
+
 vec3 land_color(vec4 s, vec2 p, float coast) {
     float e = s.r;
     float y = clamp(s.b, 0.0, 1.0);
     float detail = smoothstep(3.0, 14.0, u_px);
+    vec4 cv = cover_smooth(p);
 
     vec3 poor = vec3(0.80, 0.76, 0.60);
     vec3 good = vec3(0.64, 0.74, 0.45);
@@ -157,16 +195,64 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     // A thin strand along the shore.
     c = mix(c, vec3(0.86, 0.81, 0.64), (1.0 - smoothstep(0.0, 0.12, coast)) * 0.6);
 
+    // Pasture beyond the fields: a meadow green with ragged edges.
+    if (u_show.z > 0.5) {
+        float m = cv.b + (fbm(p * 2.5, 61) - 0.5) * 0.5;
+        float past = smoothstep(0.45, 0.45 + max(aa(m), 0.04), m);
+        vec3 grass = u_field_season == 3 ? vec3(0.60, 0.60, 0.50) : vec3(0.60, 0.73, 0.40);
+        grass *= 0.94 + 0.12 * vnoise(p * 14.0, 63) * detail;
+        c = mix(c, grass, past * 0.75);
+    }
+
+    // The fields: one smooth outline around each block of farmed cells.
+    float fm = cv.g + (fbm(p * 2.2, 71) - 0.5) * 0.45;
+    float field = smoothstep(0.5 - max(aa(fm), 0.02), 0.5 + max(aa(fm), 0.02), fm);
+    vec2 q = warp(p);
+    vec4 pl = plot_at(ivec2(floor(q)));
+
+    // Land that has gone out of cultivation keeps the faint lines of its strips.
+    if (u_show.w > 0.5) {
+        float gm = smoothstep(0.02, 0.15, cv.a) * (1.0 - field);
+        float s2 = q.y * 4.0;
+        float e2 = min(fract(s2), 1.0 - fract(s2));
+        float line = 1.0 - smoothstep(0.0, aa(s2) * 1.2, e2);
+        c = mix(c, vec3(0.38, 0.33, 0.24), line * gm * (0.15 + 0.4 * cv.a) * smoothstep(6.0, 10.0, u_px));
+    }
+
+    float show = max(u_show.x, u_show.y * smoothstep(5.0, 7.0, u_px));
+    if (show > 0.0) {
+        // Strips run away from the nearest road or river, with the reversed S of the plough team,
+        // and one in three lies fallow, moving on each year.
+        float g = pl.g;
+        bool horiz = mod(g, 2.0) > 0.5;
+        float rot = floor(g / 2.0 + 0.01);
+        float along = horiz ? q.x : q.y;
+        float across = (horiz ? q.y : q.x) + 0.03 * sin(along * 6.2832);
+        float sk = across * 6.0;
+        float k = floor(sk);
+        int base = u_field_season * 3;
+        vec3 crop = mod(k, 2.0) < 0.5 ? FIELDS[base] : FIELDS[base + 1];
+        vec3 strip = mod(k + u_year + rot, 3.0) < 0.5 ? FIELDS[base + 2] : crop;
+        float fs = min(fract(sk), 1.0 - fract(sk));
+        strip *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, aa(sk) * 1.2, fs));
+        strip *= 0.95 + 0.10 * vnoise(vec2(along * 24.0, k * 3.1), 73);
+        vec3 avg = (FIELDS[base] + FIELDS[base + 1]) / 3.0 + FIELDS[base + 2] / 3.0;
+        float stripes = smoothstep(10.0, 22.0, u_px) * u_show.y;
+        c = mix(c, mix(avg, strip, stripes), field * show * mix(0.75, 1.0, stripes));
+    }
+
     // Forest: the cover is smooth, its edge broken by noise so woods have ragged margins.
-    // Cover is shown as the share of ground under trees: open woods break into clumps.
-    float f = forest_smooth(p);
     // Far out that would be speckle, so cover is a plain tint until cells are a few pixels wide.
+    float f = cv.r;
     float n = clamp((fbm(p * 1.3, 21) - 0.5) * 2.4 + 0.5, 0.0, 1.0);
     float edge = f - n;
     float clumps = smoothstep(0.0, max(aa(edge), 0.05), edge);
     float wood = mix(smoothstep(0.05, 0.85, f), clumps, smoothstep(5.0, 12.0, u_px));
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));
     green = mix(green, vec3(0.24, 0.36, 0.25), smoothstep(400.0, 1000.0, e));
+    if (u_season == 2) {
+        green = mix(green, vec3(0.66, 0.42, 0.18), 0.35 * smoothstep(0.3, 0.7, f));
+    }
     if (detail > 0.0) {
         // Close up the wood resolves into crowns; single trees stand out past its edge.
         ivec2 id;
@@ -181,6 +267,36 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         c = mix(c, crown, stray * detail * 0.9);
     }
     c = mix(c, green, wood * 0.92);
+
+    // Hedgerows round fields farmed for fifty years: on the outline of the field block
+    // and between neighbouring holdings, thickening and thinning like real hedges.
+    if (u_show.w > 0.5 && u_px > 6.0) {
+        float hw = max(0.05, 1.0 / u_px);
+        float hedged = plot_smooth(p).b;
+        float grad = length(vec2(dFdx(fm), dFdy(fm))) * u_px;
+        float rim = abs(fm - 0.5) / max(grad, 1e-3);
+        float on = (1.0 - smoothstep(hw * 0.6, hw, rim)) * step(0.3, hedged);
+        if (pl.r >= 0.0 && pl.b > 0.5) {
+            vec2 off[4] = vec2[4](vec2(hw, 0.0), vec2(-hw, 0.0), vec2(0.0, hw), vec2(0.0, -hw));
+            for (int k = 0; k < 4; k++) {
+                vec4 o = plot_at(ivec2(floor(warp(p + off[k]))));
+                if (o.r >= 0.0 && abs(o.r - pl.r) > 1e-4) {
+                    on = max(on, field);
+                }
+            }
+        }
+        float bushes = 0.55 + 0.45 * smoothstep(0.3, 0.6, vnoise(p * 28.0, 81));
+        c = mix(c, HEDGE * (0.85 + 0.3 * vnoise(p * 60.0, 83)), on * bushes * smoothstep(6.0, 10.0, u_px));
+    }
+
+    // Seasons: water standing on the flood meadows in spring, frost and snow in winter.
+    if (u_season == 0) {
+        float meadow = smoothstep(0.25, 0.75, plot_smooth(p).a + (vnoise(p * 3.0, 91) - 0.5) * 0.3);
+        c = mix(c, vec3(0.50, 0.68, 0.88), meadow * 0.25);
+    } else if (u_season == 3) {
+        float snow = smoothstep(700.0, 800.0, e);
+        c = mix(c, vec3(0.94, 0.95, 0.97), 0.22 + 0.45 * snow);
+    }
     return c;
 }
 

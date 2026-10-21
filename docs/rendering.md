@@ -6,13 +6,17 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 ## Handover: merging into `main`
 
-- **Files touched.**
-  - New: `crates/hinterlands-web/src/layers/relief.rs`, `relief.frag` and `rivers.rs`.
-  - Changed: `layers/mod.rs` (two new layers registered), `layers/terrain.rs` (off by default, renamed "(cells)") and `layers/seasons.rs` (spring high water does not tint river cells while the river lines are on).
-  - Docs and screenshots: this file, a README line and `docs/screenshots/overhaul/`.
-- **What to check after merging.** `just test`: the golden hash stays `68beae826cf800cd`. `just web`, then `?selftest=500` in the browser: the hash must match. Watch `layers/mod.rs` if `main` has added a layer there (for example for the Roman roads); the conflict is only the list in `all()`.
-- **No new dependencies.** `eframe` already re-exports `glow` and `egui_glow`, and `Cargo.lock` is unchanged.
-- **The old view is one URL away.** `?on=terrain&off=relief,rivers`. If the shader cannot compile, the relief layer draws the old cell texture itself and logs the error.
+This section describes the step waiting to be merged; it is rewritten for each step.
+
+- **Step: R3, the farmed countryside in the shader.** Branch `claude/elegant-ride-g0sr1h`, started from `main` at `7be0f48`.
+- **Files touched.** All in `crates/hinterlands-web/src/layers/`:
+  - `relief.rs` and `relief.frag`: two per-year textures (land use; plots) and the countryside and season drawing.
+  - `countryside.rs`: the strip-direction rule is now the shared function `strip_orientation`, and the strips and pasture tint are skipped while the shader draws them.
+  - `fields.rs`, `history.rs` and `seasons.rs`: each skips its per-cell drawing while the shader draws it.
+  - Docs and screenshots: this file and `docs/screenshots/overhaul/4-*`, `5-*`.
+- **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
+- **No new dependencies.**
+- **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
 
 ## R1 — Smooth relief drawn by a shader
 
@@ -32,14 +36,39 @@ Streams and navigable rivers were coloured cells. They are now polylines that fo
 
 Kind: rendering.
 
+## R3 — Fields, pasture, hedges and seasons drawn in the shader
+
+The 1.x countryside layers drew one square per cell: strips, the pasture tint, hedges along cell edges, ghost strips, and the season tints. On the smooth base these squares were the most visibly blocky thing on the map. The relief shader now draws them per pixel from two more per-year textures:
+- **Land use:** forest, cultivated, pasture, and the fade of abandoned fields.
+- **Plots:** the owner (hashed), strip direction and fallow rotation, whether the field is hedged, and flood meadow.
+
+The rules for which cells are what are unchanged from the per-cell layers:
+- strips run away from the nearest road or river (`strip_orientation`, now shared);
+- one strip in three lies fallow, moving on each year;
+- pasture is open land beside fields with less than 35% forest;
+- hedges come after 50 years of farming;
+- abandoned fields fade over 200 years;
+- the flood meadow and frost rules are the same as before.
+
+What changes is the drawing:
+- **Field outlines.** Each block of farmed cells gets one smooth outline, roughened with noise. Strips lie in furlongs whose boundaries wander slightly, and each strip has a faint reversed S (the curve of a plough team turning). Far out a field is a plain tint; close in, the strips appear.
+- **Hedges.** They follow the field outline, and the boundary between neighbouring holdings, with varying thickness.
+- **Order.** Pasture is drawn under the fields, and fields under the forest, so a field still being cleared keeps trees standing on it.
+- **Seasons.** Spring water on the flood meadows, autumn colour in the woods, and winter frost and snow are applied per pixel.
+- **Layer toggles.** Each part is drawn only while its own layer is on (fields, strips, pasture, hedgerows and old fields, seasons). The per-cell layers stand down only while the shader is running; otherwise they draw exactly as before.
+- **Still drawn by egui.** Sheep, coppice stools and clearing stumps are point symbols and stay in egui.
+
+Kind: rendering.
+
 ## Screenshots
 
-Map 1, seed 1, year 450, summer. The files are in `docs/screenshots/overhaul/` as before/after pairs: `1-overview`, `2-region` (zoomed to the central river valley) and `3-coast` (zoomed to the coast, river mouth and Chedesworth).
+Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
+- R1–R2, summer, on v1.1: `1-overview`, `2-region` (zoomed to the central river valley) and `3-coast` (zoomed to the coast, river mouth and Chedesworth).
+- R3, on v1.2: `4-fields` (zoomed to Chedesworth and Harnfield in summer) and `5-winter` (the central valley in winter).
 
 ## Next steps, in order
 
-1. Fields, strips and pasture drawn with soft, hedged edges instead of cell squares. These layers are now the most visibly blocky thing on the map.
-2. Roads and water routes smoothed with Chaikin, with an outline under the fill. The trade dots follow the smoothed line.
-3. Settlement footprints traced as one outline, not per-cell blocks.
-4. Lettering: a bundled serif font and halos behind labels.
-5. A panel theme to match the map.
+1. Roads and water routes smoothed with Chaikin, with an outline under the fill. The trade dots follow the smoothed line. These are now the most visibly blocky thing on the map.
+2. Settlement footprints traced as one outline, not per-cell blocks.
+3. Lettering: a bundled serif font and halos behind labels.
+4. A panel theme to match the map.

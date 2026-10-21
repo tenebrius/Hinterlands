@@ -35,6 +35,13 @@ impl Layer for SeasonsLayer {
         let v = d.view;
         let t = &v.terrain;
         let season = v.season_index(d.time);
+        // The relief shader applies the season itself, per pixel.
+        if super::relief::active(v) {
+            if v.season_fixed.is_none() && !v.playing {
+                d.ctx.request_repaint();
+            }
+            return;
+        }
         // With the river lines on, spring high water widens them instead of tinting cells.
         let rivers = v.layer_on("rivers");
         let key = (v.terrain_version, v.snapshot.year, season, rivers);
