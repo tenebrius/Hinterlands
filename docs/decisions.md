@@ -131,3 +131,7 @@ Kind: correction of the growth equation and settlement state (owner/designer dec
 ## D27 — Income from handling trade (switch, default off; v1.1 candidate, designer-approved)
 `handling_income` adds to a place's inflow a margin on the trade passing its anchor (`handling_margin`) and on the trade changing mode within a cell of it (`transship_margin`: boarding or leaving a boat, river barge to sea ship). This is break of bulk as an income (Bleakley & Lin 2012; Fujita & Mori 1996), and it replaces the through-traffic weight for that trade. The yearly growth cap still applies.
 Kind: model mechanism (owner/designer decision); default pending validation.
+
+## D28 — Hamlet founding without transport weights (v1.1 candidate, designer-approved)
+The founding score used Bosker & Buringh's weights, which were estimated for cities over 5,000. Village-scale models (Artificial Anasazi, VEP) place settlements by farmland and water alone. Under v1.1 the transport weights in founding (`w_hub`, `w_river`, `w_coast`, `w_road`) are 0, and the market and handling terms (D26, D27) decide which villages become towns. The change is to parameter values only; v1 defaults are unchanged until v1.1 passes validation. First result: the water filter for founding sites (`water_radius_km` with `stream_area`) still confines hamlets to river and coast sites; see `docs/real-terrain-experiments.md`.
+Kind: correction of the founding score (owner/designer decision); default pending validation.

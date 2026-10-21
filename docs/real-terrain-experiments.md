@@ -109,3 +109,42 @@ What A and B do on Kent:
 | Runs passing every check | 10/20 | 10/20 | 16/20 |
 
 K per map: the searches tuned one value for all three maps; the best is K = 3.54 (α 1.081, β 0.124, ε 0.152, market share 0.448, handling margin 0.029, transship margin 0.26). The earlier A-only setting on Kent used K = 2. Validation fails on the river-corridor city: with A the hierarchy is flatter, with one or two cities over 5,000, and one of them is on the main river corridor in about two thirds of seeds, against the 0.80 required. v1 had 0.95 / 0.85 / 1.00.
+
+## Founding correction, one re-tune of A + B (designer-approved round)
+
+**Change (D28).** Hamlet founding no longer scores transport. `w_hub`, `w_river`, `w_coast` and `w_road` are 0, so a site is scored on reachable food (`w_food` 1.5), the shadow and the access terms, plus noise. It still needs water within 1 km. A and B decide which villages become towns. One re-tune on the generated maps (56 settings × 3 maps × 3 seeds) kept its starting point as best: K 3.54, α 1.081, β 0.124, ε 0.152, handling margin 0.029, transship margin 0.26, w_food 1.5, noise 0.9, threshold 0.69, shadow weight 3.85. Parameters: `data/real/experiments/market-handling-founding.json`.
+
+### Validation on the generated maps (20 seeds per map): FAILED
+
+| Check | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- |
+| Rank-size slope (≥ 15/20) | 16/20 | 15/20 | 19/20 |
+| Median count over 5,000 (≥ 2) | 2 | 2 | 2 |
+| Market spacing 8–15 km (≥ 15/20) | **12/20** | 16/20 | 19/20 |
+| River-corridor city over 5,000 (≥ 0.80; fallback 0.60) | **0.50** | **0.45** | 0.65 |
+| All other checks | pass | pass | pass |
+| Runs passing every check | 8/20 | 12/20 | 14/20 |
+
+As the designer expected, the rank-size and median-count misses resolve. The corridor check gets worse (it was 0.60 / 0.70 / 0.65 before the founding change) and is below the 0.6 fallback on two maps; market spacing on map 1 drops to 12/20.
+
+### Kent (20 seeds)
+
+| Run | AUC vs lowland: all / ≥1,000 / <1,000 | Inland towns found | Model places on rivers | Spearman | Inland places >500: spacing, count | Largest city near (seeds) | Largest share |
+| --- | --- | ---: | ---: | ---: | --- | --- | ---: |
+| v1 | 0.48 / 0.54 / 0.44 | 29% | 49% | 0.08 | 10.1 km, 16 | estuary mouths | 0.21 |
+| A + B | 0.49 / 0.61 / 0.42 | 27% | 54% | 0.15 | 10.3 km, 11 | Gravesend 15 | 0.28 |
+| A + B + founding correction | 0.47 / 0.56 / 0.42 | 28% | 42% | 0.15 | 10.4 km, 12 | Gravesend 12 | 0.26 |
+
+Real: inland towns over 500 at 10.6 km, 29 of them.
+
+Settlements by size band, share inland (land is 72% inland):
+
+| Run | Under 100 | 100–500 | 500–2,000 | 2,000+ |
+| --- | --- | --- | --- | --- |
+| v1 | 58 per seed, 28% inland | 72, 34% | 37, 38% | 5, 6% |
+| A + B | 87, 35% | 50, 29% | 36, 26% | 7, 22% |
+| A + B + founding correction | 87, 33% | 44, 37% | 30, 36% | 7, 23% |
+
+**The founding correction did not spread villages inland on Kent.** New hamlets are still two-thirds on river or coast sites.
+
+**Why: the water filter, not the score.** A founding site must have a stream, a river or the coast within 1 km (`water_radius_km`). Streams begin at 60 km² of drainage (`stream_area`), so on a 1 km grid only about 760 of Kent's 11,500 land cells carry a stream or river. Most of the Weald and the Downs is never a candidate, whatever its score. Real villages used springs, wells and small brooks well below 60 km² of drainage. On Kent's uniform soil, the food term also has little to work with, as the designer anticipated.
