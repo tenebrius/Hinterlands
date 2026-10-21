@@ -599,6 +599,16 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **Tuning.** `rent_share`, `ε`, `p_floor` and the W premium's α are the implementer's to tune, with every change recorded.
 - **Stop** and report, whether it passes or fails.
 
+**S2 first build (7b00639, D78) and the designer's decision (D79).** The solver works: residual about 0.0002 in 8–11 passes, at +3 ms a year natively. But no towns form (map 1 seed 1: largest under 600 at every year shown, 51–55% of each harvest unsold). Every place grows its own food plus rent, so only the ports buy; the rent grain has no buyers; and K was tuned on gross inflow that counted burned grain. The D78 changes made while building are accepted: rent in kind with farmers eating first, ports buying up to `outside_grain` at a world price of 0.6, the level step, and goods paid in value.
+- **Decided: option C.** K becomes a real purchase. This is the published reading of K: in Wilson's retail model, `K W_j` is the cost of running facility j, paid from its revenue `D_j`. It also has historical footing. A medieval town's grain demand went well beyond bread, to malting for ale, fodder for horses and the households of lords and religious houses (Campbell, Galloway, Keene & Murphy 1993, *A Medieval Capital and its Grain Supply*).
+  - Each market buys grain for its establishment, so that its total yearly purchase for W is `K × W`, its market people's own food included. Do not add both, or the old K is counted twice.
+  - The purchase is priced like any demand (ε 0.75) and paid from rents, fees and goods sales. The satiation applies to people, not to the establishment.
+  - W then follows `ε(D_j − K W_j)` with `D_j` as real income divided by `p_j`, as in the note. A market whose income cannot buy its establishment shrinks.
+- **Market people do not farm** (`grain_market_people` on). The fields feed `pop − W`, as the v1.1 rule that newcomers join the market people always meant.
+- **Options A and B are declined.** A brings back burned grain growing W (P3), and B re-calibrates the whole hierarchy.
+- **Tuning.** One round over `rent_share`, `K`, `ε` (growth) and α is allowed, with every change recorded. Then run the full S2 gate as briefed, and stop and report either way.
+- **Added to the report:** the establishment's share of grain demand in towns over 2,000, against the people's own food.
+
 
 ## Future versions
 
