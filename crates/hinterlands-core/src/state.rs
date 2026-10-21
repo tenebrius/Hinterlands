@@ -277,6 +277,8 @@ pub enum LogKind {
     Plague {
         lost: f32,
     },
+    /// The settlement's harbour silted up (D60).
+    Silted,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -316,6 +318,11 @@ pub struct State {
     /// otherwise.
     pub bridge: Vec<bool>,
     pub bridge_streak: Vec<u8>,
+    /// Extra cost of each land–water step at silted harbour cells (D60); empty
+    /// until a harbour silts. `silt_year` is the drawn year of the historical
+    /// silting, 0 before it is drawn.
+    pub silt: Vec<f32>,
+    pub silt_year: u32,
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -415,6 +422,8 @@ impl State {
             road_q,
             bridge: if p.traffic_bridges { vec![false; n] } else { Vec::new() },
             bridge_streak: if p.traffic_bridges { vec![0; n] } else { Vec::new() },
+            silt: Vec::new(),
+            silt_year: 0,
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],
@@ -470,13 +479,13 @@ impl State {
     }
 
     pub fn rebuild_costs(&mut self, t: &Terrain) {
-        self.cost = if self.road_q.is_empty() && self.bridge.is_empty() {
+        self.cost = if self.road_q.is_empty() && self.bridge.is_empty() && self.silt.is_empty() {
             CostGrid::build(t, &self.road, &self.transport)
         } else if self.road_q.is_empty() {
             let q: Vec<f32> = self.road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
-            CostGrid::build_with_condition(t, &q, &self.bridge, &self.transport)
+            CostGrid::build_with_condition(t, &q, &self.bridge, &self.silt, &self.transport)
         } else {
-            CostGrid::build_with_condition(t, &self.road_q, &self.bridge, &self.transport)
+            CostGrid::build_with_condition(t, &self.road_q, &self.bridge, &self.silt, &self.transport)
         };
     }
 

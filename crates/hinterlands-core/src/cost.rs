@@ -93,14 +93,22 @@ fn has_water_node(t: &Terrain, i: usize) -> bool {
 impl CostGrid {
     pub fn build(t: &Terrain, road: &[bool], tr: &Transport) -> Self {
         let q: Vec<f32> = road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
-        Self::build_with_condition(t, &q, &[], tr)
+        Self::build_with_condition(t, &q, &[], &[], tr)
     }
 
     /// As `build`, with a road condition per cell (D54): a step between two
     /// road cells costs `land + q × (road − land)` per km, `q` the lower of the
     /// two conditions; a cell with `q` 0 has no road. `bridge` marks cells the
-    /// model has bridged (D55), crossed free as at a ford; it may be empty.
-    pub fn build_with_condition(t: &Terrain, road_q: &[f32], bridge: &[bool], tr: &Transport) -> Self {
+    /// model has bridged (D55), crossed free as at a ford; `silt` is the extra
+    /// cost of every step between land and water at a silted harbour cell
+    /// (D60). Either may be empty.
+    pub fn build_with_condition(
+        t: &Terrain,
+        road_q: &[f32],
+        bridge: &[bool],
+        silt: &[f32],
+        tr: &Transport,
+    ) -> Self {
         let g = t.grid;
         let n = g.n();
         let mut land = vec![[INF; 8]; n];
@@ -110,12 +118,14 @@ impl CostGrid {
         let mut transship = vec![INF; n];
         let mut board = vec![[INF; 8]; n];
         let mut alight = vec![[INF; 8]; n];
+        let silted = |i: usize| -> f32 { silt.get(i).copied().unwrap_or(0.0) };
         let coast_ts = |i: usize| {
-            if t.harbour[i] {
-                tr.transship
-            } else {
-                tr.transship * tr.open_coast_factor
-            }
+            silted(i)
+                + if t.harbour[i] {
+                    tr.transship
+                } else {
+                    tr.transship * tr.open_coast_factor
+                }
         };
         let cross = |j: usize| -> f32 {
             if t.free_crossing(j) || bridge.get(j).copied().unwrap_or(false) {
@@ -131,7 +141,7 @@ impl CostGrid {
 
         for i in 0..n {
             if t.is_nav(i) {
-                transship[i] = tr.transship;
+                transship[i] = tr.transship + silted(i);
             }
             for d in 0..8 {
                 let Some(j) = g.neighbor(i, d) else { continue };
@@ -170,12 +180,12 @@ impl CostGrid {
                         }
                         land[i][d] = c;
                         if t.is_nav(j) {
-                            board[i][d] = tr.transship + tr.land * km;
+                            board[i][d] = tr.transship + tr.land * km + silted(i).max(silted(j));
                         }
                     }
                 }
                 if t.is_nav(i) && t.is_land(j) && !t.is_nav(j) {
-                    alight[i][d] = tr.transship + tr.land * km;
+                    alight[i][d] = tr.transship + tr.land * km + silted(i).max(silted(j));
                 }
                 if has_water_node(t, i) {
                     if t.is_sea(i) {

@@ -61,6 +61,12 @@ pub struct ShockResult {
     /// share, and the years until the pre-famine total is regained.
     pub famine_dip: f32,
     pub famine_years: f32,
+    /// Years after the plague until the total is back to its level the year
+    /// before it (NaN if never).
+    pub plague_years: f32,
+    /// Total at the end against the same seed with events off; filled in by
+    /// `cmd_validate`.
+    pub pop_vs_off: f32,
     /// Share of this run's top ten within 5 km of the same seed's top ten with
     /// events off; filled in by `cmd_validate`.
     pub overlap_off: f32,
@@ -372,13 +378,25 @@ pub fn run_one(
 }
 
 /// The quarter (0 lowest .. 3 highest) of each settlement's local yield: the
-/// mean yield of the land within 3 km of its anchor (D58).
+/// mean yield of the land within 3 km of its anchor (D58), among settlements
+/// more than 8 km from any place over 2,000, beyond the urban drain (D59).
 fn yield_quarters(sim: &Sim) -> std::collections::BTreeMap<u32, u8> {
     let t = &sim.terrain;
+    let big: Vec<usize> = sim
+        .state
+        .settlements
+        .iter()
+        .filter(|s| s.pop > 2000.0)
+        .map(|s| s.anchor as usize)
+        .collect();
     let mut v: Vec<(f32, u32)> = sim
         .state
         .settlements
         .iter()
+        .filter(|s| {
+            big.iter()
+                .all(|&b| b == s.anchor as usize || t.grid.dist_km(b, s.anchor as usize) > 8.0)
+        })
         .map(|s| {
             let near: Vec<usize> = t
                 .grid
@@ -422,7 +440,12 @@ fn shock_result(
     let back = (fy + 1..py)
         .find(|&y| at(y) >= pre)
         .map_or(f32::NAN, |y| (y - fy) as f32);
+    let regained = (py + 1..totals.len() as u32)
+        .find(|&y| at(y) >= before)
+        .map_or(f32::NAN, |y| (y - py) as f32);
     ShockResult {
+        plague_years: regained,
+        pop_vs_off: f32::NAN,
         plague_drop: 1.0 - low / before.max(1.0),
         recovery: totals.last().copied().unwrap_or(0.0) / peak.max(1.0),
         fail_low: rate(0),
@@ -491,8 +514,10 @@ pub fn cmd_validate(args: &Args) {
                         .filter(|&&x| o.top10.iter().any(|&y| t.grid.dist_km(x, y) <= 5.0))
                         .count();
                     let share = near as f32 / r.top10.len().max(1) as f32;
+                    let vs_off = r.m.total_pop / o.m.total_pop.max(1.0);
                     if let Some(sh) = r.shock.as_mut() {
                         sh.overlap_off = share;
+                        sh.pop_vs_off = vs_off;
                     }
                 }
                 results.lock().unwrap().push(r);
@@ -687,11 +712,13 @@ pub fn cmd_validate(args: &Args) {
         if rs.iter().any(|r| r.shock.is_some()) {
             let sh: Vec<&ShockResult> = rs.iter().filter_map(|r| r.shock.as_ref()).collect();
             println!(
-                "{:<20} {:>12} plague drop {:.2}; recovery {:.2}; failure 248-300 low {:.2} / high {:.2} quarter; famine dip {:.2}, regained in {:.0} years",
+                "{:<20} {:>12} plague drop {:.2}, regained in {:.0} years; recovery {:.2}; total at end vs off {:.2}; failure 248-300 low {:.2} / high {:.2} quarter; famine dip {:.2}, regained in {:.0} years",
                 "v4 shocks",
                 "(reported)",
                 med(sh.iter().map(|s| s.plague_drop).collect()),
+                med(sh.iter().map(|s| s.plague_years).filter(|x| x.is_finite()).collect()),
                 med(sh.iter().map(|s| s.recovery).collect()),
+                med(sh.iter().map(|s| s.pop_vs_off).collect()),
                 med(sh.iter().map(|s| s.fail_low).collect()),
                 med(sh.iter().map(|s| s.fail_high).collect()),
                 med(sh.iter().map(|s| s.famine_dip).collect()),

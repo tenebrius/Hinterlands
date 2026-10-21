@@ -2,7 +2,7 @@
 //! events fall due and queues them; they are applied at the start of the year,
 //! and an event that lasts several years queues its own next part.
 //! Writes, through `apply` only: famine state, settlements' pop and market,
-//! the queue and the log.
+//! silted harbour costs and the cost grid, the queue and the log.
 
 use crate::state::{LogEntry, LogKind, State};
 use crate::terrain::Terrain;
@@ -20,11 +20,39 @@ pub enum Event {
         years: u32,
         first: bool,
     },
+    /// The harbour of the settlement silts up: every land–water step within a
+    /// cell of its anchor costs `cost` more, for good (D60).
+    Silt { settlement: u32, cost: f32 },
 }
 
 impl Event {
-    pub fn apply(&self, state: &mut State, _t: &Terrain) {
+    pub fn apply(&self, state: &mut State, t: &Terrain) {
         match self {
+            Event::Silt { settlement, cost } => {
+                let Some(i) = state.index_of(*settlement) else {
+                    return;
+                };
+                if state.silt.is_empty() {
+                    state.silt = vec![0.0; t.n()];
+                }
+                let a = state.settlements[i].anchor as usize;
+                for c in std::iter::once(a).chain((0..8).filter_map(|d| t.grid.neighbor(a, d))) {
+                    state.silt[c] += cost;
+                }
+                let s = &state.settlements[i];
+                let entry = LogEntry {
+                    year: state.year,
+                    settlement: s.id,
+                    name: s.name.clone(),
+                    anchor: s.anchor,
+                    pop: s.pop,
+                    kind: LogKind::Silted,
+                };
+                state.log.push(entry);
+                // Paths pick up the new costs at their next scheduled refresh,
+                // as after a road step.
+                state.rebuild_costs(t);
+            }
             Event::Famine { years, loss } => {
                 state.famine_until = state.year + years;
                 state.famine_loss = *loss;
