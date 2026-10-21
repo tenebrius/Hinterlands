@@ -463,3 +463,16 @@ Other effects:
 - They still starve. Two that peaked at 2,846 and 4,280 shrink to below 20 and are removed as depopulated in year 279. Three shrink to 822–914, just under the bar. One holds at 1,216.
 
 So `shed_unfed` changes how a starving town ends, but the town at the bridge still loses the food that supported it. What drains it was not measured in this round. Nothing else was tried.
+
+### Designer's decision on `shed_unfed`: it becomes the default (v1.2)
+
+Run once as pre-registered, nothing tuned, with a scale check that turned a Kent question into a general finding. The decision is the designer's under the design authority delegated on 2026-10-21.
+
+1. **`shed_unfed` becomes the default.** The defect is general: v1.1 deletes about 170 settlements of 1,000+ per generated run, which is wrong as history and looks wrong on screen, where towns of thousands vanish in a year. With the switch on, every per-seed check improves (runs passing every check 19/20/18 against 7/13/14) and the failure rate stays in band. No re-tune.
+2. **The contingency check is revised, and the revision is made after seeing it fail, so the reasons have to stand on their own.** v1.1 passed it only through the defect: much of the variation between seeds came from big towns being deleted and replaced. The record puts persistence at the top (the largest cities are the most persistent places; Bosker & Buringh 2017) and contingency in the middle tier, which is where Evans & Rivers (2017) find it among sites of similar quality. The check now gates on the ten largest places: for each pair of seeds, the share of one run's ten largest with one of the other's within 5 km; the mean over pairs must be at most 0.80. The old largest-city check is reported. The threshold is set before any run: 1.0 means geography alone decides the hierarchy, and 0.80 means that on average at least two of the ten differ. `docs/foundation.md` and `docs/validation.md` carry the new wording.
+3. **Rochester is closed as a target.** Towns form at the bridge and lose the market competition with the Thames and Medway towns; that is the model's normal contingency, not a defect. Rochester stays a row in the Kent table; no further rounds aim at single Kent sites.
+4. **Kent's standard configuration becomes uniform soil + Roman roads + bridges.** The roads are real input data, and with `shed_unfed` they give 53% of places of 1,000+ on a Roman road (real 47%, land 32%) and the best small-town AUC so far. Gravesend's lower count (10 against 16) and the tight inland spacing (6.2 km against 10.6) are reported, not chased. From here Kent is a regression report at each milestone.
+
+## v1.2 milestone (approved)
+
+Make `shed_unfed` the default; implement the revised contingency check in `validate` (the old one reported); switch `just real` to the roads + bridges configuration. Then, as for any milestone: `just test` and `just validate` pass, the new golden hash is recorded natively and in the browser (`?selftest=500`), and `docs/milestones.md` gets the table with the new contingency figures per map alongside the old ones, the time per year in the release wasm build, and the Kent table. Record the default change as D35. If the revised contingency check fails on any map, stop and report; nothing is tuned to pass it.
