@@ -537,6 +537,21 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
 - **Decided (D72): option 1.** Under `market_goods`, the founding test counts the value of demand in reach: `Σ_k p_k q_k exp(−β_g c)`, using each buyer's price for the good from the year before. Where no working site reaches a buyer, its price counts as 1. This is the consistent reading of D40 once goods have prices. It is also the market signal the equilibrium exists to give: dear iron draws new mines. Options 2 and 3 are declined.
 - **Re-run the S1 gate once,** with the per-map iron price reported. If it passes, make `market_goods` the default and report. If not, stop and report.
 
+**S1 third gate (d31e04a) and the designer's decision (D73).** Every check passes on maps 2 and 3. On map 1, sites producing is 14/20: four remote eastern sites stay unworked while iron sells at 1.19 in towns. That is a clearing market, not a fault. When the working sites meet demand at about cost, the marginal ones stay idle: this is the extensive margin, Ricardo's no-rent land. The two-thirds quota measured v2's rule that every site with demand in reach gets a works, and the market rightly overrides it. The check is changed after seeing it fail, so the reason is given in full:
+- **Under `market_goods`, the gate becomes:** every good that has a site on the map has at least one working site at year 500 (75% of seeds per map). The share of sites producing is reported, not gated. The viewer already shows idle sites as unfilled symbols, which tells that story on the map.
+- **No other change.** `demand_iron` stays 0.0013 and D72 stays.
+- **If the gate passes,** make `market_goods` the default, record the golden hash, report, and go straight on to W1.
+
+**W1 brief (local harvests).**
+- **Switch.** `local_harvests`, on by default once it passes.
+- **Mechanism.** Every cell's yield each year is multiplied by `m = clamp(1 + σ z, 0.5, 1.5)`, with `σ` = 0.15. `z` is a smooth field: standard normal values are drawn from the run's `Rng` (Box–Muller with `libm`) on a coarse grid of nodes spaced `harvest_km` (15 km) apart, and interpolated bilinearly to cells. Each year is drawn fresh, with no carry-over (Clark's yield autocorrelation is 0.16). The multiplier sits on top of the famine factor.
+- **Gate:** every v5 check with `market_goods` and W1 on; determinism; at most 45 ms a year in wasm.
+- **Reported:**
+  - the coefficient of variation of each settlement's harvest;
+  - the three Clark regressions on shadow prices (`market_shadow` on, for the report), so that `b_Y` is now identified;
+  - the depth of local dearths: the worst place's yield multiplier per year.
+- **Stop** and report before S2.
+
 
 ## Future versions
 
