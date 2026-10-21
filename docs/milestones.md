@@ -236,4 +236,10 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - golden `0b590b3b017b63d0`;
   - the release wasm build gives the same hash (`?selftest=500`, 25.6 ms/year);
   - `data/real/experiments/v21.json` gives v2.1's `f67bf8565c500fda`.
-- **Kent:** in progress; it is reported in `docs/real-terrain-experiments.md`.
+- **Kent** (20 seeds, `map-resources.json`):
+  - Roman road cells still road at year 500: 19%.
+  - On-road share of settlements: 29% (1,000 or more: 50%), against 23% under v2.1 and 32% of land.
+  - Inland places over 500: 12 per seed at 10.8 km (real 29 at 10.6).
+  - Settlements per seed: 445 (v2.1: 238).
+  - Road length change 300→500: 13.6% (reported).
+  - Details: `docs/real-terrain-experiments.md`.

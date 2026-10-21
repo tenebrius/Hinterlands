@@ -655,3 +655,23 @@ Every other check passes. Top-10 overlap is 0.44 / 0.44 / 0.54, and the over-5,0
 2. Add a floor to the founding shadow, so that any settlement within the radius casts at least `shadow_weight × 0.5`, whatever its size.
 
 Either is a change to the specification.
+
+## v3(b): Kent with roads that follow traffic (D54)
+Kent was run with the v3(b) defaults and `map-resources.json` (uniform soil, Roman roads and bridges, and real resource sites), 20 seeds, 500 years. Outputs are in `target/real/kent-v3b`, and the score in `docs/real/kent-v3b/scores.md`. The table compares v2.1 (the same map file, roads never decay) with v3(b).
+
+| Kent, 20 seeds | v2.1 | v3(b) |
+| --- | --- | --- |
+| Roman road cells still road at year 500 | 100% (roads never decay) | **19%** (16–23%) |
+| Settlements on or next to a Roman road: all / 1,000 or more | 23% / 50% | **29%** / 50% (land 32%) |
+| Settlements per seed at year 500 | 238 | 445 |
+| Inland places over 500: count per seed, spacing | 22, 6.0 km | **12, 10.8 km** (real 29, 10.6 km) |
+| Lowland AUC: all / 1,000 or more / under 1,000 | 0.49 / 0.53 / 0.46 | 0.53 / 0.54 / 0.52 |
+| Largest city near | Gravesend 10, Faversham 10 | Faversham 11, Gravesend 9 |
+| Road cells abandoned during the run | 0 | 0.57 |
+| Road length change, 300→500 | n/a | 13.6% median (max 23%) |
+
+What this shows:
+- **Most Roman roads fade.** Only about a fifth of Roman road cells keep enough trade to stay road by year 500. Dalgaard et al. found persistence where traffic kept roads in use, so the result is consistent with the rule. In Kent, though, Watling Street and the main roads largely persisted in reality.
+- **The on-road share rises** from 23% to 29%, close to the land share of 32%. The cost shadow no longer pushes places off a road network that has faded.
+- **Inland spacing now matches the record:** 10.8 km against the real 10.6. There are fewer inland places over 500 (12 a seed against the real 29), and many more small settlements (445 a seed against 238). With fewer roads, travel is dearer and more of the land is beyond any market's reach, so hamlets fill it.
+- **Kent's network has not settled by year 500.** Its 13.6% change between years 300 and 500 is above the 10% gated on the generated maps; Kent is reported, not gated.
