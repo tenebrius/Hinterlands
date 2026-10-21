@@ -8,8 +8,12 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 This section describes what is waiting to be merged; it is rewritten each time.
 
-- **Step: R5 (settlement footprints and city walls in the shader).** Branch `claude/elegant-ride-g0sr1h`, with `main` merged in after R3 and R4 landed. One commit.
-- **Files touched.** All in `crates/hinterlands-web/src/layers/`: `relief.rs` and `relief.frag` get a per-year town texture and the footprint, ruin and wall drawing. `settlements.rs` keeps only its markers, and `buildings.rs` skips walls and towers, while the shader draws them. Docs and screenshots: this file and `docs/screenshots/overhaul/7-*`.
+- **Steps: R6 (footpaths, parish boundaries and quays as smoothed lines) and R7 (lettering and panel theme).** Branch `claude/elegant-ride-g0sr1h`, from `main` at `5b5792f`. Done together in one batch at the owner's request, so they merge together.
+- **Files touched.** All in `crates/hinterlands-web/`:
+  - R6, in `src/layers/`: `lines.rs` gains `chains` (edges to pin-to-pin chains), and `routes.rs` now uses it with unchanged output. `parish.rs` draws footpaths and boundaries as smoothed dashed lines. `relief.frag` draws sea quays on the smoothed shore, and `relief.rs` gives the town texture's fourth value on built cells the town-or-larger flag. `rivers.rs` embanks rivers through towns, and `buildings.rs` skips the cell-edge quays while the shader runs.
+  - R7: new `src/style.rs` (fonts and theme), installed from `app.rs`, registered in `main.rs`. New `assets/fonts/` holds EB Garamond Medium and Medium Italic (Latin subsets, about 50 KB each) and the font's `OFL.txt`. `layers/labels.rs` and the legend in `layers/mod.rs` use the serif. `app.rs` gives panel titles the serif and a new map surround colour.
+  - Docs and screenshots: this file, a README line and `docs/screenshots/overhaul/8-*`, `9-*`.
+- **New files carry a licence.** The fonts are under the SIL Open Font License 1.1, which allows bundling. `OFL.txt` sits beside them. The wasm grows by about 130 KB (5.09 to 5.23 MB).
 - **What to check after merging.** `just test`: the golden hash stays `2b00434da9781880`. `just web`, then `?selftest=500` in the browser: the hash must match.
 - **No new dependencies.**
 - **The old view is one URL away.** `?on=terrain&off=relief,rivers` brings back every per-cell layer. If the shader cannot compile, the same happens by itself and the error is logged.
@@ -83,6 +87,27 @@ Built-up areas were drawn per cell: a texture far out, and rounded squares with 
 
 Kind: rendering.
 
+## R6 — Footpaths, parish boundaries and quays drawn as smoothed lines
+
+These were the last pieces of the map drawn along the grid.
+
+- **Footpaths.** Joined into chains with the shared `lines::chains` (now also used by the routes), kept sharp at settlements, smoothed like the roads and drawn dashed.
+- **Parish boundaries.** Traced along cell corners, joined into chains that keep their corner where three parishes meet, smoothed with three rounds and drawn as a faint dashed line. Which settlement each cell belongs to is unchanged.
+- **Sea quays.** The relief shader draws them as a timber and stone edge on the land side of the smoothed shore, wherever a town or larger meets the sea. The town texture's fourth value carries that flag on built cells; it still holds the ruin's age on ruined ones.
+- **River quays.** The river layer embanks rivers where they run through a town or larger, as a brown bank under the water.
+- **Stand-down.** The cell-edge quay glyphs stand down while the shader runs. Warehouses are still drawn by egui.
+
+Kind: rendering.
+
+## R7 — Map lettering and panel theme
+
+- **Font.** The viewer bundles EB Garamond (SIL Open Font License 1.1) at medium weight, regular and italic, subset to Latin. Missing characters fall back to the default fonts.
+- **Labels.** Map labels use it, italic for seas, bays, rivers and forests, replacing egui's slanted sans. Sizes are scaled to keep the old x-height. The halo is the text traced at eight points, in place of four.
+- **Panels.** Headings and panel titles use the serif. The panels take a parchment theme in the map's colours: ink-brown text, tan widgets, a brown selection. The theme applies in both light and dark mode, because the map has one palette. The area around the map is a warm dark grey in place of blue-black.
+- **Unchanged.** Panel contents and layout.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -90,9 +115,13 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R3, on v1.2: `4-fields` (zoomed to Chedesworth and Harnfield in summer) and `5-winter` (the central valley in winter).
 - R4, on v2 G2: `6-roads` (the same view as `4-fields`, roads and routes before and after).
 - R5, on v2 G3: `7-town` (Langden, a walled city, at full zoom; before is the per-cell view).
+- R7: `8-lettering` (the whole map and panels). R6: `9-port` (Wenenford: quays on the smoothed shore, smoothed footpaths).
 
-## Next steps, in order
+## Possible next steps
 
-1. Footpaths and parish boundaries smoothed like the roads; quays along the smoothed shore.
-2. Lettering: a bundled serif font and halos behind labels.
-3. A panel theme to match the map.
+The overhaul's planned steps are done. Ideas from the original proposal not yet built, none of them needed:
+
+1. Style presets (`?style=atlas`, `?style=topo`) that swap the palette and symbols.
+2. Fading between years at slow speeds, so forest, fields and footprints change smoothly.
+3. The same smooth base map in the CLI's headless PNG renderer (`render.rs`), so milestone screenshots match the browser.
+4. Rivers redrawn over roads inside towns (the D45 difference), if it is wanted.

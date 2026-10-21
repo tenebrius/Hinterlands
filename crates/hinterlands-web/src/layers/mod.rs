@@ -74,7 +74,7 @@ impl Layer for LegendLayer {
 
 /// Paint the legend for the visible layers in the map's lower-left corner.
 pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
-    use egui::{Color32, FontId, Rect, Stroke};
+    use egui::{Color32, Rect, Stroke};
     let items: Vec<(Swatch, &str)> = layers
         .iter()
         .filter(|l| d.view.layer_on(l.id()) && l.shown_at(d.camera.zoom))
@@ -142,8 +142,8 @@ pub fn draw_legend(d: &DrawCtx, layers: &[Box<dyn Layer>]) {
             egui::pos2(sx + 30.0, y),
             egui::Align2::LEFT_CENTER,
             *text,
-            FontId::proportional(11.5),
-            Color32::from_gray(40),
+            crate::style::serif(13.5),
+            crate::style::INK,
         );
     }
 }

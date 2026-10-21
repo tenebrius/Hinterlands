@@ -1,12 +1,14 @@
 //! Name labels, one layer per class so each can be toggled: settlements (sized
 //! and revealed by rank as you zoom), rivers (along the main stem), ranges, seas
 //! and bays, and forests (hidden once mostly cleared). Labels that would overlap
-//! an earlier one in the same class are skipped.
+//! an earlier one in the same class are skipped. Lettering is the bundled serif,
+//! italic for water and woodland, on a pale halo so it reads over any ground.
 
 use super::{DrawCtx, Layer};
+use crate::style::{serif, serif_italic};
 use egui::epaint::TextShape;
 use egui::text::{LayoutJob, TextFormat};
-use egui::{Color32, FontId, Pos2, Rect};
+use egui::{Color32, Pos2, Rect};
 use hinterlands_core::names::FeatureKind;
 use hinterlands_core::state::Rank;
 
@@ -37,7 +39,8 @@ impl Placer {
     }
 }
 
-/// Draw `text` centred at `pos` with a pale halo, rotated by `angle` radians.
+/// Draw `text` centred at `pos` with a pale halo, rotated by `angle` radians;
+/// `size` is in the old sans-serif points, scaled to match the serif's x-height.
 /// Returns false (and draws nothing) if the spot is taken.
 fn label(
     d: &DrawCtx,
@@ -54,9 +57,12 @@ fn label(
         text,
         0.0,
         TextFormat {
-            font_id: FontId::proportional(size),
+            font_id: if italic {
+                serif_italic(size * 1.15)
+            } else {
+                serif(size * 1.15)
+            },
             color,
-            italics: italic,
             ..Default::default()
         },
     );
@@ -75,13 +81,11 @@ fn label(
     if !d.rect.intersects(bounds) || !placer.free(bounds.expand(2.0)) {
         return false;
     }
-    let halo = Color32::from_rgba_unmultiplied(250, 246, 235, 170);
-    for off in [
-        egui::vec2(-1.0, 0.0),
-        egui::vec2(1.0, 0.0),
-        egui::vec2(0.0, -1.0),
-        egui::vec2(0.0, 1.0),
-    ] {
+    // The halo is the text traced at eight points round it.
+    let halo = Color32::from_rgba_unmultiplied(250, 246, 235, 150);
+    for k in 0..8 {
+        let a = k as f32 * std::f32::consts::FRAC_PI_4;
+        let off = egui::vec2(a.cos(), a.sin()) * 1.4;
         d.painter.add(
             TextShape::new(origin + off, galley.clone(), halo)
                 .with_angle(angle)

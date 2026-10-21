@@ -5,6 +5,7 @@ mod camera;
 mod layers;
 mod panels;
 mod sim_handle;
+mod style;
 mod view;
 
 #[cfg(target_arch = "wasm32")]
