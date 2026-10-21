@@ -45,7 +45,7 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     systems::events::run(state, t, p, rng);
     let events = std::mem::take(&mut state.events);
     for e in &events {
-        e.apply(state, t);
+        e.apply(state, t, p);
     }
     reach::refresh_due(state, t, p);
     systems::cultivation::run(state, t, p, rng);

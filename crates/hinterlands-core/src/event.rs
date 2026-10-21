@@ -2,8 +2,10 @@
 //! events fall due and queues them; they are applied at the start of the year,
 //! and an event that lasts several years queues its own next part.
 //! Writes, through `apply` only: famine state, settlements' pop and market,
-//! silted harbour costs and the cost grid, the queue and the log.
+//! silted harbour costs and the cost grid, planted settlements, the queue and
+//! the log.
 
+use crate::params::Params;
 use crate::state::{LogEntry, LogKind, State};
 use crate::terrain::Terrain;
 use serde::{Deserialize, Serialize};
@@ -23,11 +25,29 @@ pub enum Event {
     /// The harbour of the settlement silts up: every land–water step within a
     /// cell of its anchor costs `cost` more, for good (D60).
     Silt { settlement: u32, cost: f32 },
+    /// A lord plants a town at `cell` with `pop` people and market size
+    /// `market` (D62).
+    Plant { cell: u32, pop: f32, market: f32 },
 }
 
 impl Event {
-    pub fn apply(&self, state: &mut State, t: &Terrain) {
+    pub fn apply(&self, state: &mut State, t: &Terrain, p: &Params) {
         match self {
+            Event::Plant { cell, pop, market } => {
+                let id = state.add_settlement(t, p, *cell, *pop, false);
+                state.tally.founded += 1;
+                if let Some(i) = state.index_of(id) {
+                    state.settlements[i].market = market.min(*pop);
+                }
+                state.log.push(LogEntry {
+                    year: state.year,
+                    settlement: id,
+                    name: state.name_of(id),
+                    anchor: *cell,
+                    pop: *pop,
+                    kind: LogKind::Planted,
+                });
+            }
             Event::Silt { settlement, cost } => {
                 let Some(i) = state.index_of(*settlement) else {
                     return;

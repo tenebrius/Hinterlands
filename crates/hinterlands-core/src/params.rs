@@ -253,6 +253,10 @@ define_params! {
         silt_interval: f32 = 200.0, [1, 5000], "Mean years between siltings (random mode)";
         resettle_years: u32 = 30, [0, 200], "Years after a plague during which people leave poor land for vacant good land (D61)";
         resettle_rate: f32 = 0.02, [0, 0.2], "Yearly share of a poor-land place's people who resettle";
+        plant_interval: u32 = 50, [0, 500], "Years between planted towns, with events on (0 = none) (D62)";
+        plant_pop: f32 = 200.0, [10, 5000], "People a planted town starts with";
+        plant_market: f32 = 5.0, [0, 50], "A planted town's starting market size, in multiples of market_w0";
+        plant_spacing_km: f32 = 10.7, [0, 50], "Least distance from a planted town to any place over 500 (Bracton's 6 2/3 miles)";
         famine_interval: f32 = 120.0, [1, 2000], "Mean years between famines (random mode)";
         plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
     }

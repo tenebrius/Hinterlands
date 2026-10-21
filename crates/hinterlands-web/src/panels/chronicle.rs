@@ -71,6 +71,7 @@ impl Panel for Chronicle {
                         LogKind::Plague { lost } => {
                             format!("{}. Plague at {}: {lost:.0} die.", e.year, e.name)
                         }
+                        LogKind::Planted => format!("{}. Lord's town planted at {}.", e.year, e.name),
                         LogKind::Silted => format!("{}. The harbour at {} silted.", e.year, e.name),
                         LogKind::Failed { cause, moved_to } => {
                             let why = match cause {

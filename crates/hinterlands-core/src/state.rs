@@ -279,6 +279,8 @@ pub enum LogKind {
     },
     /// The settlement's harbour silted up (D60).
     Silted,
+    /// A lord planted the settlement (D62).
+    Planted,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

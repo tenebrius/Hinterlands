@@ -71,6 +71,9 @@ pub struct ShockResult {
     /// later (D60); NaN if there was no silting, or the later rank if the
     /// place failed (then one past the last).
     pub silt_rank: (f32, f32),
+    /// Planted towns old enough to judge (planted 100 years or more before the
+    /// end) and those of them alive 100 years after planting (D62).
+    pub planted: (u32, u32),
     /// Share of this run's top ten within 5 km of the same seed's top ten with
     /// events off; filled in by `cmd_validate`.
     pub overlap_off: f32,
@@ -288,6 +291,8 @@ pub fn run_one(
     let mut quartile: std::collections::BTreeMap<u32, u8> = Default::default();
     let mut failed: std::collections::BTreeSet<u32> = Default::default();
     let mut silt: Option<(u32, u32, f32)> = None;
+    let mut planted: Vec<(u32, u32)> = Vec::new();
+    let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
     let rank_of = |sim: &Sim, id: u32| -> f32 {
         let pop = sim.state.get(id).map(|s| s.pop);
@@ -304,7 +309,16 @@ pub fn run_one(
         if shocks {
             totals.push(sim.state.total_pop());
             let y = sim.state.year;
+            for &(id, py) in &planted {
+                if y == py + 100 {
+                    planted_alive.0 += 1;
+                    planted_alive.1 += sim.state.get(id).is_some() as u32;
+                }
+            }
             for e in &sim.state.log {
+                if matches!(e.kind, hinterlands_core::state::LogKind::Planted) {
+                    planted.push((e.settlement, y));
+                }
                 if matches!(e.kind, hinterlands_core::state::LogKind::Silted) && silt.is_none() {
                     silt = Some((e.settlement, y, rank_of(&sim, e.settlement)));
                 }
@@ -380,6 +394,7 @@ pub fn run_one(
         shock: shocks.then(|| {
             let mut sh = shock_result(params, &totals, &quartile, &failed);
             sh.silt_rank = (silt.map_or(f32::NAN, |s| s.2), silt_after);
+            sh.planted = planted_alive;
             sh
         }),
         road_change: if params.traffic_roads {
@@ -474,6 +489,7 @@ fn shock_result(
         plague_years: regained,
         pop_vs_off: f32::NAN,
         silt_rank: (f32::NAN, f32::NAN),
+        planted: (0, 0),
         plague_drop: 1.0 - low / before.max(1.0),
         recovery: totals.last().copied().unwrap_or(0.0) / peak.max(1.0),
         fail_low: rate(0),
@@ -752,6 +768,18 @@ pub fn cmd_validate(args: &Args) {
                 med(sh.iter().map(|s| s.famine_dip).collect()),
                 med(sh.iter().map(|s| s.famine_years).filter(|x| x.is_finite()).collect())
             );
+            let (judged, alive) = sh
+                .iter()
+                .fold((0, 0), |a, s| (a.0 + s.planted.0, a.1 + s.planted.1));
+            if judged > 0 {
+                println!(
+                    "{:<20} {:>12} planted towns judged {}; alive 100 years after planting {:.2}",
+                    "v4 planted",
+                    "(reported)",
+                    judged,
+                    alive as f32 / judged as f32
+                );
+            }
             let silted: Vec<&&ShockResult> =
                 sh.iter().filter(|s| s.silt_rank.0.is_finite()).collect();
             if !silted.is_empty() {

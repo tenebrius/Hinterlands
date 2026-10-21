@@ -4,7 +4,8 @@
 //! two recurrences (`plague_recur_1`, `plague_recur_2`) at `plague_recur_share`
 //! of its mortality, and one harbour silting in a year drawn within
 //! `silt_from` .. `silt_from + silt_window` (D60). In `Random` mode (2) each
-//! kind is drawn yearly from the run's `Rng` at a mean interval. Off (0) does
+//! kind is drawn yearly from the run's `Rng` at a mean interval. In either
+//! mode a lord plants a town every `plant_interval` years (D62). Off (0) does
 //! nothing and draws nothing.
 //! Writes: the event queue only.
 
@@ -57,6 +58,16 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
             });
         }
     }
+    // Planted towns (D62): every `plant_interval` years with events on.
+    if p.events_mode != 0 && p.plant_interval > 0 && y > 0 && y % p.plant_interval == 0 {
+        if let Some(cell) = plant_site(state, t, p) {
+            state.events.push(Event::Plant {
+                cell: cell as u32,
+                pop: p.plant_pop,
+                market: p.plant_market * p.market_w0,
+            });
+        }
+    }
     if famine {
         state.events.push(Event::Famine {
             years: p.famine_years,
@@ -106,4 +117,38 @@ fn busiest_shallow_port(state: &State, t: &Terrain, p: &Params) -> Option<u32> {
         .filter(|s| near(s.anchor as usize).any(faces))
         .max_by(|a, b| a.transship.total_cmp(&b.transship).then(b.id.cmp(&a.id)))
         .map(|s| s.id)
+}
+
+/// Where a lord plants a town (D62): among the cells a settlement could be
+/// founded on that are on or next to a road or a navigable river, and at least
+/// `plant_spacing_km` from any place over 500, the one with the highest market
+/// access, Σ pop/1000 × exp(−access_decay × cost) over settlements within
+/// `c_max`. Ties go to the lower cell.
+fn plant_site(state: &State, t: &Terrain, p: &Params) -> Option<usize> {
+    let big: Vec<usize> = state
+        .settlements
+        .iter()
+        .filter(|s| s.pop > 500.0)
+        .map(|s| s.anchor as usize)
+        .collect();
+    let mut best: Option<(f32, usize)> = None;
+    for c in 0..t.n() {
+        if !t.touches(c, |j| state.road[j] || t.is_nav(j))
+            || big.iter().any(|&b| t.grid.dist_km(b, c) < p.plant_spacing_km)
+            || !crate::systems::founding::is_candidate(state, t, p, c)
+        {
+            continue;
+        }
+        let access: f32 = state
+            .settlements
+            .iter()
+            .map(|s| (s.pop, s.reach.cost_to_cell(c)))
+            .filter(|&(_, cost)| cost <= p.c_max)
+            .map(|(pop, cost)| pop / 1000.0 * libm::expf(-p.access_decay * cost))
+            .sum();
+        if best.is_none_or(|(a, _)| access > a) {
+            best = Some((access, c));
+        }
+    }
+    best.map(|(_, c)| c)
 }
