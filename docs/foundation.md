@@ -421,6 +421,7 @@ The simulation lane runs left to right through its gates; the map generation tra
      - **Validation:** a re-tune and full validation follow. A new golden hash is recorded.
      - **Expectation on Kent, pre-registered:** the share of settlements on or next to a Roman road reaches at least the land share (32%), against 21% now. Kent's inland spacing (6.0 km against 10.6) is reported.
      - **Stop:** if validation cannot be passed by tuning, stop and report.
+     - **After the first attempt (D52):** with one radius, spacing and failure rate pulled against each other (map 1 spacing 8/20). Decided (D53): the two uses get two distances, each with its own footing. The founding shadow uses `shadow_radius_km`, about 15–18, matching Bosker & Buringh's bands around existing cities. The drain uses `drain_radius_km`, about 8, the distance people walked to a weekly market, within which a small place loses people to a larger one. The floor on the founding shadow (option 2) is declined: within a 15 km radius it would stop founding near any hamlet. The spacing check (8–15 km) stays as it is. If this fails validation after tuning, v3(a) is dropped (`shadow_km` stays off) and v3 continues with (b).
    - (b) **Roads follow traffic.** They upgrade with edge load and decay slowly when it falls (Dalgaard et al. 2022: Roman roads largely persisted).
    - (c) **Bridges at busy crossings,** using the free-crossing mechanism of D33.
    - (d) **Mills** add a few percent to their settlement's yield.

@@ -39,6 +39,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v2 gate after D44 + re-tune (85b2003):** all gated checks pass except map 3's over-5,000 median (1). Decided D48: that median becomes reported (v1.2 passed it by one seed; per-seed hierarchy checks carry the purpose). Re-tuned values (α 1.088, K 3.39, ε 0.137, β 0.139, market share 0.487, stone demand 0.016) become v2 defaults. G4 next.
 - **v2 released (1bcbb39, D49):** validation passed; golden `b0de71500774acf8` (28.2 ms/year wasm); goods layer and panel in new files; screenshot `docs/screenshots/v2-goods-year450.png` reads well. Coppice rule for iron fuel approved for v2.1 (floor 0.3, output capped by regrowth above it), with a gate re-run.
 - **v2.1 done (36da3c5, f76045c; D50–D51):** coppice on: iron output 18–28 a site, forest near iron 0.17–0.22 against land 0.44–0.46; v2 gate passed (19/20/20 runs pass everything); golden `f67bf8565c500fda`, 25.9 ms/year wasm. Kent's 17 real sites: all 6 Wealden bloomeries sell in 20/20 seeds; Faversham, beside the Seasalter–Graveney pans, now the largest in 10 seeds. v3(a), the shadow in km, briefed with a pre-registered Kent expectation (on-road share ≥ 32%).
+- **v3(a) first attempt failed (9a81e76, D52):** km shadow behind `shadow_km`; best tune fails market spacing on maps 1 and 3 (radius vs drain trade-off). Kent met the expectation (39% on roads). Decided D53: separate drain radius (~8 km) from the founding shadow (~15–18 km); if that fails, drop v3(a) and go on to (b). The spacing check is not touched.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
@@ -98,4 +99,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-21 — v2.1 accepted (golden `f67bf8565c500fda`); v3(a) shadow in km under way.
+Last updated: 2026-10-21 — v3(a) second attempt (two radii, D53) approved.
