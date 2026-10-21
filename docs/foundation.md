@@ -527,6 +527,12 @@ Decided by the designer on 21 October 2026, on the owner's proposal `docs/propos
   - one goods-price map.
 - **Stop.** Report and stop.
 
+**S1 first gate (D71, `docs/market/s1.md`) and the designer's decision.** The gate failed on map 2 spacing (14/20). The cause is iron: v2's demand (0.02 per head, about 2,300 a year) was set before coppice (D51) cut iron output to about 150 a year. Under the shopping model the shortfall simply went unmet. Under prices, iron reaches 22–80 in towns, and the mines grow to 1,500–2,800 people.
+- **Decided: option 1.** `demand_iron` is re-scaled to the coppiced supply, so that the median town price of iron sits between 1 and 3. It is a value set before a later change, not a mechanism. Options 2 and 3 are declined (3 would be a new rule). Option 4 (re-tuning founding) is used only if spacing still fails with iron re-scaled.
+- **Readings confirmed.** Supply is `capacity × min(1, p_i)`. A good with no working site in reach is reported as unreached, not priced at the floor.
+- **Added to the report:** the median town price per good, which should be within 0.5–3 for each.
+- **Re-run the S1 gate once.** If it passes, make `market_goods` the default and report. If not, stop and report.
+
 
 ## Future versions
 
