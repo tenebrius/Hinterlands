@@ -57,6 +57,14 @@ impl Panel for Chronicle {
                             };
                             format!("{}. {what} founded at {}.", e.year, e.name)
                         }
+                        LogKind::Outgrew { good } => {
+                            let what = match good {
+                                hinterlands_core::state::Good::Salt => "salt works",
+                                hinterlands_core::state::Good::Iron => "iron mine",
+                                hinterlands_core::state::Good::Stone => "quarry",
+                            };
+                            format!("{}. {} has outgrown its {what}.", e.year, e.name)
+                        }
                         LogKind::Failed { cause, moved_to } => {
                             let why = match cause {
                                 FailCause::Depopulated => "dwindled away",

@@ -213,6 +213,11 @@ pub fn cmd_search(raw: &[String], args: &Args) {
                         .collect();
                     let overlap = crate::validate::top10_overlap(t, &g);
                     mean += (overlap - 0.8).max(0.0) / 0.2 / terrains.len() as f32;
+                    // The median count over 5,000 per map (at least 2).
+                    let mut over5: Vec<u32> = g.iter().map(|r| r.m.over_5000).collect();
+                    over5.sort();
+                    let med = over5.get(over5.len() / 2).copied().unwrap_or(0);
+                    mean += (2.0 - med as f32).max(0.0) / terrains.len() as f32;
                 }
             }
             let passes = rs

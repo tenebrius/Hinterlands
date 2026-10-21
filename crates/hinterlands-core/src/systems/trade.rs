@@ -9,7 +9,7 @@
 //! Food arrives less a loss per unit cost. Flows are assigned to the stored
 //! least-cost paths, giving the load on each cell and the route junctions (hubs).
 //! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in,
-//! transship, sites' sold.
+//! transship, goods_in, sites' sold.
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
@@ -30,6 +30,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         s.through = 0.0;
         s.market_in = 0.0;
         s.transship = 0.0;
+        s.goods_in = 0.0;
     }
     state.flows.clear();
     for site in state.sites.iter_mut() {
@@ -288,6 +289,7 @@ fn goods(
     flows: &mut Vec<Flow>,
 ) -> Vec<f32> {
     let m = state.settlements.len();
+    let mut goods_in = vec![0f32; m];
     let settlement_of = |id: u32| -> Option<usize> {
         idx_of
             .get(id as usize)
@@ -425,6 +427,7 @@ fn goods(
         let delivered = pay * (1.0 - p.transport_loss * c).max(0.0);
         food_in[j] += delivered;
         market_in[j] += delivered;
+        goods_in[j] += delivered;
         // The payment travels on the buyer's own path to the producer.
         flows.push(Flow {
             from: buyer.id,
@@ -438,6 +441,9 @@ fn goods(
     }
     for (site, s) in state.sites.iter_mut().zip(sold) {
         site.sold = s;
+    }
+    for (s, g) in state.settlements.iter_mut().zip(goods_in) {
+        s.goods_in = g;
     }
     paid
 }

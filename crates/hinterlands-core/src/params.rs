@@ -173,6 +173,7 @@ define_params! {
         cap_iron: f32 = 1000.0, [0, 10000], "Most output of one iron site a year";
         cap_stone: f32 = 1000.0, [0, 10000], "Most output of one stone site a year";
         fuel_per_iron: f32 = 0.1, [0, 1], "Forest (cell units) burned per unit of iron";
+        specialist_share: f32 = 0.25, [0, 1], "A specialist stays one while goods sales are at least this share of its gross inflow (10-year average)";
     }
     "Growth" => {
         growth_enabled: bool = true, [0, 1], "Run the growth system";

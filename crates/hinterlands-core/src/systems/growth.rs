@@ -7,13 +7,16 @@
 //! migration, and small places near big ones are drained. With `gross_inflow`
 //! (D24) the inflow is the gross market inflow instead of net food imports, as in
 //! the published model: a market grows on what is sold there whether or not the
-//! place itself is short of food. With `market_state` (D26) `W_j` is the
+//! place itself is short of food. Under v2 it also keeps ten-year averages of
+//! goods sales and inflow, and turns a specialist whose sales have fallen below
+//! `specialist_share` of its inflow into an ordinary settlement (D44). With `market_state` (D26) `W_j` is the
 //! settlement's own market size, not its derived non-farming population, and
 //! moves with the people the market gains or loses; the inflow is gross. With
 //! `handling_income` (D27) a place also earns a margin on the trade passing its
 //! anchor and on the trade transshipped there (break of bulk), in place of the
 //! through-traffic weight.
-//! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history.
+//! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history, market;
+//! under v2 also avg_goods_in, avg_inflow, kind and the log entry for it.
 
 use crate::params::Params;
 use crate::state::State;
@@ -83,6 +86,10 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             market + p.through_weight * (s.trade_in + s.through)
         };
+        if p.goods_enabled {
+            s.avg_goods_in += (s.goods_in - s.avg_goods_in) / 10.0;
+            s.avg_inflow += (inflow - s.avg_inflow) / 10.0;
+        }
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }
@@ -201,5 +208,34 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         if s.history.len() > 51 {
             s.history.remove(0);
         }
+    }
+
+    // The kind follows the economy (D44): a specialist whose goods sales have
+    // fallen below `specialist_share` of its inflow, over ten years, becomes an
+    // ordinary settlement for good. It keeps working its site.
+    if p.goods_enabled {
+        let mut outgrew = Vec::new();
+        for s in state.settlements.iter_mut() {
+            let good = match s.kind {
+                crate::state::Kind::Agrarian => continue,
+                crate::state::Kind::Mine => crate::state::Good::Iron,
+                crate::state::Kind::Saltern => crate::state::Good::Salt,
+                crate::state::Kind::Quarry => crate::state::Good::Stone,
+            };
+            if year.saturating_sub(s.founded) >= 10
+                && s.avg_goods_in < p.specialist_share * s.avg_inflow
+            {
+                s.kind = crate::state::Kind::Agrarian;
+                outgrew.push(crate::state::LogEntry {
+                    year,
+                    settlement: s.id,
+                    name: s.name.clone(),
+                    anchor: s.anchor,
+                    pop: s.pop,
+                    kind: crate::state::LogKind::Outgrew { good },
+                });
+            }
+        }
+        state.log.extend(outgrew);
     }
 }

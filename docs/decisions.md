@@ -213,3 +213,8 @@ Kind: rendering.
 ## D43 — Roads, routes and trade drawn as smoothed lines (rendering; R4 from the graphics-overhaul branch)
 Route segments are joined into chains by kind (water, land trade off roads, roads). Chains break only at junctions, ends, changes of kind and settlement centres, and are smoothed with the same Chaikin corner cutting as rivers (shared in `lines.rs`). Wide roads are drawn cased, land trade off roads as dashed tracks, water trade as a pale line. Trade dots follow the smoothed lines, and their positions are cached in map space. The 2% share rule and the dot trip, cargo and speed rules are unchanged. Details: `docs/rendering.md`.
 Kind: rendering.
+
+## D44 — A specialist's kind follows its economy (designer decision; the designer numbered it D43, which the R4 merge had taken)
+Trade records each settlement's goods sales (`goods_in`, payment grain received). Growth keeps ten-year averages of goods sales and gross inflow. A specialist at least 10 years old whose average sales are below `specialist_share` (0.25) of its average inflow becomes an ordinary settlement for good. It keeps holding and working its site, and the chronicle records it ("1340. Mereport has outgrown its salt works."). The gate "largest is not a specialist" now tests the economy through this rule.
+Gate re-run (goods on, starting values): "largest not specialist" 20/20 on all maps. Specialists per run 1.4 / 3.7 / 0.4, size median 70 / 85 / 207, max 471. Payment share of market inflow 0.03. Every v1.2 per-seed check passes. Failing: the over-5,000 median on map 3 (1). That is a v1.2 check, which the specification lets the implementer re-tune with goods on.
+Kind: model mechanism behind a switch (designer decision).

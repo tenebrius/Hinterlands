@@ -170,6 +170,11 @@ pub struct Settlement {
     /// Trade changing mode (boat to land, river to sea) within a cell of the
     /// anchor this year: what a port handles (D27).
     pub transship: f32,
+    /// Grain received this year as payment for goods sold (v2; written by trade).
+    pub goods_in: f32,
+    /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
+    pub avg_goods_in: f32,
+    pub avg_inflow: f32,
     pub food_ratio: f32,
     /// Population over the last 51 years, oldest first.
     pub history: Vec<f32>,
@@ -199,6 +204,9 @@ impl Settlement {
             market_in: 0.0,
             market: 0.0,
             transship: 0.0,
+            goods_in: 0.0,
+            avg_goods_in: 0.0,
+            avg_inflow: 0.0,
             food_ratio: 1.0,
             history: Vec::new(),
             reach: Reach::default(),
@@ -252,6 +260,11 @@ pub enum LogKind {
         good: Good,
         demand: f32,
         donor: u32,
+    },
+    /// A specialist whose goods sales fell below `specialist_share` of its
+    /// inflow became an ordinary settlement (v2, D44).
+    Outgrew {
+        good: Good,
     },
 }
 
