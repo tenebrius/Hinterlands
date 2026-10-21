@@ -22,6 +22,9 @@ pub struct GrainStats {
     pub unsold: f32,
     pub harvest: f32,
     pub capped: u32,
+    /// The establishment's share of the grain bought by places over 2,000
+    /// (D79).
+    pub estab_share: f32,
 }
 
 /// The outside port a partner id names, if it is one.

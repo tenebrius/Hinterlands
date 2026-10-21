@@ -242,7 +242,6 @@ define_params! {
         grain_premium: bool = true, [0, 1], "Under market_grain, market size W^alpha is a premium on the buyer side (decision 4; off is option 1, W as demand only)";
         rent_share: f32 = 0.48655713, [0, 0.9], "Under market_grain, share of each place's grain sales paid as rent and tithe to markets, in value (D77)";
         p_floor: f32 = 0.25, [0.01, 1], "Under market_grain, least supply price of grain; what does not sell at it is lost (D77)";
-        grain_market_people: bool = false, [0, 1], "Under market_grain, fields feed only the farmers (pop less market size); market people buy their grain (experiment)";
         port_world_price: f32 = 0.6, [0.05, 3], "Under market_grain, the world grain price: the outside ports buy their fixed grain up to it (D78)";
         port_elast: f32 = 4.0, [0, 20], "Under market_grain, price elasticity of the outside ports' grain demand above the world price";
         grain_flow_min: f32 = 0.05, [0, 10], "Under market_grain, least grain flow assigned to a path";

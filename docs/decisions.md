@@ -581,3 +581,11 @@ Kind: designer decision; fix.
 - **Options for the designer** are in `docs/market/s2.md`. Recommended: market establishments demand `K × W` grain, paid from rents and fees.
 - **Experiment switch:** `grain_market_people` (off) makes fields feed only pop − W.
 Kind: model mechanism behind a switch; stopped.
+
+## D79 — S2 second build: the establishment demand (designer decision). Gate failed; stopped
+- **Rule.** A market's establishment buys `K × W` grain with elasticity ε and no satiation, paid from rents, goods sales and fees. Fields feed pop − W, and the farmers buy beyond their own grain from their sales. W follows `ε (D − K W)` with `D` = real income / p.
+- **Tuning round** (`rent_share`, K, ε, α; table in `docs/market/s2.md`): no setting forms a town over 2,000. The best is K 10, ε 0.04, rent 0.3, in `data/real/experiments/s2-best.json`.
+- **Gate on the best: FAILED** on every map: places over 2,000 and 5,000, rank-size slope, spacing and siting, all 0/20.
+- **Clark:** R² 0.25–0.37 (fails); `b_P` 1.10–1.18; `b_Y` mostly positive.
+- **State.** `market_grain` stays off, and the golden is unchanged. Stopped.
+Kind: model mechanism (designer decision); stopped.

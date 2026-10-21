@@ -80,7 +80,16 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             (s.food_in - s.food_out).max(0.0)
         };
-        let inflow = if p.handling_income {
+        let inflow = if p.market_grain {
+            // Under S2 (D79) the inflow is real market income: rents and goods
+            // sales (in `market_in`) and fees, over the grain price.
+            let fees = if p.handling_income {
+                p.handling_margin * s.through + p.transship_margin * s.transship
+            } else {
+                0.0
+            };
+            market + fees / s.price[0].max(1e-3)
+        } else if p.handling_income {
             market
                 + p.through_weight * s.trade_in
                 + p.handling_margin * s.through

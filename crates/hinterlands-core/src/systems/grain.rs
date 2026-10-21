@@ -203,29 +203,29 @@ pub fn trade(
         .map(|s| start(s.grain_sup).clamp(p.p_floor, 1e3))
         .collect();
     let mut sold = vec![0f32; m];
-    let mut income = vec![0f32; m];
     let mut capped = vec![false; m];
     let mut scratch: Vec<f32> = Vec::new();
 
-    // Grain a place's people would eat at price `b`.
-    let eat = |j: usize, b: f32| need[j] * libm::powf(b, -eps).min(cmax);
+    // People and establishment (D79). The farmers are the people beyond the
+    // market's size W; the market's establishment (Wilson's facility cost:
+    // its people's food, malt, fodder, households) wants `K × W` grain at the
+    // reference price, with elasticity ε and no satiation.
+    let farm_need: Vec<f32> = state
+        .settlements
+        .iter()
+        .map(|s| (s.pop - s.market.max(0.0)).max(0.0) * p.food_per_person)
+        .collect();
+    let estab_need: Vec<f32> = state
+        .settlements
+        .iter()
+        .map(|s| p.k_maint * s.market.max(0.0).min(s.pop) * p.food_per_person)
+        .collect();
+    // Grain the farmers would eat at price `b`.
+    let eat = |j: usize, b: f32| farm_need[j] * libm::powf(b, -eps).min(cmax);
     // Rent is taken in kind (D78): the lord's `rent_share × H` goes to market;
     // the farmers eat from the rest first, at their own price, and offer what
     // is left over. A place's market supply is its harvest less that.
-    // With `grain_market_people` the market people (W) buy all their grain.
-    let farm_frac: Vec<f32> = state
-        .settlements
-        .iter()
-        .map(|s| {
-            if p.grain_market_people && s.pop > 0.0 {
-                ((s.pop - s.market.max(0.0)) / s.pop).clamp(0.0, 1.0)
-            } else {
-                1.0
-            }
-        })
-        .collect();
-    let own_of =
-        |i: usize, b: f32| (eat(i, b) * farm_frac[i]).min(harvest[i] * (1.0 - p.rent_share));
+    let own_of = |i: usize, b: f32| eat(i, b).min(harvest[i] * (1.0 - p.rent_share));
     // The farmers' share of a place's market sales; the rest is rent.
     let farm_share = |i: usize, supply: f32| {
         if supply > 0.0 {
@@ -235,32 +235,42 @@ pub fn trade(
         }
     };
     let mut own: Vec<f32> = (0..m).map(|i| own_of(i, buy[i])).collect();
-    // Incomes at the current supply prices and sales: the farmers' sales, the
-    // rents received, goods sales and fees, less goods bills.
-    let incomes = |sup: &[f32], sold: &[f32], own: &[f32], income: &mut [f32]| {
+    // Budgets at the current supply prices and sales: the farmers' sales pay
+    // for the farmers' grain; rents received, goods sales and fees, less goods
+    // bills, pay for the establishment's (D79).
+    let mut farm_inc = vec![0f32; m];
+    let mut estab_inc = vec![0f32; m];
+    let incomes = |sup: &[f32], sold: &[f32], own: &[f32], fi: &mut [f32], ei: &mut [f32]| {
         for i in 0..m {
-            let fs = farm_share(i, harvest[i] - own[i]);
-            income[i] = fs * sup[i] * sold[i] + goods_sales[i] + fee_earned[i] - bills[i];
+            fi[i] = farm_share(i, harvest[i] - own[i]) * sup[i] * sold[i];
+            ei[i] = goods_sales[i] + fee_earned[i] - bills[i];
         }
         for i in 0..m {
             let fs = farm_share(i, harvest[i] - own[i]);
             let rent = (1.0 - fs) * sup[i] * sold[i];
             for &(j, w) in &rent_to[i] {
-                income[j] += rent * w;
+                ei[j] += rent * w;
             }
         }
     };
-    // Market demand at a buying price: what its people would eat beyond the
-    // farmers' own grain, within the budget at `b` plus the fee per unit.
-    let demand = |j: usize, b: f32, income: &[f32]| -> f32 {
+    // The two parts of a place's market demand at a buying price, each within
+    // its budget at `b` plus the fee per unit.
+    let parts = |j: usize, b: f32, fi: &[f32], ei: &[f32]| -> (f32, f32) {
+        let unit = b + fee_rate[j];
+        let farm = (eat(j, b) - own_of(j, b))
+            .min(fi[j].max(0.0) / unit)
+            .max(0.0);
+        let estab = (estab_need[j] * libm::powf(b, -eps)).min(ei[j].max(0.0) / unit);
+        (farm, estab)
+    };
+    let demand = |j: usize, b: f32, fi: &[f32], ei: &[f32]| -> f32 {
         if j >= m {
             // The outside world buys at most its fixed grain, and less where
             // grain costs more than the world price (D78).
             return need[j] * libm::powf(b / p.port_world_price, -p.port_elast).min(1.0);
         }
-        (eat(j, b) - own_of(j, b))
-            .min(income[j].max(0.0) / (b + fee_rate[j]))
-            .max(0.0)
+        let (a, e) = parts(j, b, fi, ei);
+        a + e
     };
 
     let mut residual = f32::INFINITY;
@@ -289,34 +299,37 @@ pub fn trade(
             sup[i] = s.min(1e3);
             sold[i] = libm::expf((a - theta * sup[i]).min(60.0)).min(supply);
         }
-        incomes(&sup, &sold, &own, &mut income);
+        incomes(&sup, &sold, &own, &mut farm_inc, &mut estab_inc);
         // The price level: a common shift δ of every price leaves the flows
         // as they are, so choose it (by bisection) for the region's demand to
-        // equal its sales; incomes move with it linearly (D78).
+        // equal its sales; budgets move with it linearly (D78).
         let total_sold: f32 = sold.iter().sum();
         if total_sold > 0.0 {
-            let mut slope_inc = vec![0f32; m];
+            let mut slope_f = vec![0f32; m];
+            let mut slope_e = vec![0f32; m];
             for i in 0..m {
                 let fs = farm_share(i, harvest[i] - own[i]);
-                slope_inc[i] += sold[i] * fs;
+                slope_f[i] += sold[i] * fs;
                 for &(j, w) in &rent_to[i] {
-                    slope_inc[j] += (1.0 - fs) * sold[i] * w;
+                    slope_e[j] += (1.0 - fs) * sold[i] * w;
                 }
             }
-            let want = |d: f32, inc: &mut Vec<f32>| -> f32 {
+            let mut fi = farm_inc.clone();
+            let mut ei = estab_inc.clone();
+            let mut want = |d: f32| -> f32 {
                 let mut tot = 0f32;
                 for j in 0..nodes {
                     if to_count[j] == to_count[j + 1] {
                         continue;
                     }
                     if j < m {
-                        inc[j] = income[j] + d * slope_inc[j];
+                        fi[j] = farm_inc[j] + d * slope_f[j];
+                        ei[j] = estab_inc[j] + d * slope_e[j];
                     }
-                    tot += demand(j, (buy[j] + d).max(1e-3), inc);
+                    tot += demand(j, (buy[j] + d).max(1e-3), &fi, &ei);
                 }
                 tot
             };
-            let mut inc = income.clone();
             // Supply prices stop at the floor: in a glut the level falls only
             // until the dearest supplier reaches it, and the rest is unsold.
             let lowest = buy.iter().copied().fold(f32::INFINITY, f32::min);
@@ -325,7 +338,7 @@ pub fn trade(
             if lo < hi {
                 for _ in 0..20 {
                     let mid = 0.5 * (lo + hi);
-                    if want(mid, &mut inc) > total_sold {
+                    if want(mid) > total_sold {
                         lo = mid;
                     } else {
                         hi = mid;
@@ -336,10 +349,11 @@ pub fn trade(
                 for i in 0..m {
                     sup[i] = (sup[i] + d).clamp(p.p_floor, 1e3);
                 }
-                incomes(&sup, &sold, &own, &mut income);
+                incomes(&sup, &sold, &own, &mut farm_inc, &mut estab_inc);
             }
         }
-        // Buyers: θ b_j + ln m_j + ln Σ_i exp(−θ (s_i + t_ij)) = ln D(b_j).
+        // Buyers: θ b_j + ln m_j + ln Σ_i exp(−θ (s_i + t_ij)) = ln D(b_j),
+        // by Newton with a numerical slope of ln D.
         for j in 0..nodes {
             let (k0, k1) = (to_count[j], to_count[j + 1]);
             if k0 == k1 {
@@ -353,22 +367,11 @@ pub fn trade(
             let e = lse(&scratch) + lm_of(j);
             let mut b = buy[j];
             for _ in 0..6 {
-                let d = demand(j, b, &income).max(1e-9);
-                let f = theta * b + e - libm::logf(d);
-                // Slope of the active piece of −ln D, roughly.
-                let slope = if j >= m {
-                    if b > p.port_world_price {
-                        p.port_elast / b
-                    } else {
-                        0.0
-                    }
-                } else if d < (eat(j, b) - own_of(j, b)) * 0.999 {
-                    1.0 / (b + fee_rate[j])
-                } else if eat(j, b) >= need[j] * cmax * 0.999 {
-                    0.0
-                } else {
-                    eps / b
-                };
+                let ld = libm::logf(demand(j, b, &farm_inc, &estab_inc).max(1e-9));
+                let h = 1e-3 * b.max(1e-3);
+                let ld2 = libm::logf(demand(j, b + h, &farm_inc, &estab_inc).max(1e-9));
+                let slope = ((ld - ld2) / h).clamp(0.0, 50.0);
+                let f = theta * b + e - ld;
                 b = (b - f / (theta + slope)).clamp(1e-3, 1e3);
             }
             buy[j] = b;
@@ -391,7 +394,7 @@ pub fn trade(
                 if to_count[j] == to_count[j + 1] {
                     continue;
                 }
-                let d = demand(j, buy[j], &income);
+                let d = demand(j, buy[j], &farm_inc, &estab_inc);
                 gap += (inflow[j] - d).abs();
                 tot += d;
             }
@@ -413,35 +416,42 @@ pub fn trade(
         nodes,
         &mut scratch,
     );
-    // Buyers that cannot pay, or are past satiation, take less (D78); the
-    // rest is unsold. Three rounds, since a seller's lost sales cut its budget.
+    // What each place takes is split between farmers and establishment in
+    // proportion to their demands; each part is capped by its budget, and the
+    // farmers' by satiation (D78, D79). The rest is unsold. Three rounds,
+    // since a seller's lost sales cut its budgets.
     let mut take = vec![1f32; nodes];
+    let mut to_estab = vec![0f32; m];
     for _ in 0..3 {
         let mut sales = vec![0f32; m];
         for (k, a) in arcs.iter().enumerate() {
             sales[a.from] += flow[k] * take[a.to];
         }
-        incomes(&sup, &sales, &own, &mut income);
-        let mut bill = vec![0f32; m];
-        for (k, a) in arcs.iter().enumerate() {
-            if a.to < m {
-                bill[a.to] += flow[k] * buy[a.to];
-                if a.to != a.from {
-                    bill[a.to] += flow[k] * fee_rate[a.to];
-                }
-            }
-        }
+        incomes(&sup, &sales, &own, &mut farm_inc, &mut estab_inc);
         for j in 0..m {
-            let mut f = 1.0f32;
-            if bill[j] > income[j].max(0.0) {
-                f = income[j].max(0.0) / bill[j].max(1e-9);
+            let got = inflow[j];
+            if got <= 0.0 {
+                take[j] = 1.0;
+                continue;
+            }
+            let b = buy[j];
+            let unit = b + fee_rate[j];
+            let wf = (eat(j, b) - own[j]).max(0.0);
+            let we = estab_need[j] * libm::powf(b, -eps);
+            let share_e = if wf + we > 0.0 { we / (wf + we) } else { 0.0 };
+            let (mut gf, mut ge) = (got * (1.0 - share_e), got * share_e);
+            let rf = (farm_inc[j].max(0.0) / unit).min((cmax * farm_need[j] - own[j]).max(0.0));
+            let re = estab_inc[j].max(0.0) / unit;
+            if gf > rf {
+                capped[j] |= rf < farm_inc[j].max(0.0) / unit;
+                gf = rf;
+            }
+            if ge > re {
                 capped[j] = true;
+                ge = re;
             }
-            let room = (cmax * need[j] - own[j]).max(0.0);
-            if inflow[j] * f > room {
-                f = room / inflow[j].max(1e-9);
-            }
-            take[j] = f.min(1.0);
+            take[j] = ((gf + ge) / got).min(1.0);
+            to_estab[j] = ge;
         }
     }
     for (k, a) in arcs.iter().enumerate() {
@@ -451,7 +461,6 @@ pub fn trade(
 
     // Accounts: grain eaten, sales, real income towards W, flows.
     let mut sales = vec![0f32; m];
-    let mut sales_out = vec![0f32; m];
     let mut home = vec![0f32; m];
     let mut to_ports = 0f32;
     for (k, a) in arcs.iter().enumerate() {
@@ -464,7 +473,6 @@ pub fn trade(
             home[a.from] += q;
             continue;
         }
-        sales_out[a.from] += sup[a.from] * q;
         if a.to >= m {
             to_ports += q;
         } else {
@@ -484,7 +492,7 @@ pub fn trade(
             });
         }
     }
-    incomes(&sup, &sales, &own, &mut income);
+    incomes(&sup, &sales, &own, &mut farm_inc, &mut estab_inc);
     let mut rent_in = vec![0f32; m];
     for i in 0..m {
         let fs = farm_share(i, harvest[i] - own[i]);
@@ -495,16 +503,28 @@ pub fn trade(
     }
     let mut unsold = 0f32;
     let mut capped_n = 0u32;
+    let (mut est_big, mut all_big) = (0f32, 0f32);
     for i in 0..m {
-        // Food left home: everything not eaten here (sold away or unsold).
-        food_out[i] += harvest[i] - own[i] - home[i];
+        // Food: the farmers' own and bought grain, and the market people's
+        // share of the establishment's, one K-th of it (D79). What the
+        // establishment uses beyond its people's food leaves the accounts.
+        // `inflow` is all grain bought, its own market's included (`home`).
+        let got = inflow[i];
+        let estab = to_estab[i].min(got);
+        let used = estab - estab / p.k_maint.max(1.0);
+        food_out[i] += harvest[i] - own[i] - home[i] + used;
         unsold += harvest[i] - own[i] - sales[i];
         let b = buy[i].max(1e-3);
-        market_in[i] += (rent_in[i] + sales_out[i] + goods_sales[i]) / b;
+        // Real market income (D79): rents, goods sales and fees.
+        market_in[i] += (rent_in[i] + goods_sales[i]) / b;
+        if state.settlements[i].pop > 2000.0 {
+            est_big += estab;
+            all_big += got;
+        }
         let s = &mut state.settlements[i];
         s.price[0] = buy[i];
         s.grain_sup = if harvest[i] > 0.0 { sup[i] } else { 0.0 };
-        s.income = income[i];
+        s.income = farm_inc[i] + estab_inc[i];
         s.capped = capped[i];
         capped_n += capped[i] as u32;
     }
@@ -516,6 +536,11 @@ pub fn trade(
         unsold,
         harvest: total_h,
         capped: capped_n,
+        estab_share: if all_big > 0.0 {
+            est_big / all_big
+        } else {
+            f32::NAN
+        },
     };
     state.market_arcs = arcs
         .iter()
