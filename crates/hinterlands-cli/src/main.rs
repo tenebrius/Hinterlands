@@ -461,6 +461,7 @@ fn main() {
         "failures" => probe::cmd_failures(&args),
         "goods" => probe::cmd_goods(&args),
         "roads" => probe::cmd_roads(&args),
+        "desertion" => probe::cmd_desertion(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),
         "params" => cmd_params(),

@@ -41,11 +41,12 @@ pub fn fnv1a(bytes: &[u8]) -> u64 {
 
 /// Advance one year: events, then the six systems in the fixed order.
 pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
+    state.log.clear();
+    systems::events::run(state, t, p, rng);
     let events = std::mem::take(&mut state.events);
     for e in &events {
         e.apply(state, t);
     }
-    state.log.clear();
     reach::refresh_due(state, t, p);
     systems::cultivation::run(state, t, p, rng);
     systems::production::run(state, t, p, rng);

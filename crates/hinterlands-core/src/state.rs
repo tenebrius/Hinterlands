@@ -269,6 +269,14 @@ pub enum LogKind {
     Outgrew {
         good: Good,
     },
+    /// A famine began (v4, D57); not tied to a settlement.
+    Famine {
+        years: u32,
+    },
+    /// Plague struck the settlement; `lost` is the people it will lose (D57).
+    Plague {
+        lost: f32,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -328,8 +336,11 @@ pub struct State {
     pub site_score: Vec<f32>,
     pub log: Vec<LogEntry>,
     pub tally: Tally,
-    /// Event queue applied at the start of each year; empty in v1.
+    /// Event queue applied at the start of each year (D57).
     pub events: Vec<Event>,
+    /// A famine lasts while `year < famine_until`, taking `famine_loss` of yield.
+    pub famine_until: u32,
+    pub famine_loss: f32,
     /// Water-layer graph node of the outside world: the map-edge sea cell
     /// nearest the main river mouth (D25). Used only when `outside_enabled`.
     #[serde(default)]
@@ -418,6 +429,8 @@ impl State {
             log: Vec::new(),
             tally: Tally::default(),
             events: Vec::new(),
+            famine_until: 0,
+            famine_loss: 0.0,
             outside: outside_node(t),
             sites: (0..n)
                 .filter_map(|i| {

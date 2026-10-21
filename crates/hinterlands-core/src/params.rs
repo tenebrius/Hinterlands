@@ -234,6 +234,21 @@ define_params! {
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
+    "Events" => {
+        events_mode: u32 = 0, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";
+        famine_year: u32 = 215, [0, 2000], "Year the Great Famine begins (historical; 1315)";
+        famine_years: u32 = 3, [1, 10], "Years a famine lasts";
+        famine_loss: f32 = 0.4, [0, 1], "Share of every cell's yield lost in a famine year";
+        plague_year: u32 = 248, [0, 2000], "Year of the Black Death (historical; 1348)";
+        plague_recur_1: u32 = 261, [0, 2000], "First recurrence (historical; 1361)";
+        plague_recur_2: u32 = 269, [0, 2000], "Second recurrence (historical; 1369)";
+        plague_recur_share: f32 = 0.3333333, [0, 1], "Mortality of a recurrence as a share of the first";
+        plague_mortality: f32 = 0.4, [0, 0.95], "Mean share of each settlement's people a plague kills";
+        plague_spread: f32 = 0.1, [0, 0.5], "Half-width of the uniform spread of plague mortality between settlements";
+        plague_years: u32 = 2, [1, 5], "Years over which a plague's deaths are spread";
+        famine_interval: f32 = 120.0, [1, 2000], "Mean years between famines (random mode)";
+        plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
+    }
     "Mills" => {
         mills: bool = true, [0, 1], "A settlement with a stream or river among its fields has a mill (D56)";
         mill_area: f32 = 20.0, [0, 10000], "Least drainage, km2, of a field's stream for a mill";

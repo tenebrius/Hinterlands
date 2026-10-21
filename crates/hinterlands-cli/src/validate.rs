@@ -40,6 +40,30 @@ pub struct RunResult {
     pub near_bridge_big: f32,
     pub near_bridge_all: f32,
     pub mill_share: f32,
+    /// v4 (D57), with historical events; `None` with events off.
+    pub shock: Option<ShockResult>,
+}
+
+/// The v4 gate's measures for one run with historical events.
+#[derive(Clone, Debug)]
+pub struct ShockResult {
+    /// Largest fall in total population within five years of the plague, as a
+    /// share of the total the year before it.
+    pub plague_drop: f32,
+    /// Total at the end against the highest total before the plague.
+    pub recovery: f32,
+    /// Failure rates, years plague..plague+52, of the settlements alive the
+    /// year before the plague in the lowest and the highest quarter of local
+    /// yield.
+    pub fail_low: f32,
+    pub fail_high: f32,
+    /// Deepest fall of the total during the famine and the years after, as a
+    /// share, and the years until the pre-famine total is regained.
+    pub famine_dip: f32,
+    pub famine_years: f32,
+    /// Share of this run's top ten within 5 km of the same seed's top ten with
+    /// events off; filled in by `cmd_validate`.
+    pub overlap_off: f32,
 }
 
 /// The v2 gate's measures at the final year.
@@ -206,6 +230,27 @@ pub const CHECKS: &[Check] = &[
         target: "true",
         ok: |r| !r.goods.largest_specialist,
     },
+    // v4 gate (D57; passes trivially with events off).
+    Check {
+        name: "plague drop",
+        target: ">=25%",
+        ok: |r| r.shock.as_ref().is_none_or(|s| s.plague_drop >= 0.25),
+    },
+    Check {
+        name: "recovery by 500",
+        target: ">=0.90",
+        ok: |r| r.shock.as_ref().is_none_or(|s| s.recovery >= 0.9),
+    },
+    Check {
+        name: "poor land deserted",
+        target: "low>high",
+        ok: |r| r.shock.as_ref().is_none_or(|s| s.fail_low > s.fail_high),
+    },
+    Check {
+        name: "top-10 vs off",
+        target: ">=0.50",
+        ok: |r| r.shock.as_ref().is_none_or(|s| s.overlap_off >= 0.5),
+    },
     // v3 gate (D54; passes trivially with traffic roads off).
     Check {
         name: "road length 300-500",
@@ -228,8 +273,26 @@ pub fn run_one(
     let mut ever = sim.state.road.clone();
     let mut road_300 = f32::NAN;
     let road_len = |s: &Sim| s.state.road.iter().filter(|&&r| r).count() as f32;
+    let shocks = params.events_mode == 1;
+    let mut totals: Vec<f32> = vec![sim.state.total_pop()];
+    let mut quartile: std::collections::BTreeMap<u32, u8> = Default::default();
+    let mut failed: std::collections::BTreeSet<u32> = Default::default();
     for _ in 0..years {
+        if shocks && sim.state.year == params.plague_year {
+            quartile = yield_quarters(&sim);
+        }
         sim.step(1);
+        if shocks {
+            totals.push(sim.state.total_pop());
+            let y = sim.state.year;
+            if y > params.plague_year && y <= params.plague_year + 52 {
+                for e in &sim.state.log {
+                    if matches!(e.kind, hinterlands_core::state::LogKind::Failed { .. }) {
+                        failed.insert(e.settlement);
+                    }
+                }
+            }
+        }
         for (e, &r) in ever.iter_mut().zip(&sim.state.road) {
             *e |= r;
         }
@@ -237,7 +300,18 @@ pub fn run_one(
             road_300 = road_len(&sim);
         }
         let tot = sim.state.total_pop();
-        if sim.state.year > 100 && prev > 0.0 {
+        // With events, the event years and the one after are not steady state
+        // (D58).
+        let shocked = shocks && {
+            let y = sim.state.year;
+            let fy = params.famine_year;
+            let in_famine = y >= fy && y <= fy + params.famine_years + 1;
+            let in_plague = [params.plague_year, params.plague_recur_1, params.plague_recur_2]
+                .iter()
+                .any(|&py| y >= py && y <= py + params.plague_years + 1);
+            in_famine || in_plague
+        };
+        if sim.state.year > 100 && prev > 0.0 && !shocked {
             max_change = max_change.max((tot - prev).abs() / prev);
         }
         prev = tot;
@@ -274,6 +348,7 @@ pub fn run_one(
         hash: snap.hash(),
         median_pop,
         goods: goods_result(&sim),
+        shock: shocks.then(|| shock_result(params, &totals, &quartile, &failed)),
         road_change: if params.traffic_roads {
             (road_len(&sim) - road_300).abs() / road_300.max(1.0)
         } else {
@@ -293,6 +368,68 @@ pub fn run_one(
                 .count();
             gone as f32 / ever_n.max(1) as f32
         },
+    }
+}
+
+/// The quarter (0 lowest .. 3 highest) of each settlement's local yield: the
+/// mean yield of the land within 3 km of its anchor (D58).
+fn yield_quarters(sim: &Sim) -> std::collections::BTreeMap<u32, u8> {
+    let t = &sim.terrain;
+    let mut v: Vec<(f32, u32)> = sim
+        .state
+        .settlements
+        .iter()
+        .map(|s| {
+            let near: Vec<usize> = t
+                .grid
+                .disk(s.anchor as usize, 3.0)
+                .filter(|&j| t.is_land(j))
+                .collect();
+            let y: f32 = near.iter().map(|&j| t.food_yield[j]).sum();
+            (y / near.len().max(1) as f32, s.id)
+        })
+        .collect();
+    v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+    let n = v.len().max(1);
+    v.iter()
+        .enumerate()
+        .map(|(k, &(_, id))| (id, (k * 4 / n) as u8))
+        .collect()
+}
+
+fn shock_result(
+    p: &hinterlands_core::Params,
+    totals: &[f32],
+    quartile: &std::collections::BTreeMap<u32, u8>,
+    failed: &std::collections::BTreeSet<u32>,
+) -> ShockResult {
+    let at = |y: u32| totals.get(y as usize).copied().unwrap_or(f32::NAN);
+    let py = p.plague_year;
+    let before = at(py);
+    let low = (py + 1..=py + 5).map(at).fold(f32::INFINITY, f32::min);
+    let peak = (0..=py).map(at).fold(0.0f32, f32::max);
+    let rate = |q: u8| {
+        let ids: Vec<u32> = quartile
+            .iter()
+            .filter(|(_, &k)| k == q)
+            .map(|(&id, _)| id)
+            .collect();
+        ids.iter().filter(|id| failed.contains(id)).count() as f32 / ids.len().max(1) as f32
+    };
+    let fy = p.famine_year;
+    let pre = at(fy);
+    let dip_low = (fy + 1..=fy + p.famine_years + 5).map(at).fold(f32::INFINITY, f32::min);
+    let back = (fy + 1..py)
+        .find(|&y| at(y) >= pre)
+        .map_or(f32::NAN, |y| (y - fy) as f32);
+    ShockResult {
+        plague_drop: 1.0 - low / before.max(1.0),
+        recovery: totals.last().copied().unwrap_or(0.0) / peak.max(1.0),
+        fail_low: rate(0),
+        fail_high: rate(3),
+        famine_dip: 1.0 - dip_low / pre.max(1.0),
+        famine_years: back,
+        overlap_off: f32::NAN,
     }
 }
 
@@ -342,7 +479,22 @@ pub fn cmd_validate(args: &Args) {
                     break;
                 };
                 let (map_seed, t) = &terrains[mi];
-                let r = run_one(t, &params, *map_seed, seed, years);
+                let mut r = run_one(t, &params, *map_seed, seed, years);
+                // With events, the same seed without them, for the overlap.
+                if r.shock.is_some() {
+                    let mut off = params.clone();
+                    off.events_mode = 0;
+                    let o = run_one(t, &off, *map_seed, seed, years);
+                    let near = r
+                        .top10
+                        .iter()
+                        .filter(|&&x| o.top10.iter().any(|&y| t.grid.dist_km(x, y) <= 5.0))
+                        .count();
+                    let share = near as f32 / r.top10.len().max(1) as f32;
+                    if let Some(sh) = r.shock.as_mut() {
+                        sh.overlap_off = share;
+                    }
+                }
                 results.lock().unwrap().push(r);
             });
         }
@@ -393,6 +545,13 @@ pub fn cmd_validate(args: &Args) {
                         }
                     }
                     "road length 300-500" => r.road_change,
+                    "plague drop" => r.shock.as_ref().map_or(f32::NAN, |s| s.plague_drop),
+                    "recovery by 500" => r.shock.as_ref().map_or(f32::NAN, |s| s.recovery),
+                    "poor land deserted" => r
+                        .shock
+                        .as_ref()
+                        .map_or(f32::NAN, |s| s.fail_low - s.fail_high),
+                    "top-10 vs off" => r.shock.as_ref().map_or(f32::NAN, |s| s.overlap_off),
                     _ => r.max_change,
                 }
             };
@@ -525,6 +684,20 @@ pub fn cmd_validate(args: &Args) {
             v.sort_by(|a, b| a.total_cmp(b));
             v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
         };
+        if rs.iter().any(|r| r.shock.is_some()) {
+            let sh: Vec<&ShockResult> = rs.iter().filter_map(|r| r.shock.as_ref()).collect();
+            println!(
+                "{:<20} {:>12} plague drop {:.2}; recovery {:.2}; failure 248-300 low {:.2} / high {:.2} quarter; famine dip {:.2}, regained in {:.0} years",
+                "v4 shocks",
+                "(reported)",
+                med(sh.iter().map(|s| s.plague_drop).collect()),
+                med(sh.iter().map(|s| s.recovery).collect()),
+                med(sh.iter().map(|s| s.fail_low).collect()),
+                med(sh.iter().map(|s| s.fail_high).collect()),
+                med(sh.iter().map(|s| s.famine_dip).collect()),
+                med(sh.iter().map(|s| s.famine_years).filter(|x| x.is_finite()).collect())
+            );
+        }
         if rs.iter().any(|r| r.bridges > 0) {
             println!(
                 "{:<20} {:>12} bridges per run {:.0}; within 2 km of one: places >=1,000 {:.2}, all settlements {:.2}",

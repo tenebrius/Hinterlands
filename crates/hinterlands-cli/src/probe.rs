@@ -363,3 +363,52 @@ pub fn cmd_roads(args: &Args) {
         );
     }
 }
+
+/// Desertion report (v4): for each settlement alive the year before the
+/// plague, `place seed id pop fields field_yield local_yield failed cause`,
+/// where local yield is the mean over land within 3 km of the anchor and
+/// failed is the year it was removed before `plague_year + 52`, or 0.
+pub fn cmd_desertion(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let py = sim.params.plague_year;
+    while sim.state.year < py {
+        sim.step(1);
+    }
+    let t = sim.terrain.clone();
+    let rows: Vec<(u32, f32, usize, f32, f32)> = sim
+        .state
+        .settlements
+        .iter()
+        .map(|s| {
+            let fy = if s.fields.is_empty() {
+                f32::NAN
+            } else {
+                s.fields.iter().map(|&c| t.food_yield[c as usize]).sum::<f32>() / s.fields.len() as f32
+            };
+            let near: Vec<usize> = t
+                .grid
+                .disk(s.anchor as usize, 3.0)
+                .filter(|&j| t.is_land(j))
+                .collect();
+            let ly = near.iter().map(|&j| t.food_yield[j]).sum::<f32>() / near.len().max(1) as f32;
+            (s.id, s.pop, s.fields.len(), fy, ly)
+        })
+        .collect();
+    let mut failed: std::collections::BTreeMap<u32, (u32, FailCause)> = Default::default();
+    while sim.state.year < py + 52 {
+        sim.step(1);
+        for e in &sim.state.log {
+            if let LogKind::Failed { cause, .. } = &e.kind {
+                failed.insert(e.settlement, (e.year, *cause));
+            }
+        }
+    }
+    for (id, pop, nf, fy, ly) in rows {
+        let (y, c) = failed
+            .get(&id)
+            .map_or((0, String::from("-")), |(y, c)| (*y, format!("{c:?}")));
+        println!("place {map} {seed} {id} {pop:.0} {nf} {fy:.3} {ly:.3} {y} {c}");
+    }
+}

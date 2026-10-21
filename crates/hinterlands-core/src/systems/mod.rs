@@ -2,6 +2,7 @@
 //! may read any state but writes only its own outputs.
 
 pub mod cultivation;
+pub mod events;
 pub mod failure;
 pub mod founding;
 pub mod growth;

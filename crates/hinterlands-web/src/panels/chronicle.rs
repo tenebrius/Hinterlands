@@ -65,6 +65,12 @@ impl Panel for Chronicle {
                             };
                             format!("{}. {} has outgrown its {what}.", e.year, e.name)
                         }
+                        LogKind::Famine { years } => {
+                            format!("{}. Famine: the harvests fail for {years} years.", e.year)
+                        }
+                        LogKind::Plague { lost } => {
+                            format!("{}. Plague at {}: {lost:.0} die.", e.year, e.name)
+                        }
                         LogKind::Failed { cause, moved_to } => {
                             let why = match cause {
                                 FailCause::Depopulated => "dwindled away",

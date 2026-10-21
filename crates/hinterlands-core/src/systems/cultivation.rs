@@ -4,7 +4,9 @@
 //! hysteresis share. Fuel is cut nearest first, for households and, under v2, for
 //! the iron sites a settlement holds (D38). A settlement with a stream or river
 //! among its fields has a mill, which adds `mill_bonus` to its produce (D56).
-//! Writes: owner, fields, forest, food_prod, mill, resource_out, sites' fuel_got.
+//! In a famine year (D57) the harvest is cut by the famine's loss after the
+//! fields are chosen. Writes: owner, fields, forest, food_prod, mill,
+//! resource_out, sites' fuel_got.
 
 use crate::params::Params;
 use crate::state::{State, NONE};
@@ -16,6 +18,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         return;
     }
     let ppc = p.people_per_prime_cell;
+    let famine = state.year < state.famine_until;
+    let famine_loss = state.famine_loss;
     let State {
         settlements,
         owner,
@@ -68,6 +72,10 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             produce
         };
+        // A famine year (D57): the harvest fails after the fields are chosen.
+        if famine {
+            s.food_prod *= 1.0 - famine_loss;
+        }
         // Under v2 resource sites produce through `production`; the flat
         // resource output is retired.
         s.resource_out = if p.goods_enabled { 0.0 } else { 1.0 }
