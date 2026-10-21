@@ -209,3 +209,7 @@ The 1.x countryside layers drew one square per cell. The relief shader now draws
 - season tints are per pixel.
 Each part draws only while its own layer is on. The per-cell layers stand down only while the shader runs. Sheep, coppice and stumps stay in egui. Details: `docs/rendering.md`.
 Kind: rendering.
+
+## D43 — Roads, routes and trade drawn as smoothed lines (rendering; R4 from the graphics-overhaul branch)
+Route segments are joined into chains by kind (water, land trade off roads, roads). Chains break only at junctions, ends, changes of kind and settlement centres, and are smoothed with the same Chaikin corner cutting as rivers (shared in `lines.rs`). Wide roads are drawn cased, land trade off roads as dashed tracks, water trade as a pale line. Trade dots follow the smoothed lines, and their positions are cached in map space. The 2% share rule and the dot trip, cargo and speed rules are unchanged. Details: `docs/rendering.md`.
+Kind: rendering.
