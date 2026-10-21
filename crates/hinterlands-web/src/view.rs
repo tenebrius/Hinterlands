@@ -47,6 +47,8 @@ pub enum NoteKind {
     Growth,
     Lead,
     Roads,
+    /// Granaries running dry (S3); shown with the shocks.
+    Granary,
 }
 
 /// A milestone the viewer notices between years: a place reaching a new size,
@@ -65,6 +67,8 @@ pub struct YearStats {
     pub year: u32,
     pub total: f32,
     pub largest: f32,
+    /// The region's grain stores over its need (S3); zero without stores.
+    pub store: f32,
 }
 
 pub struct ViewState {
@@ -108,6 +112,8 @@ pub struct ViewState {
     pub season_fixed: Option<u8>,
     /// Progress through the current year while playing, 0..1 (set by the app).
     pub year_phase: f32,
+    /// Each place's store over need last year, for the granary notes (S3).
+    pub granary: crate::granary::Fill,
 }
 
 impl ViewState {
@@ -142,6 +148,7 @@ impl ViewState {
             farm_last: vec![NEVER; cells],
             season_fixed: None,
             year_phase: 0.0,
+            granary: Default::default(),
         };
         v.sea_lane = sea_lanes(&v.terrain);
         v.record();
@@ -181,6 +188,8 @@ impl ViewState {
             year: s.year,
             total: s.total_pop(),
             largest: s.settlements.iter().map(|x| x.pop).fold(0.0, f32::max),
+            store: s.settlements.iter().map(|x| x.store).sum::<f32>()
+                / s.settlements.iter().map(|x| x.need).sum::<f32>().max(1.0),
         });
         // A plague logs every place it strikes; the chronicle keeps the places
         // that lost at least 300, and the timeline one mark.
@@ -285,6 +294,9 @@ impl ViewState {
             });
         }
         self.road_km = km;
+        if self.params.grain_stores && !first {
+            crate::granary::note(&self.snapshot, &mut self.granary, &mut notes);
+        }
         self.notes.extend(notes);
         if self.notes.len() > 2000 {
             self.notes.drain(..self.notes.len() - 2000);
@@ -299,6 +311,7 @@ impl ViewState {
 
     fn restart(&mut self, sim: &SimHandle) {
         self.history.clear();
+        self.granary.clear();
         self.chronicle.clear();
         self.events.clear();
         self.notes.clear();

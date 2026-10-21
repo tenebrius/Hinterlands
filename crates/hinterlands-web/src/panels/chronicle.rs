@@ -87,6 +87,7 @@ impl Panel for Chronicle {
             let shown = match n.kind {
                 NoteKind::Growth | NoteKind::Lead => self.growth,
                 NoteKind::Roads => self.roads,
+                NoteKind::Granary => self.events,
             };
             if shown {
                 lines.push(Line {

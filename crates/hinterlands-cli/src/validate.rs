@@ -49,6 +49,10 @@ pub struct RunResult {
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
     /// year; `None` with relief off.
     pub relief: Option<[f32; 4]>,
+    /// S3 (D81): regional stores as a share of a year's need: mean over the
+    /// ten years before the famine, at its start, at its end (1317), at years
+    /// 100 and 400; `None` with stores off.
+    pub stores: Option<[f32; 5]>,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
     /// year 300 (1400), the mean absolute rank change to year 500 and how many
@@ -353,6 +357,8 @@ pub fn run_one(
     // Relief: deficit and arrived outside the famine, then in it, then all
     // arrived and all lost.
     let mut relief_acc = [0f32; 6];
+    // Regional stores over need at the end of each year (index = year).
+    let mut store_share: Vec<f32> = Vec::new();
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -368,6 +374,11 @@ pub fn run_one(
             quartile = yield_quarters(&sim);
         }
         sim.step(1);
+        if params.grain_stores {
+            let need: f32 = sim.state.settlements.iter().map(|s| s.need(params)).sum();
+            let held: f32 = sim.state.settlements.iter().map(|s| s.store).sum();
+            store_share.push(held / need.max(1.0));
+        }
         if params.grain_relief {
             let [d, _, a, l] = sim.state.relief_stats;
             let y = sim.state.year - 1;
@@ -473,7 +484,20 @@ pub fn run_one(
             relief_acc[5] / years.max(1) as f32,
         ]
     });
+    let stores = params.grain_stores.then(|| {
+        let at = |y: u32| store_share.get(y as usize).copied().unwrap_or(f32::NAN);
+        let f = params.famine_year;
+        let before: Vec<f32> = (f.saturating_sub(10)..f).map(at).collect();
+        [
+            before.iter().sum::<f32>() / before.len().max(1) as f32,
+            at(f - 1),
+            at(f + params.famine_years - 1),
+            at(100),
+            at(400),
+        ]
+    });
     RunResult {
+        stores,
         relief,
         map_seed,
         sim_seed,
@@ -961,6 +985,26 @@ pub fn cmd_validate(args: &Args) {
                 at(1),
                 at(2),
                 at(3)
+            );
+        }
+        if rs.iter().any(|r| r.stores.is_some()) {
+            let at = |k: usize| {
+                med(rs
+                    .iter()
+                    .filter_map(|r| r.stores.map(|v| v[k]))
+                    .filter(|x| x.is_finite())
+                    .collect())
+            };
+            println!(
+                "{:<20} {:>12} stores / need: years 100 {:.2}, 205-214 {:.2}, 214 {:.2}, 217 {:.2} (drawn down {:.0}%), 400 {:.2}",
+                "S3 stores",
+                "(reported)",
+                at(3),
+                at(0),
+                at(1),
+                at(2),
+                100.0 * (1.0 - at(2) / at(1).max(1e-6)),
+                at(4)
             );
         }
         if rs.iter().any(|r| r.bridges > 0) {

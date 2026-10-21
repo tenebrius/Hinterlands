@@ -212,6 +212,9 @@ pub struct Settlement {
     /// from others.
     #[serde(default)]
     pub grain_sup: f32,
+    /// Grain in store, carried from year to year (S3, D81).
+    #[serde(default)]
+    pub store: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -258,6 +261,7 @@ impl Settlement {
             price: [0.0; 5],
             shadow_price: [0.0; 5],
             grain_sup: 0.0,
+            store: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,

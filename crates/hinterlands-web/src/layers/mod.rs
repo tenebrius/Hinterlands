@@ -7,6 +7,8 @@ mod dots;
 mod events;
 mod fields;
 mod goods;
+mod granary;
+pub use granary::GRAIN;
 mod history;
 mod labels;
 mod lines;
@@ -193,6 +195,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(goods::GoodsLayer),
         Box::new(events::EventsLayer),
         Box::new(outside::OutsideLayer),
+        Box::new(granary::GranaryLayer),
         Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,

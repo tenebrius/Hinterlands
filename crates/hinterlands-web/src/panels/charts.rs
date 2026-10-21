@@ -8,7 +8,7 @@ use egui::{Color32, Pos2, Rect, Sense, Stroke, Vec2};
 pub struct Charts;
 
 /// Draw series of points into a framed box, mapping data bounds to the box.
-fn chart(
+pub(super) fn chart(
     ui: &mut egui::Ui,
     height: f32,
     series: &[(&[[f32; 2]], Color32, bool)],
@@ -133,6 +133,7 @@ impl Panel for Charts {
             ],
             ("year", "people"),
         );
+        super::stores::ui(ui, v);
         Vec::new()
     }
 }

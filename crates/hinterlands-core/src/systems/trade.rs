@@ -283,48 +283,82 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
 }
 
-/// Grain relief (S2′, D80). After trade, each place's food is
-/// `A = food_prod + food_in − food_out`. What a place holds above
-/// `food_cap × need` is surplus, otherwise lost; what it lacks below need is
-/// its deficit. Each place in deficit draws its deficit from the surplus
-/// holders among its partners in proportion to `S_j exp(−β c)`, shopping-model
-/// style; orders beyond a holder's surplus are scaled down in one pass, and
-/// what is not met stays unmet. It arrives less the transport loss. Nobody
-/// pays. Relief counts in the food accounts but not in `market_in`, and its
-/// flows load the routes but earn no handling. Writes food_in, food_out,
-/// flows (relief) and relief_stats.
+/// Grain relief (S2′, D80) and stores (S3, D81). After trade, each place's
+/// food is `A = food_prod + food_in − food_out`. What a place holds above
+/// `food_cap × need` is surplus; what it lacks below need is its deficit.
+/// With `grain_stores` a place in deficit first draws on its own store. Each
+/// place still in deficit then draws on its partners' surplus, and with stores
+/// on the stores of partners not themselves in deficit, in proportion to
+/// `S_j exp(−β c)`, shopping-model style; a holder gives surplus before store.
+/// Orders beyond what a holder has are scaled down in one pass, and what is
+/// not met stays unmet. Relief arrives less the transport loss; nobody pays.
+/// With stores on, what is still above `food_cap × need` fills the place's
+/// store up to `store_cap × need`, and stores lose `store_loss` a year. The
+/// rest is lost. Store drawn and relief count in the food accounts, not in
+/// `market_in`; relief flows load the routes but earn no handling. Writes
+/// food_in, food_out, store, flows (relief) and relief_stats.
 fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
     let m = state.settlements.len();
-    let held: Vec<f32> = state
+    let stores = p.grain_stores;
+    let mut held: Vec<f32> = state
         .settlements
         .iter()
         .map(|s| s.food_prod + s.food_in - s.food_out)
         .collect();
     let need: Vec<f32> = state.settlements.iter().map(|s| s.need(p)).collect();
+    // A place in deficit draws on its own store first (D81).
+    let mut deficit = 0f32;
+    let mut drawn_own = 0f32;
+    if stores {
+        for (k, s) in state.settlements.iter_mut().enumerate() {
+            let d = (need[k] - held[k]).max(0.0);
+            deficit += d;
+            let t = d.min(s.store.max(0.0));
+            if t > 0.0 {
+                s.store -= t;
+                s.food_in += t;
+                held[k] += t;
+                drawn_own += t;
+            }
+        }
+    }
     let surplus: Vec<f32> = (0..m)
         .map(|i| (held[i] - p.food_cap * need[i]).max(0.0))
+        .collect();
+    // What each holder can give: its surplus, and with stores on its store if
+    // it is not itself in deficit.
+    let avail: Vec<f32> = (0..m)
+        .map(|i| {
+            let st = state.settlements[i].store;
+            if stores && held[i] >= need[i] && st > 0.0 {
+                surplus[i] + st
+            } else {
+                surplus[i]
+            }
+        })
         .collect();
     // Orders: (receiver, holder, quantity, cost, receiver's partner index).
     let mut orders: Vec<(usize, usize, f32, f32, u32)> = Vec::new();
     let mut ordered = vec![0f32; m];
-    let mut deficit = 0f32;
     let mut ws: Vec<(usize, f32, f32, u32)> = Vec::new();
     for k in 0..m {
         let d = (need[k] - held[k]).max(0.0);
         if d <= 0.0 {
             continue;
         }
-        deficit += d;
+        if !stores {
+            deficit += d;
+        }
         ws.clear();
         let mut total = 0f32;
         for (pi, q) in state.settlements[k].reach.partners.iter().enumerate() {
             let Some(&j) = idx_of.get(q.id as usize) else {
                 continue;
             };
-            if j == u32::MAX || surplus[j as usize] <= 0.0 {
+            if j == u32::MAX || avail[j as usize] <= 0.0 {
                 continue;
             }
-            let w = surplus[j as usize] * libm::expf(-p.beta * q.cost);
+            let w = avail[j as usize] * libm::expf(-p.beta * q.cost);
             total += w;
             ws.push((j as usize, w, q.cost, pi as u32));
         }
@@ -339,8 +373,8 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
     }
     let scale: Vec<f32> = (0..m)
         .map(|j| {
-            if ordered[j] > surplus[j] {
-                surplus[j] / ordered[j]
+            if ordered[j] > avail[j] {
+                avail[j] / ordered[j]
             } else {
                 1.0
             }
@@ -371,8 +405,26 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
             relief: true,
         });
     }
-    let lost: f32 = (0..m).map(|j| surplus[j] - sent_by[j]).sum();
-    state.relief_stats = [deficit, sent_all, arrived_all, lost];
+    let mut lost = 0f32;
+    if stores {
+        for (i, s) in state.settlements.iter_mut().enumerate() {
+            // Relief given beyond the surplus came out of the store, not out of
+            // this year's food.
+            let from_store = (sent_by[i] - surplus[i]).max(0.0);
+            s.store -= from_store;
+            s.food_out -= from_store;
+            // What is still above the satiation fills the store; the rest is lost.
+            let left = (surplus[i] - sent_by[i]).max(0.0);
+            let fill = left.min((p.store_cap * need[i] - s.store).max(0.0));
+            s.store += fill;
+            s.food_out += fill;
+            lost += left - fill;
+            s.store = (s.store * (1.0 - p.store_loss)).max(0.0);
+        }
+    } else {
+        lost = (0..m).map(|j| surplus[j] - sent_by[j]).sum();
+    }
+    state.relief_stats = [deficit, sent_all, arrived_all + drawn_own, lost];
 }
 
 /// Value of one unit of a good in grain.

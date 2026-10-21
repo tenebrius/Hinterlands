@@ -43,6 +43,9 @@ pub struct SettlementView {
     /// the bytes unless `market_shadow` is on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub price: Option<[f32; 5]>,
+    /// Grain in store (S3, D81); left out of the bytes when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub store: f32,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -155,6 +158,7 @@ impl Snapshot {
                 mill: s.mill,
                 planted: s.planted,
                 price: p.market_shadow.then_some(s.shadow_price),
+                store: s.store,
             })
             .collect();
         let flows = state

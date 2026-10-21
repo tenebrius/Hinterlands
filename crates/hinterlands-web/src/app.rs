@@ -78,7 +78,7 @@ pub struct App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         crate::style::install(&cc.egui_ctx);
-        let sim = SimHandle::new(1, 1, Params::default());
+        let sim = SimHandle::new(1, 1, url_params());
         let layers = layers::all();
         let on = layers
             .iter()
@@ -91,7 +91,7 @@ impl App {
             sim = SimHandle::new(
                 map as u64,
                 url_param("seed").unwrap_or(1) as u64,
-                Params::default(),
+                url_params(),
             );
             view = ViewState::new(&sim, view.layers_on.clone());
         }
@@ -120,8 +120,9 @@ impl App {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
             // `&shadow=1` turns on the shadow market (v6 S0), `&goods=0` the
             // shopping model instead of goods by the equilibrium (S1), and
-            // `&harvests=1` local harvests (W1), to time them; `&relief=1` below.
-            let mut params = Params::default();
+            // `&harvests=1` local harvests (W1), to time them; `&relief=1` below,
+            // and `?stores=1` (S3) for the whole page.
+            let mut params = url_params();
             params.market_shadow = url_param("shadow") == Some(1);
             if let Some(g) = url_param("goods") {
                 params.market_goods = g == 1;
@@ -145,6 +146,7 @@ impl App {
                     ("goods", 0, " shopping"),
                     ("harvests", 1, " harvests"),
                     ("relief", 1, " relief"),
+                    ("stores", 1, " stores"),
                 ]
                 .iter()
                 .filter(|(k, v, _)| url_param(k) == Some(*v))
@@ -350,6 +352,18 @@ fn selftest_years() -> Option<u32> {
 }
 
 /// A numeric `?name=N` from the page URL (`HINTERLANDS_<NAME>` natively).
+/// The model's parameters as the address asks: the defaults, and with
+/// `?stores=1` grain stores (S3) at their tuned cap and loss.
+fn url_params() -> Params {
+    let mut p = Params::default();
+    if url_param("stores") == Some(1) {
+        p.grain_stores = true;
+        p.store_cap = 1.0;
+        p.store_loss = 0.05;
+    }
+    p
+}
+
 fn url_param(name: &str) -> Option<u32> {
     url_text(name)?.parse().ok()
 }

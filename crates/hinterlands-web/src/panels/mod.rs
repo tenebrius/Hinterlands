@@ -9,6 +9,7 @@ mod goods;
 mod inspector;
 mod layers;
 mod params;
+mod stores;
 mod watching;
 
 use crate::view::{Msg, ViewState};

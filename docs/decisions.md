@@ -602,3 +602,17 @@ Kind: model mechanism (designer decision); stopped.
   - 5,300–5,800 a year still lost above `food_cap`.
 - **Details:** `docs/market/relief.md`.
 Kind: model mechanism behind a switch (designer decision).
+
+## D81 — v6 S3: grain stores (designer's brief)
+- **Rule.** Each place keeps a store, behind `grain_stores` (off):
+  - a place in deficit draws on its own store first;
+  - relief draws on partners' surplus and on the stores of partners not in deficit;
+  - what is left above `food_cap × need` fills the store, up to `store_cap × need`;
+  - stores lose `store_loss` a year.
+- **Gate: PASSED** at every setting tried.
+- **Chosen tuning, within the brief's ranges:** `store_cap` 1.0, `store_loss` 0.05 (`data/real/experiments/stores.json`).
+  - The famine dip is 0.17–0.18 (S2′ 0.24–0.25), and 93–99% of stores are drawn down by 1317.
+  - Stores stand at 0.49–0.52 of need before 1315, just over the pre-registered 50% on map 1. No setting in range meets both the dip and the store band on every map; 1.0 / 0.06 keeps the stores under 50% but map 3's dip is 0.19.
+- **Wasm:** 30.8 ms/year, same hash as native.
+- **Details:** `docs/market/stores.md`.
+Kind: model mechanism behind a switch (designer's brief).
