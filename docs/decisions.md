@@ -222,3 +222,11 @@ Kind: model mechanism behind a switch (designer decision).
 ## D45 — Settlement footprints, ruins and city walls drawn in the relief shader (rendering; R5 from the graphics-overhaul branch)
 Built-up areas, ruins and walls come from a per-year town texture: built up, ruin, inside walls, and the ruin's age. Each built-up area has one smooth outline. Close in it fills with street blocks, house plots and gardens. Ruins fade grey, and walls with towers follow the smoothed outline. Roads and rivers are drawn over towns. Markers and other building glyphs stay in egui. One known difference from D22: where a road runs along a river through a town, the road now covers the river line there. Details: `docs/rendering.md`.
 Kind: rendering.
+
+## D46 — Footpaths, parish boundaries and quays drawn as smoothed lines (rendering; R6 from the graphics-overhaul branch)
+`lines.rs` gains `chains`, now shared with `routes.rs` with unchanged output. Footpaths and parish boundaries are smoothed dashed lines. Sea quays are drawn in the relief shader on the smoothed shore: the town texture's fourth value carries a "town or larger" flag on built cells. Rivers are embanked through towns, and the cell-edge quays stand down while the shader runs. Details: `docs/rendering.md`.
+Kind: rendering.
+
+## D47 — Lettering and panel theme (rendering; R7 from the graphics-overhaul branch)
+Labels and the legend are set in EB Garamond Medium and Medium Italic: Latin subsets of about 50 KB each in `crates/hinterlands-web/assets/fonts/`, under the SIL Open Font License 1.1, with `OFL.txt` beside them. Panels get a parchment theme in light and dark mode (`src/style.rs`). The wasm grows by about 130 KB.
+Kind: rendering.
