@@ -248,12 +248,13 @@ define_params! {
         plague_years: u32 = 2, [1, 5], "Years over which a plague's deaths are spread";
         silt_from: u32 = 250, [0, 2000], "First year of the window for the historical silting";
         silt_window: u32 = 150, [0, 1000], "Length of that window; the year is drawn within it";
-        silt_cost: f32 = 1.0, [0, 50], "Extra cost of each land-water step at a silted harbour";
+        silt_cost: f32 = 3.0, [0, 50], "Extra cost of each land-water step at a silted harbour";
         silt_depth_m: f32 = 10.0, [0, 200], "Sea no deeper than this counts as a shallow coast";
         silt_interval: f32 = 200.0, [1, 5000], "Mean years between siltings (random mode)";
         resettle_years: u32 = 30, [0, 200], "Years after a plague during which people leave poor land for vacant good land (D61)";
         resettle_rate: f32 = 0.02, [0, 0.2], "Yearly share of a poor-land place's people who resettle";
-        plant_interval: u32 = 50, [0, 500], "Years between planted towns, with events on (0 = none) (D62)";
+        plant_interval: u32 = 50, [0, 500], "Years between planted towns, with events on (0 = none) (D63)";
+        plant_from: u32 = 0, [0, 2000], "No town is planted before this year";
         plant_pop: f32 = 200.0, [10, 5000], "People a planted town starts with";
         plant_market: f32 = 5.0, [0, 50], "A planted town's starting market size, in multiples of market_w0";
         plant_spacing_km: f32 = 10.7, [0, 50], "Least distance from a planted town to any place over 500 (Bracton's 6 2/3 miles)";

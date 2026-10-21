@@ -36,7 +36,7 @@ pub struct SettlementView {
     /// Has a mill (v3, D56); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "is_false")]
     pub mill: bool,
-    /// Planted by a lord (v4, D62); left out of the bytes when false.
+    /// Planted by a lord (v4, D63); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "is_false")]
     pub planted: bool,
 }

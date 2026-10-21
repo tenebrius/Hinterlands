@@ -26,7 +26,7 @@ pub enum Event {
     /// cell of its anchor costs `cost` more, for good (D60).
     Silt { settlement: u32, cost: f32 },
     /// A lord plants a town at `cell` with `pop` people and market size
-    /// `market` (D62).
+    /// `market` (D63).
     Plant { cell: u32, pop: f32, market: f32 },
 }
 

@@ -174,7 +174,7 @@ pub struct Settlement {
     pub goods_in: f32,
     /// A stream or river with enough drainage among the fields (D56; cultivation).
     pub mill: bool,
-    /// Planted by a lord (D62).
+    /// Planted by a lord (D63).
     pub planted: bool,
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
@@ -282,7 +282,7 @@ pub enum LogKind {
     },
     /// The settlement's harbour silted up (D60).
     Silted,
-    /// A lord planted the settlement (D62).
+    /// A lord planted the settlement (D63).
     Planted,
 }
 

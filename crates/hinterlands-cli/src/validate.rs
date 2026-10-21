@@ -72,7 +72,7 @@ pub struct ShockResult {
     /// place failed (then one past the last).
     pub silt_rank: (f32, f32),
     /// Planted towns old enough to judge (planted 100 years or more before the
-    /// end) and those of them alive 100 years after planting (D62).
+    /// end) and those of them alive 100 years after planting (D63).
     pub planted: (u32, u32),
     /// Share of this run's top ten within 5 km of the same seed's top ten with
     /// events off; filled in by `cmd_validate`.
@@ -353,8 +353,10 @@ pub fn run_one(
                 .iter()
                 .any(|&py| y >= py && y <= py + params.plague_years + 1);
             // A planting in year Y shows in the total read after it, Y + 1.
-            let planting =
-                params.plant_interval > 0 && y > 1 && (y - 1) % params.plant_interval == 0;
+            let planting = params.plant_interval > 0
+                && y > 1
+                && y > params.plant_from
+                && (y - 1) % params.plant_interval == 0;
             in_famine || in_plague || planting
         };
         if sim.state.year > 100 && prev > 0.0 && !shocked {

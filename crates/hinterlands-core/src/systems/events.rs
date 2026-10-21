@@ -5,7 +5,7 @@
 //! of its mortality, and one harbour silting in a year drawn within
 //! `silt_from` .. `silt_from + silt_window` (D60). In `Random` mode (2) each
 //! kind is drawn yearly from the run's `Rng` at a mean interval. In either
-//! mode a lord plants a town every `plant_interval` years (D62). Off (0) does
+//! mode a lord plants a town every `plant_interval` years (D63). Off (0) does
 //! nothing and draws nothing.
 //! Writes: the event queue only.
 
@@ -58,8 +58,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
             });
         }
     }
-    // Planted towns (D62): every `plant_interval` years with events on.
-    if p.events_mode != 0 && p.plant_interval > 0 && y > 0 && y % p.plant_interval == 0 {
+    // Planted towns (D63): every `plant_interval` years with events on.
+    if p.events_mode != 0
+        && p.plant_interval > 0
+        && y > 0
+        && y >= p.plant_from
+        && y % p.plant_interval == 0
+    {
         if let Some(cell) = plant_site(state, t, p) {
             state.events.push(Event::Plant {
                 cell: cell as u32,
@@ -99,7 +104,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
 /// The port with the most transshipped trade whose harbour faces a river mouth
 /// or a shallow coast (D60): its anchor, or a cell next to it, borders sea no
 /// deeper than `silt_depth_m`, or a navigable river cell that flows into the
-/// sea. Ties go to the lower id.
+/// sea, other than the largest settlement (D62). Ties go to the lower id.
 fn busiest_shallow_port(state: &State, t: &Terrain, p: &Params) -> Option<u32> {
     let g = t.grid;
     let near = |a: usize| std::iter::once(a).chain((0..8).filter_map(move |d| g.neighbor(a, d)));
@@ -109,9 +114,16 @@ fn busiest_shallow_port(state: &State, t: &Terrain, p: &Params) -> Option<u32> {
                 || (t.is_nav(j) && t.downstream(j).is_some_and(|k| t.is_sea(k)))
         })
     };
+    // The largest settlement is left out: the capitals did not silt (D62).
+    let largest = state
+        .settlements
+        .iter()
+        .max_by(|a, b| a.pop.total_cmp(&b.pop).then(b.id.cmp(&a.id)))
+        .map(|s| s.id);
     state
         .settlements
         .iter()
+        .filter(|s| Some(s.id) != largest)
         .filter(|s| s.transship > 0.0)
         .filter(|s| state.silt.get(s.anchor as usize).is_none_or(|&c| c == 0.0))
         .filter(|s| near(s.anchor as usize).any(faces))
@@ -119,7 +131,7 @@ fn busiest_shallow_port(state: &State, t: &Terrain, p: &Params) -> Option<u32> {
         .map(|s| s.id)
 }
 
-/// Where a lord plants a town (D62): among the cells a settlement could be
+/// Where a lord plants a town (D63): among the cells a settlement could be
 /// founded on that are on or next to a road or a navigable river, and at least
 /// `plant_spacing_km` from any place over 500, the one with the highest market
 /// access, Σ pop/1000 × exp(−access_decay × cost) over settlements within
