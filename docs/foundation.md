@@ -654,6 +654,26 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **Tuning.** `store_cap` and `store_loss` are the implementer's, within 0.25–1.0 and 0.03–0.15.
 - **Stop** and report. W1 comes next if S3 passes.
 
+**S3 result (b88f75f) and decisions (D82).** The gate passes at every setting. At the chosen `store_cap` 1.0 and `store_loss` 0.05 (Clark's figure for storage):
+- the famine dip is 0.17–0.18, so the pre-registered target (≤ 0.18) is met on every map;
+- stores before 1315 are 0.49–0.52 of need, with map 1 at 0.52, just over the expected 20–50% band. That is a near miss and is accepted;
+- the famine deficit met rises from 6–8% to 55–59%.
+- **`grain_stores` becomes the default** at 1.0 / 0.05. Record the golden hash.
+- **Finding:** stores fill early (0.94 of need at year 100), empty by 1317, and barely refill (0.01–0.02 by year 400). They are being filled by the slack in cultivation, not by good harvests, and without weather there are no good harvests. That is what W1 supplies, so W1 is the next step.
+
+**W1 re-gate (approved),** with relief and stores on, at `σ` 0.15 as D75 built it:
+- **Gate:** every v5 check; determinism; under 50 ms a year in wasm.
+- **Pre-registered:**
+  - total population at year 200 within 20% of the same seed without weather (14.8k against 47.8k before the buffers);
+  - stores refill between shocks: regional stores at least 0.2 of need at year 400.
+- **Reported:**
+  - Clark's three regressions in shadow mode, `b_Y` included;
+  - harvest coefficient of variation;
+  - the share of local deficit met by own store and by relief;
+  - the famine dip.
+- **Tuning.** If a v5 check fails, the implementer may tune `σ` down to 0.10 and the store values within their ranges, recording each change.
+- **Stop** and report. If W1 passes, it becomes the default, and v6 closes with a milestone. S4 and S5 are decided then.
+
 
 ## Future versions
 
