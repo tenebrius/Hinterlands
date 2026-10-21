@@ -21,9 +21,15 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
 /// The values of an ESRI ASCII grid, row by row from the north.
 fn read_grid(text: &str) -> Result<Vec<f32>, String> {
     text.lines()
-        .filter(|l| l.trim_start().starts_with(|c: char| c.is_ascii_digit() || c == '-'))
+        .filter(|l| {
+            l.trim_start()
+                .starts_with(|c: char| c.is_ascii_digit() || c == '-')
+        })
         .flat_map(|l| l.split_whitespace())
-        .map(|v| v.parse::<f32>().map_err(|_| format!("soil grid: bad value {v}")))
+        .map(|v| {
+            v.parse::<f32>()
+                .map_err(|_| format!("soil grid: bad value {v}"))
+        })
         .collect()
 }
 

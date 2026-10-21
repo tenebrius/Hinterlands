@@ -450,9 +450,9 @@ pub fn land_cover(t: &mut Terrain, mp: &MapParams, rng: &mut Rng) {
     if mp.soil_tpi > 0.0 {
         let tpi: Vec<f32> = (0..n)
             .map(|i| {
-                let (sum, cnt) = g
-                    .disk(i, mp.tpi_radius_km)
-                    .fold((0.0, 0.0), |(s, c), j| (s + t.elevation[j].max(0.0), c + 1.0));
+                let (sum, cnt) = g.disk(i, mp.tpi_radius_km).fold((0.0, 0.0), |(s, c), j| {
+                    (s + t.elevation[j].max(0.0), c + 1.0)
+                });
                 t.elevation[i].max(0.0) - sum / cnt
             })
             .collect();
