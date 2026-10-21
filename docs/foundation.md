@@ -423,12 +423,14 @@ Written by the designer on 21 October 2026, after v3 passed validation (D55–D5
 Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last simulation version. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
 
 **Outside ports.**
-- Map generation marks one outside port on each open-sea map edge, at the sea cell nearest the busiest coastline. On imported maps the importer reads them from a file: for Kent, the Continent (off Dover) and the North Sea (off the Thames mouth).
+- Map generation marks one outside port on each open-sea map edge, at the sea cell nearest the busiest coastline. Busiest is read as the harbour with the most yield within 10 km, since there is no traffic at year 0 (D64). On imported maps the importer reads them from a file: for Kent, the Continent (off Dover) and the North Sea (off the Thames mouth).
 - Each outside port is a fixed partner in the existing machinery, with two roles:
   1. **A buyer of grain** with a fixed demand, `outside_grain` in grain units a year, through the shopping model (D41), so it buys a fixed amount rather than everything on offer. Paid in imports (below).
   2. **The only seller of a fifth good, imports** (wine, cloth, spices), demanded by market people only, `import_demand` per market person, with a high value density (`ρ` 10). Paid in grain like any good.
 - The trade rides the stored paths, so the ports and towns on those routes earn handling and transshipment income on it. This is what Watling Street lacked: traffic through Dover to the Continent.
 - D25's outside world, which bought everything by gravity and halved the population, is replaced by this. Its parameters are retired.
+
+**Tuning with ports on (D66).** At O1, map 1's market spacing fell to 13/20; it had always been marginal there (15–18). The implementer may re-tune the founding and shadow values (`shadow_weight`, `found_threshold`, `noise`) with ports on, judged on all three maps at 20 seeds. The way spacing is measured does not change. If one tuning pass cannot restore it, accept the best point and record map 1's spacing as an exception in the milestone, not as a new rule.
 
 **Better ships.** Transport cost ratios drift during the run, as decision 3 of the architecture allowed for (ratios live in `State`). In the Historical calendar, sea cost per km falls by `ship_gain` (30%) in a straight line between 1300 and 1500, for the cog, the hulk and then the carrack. River, road and land costs stay fixed. The cost grid is rebuilt at road steps, as now. Expected: coastal ports take a larger share late in the run, and some inland towns lose rank.
 
