@@ -150,3 +150,7 @@ Kind: change to the defaults and the acceptance test (owner/designer decision).
 ## D31 — Soil for imported maps; DEM cell count rounding
 `MapParams` gains `soil_file` (an ESRI ASCII soil-quality grid on the map's grid, read by the DEM importer) and `soil_tpi`, `tpi_radius_km` and `tpi_scale_m` (a valley-position factor on soil). Both are rescaled to the uniform mean yield, and both are off by default, so generated maps and the golden hash are unchanged. `tools/real/fetch_soil.py` builds a soil grid from ISRIC SoilGrids 2.0, filling built-up holes from the surrounding cells. The ESDB needs a request form, so it was not fetched. The importer now rounds a target cell count within 0.05 of a whole number (a 999.8 m source cell is 1 km); Kent imports at 128 × 128, where it had been 127 × 127. Results: `docs/real-terrain-experiments.md`.
 Kind: map import.
+
+## D32 — Initial roads as input data
+`Terrain.initial_road` holds roads present at the start (empty on generated maps, and left out of the serialised terrain when empty, so their hash is unchanged). `State` starts its road set from it. `MapParams.roads_file` names an ESRI ASCII 0/1 grid read by the DEM importer; `tools/real/fetch_roads.py` rasterises Itiner-e Roman roads (CC BY 4.0). The model is unchanged. The pre-registered Kent test (Rochester and Canterbury from Watling Street's river crossings) failed. Diagnosis and options are in `docs/real-terrain-experiments.md`.
+Kind: input data (owner/designer decision).

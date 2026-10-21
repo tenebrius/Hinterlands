@@ -15,7 +15,20 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
         let s = std::fs::read_to_string(soil).map_err(|e| format!("{soil}: {e}"))?;
         mp.soil_grid = read_grid(&s)?;
     }
-    import_asc(&text, cell_km, &mp)
+    let mut t = import_asc(&text, cell_km, &mp)?;
+    if let Some(roads) = &mp.roads_file {
+        let s = std::fs::read_to_string(roads).map_err(|e| format!("{roads}: {e}"))?;
+        let r = read_grid(&s)?;
+        if r.len() != t.n() {
+            return Err(format!(
+                "road grid has {} cells, the map {}",
+                r.len(),
+                t.n()
+            ));
+        }
+        t.initial_road = (0..t.n()).map(|i| r[i] > 0.5 && t.is_land(i)).collect();
+    }
+    Ok(t)
 }
 
 /// The values of an ESRI ASCII grid, row by row from the north.

@@ -45,6 +45,11 @@ pub struct Terrain {
     pub river_mouth: Option<u32>,
     /// Named rivers, ranges, seas, bays and forests.
     pub features: Vec<crate::names::Feature>,
+    /// Roads that exist before the run starts (e.g. Roman roads on an imported
+    /// map), as input data like the DEM; empty on generated maps. Left out of
+    /// the serialised terrain when empty, so generated maps keep their hash.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub initial_road: Vec<bool>,
 }
 
 impl Terrain {
@@ -66,6 +71,7 @@ impl Terrain {
             ford: vec![false; n],
             river_mouth: None,
             features: Vec::new(),
+            initial_road: Vec::new(),
         }
     }
 

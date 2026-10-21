@@ -260,3 +260,34 @@ Written and committed before any run with roads.
 2. The usual table: lowland AUC for towns of 1,000 or more; count and spacing of inland places over 500; the largest city; and the share of settlements on or next to a Roman road, against the share of land that is.
 
 No parameter is re-tuned for this run.
+
+### Result: the pre-registered expectation fails
+
+**Data.** Itiner-e static version 2024 (de Soto, Pažout, Brughmans & Bjerregaard Vahlstrup 2025, *Scientific Data*; Zenodo 10.5281/zenodo.17122148; CC BY 4.0). It is rasterised by `tools/real/fetch_roads.py` into `data/real/kent/roads.asc`:
+- 58 road segments in the box, including Watling Street (Londinium–Durobrivae–Durovernum–Portus Dubris), the Richborough, Lympne and Reculver branches, London–Colchester, London–Lewes and the Weald roads;
+- all are classed Conjectured in the dataset, and Hypothetical segments are dropped;
+- 1,337 road cells, 8% of the grid; 32% of land lies on or next to a Roman road.
+
+The run uses v1.1 defaults with uniform soil (`map-roads.json`), 20 seeds, no re-tuning. Full scores: `docs/real/kent/experiments/roads.md`.
+
+| Kent, 20 seeds | Rochester: place ≥1,000 within 3 km | Canterbury | Settlements on or next to a Roman road (all / ≥1,000) | Lowland AUC: all / ≥1,000 / <1,000 | Inland >500: spacing, count | Largest city near |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| v1.1 | 1/20 | 1/20 | 26% / 26% | 0.44 / 0.54 / 0.37 | 9.1 km, 20 | Gravesend 15 |
+| v1.1 + Roman roads | 1/20 | 0/20 | 20% / 24% | 0.43 / 0.48 / 0.40 | 8.1 km, 20 | Gravesend 6, Rayleigh 4 |
+| Diagnostic: no shadow, no roads | 0/20 | 0/20 | 24% / 5% | | | |
+| Diagnostic: no shadow, + roads | 0/20 | 0/20 | 29% / 24% | | | |
+| Real | Rochester | Canterbury | 47% of real towns; 32% of land | | 10.6 km, 29 | London |
+
+Rochester and Canterbury do not appear. Settlements become *less* likely to sit on a Roman road (20%, against 32% of land and 47% of real towns), and the largest city leaves the tidal Thames more often.
+
+**Why, from the model.**
+1. **The shadow is measured in travel cost.** A road makes neighbours along it cheaper to reach, so they fall inside each other's shadow and suppress one another. With the shadow off (diagnostic only), roads raise settlements on roads from 24% to 29% and places of 1,000+ from 5% to 24%, but still not above the land share.
+2. **Nothing rewards a site on a road.** Founding ignores transport by design (D28). A place on a road gains only the handling margin on traffic passing its anchor (0.046 of value), which is small next to market inflow.
+3. **A Roman road crossing a river is not a bridge.** A crossing away from a ford pays +5 even on a road, because bridges are a 1.x feedback that is not applied. In the model, Watling Street's crossings of the Medway at Rochester and of the Stour at Canterbury are no cheaper than anywhere else on those rivers. They are not hubs and not transshipment points.
+
+**For the designer.** Three ways the road effect could enter, each a spec decision:
+- (a) **Roman bridges as input data**, with the crossing cost zero where a Roman road crosses a river. This is the cheapest, and it is what the expectation actually rests on: the crossing becomes a junction of land and water routes, so through-traffic and transshipment income land there.
+- (b) **Shadow in km rather than travel cost.** Bosker & Buringh's bands and Christaller's spacing are distances, so a road would no longer intensify competition along itself.
+- (c) **A larger margin on through-traffic.**
+
+(a) and (b) are input or measurement corrections; (c) is tuning. Not tried: the test was run once, as pre-registered.
