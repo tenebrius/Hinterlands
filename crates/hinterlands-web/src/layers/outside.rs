@@ -10,6 +10,8 @@ pub const IMPORTS: Color32 = Color32::from_rgb(128, 30, 72);
 const HULL: Color32 = Color32::from_rgb(92, 60, 36);
 const SAIL: Color32 = Color32::from_rgb(240, 232, 214);
 const INK: Color32 = Color32::from_rgb(40, 34, 30);
+/// Most import flows drawn.
+const MAX_DRAWN: usize = 25;
 
 #[derive(Default)]
 pub struct OutsideLayer;
@@ -40,8 +42,12 @@ impl Layer for OutsideLayer {
             let (x, y) = g.xy((node % n) as usize);
             vec2(x as f32 + 0.5, y as f32 + 0.5)
         };
+        // Only the larger import flows, so the routes read rather than flood the
+        // sea; the rest are small and follow the same lanes.
         let mut flows: Vec<_> = snap.flows.iter().filter(|f| f.import).collect();
-        flows.sort_by(|a, b| a.amount.total_cmp(&b.amount));
+        flows.sort_by(|a, b| b.amount.total_cmp(&a.amount));
+        flows.truncate(MAX_DRAWN);
+        flows.reverse();
         for f in flows {
             if f.path.len() < 2 {
                 continue;
@@ -52,15 +58,14 @@ impl Layer for OutsideLayer {
                 .iter()
                 .map(|&p| d.camera.to_screen(d.rect, p))
                 .collect();
-            let w = (0.6 + f.amount.sqrt() * 0.18).min(4.0) * (z / 6.0).clamp(0.6, 2.0);
+            let w = (0.4 + f.amount.sqrt() * 0.12).min(3.0) * (z / 6.0).clamp(0.6, 2.0);
             d.painter
-                .add(Shape::line(line.clone(), Stroke::new(w + 1.4, INK.gamma_multiply(0.5))));
-            d.painter.add(Shape::line(line, Stroke::new(w, IMPORTS)));
+                .add(Shape::line(line, Stroke::new(w, IMPORTS.gamma_multiply(0.75))));
         }
         // A ship: a hull and a square sail.
         for &cell in &snap.ports {
             let c = d.camera.cell_center(d.rect, g.w, cell as usize);
-            let s = (z * 0.8).clamp(9.0, 22.0);
+            let s = (z * 1.2).clamp(16.0, 30.0);
             let hull = vec![
                 c + vec2(-s * 0.6, 0.0),
                 c + vec2(s * 0.6, 0.0),
