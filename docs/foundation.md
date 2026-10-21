@@ -1,6 +1,6 @@
 # Hinterlands — Foundation Document
 
-Foundation document for the implementer. Owner: Divish Shamloll. Last revised 21 October 2026, after the Kent real-terrain corrections (D23–D31).
+Foundation document for the implementer. Owner: Divish Shamloll. Last revised 21 October 2026: v1.2 (D34–D35) and the v2 specification.
 
 ## Purpose and scope
 
@@ -321,6 +321,57 @@ The implementer works autonomously from M0 to M6 without approval between milest
 - **Parameters and tuning are the implementer’s call.** Any default in the specification may be changed to make the validation targets pass; the change and the reason go in the milestone note. The shape of the equations may be changed only if a target cannot be met by tuning, and that is one of the points to raise.
 - **Points to raise with the owner**, and the only ones: a validation target that cannot be met after a tuning pass; a change to the core boundary (`Terrain`, `State`, `Snapshot`, the system signature); a change of UI framework; anything that would add a Later item into v1. Everything else proceeds.
 - **Done means v1 released.** M6 complete, all validation targets passing on three generated maps, the web build served from a static folder, a README that explains the model in one page. At that point the owner reviews, and the roadmap after v1 is planned together.
+
+## v2 specification: goods and specialists
+
+Written by the designer on 21 October 2026, after v1.2 passed validation (D35). v2 adds the second half of the brief's picture: resource sites with their own small settlements, goods moving along the rivers and roads, and towns that grow by handling them. It stays inside the two standing limits: there is no price economy, because goods trade at fixed exchange ratios against grain, and there are no agents.
+
+**What the viewer should see.** Salt works on the coast, quarries in the hills and iron mines in the uplands, each a small settlement that buys its bread. Woods thin around the iron mines. Grain moves up the valleys to the mines and iron comes down; stone comes out of the quarries to the larger towns. Ports and river towns on those routes grow on the trade they handle.
+
+**Goods.** Four goods: grain (the existing good), salt, iron and stone. Each non-grain good `g` has:
+- a **value** `v_g` in grain units per unit of good, a fixed exchange ratio, not a price;
+- a **value density** `ρ_g` relative to grain, from which its distance decay follows: `β_g = β / ρ_g`. A good worth more per tonne travels farther for the same cost. This applies ORBIS's per-weight costs to goods of different value, and adds no free parameter for decay. Starting values: iron `ρ` 8, salt 3, stone 0.4;
+- a **demand**: salt and iron per person, stone per market person (towns build; villages do not), in grain units a year. Starting values: salt 0.02, iron 0.02, stone 0.03.
+
+**Sites and production** (a new system, `production`, after cultivation; Weber 1909).
+- Resource cells come from map generation as now: ore, salt and stone. The **holder** of a site is the settlement whose anchor is within `min_spacing_km` of it at the least travel cost.
+- Output, in grain units a year: `min(cap_g, prod_g × (market people of the holder + site_crew))`. Starting values: `prod_g` 2 for every good, `site_crew` 10, `cap_g` 1,000.
+- **Iron is fuel-bound.** Smelting is the weight-losing step Weber places at the fuel source. Each unit of iron draws `fuel_per_iron` of forest, which cultivation (the owner of forest) adds to the holder's fuel demand and cuts nearest first, as for household fuel. Iron output is capped by the fuel actually obtained the year before. A mine whose woods are gone declines.
+- Under v2 the old `resource_out` (a flat 50 per owned resource cell) is retired.
+
+**Goods trade** (in the trade system). Production-constrained gravity, the mirror of the grain step: each holder ships all its output to consumers in proportion to `demand_k × exp(−β_g c_jk)`, over the pairs within `C_max`, along the stored paths.
+- **Payment is grain.** A consumer pays `v_g` per unit received out of its marketed share `O_i`, capped at `O_i`, and that grain travels to the producer as an ordinary food flow, with the usual loss per unit cost. What is left of `O_i` goes to markets as now.
+- So no food is created: a specialist place is fed by real grain deliveries, which count in its gross inflow `D_j`, and it grows by the same Rihll–Wilson rule as any market.
+- Goods and the grain paying for them load the routes. Handling and transshipment income (D27) apply to them as to grain, at the goods' value. This is how towns between ore and people grow.
+- Complementarity (Barjamovic et al. 2019) needs no extra term: goods flow only from the places that have them.
+
+**Specialist settlements** (in founding and failure).
+- At each founding step, a resource cell with no settlement within `min_spacing_km` gets a hamlet of `found_pop` on the cell if the demand it could reach, `Σ_k demand_k × exp(−β_g c)`, would feed the founders. At most one per resource type per step, with migrants found as usual.
+- Its `kind` is `Mine`, `Saltern` or `Quarry`. It cultivates like any settlement, and its newcomers join the market people, who work the site.
+- It fails by the ordinary rules (it sheds when underfed and is removed below `fail_pop`). There are no special cases.
+
+**Switch.** All of v2 sits behind `goods_enabled`, off until the v2 milestone passes. With it off, the golden hash stays `2b00434da9781880`.
+
+**Stages.** Each stage is built and checked alone, then reported over the channel. The next stage starts without waiting for approval unless a check fails or a spec question comes up.
+1. **G1 Production.** Sites, holders, output and iron's fuel draw; no goods trade yet. Check: held sites produce; forest within 5 km of a working iron site falls below the land mean by year 200.
+2. **G2 Goods trade.** Production-constrained flows, grain payment, handling income on goods. Check: payments balance (grain paid equals goods value received, less loss); median flow cost orders iron > salt > grain > stone.
+3. **G3 Specialists.** Founding, `kind`, failure. Check: the v2 gate below.
+4. **G4 View and milestone.** Goods colours on routes (salt white, iron rust, stone grey), specialist symbols, goods lines in the inspector and legend, and the chronicle naming new works ("1214. Salt works founded at …"). Add these as new layers and panel lines, not edits to shared files, because a graphics session is also working on `hinterlands-web`. Then tuning and the milestone record.
+
+**v2 gate.** Judged as in v1: pass rates over 20 seeds on each of the three maps, 75% per check.
+- **Gated:**
+  - all v1.2 checks still pass;
+  - at least two thirds of resource sites have output at year 500;
+  - no specialist settlement is the largest place;
+  - one year under 50 ms in release wasm;
+  - determinism, natively and in the browser.
+- **Reported:**
+  - specialist sizes (expected tens to several hundred);
+  - the share of all market inflow that is payment for goods (expected 5–25%);
+  - forest within 5 km of iron sites against the land mean;
+  - the share of settlements over 2,000 on a route carrying goods.
+
+**Tuning.** The goods parameters above are starting values and are the implementer's to tune. The v1.2 parameters are re-tuned only if a v1.2 check fails, and every change goes in the milestone note. Kent has no resource layer, so its regression should not change. Placing Kent's Wealden iron, ragstone and estuary salt as data is a later option, not part of v2.
 
 ## Future versions
 
