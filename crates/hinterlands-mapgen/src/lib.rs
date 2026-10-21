@@ -73,6 +73,8 @@ pub struct MapParams {
     /// An ESRI ASCII 0/1 grid of roads present at the start (e.g. Roman roads
     /// from `tools/real/fetch_roads.py`), read by the DEM importer (D32).
     pub roads_file: Option<String>,
+    /// Bridges wherever the initial roads cross a river or stream (D33).
+    pub road_bridges: bool,
 }
 
 impl Default for MapParams {
@@ -104,6 +106,7 @@ impl Default for MapParams {
             tpi_radius_km: 3.0,
             tpi_scale_m: 25.0,
             roads_file: None,
+            road_bridges: false,
         }
     }
 }

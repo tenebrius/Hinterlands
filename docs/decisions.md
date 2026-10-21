@@ -154,3 +154,7 @@ Kind: map import.
 ## D32 — Initial roads as input data
 `Terrain.initial_road` holds roads present at the start (empty on generated maps, and left out of the serialised terrain when empty, so their hash is unchanged). `State` starts its road set from it. `MapParams.roads_file` names an ESRI ASCII 0/1 grid read by the DEM importer; `tools/real/fetch_roads.py` rasterises Itiner-e Roman roads (CC BY 4.0). The model is unchanged. The pre-registered Kent test (Rochester and Canterbury from Watling Street's river crossings) failed. Diagnosis and options are in `docs/real-terrain-experiments.md`.
 Kind: input data (owner/designer decision).
+
+## D33 — Bridges as input data
+`Terrain.bridge` marks river and stream cells with a bridge (empty on generated maps, and left out of the serialised terrain when empty). A crossing costs 0 at a ford or a bridge (`free_crossing`). With `MapParams.road_bridges`, the importer puts a bridge wherever an initial road crosses a river or stream; Kent has 52 (30 on navigable rivers). The pre-registered test (a place of 1,000+ within 3 km of Rochester in at least 5 of 20 seeds) failed at 1 of 20. Golden unchanged.
+Kind: input data (owner/designer decision).

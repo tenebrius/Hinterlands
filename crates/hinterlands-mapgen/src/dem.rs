@@ -27,7 +27,9 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
             ));
         }
         t.initial_road = (0..t.n()).map(|i| r[i] > 0.5 && t.is_land(i)).collect();
-        t.bridge = road_bridges(&t);
+        if mp.road_bridges {
+            t.bridge = road_bridges(&t);
+        }
     }
     Ok(t)
 }

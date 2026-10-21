@@ -322,3 +322,18 @@ The mechanism is now in the code. `Terrain.bridge` is input data, and `free_cros
 - **Rochester:** two bridge cells on the **navigable** Medway, at (54, 57) and (55, 57), 2.2 km from Rochester. The mechanism can act there.
 - **Canterbury:** three bridge cells within 2 km, all on a **stream**. In the model the Stour is not navigable at Canterbury; the nearest navigable cell is 8.2 km away. The transshipment term cannot act at Canterbury, so the expectation there is weak, as the designer anticipated.
 - **Also bridged on a navigable river:** the Medway at Maidstone, 0.6 km away, on the road towards Lympne.
+
+### Result: the expectation fails
+
+Bridges are opt-in (`road_bridges` in `data/real/kent/map-bridges.json`), so the roads-only test still reproduces exactly (seed 1 checked against the D32 run). The run was done once, on v1.1 defaults with uniform soil, 20 seeds, no re-tuning. Full scores: `docs/real/kent/experiments/bridges.md`.
+
+| Kent, 20 seeds | Rochester: place ≥1,000 within 3 km | Canterbury | Maidstone | On or next to a Roman road (all / ≥1,000) | Lowland AUC: all / ≥1,000 / <1,000 | Inland >500: spacing, count | Largest city near (seeds) | Largest share |
+| --- | ---: | ---: | ---: | --- | --- | --- | --- | ---: |
+| v1.1 | 1/20 | 1/20 | 3/20 | 26% / 26% | 0.44 / 0.54 / 0.37 | 9.1 km, 20 | Gravesend 15 | 0.30 |
+| v1.1 + roads | 1/20 | 0/20 | 2/20 | 20% / 24% | 0.43 / 0.48 / 0.40 | 8.1 km, 20 | Gravesend 6, Rayleigh 4 | 0.25 |
+| v1.1 + roads + bridges | **1/20** | 1/20 | 1/20 | 20% / 22% | 0.46 / 0.41 / 0.49 | 8.6 km, 20 | Gravesend 8, Rayleigh 5, Billericay 2 | 0.27 |
+| Real | | | | 47% of towns; 32% of land | | 10.6 km, 29 | London | ≈0.3 |
+
+**The expectation fails.** Rochester reaches 1 of 20 seeds against a bar of 5, and in most seeds there is no settlement within 3 km at all (median 0). Canterbury is at 1 of 20, as weakly expected. The on-road share stays at 20%, as the designer expected under (a) alone. Larger-town placement is worse (AUC 0.41), and Gravesend falls from 15 to 8, a cost of roads, not of bridges, since it was already 6 with roads alone.
+
+**What this rules out.** A free crossing on the navigable Medway, on Watling Street, does not by itself make a town there. Since no settlement usually exists near the bridge at all, the failure comes before growth. Either founding never chooses the site, or the cost-based shadow suppresses whatever is founded there: a bridged crossing makes the site cheaper to reach from its neighbours, so it falls into their shadow, the same mechanism that pushes settlements off the roads. That is the designer's option (b). No further change was tried.

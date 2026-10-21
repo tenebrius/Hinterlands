@@ -126,7 +126,10 @@ pub fn dump_cells(path: &str, t: &Terrain) {
             hinterlands_core::terrain::Water::NavigableRiver => "navigable",
             hinterlands_core::terrain::Water::Sea => "sea",
         };
-        out += &format!("{x},{y},{class},{water},{}\n", t.free_crossing(i) && !t.ford[i]);
+        out += &format!(
+            "{x},{y},{class},{water},{}\n",
+            t.free_crossing(i) && !t.ford[i]
+        );
     }
     std::fs::write(path, out).unwrap_or_else(|e| crate::die(&format!("{path}: {e}")));
 }
