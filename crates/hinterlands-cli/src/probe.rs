@@ -1561,6 +1561,17 @@ pub fn cmd_diag(args: &Args) {
     let shocks = params.events_mode == 1;
     let mut pop = [0f32; 3];
     let mut pasture = [0f32; 2];
+    // Share of people in places over 2,000, in 1340 and 1600 (D132).
+    let mut urban = [0f32; 2];
+    let urban_of = |st: &hinterlands_core::state::State| -> f32 {
+        let big: f32 = st
+            .settlements
+            .iter()
+            .filter(|s| s.pop > 2000.0)
+            .map(|s| s.pop)
+            .sum();
+        big / st.total_pop().max(1.0)
+    };
     let mut prev = 0f32;
     let (mut max_change, mut max_year, mut max_sign) = (0f32, 0u32, 0f32);
     let share = |st: &hinterlands_core::state::State| -> f32 {
@@ -1573,7 +1584,10 @@ pub fn cmd_diag(args: &Args) {
         let y = sim.state.year;
         let tot = sim.state.total_pop();
         match y {
-            240 => pop[0] = tot,
+            240 => {
+                pop[0] = tot;
+                urban[0] = urban_of(&sim.state);
+            }
             350 => {
                 pop[1] = tot;
                 pasture[0] = share(&sim.state);
@@ -1581,6 +1595,7 @@ pub fn cmd_diag(args: &Args) {
             500 => {
                 pop[2] = tot;
                 pasture[1] = share(&sim.state);
+                urban[1] = urban_of(&sim.state);
             }
             _ => {}
         }
@@ -1623,10 +1638,12 @@ pub fn cmd_diag(args: &Args) {
         "ok"
     };
     println!(
-        "diag {map} {seed} pop1340 {:.0} pop1450 {:.0} pop1600 {:.0} pasture1450 {:.3} pasture1600 {:.3} over2k {} spacing {:.2} {side} stability {:.4} year {} sign {:+.0} top15 {}",
+        "diag {map} {seed} pop1340 {:.0} pop1450 {:.0} pop1600 {:.0} urban1340 {:.3} urban1600 {:.3} pasture1450 {:.3} pasture1600 {:.3} over2k {} spacing {:.2} {side} stability {:.4} year {} sign {:+.0} top15 {}",
         pop[0],
         pop[1],
         pop[2],
+        urban[0],
+        urban[1],
         pasture[0],
         pasture[1],
         sizes.iter().filter(|&&p| p > 2000.0).count(),
