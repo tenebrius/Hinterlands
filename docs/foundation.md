@@ -1023,6 +1023,13 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 - **W with wool is about 0:** wool's coin goes to villages and the port-side carriers. Wool does not grow W, and nothing changes.
 - **Market stores are still idle:** this is scheduled next after L1.
 
+**L1 third build (a2c6f26) and decisions (D110).** With Clark's fall in the wool price, outside trade at 1600 is 0.18 / 0.20 / 0.23 (passing 14, 11 and 5 of 20). Every L1 gate passes. Map 1's "over 2,000" is 14/20, one seed short.
+1. **The outside-trade band becomes 3–30%. It is revised after seeing it fail, so the reason stands on its own.** The 3–20% band was set in v5, without a source, for a definition that held grain and imports only. Its job was to catch two failures: a region with no outside trade, and a region that exports everything. The definition now includes wool, England's chief export, which after 1350 brings in more than 90% of the region's coin. A band that a wool-exporting England had to fit cannot have the ceiling of a grain-only one. 30% still catches an export colony.
+2. **Map 1's "over 2,000" at 14/20 is a failed check and must be fixed, not waived.** Diagnose what changed on map 1: pasture near towns, prices, or the drain. Fix it within the design, tuning `shadow_drain`, K or `market_share` if needed, and record it.
+3. **Robustness is noted.** Runs passing every check are 6/6/2. Every check passes at 75%, but rarely all at once. After the market-store fix, a consolidation re-tune will aim to raise this, as a reported quality figure, not a gate.
+4. **Kent's missing pasture is a data gap, not a model fault.** No Kent cell yields below about 0.27, because the yield layers miss the Downs' thin chalk and the Marsh's wet ground. A geology-based soil layer (chalk and alluvium) for Kent is noted for later.
+5. **When the gate passes:** move the defaults and the golden, and record L1. Next comes the market-store fix.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
