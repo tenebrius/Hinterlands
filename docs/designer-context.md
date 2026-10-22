@@ -120,6 +120,12 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Munro's shares put the making cost below the bracket, so 3.2 d stands in for a pre-1340 quality gap.
   - Exports per head 10 d against England's 14 d weaken the scale reason for the 50% ceiling; it stands on the export-colony reason.
   - Attribution run (wool without mills) first, then the corrected D2.
+- **Corrected D2 (8aac792) failed narrowly, D130:**
+  - Map 2 passes every check; map 1 fails only outside trade, by one run; map 3 fails over 2,000, spacing and stability.
+  - The cloth share jumps from 0.17 to 1.00 in 1350, against the record's two-century rise (about 0.05 in the 1350s to 0.85 in the 1540s).
+  - Fix: mill capacity binds and grows with W. Calibrate the 1350s start (≤0.10) only; the path is the test (±0.15 of the record at 1400, 1450 and 1500).
+  - Outside trade not revised (its denominator lacks the internal economy; decide later between share and exports per head if it binds again).
+  - Map 3 diagnosis requested: population, pasture, the top 15, spacing side, stability.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
 - **v7 RELEASED (1a94a88):** README rewritten for the trade economy; parameters regenerated; watching panel with seven phases; prices, purses and stores in the inspector, plus a grain-price layer (red in 1316); screenshots in `docs/screenshots/v7/`; golden `65aee272c30de1f9`, 45.9 ms/year wasm. Kent: largest near Gravesend 14/20, inland spacing 13.2 km (real 10.6). Kent geology next.
@@ -196,4 +202,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — D1b+D2 failed; spec error 13; home cloth at home, export cloth chain, entropy split; attribution run then corrected D2 (D128).
+Last updated: 2026-10-22 — corrected D2 failed narrowly; capacity-bound cloth industry and map 3 diagnosis sent (D130).

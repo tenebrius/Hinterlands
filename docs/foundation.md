@@ -1427,6 +1427,51 @@ The last two lost the artefact towns that had been counted among the places over
 - **The cloth share of exported wool rises after 1347 but stays below 0.95 in every decade.** This rests on the entropy split.
 - **Map 2's recovery returns to 30/40.** This rests on the bills staying at home. If the attribution run shows wool causes it, this is withdrawn before the gate, with the reason.
 
+### Corrected D2 result (8aac792): close on two maps; the cloth industry grows instead of appearing (D130)
+
+**What it showed.** The correction worked where it was aimed. Rank-size and spacing came back on maps 1 and 2. Map 2 passes every check, and map 2's recovery is 40/40. What remains:
+- **Map 1:** outside trade at 29/40, one run short of the 50% ceiling.
+- **Map 3:** over 2,000 (23/40), spacing (25/40) and stability (28/40).
+- **The attribution run** shows that the wool side alone costs over 2,000 on maps 1 and 3. All the wool now leaves the region, and D1b had already removed map 3's artefact iron towns (31 → 25).
+
+**The cloth share is wrong against the record, and that is the finding to act on.**
+- The model jumps from 0.17 to 1.00 of the wool leaving in 1350 and stays there.
+- The customs accounts (Carus-Wilson & Coleman 1963) show a rise over two centuries. In wool-equivalent, cloth was about 0.05 of wool leaving in the 1350s, about a third in the 1390s, about half by the 1440s, about 0.7 by 1500 and about 0.85 by the 1540s. Raw wool exports never stopped.
+- The subsidy explains the direction, but not the pace. The pace came from an industry that had to grow: mills, looms, skills, merchants.
+- In the model, mill capacity (30 lb × W) never binds, so the whole clip switches the year the wedge opens. The entropy split cannot spread it: at the S1 θ a gap of 0.18 is all or nothing, as the implementer showed. That dispersion is for space, not for wool's outlets.
+
+**Decided:**
+1. **Mill capacity binds and grows.** Capacity is `cloth_lb_per_w` × the mill town's W, as now, but set low enough to bind. The industry then grows only as the cloth margin grows its towns, through the model's own W dynamics (Rihll–Wilson). Wool beyond capacity goes to the ports at their price after the duties.
+   - **Calibrated at the start only.** `cloth_lb_per_w` comes from a source if one is found (labour per broadcloth and the share of a cloth town's people in the trade). Otherwise it is set so that cloth is at most 0.10 of the wool leaving in 1350–1359, the record's starting point.
+   - **The path after that is the test**, and it is not tuned.
+2. **The entropy split stays** for the three outlets. Where capacity does not bind it is what the S1 form gives, and it needs no change.
+3. **The outside-trade check is not revised now.**
+   - What D2 does show: the share's denominator is the modelled market, mostly grain and a few goods. It lacks most of the real internal economy (meat, dairy, ale, crafts, building). So the share's level has no historical referent, which is why the region reads 47% outside while it exports 7–8 d a head against England's 14 d.
+   - Map 1 is short by one run, inside the noise (rule 11). Step 1 moves the composition of exports back towards raw wool, at a lower value per pound, so it may change the result.
+   - If outside trade is the binding check again, I will decide between the share and exports per head against England's, with that evidence.
+4. **The pre-1340 cloth places over 2,000: the implementer's reading is accepted.** They are market towns with mills that make some cloth for want of a nearer port. My pre-registration counted the wrong thing: it should have been towns grown by cloth, not towns that make some.
+
+**Diagnosis for map 3, to come with the gate.** It uses D1, D1b, the attribution run and the new build, 10 seeds each:
+- population in 1340, 1450 and 1600;
+- pasture's share of used land in 1450 and 1600;
+- the sizes of the 15 largest places in 1600, and how many are over 2,000;
+- which side spacing fails on;
+- what stability counts in the failing runs.
+
+Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 band was set when the model overshot England's 1600 population (D114). So report whether the losses at map 3's top come from fewer people overall or from how they are spread. I will not revise the band without that evidence.
+
+**Gate:** D1b with the capacity-bound D2, 40 seeds, every check. If it fails, stop and report with the diagnosis.
+
+**Pre-registered, reported only:**
+- **The cloth share of wool leaving rises over a century and more.** Each value is the record ±0.15:
+  - 0.2–0.5 in 1390–1410;
+  - 0.35–0.65 in 1440–1460;
+  - 0.55–0.85 in 1490–1510.
+
+  This rests on capacity binding and growing with mill towns' W. The implementer confirms in the code that capacity binds in 1350.
+- **Raw wool is still exported in every decade.**
+- **Places over 2,000 that make cloth** rise after 1400.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
