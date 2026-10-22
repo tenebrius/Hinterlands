@@ -594,3 +594,24 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - almost no pasture (the soil layers lack chalk and marsh; geology is next, D116).
 - **Golden `65aee272c30de1f9`.** Release wasm gives the same hash (`?selftest=500`) at 45.9 ms/year.
 - **Reproducing v7:** check out this commit.
+
+## Close (D117)
+Development stops here, by the owner's decision (D117).
+- **Final golden `65aee272c30de1f9`** (map 1, seed 1, 500 years). Release wasm gives the same hash.
+- **Final checks:**
+  - `just test` passes, including determinism, the golden and the conservation of coin.
+  - `just validate` (Historical, 3 maps × 20 seeds) passed; runs passing every check: 8 / 13 / 8.
+- **Kent geology (D116, the last change):**
+  - BGS 1:625k chalk and marsh layer, with yield ×0.6 on chalk and ×0.35 on marsh and alluvium;
+  - `data/real/kent/map-geology.json` is now Kent's standard setting for `just real`;
+  - pre-registered pasture on the Downs and Marsh above the Weald and lowland: met (chalk 0.40, marsh 0.53, other 0.00 of used land in 1450);
+  - Kent AUC for towns under 1,000 is 0.57, the best yet;
+  - details in `docs/real/kent-geology.md`.
+- **Open items, not done:**
+  1. **The robustness re-tune** (D116.2): search the existing tunables for more runs passing every check. A one-at-a-time screen was started and stopped unfinished; it left no results.
+  2. **The cloth design note** (D116.3): spinning, weaving, fulling at the mills, cloth overtaking raw wool in the 1400s, and the Weald as cloth country.
+  3. **Post-1480 growth:** after the endemic era the model regrows at up to `r_grow` (0.027 a year), so 1600 stands above England's level (1.43–1.46 of the pre-plague peak by year 500).
+- **Also noted, not gated:**
+  - the famine dip (0.19 against a target of 0.10–0.16);
+  - store carry-over peaking at 0.44–0.45 of a harvest;
+  - the murrain figures (approximate, after Slavin).
