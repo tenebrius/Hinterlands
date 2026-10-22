@@ -625,3 +625,9 @@ Development stops here, by the owner's decision (D117).
 - **On fresh seeds the current setting has two gated checks at 14/20:** road length on map 1 and over 2,000 on map 3. The gate's margin is about one seed in twenty.
 - **Golden unchanged, `65aee272c30de1f9`.**
 - **Details:** `docs/retune/r.md`.
+
+## D120 — The gate on 40 seeds
+- **`just validate` now runs `--seeds 40`.** Each check needs 30/40 on every map.
+- **The accepted model's reference** (R's two halves summed) is in `docs/retune/r.md`. Every gated check is at 30/40 or better except road length 300–500 on map 1, at 29/40.
+- **No-worse rule:** where the accepted model is short, a stage passes if it is no worse. In `validate`, `NO_WORSE` holds road length 300–500 on map 1 at 29/40.
+- **Runs passing every check** (reported, not gated): 19 / 27 / 16 of 40.

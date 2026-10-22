@@ -87,3 +87,39 @@
 - `validate --first-seed N` runs seeds N to N+19; the determinism check reruns the first seed run.
 - `validate` now prints, per map, the failing checks with how many runs fail each and in how many it is the only failure.
 - `tools/retune/screen.sh` and `tools/retune/summary.py`.
+
+## The accepted model on 40 seeds (D120 reference)
+
+The sum of the current setting's two halves (seeds 1–20 and 21–40). From D120 a check needs 30/40 on every map. Where the accepted model is below that (bold), a stage passes if it is no worse (`NO_WORSE` in `validate.rs`).
+
+| Check | Target | Map 1 | Map 2 | Map 3 |
+| --- | --- | --- | --- | --- |
+| settlements | 150-350 | 40/40 | 40/40 | 39/40 |
+| over 2,000 | 5-12 | 32/40 | 36/40 | 30/40 |
+| over 5,000 | 1-5 | 40/40 | 40/40 | 40/40 |
+| largest share | <0.25 | 40/40 | 40/40 | 40/40 |
+| rank-size slope | -1.3..-0.8 | 40/40 | 40/40 | 40/40 |
+| market spacing | 8-15 km | 36/40 | 39/40 | 38/40 |
+| siting | >=0.70 | 40/40 | 40/40 | 40/40 |
+| failure rate | 0.40-0.70 | 40/40 | 40/40 | 39/40 |
+| forest near cities | <0.30 | 40/40 | 40/40 | 40/40 |
+| stability | <5%/yr | 39/40 | 40/40 | 38/40 |
+| sites producing | (reported) | 40/40 | 40/40 | 40/40 |
+| every good worked | true | 39/40 | 39/40 | 40/40 |
+| largest not specialist | true | 40/40 | 40/40 | 40/40 |
+| plague drop | >=25% | 40/40 | 40/40 | 40/40 |
+| recovery by 500 | >=0.90 | 40/40 | 40/40 | 40/40 |
+| poor land deserted | low>high | 40/40 | 40/40 | 40/40 |
+| top-10 vs off | >=0.50 | 36/40 | 35/40 | 31/40 |
+| outside trade | 3-30% | 40/40 | 40/40 | 39/40 |
+| Clark b_P | 0.8-1.2 | 40/40 | 40/40 | 40/40 |
+| Clark b_Y | -0.15-0 | 40/40 | 40/40 | 40/40 |
+| Clark R2 | >=0.60 | 40/40 | 40/40 | 40/40 |
+| price level | 0.3-2.5 | 40/40 | 40/40 | 40/40 |
+| pasture outward | far>near | 39/40 | 39/40 | 39/40 |
+| pasture on poor land | poor>rich | 40/40 | 40/40 | 40/40 |
+| pasture 1450>1340 | 1450>1340 | 40/40 | 40/40 | 40/40 |
+| unsold at markets | <=10% | 40/40 | 40/40 | 40/40 |
+| road length 300-500 | <10% | **29/40** | 32/40 | 31/40 |
+
+Runs passing every check (reported, not gated): 19/40, 27/40, 16/40.

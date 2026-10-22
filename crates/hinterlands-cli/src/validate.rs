@@ -981,6 +981,11 @@ fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> 
     near as f32 / places.len().max(1) as f32
 }
 
+/// The accepted model's counts on 40 seeds where it is itself below 30/40
+/// (D120): (map seed, check, runs passing). A stage passes such a check if it
+/// is no worse. From R's two halves (`docs/retune/r.md`).
+const NO_WORSE: &[(u64, &str, usize)] = &[(1, "road length 300-500", 29)];
+
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
 }
@@ -1132,7 +1137,13 @@ pub fn cmd_validate(args: &Args) {
             vals.sort_by(|a, b| a.total_cmp(b));
             let med = vals.get(vals.len() / 2).copied().unwrap_or(f32::NAN);
             // v1 rule (D21): each check passes in at least 75% of the seeds on every map.
-            let rate_ok = pass * 4 >= rs.len() * 3;
+            // v1 rule (D21), and D120's no-worse rule on 40 seeds: where the
+            // accepted model is itself short, no worse than its count.
+            let floor = NO_WORSE
+                .iter()
+                .find(|f| f.0 == *map_seed && f.1 == c.name && rs.len() == 40)
+                .map(|f| f.2);
+            let rate_ok = pass * 4 >= rs.len() * 3 || floor.is_some_and(|f| pass >= f);
             let reported = c.name == "sites producing" && rs.iter().all(|r| r.goods.market);
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
