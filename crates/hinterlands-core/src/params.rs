@@ -228,6 +228,7 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
+        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio above which a shortfall stops growth but sheds nobody (D101)";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Outside" => {
@@ -286,7 +287,9 @@ define_params! {
         events_mode: u32 = 1, [0, 2], "Shocks: 0 off, 1 historical calendar (year 0 = 1100), 2 random (D57)";
         famine_year: u32 = 215, [0, 2000], "Year the Great Famine begins (historical; 1315)";
         famine_years: u32 = 3, [1, 10], "Years a famine lasts";
-        famine_loss: f32 = 0.4, [0, 1], "Share of every cell's yield lost in a famine year";
+        famine_loss: f32 = 0.4, [0, 1], "Share of every cell's yield lost in a famine's first year (1315: −40%)";
+        famine_loss_2: f32 = 0.6, [0, 1], "Share lost in its second year (1316: −60%; D101)";
+        famine_loss_3: f32 = 0.1, [0, 1], "Share lost in its third and later years (1317: −10%; D101)";
         plague_year: u32 = 248, [0, 2000], "Year of the Black Death (historical; 1348)";
         plague_recur_1: u32 = 261, [0, 2000], "First recurrence (historical; 1361)";
         plague_recur_2: u32 = 269, [0, 2000], "Second recurrence (historical; 1369)";

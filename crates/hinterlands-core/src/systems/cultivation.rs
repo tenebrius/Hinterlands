@@ -20,7 +20,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
     let ppc = p.people_per_prime_cell;
     let famine = state.year < state.famine_until;
-    let famine_loss = state.famine_loss;
+    // The famine follows the record, 1315–17 (D101): its first year takes
+    // the event's loss, the second `famine_loss_2`, later ones `famine_loss_3`.
+    let famine_loss = match (state.year + p.famine_years).saturating_sub(state.famine_until) {
+        0 => state.famine_loss,
+        1 => p.famine_loss_2,
+        _ => p.famine_loss_3,
+    };
     let State {
         settlements,
         owner,

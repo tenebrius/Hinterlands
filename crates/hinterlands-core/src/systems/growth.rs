@@ -52,9 +52,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         };
         if p.shed_unfed {
             // D34: an underfed place sheds a third of the people its food does
-            // not feed each year; the leavers are lost.
-            let loss = if ratio < 1.0 {
-                (1.0 - ratio) * s.pop / 3.0
+            // not feed each year; the leavers are lost. People endure a
+            // moderate shortfall: only the gap below `hunger_tolerance` sheds
+            // (D101; Livi-Bacci 1991).
+            let tol = p.hunger_tolerance.min(1.0);
+            let loss = if ratio < tol {
+                (tol - ratio) * s.pop / 3.0
             } else {
                 0.0
             };
