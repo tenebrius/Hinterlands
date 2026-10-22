@@ -75,13 +75,14 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v7 marketplaces planned** (`docs/foundation.md`, "v7 plan"): grain sold through markets by seller routing (which keeps the RW feedback), bought by price, market size on turnover (RW's D), market people fed by real income (tolls, rents, fees, goods). M0 zero-risk diagnostic approved (turnover concentration against market_in; town break-even toll); then M1 note, M2 build, M3 stores trading.
 - **v7 M0 passed (8c6aa27, D87):** turnover ranks like market_in (Spearman 0.96–0.98); 91–93% of towns over 2,000 break even at a toll ≤ 10%. Rents carry the towns (consumer city). M1 note briefed: a two-level market (villages ↔ their market by gravity; markets ↔ markets by price), W on turnover, market people fed from income, no establishment purchase.
 - **v7 M1 note approved (5420934, D88):** two-level market; rent grain is the lords' income and their households buy it; market_min 50; deficit villages pay from own sales; village stores and relief stay on in M2, market stores in M3. M2 build approved: untuned run first (pre-registered: hierarchy checks pass on ≥ 2 maps), one tuning round, gate with v6 checks plus Clark per seed, then stop.
+- **v7 M2 first build failed (20db863, D89):** W on grain sold kills the feedback. Decided D90 (my error, rule 9): W grows on grain arriving (food supply draws people); K re-read as consumption (1.2–2.0), tuned with market_share; new gated waste check (unsold ≤ 10% of arrivals after year 200) separates this from P3. Re-run untuned at K 1.5 with market_share × 1.5/3.39, then one tuning round, then the gate.
 - **v6 markets decided (D70, number reserved by me):** Divish's proposal (`docs/proposals/markets.md`, through a third session, `session_01MrMcFJCCYku1zTBbBkDVfp`) accepted in staged form after the v5 release: entropy-regularised spatial price equilibrium in grain units; W kept as a market premium; Clark checks reported at S0 and gated at S2; S0 (shadow prices, no feedback) only, then stop. S4–S5 (goods in use, coin and mayors) are not scheduled. "Never planned" now names wages, labour markets, floating money and agents.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
 
-Eight of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+Nine of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
 
 1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
 2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
@@ -95,6 +96,8 @@ Eight of my specification choices have been wrong, all caught by the real-terrai
 7. **Goods were sold whether wanted or not.** I specified goods trade as the mirror of the grain step (producer as origin), so salterns earned at their cap on salt nobody needed and became the largest towns. Goods follow the shopping model (buyer as origin, demand fixed). Rule: for each flow, ask who is obliged to trade, the seller or the buyer, and put the origin there.
 
 8. **I scheduled local weather before the buffers that absorb it,** and then before checking the growth rule itself. Zero-mean harvest noise, with losses asymmetric (shedding in bad years, capped growth in good ones), cut map 1's population at year 200 to a third and failed three checks. Four gates later the deeper cause was the growth rule: capped gains and uncapped losses turn any variance into a drain. Rules: add a source of variance only after the mechanisms that absorb it exist, and first test every response it passes through for asymmetry.
+
+9. **I forbade the right quantity because it looked like an old fault.** M2 counted only grain sold, because grain arriving resembled P3. But arriving grain is food supply, and food supply is what makes a town grow. P3's fault was permanent waste, not counting arrivals. Rule: before ruling a quantity out, say what it means economically, and test the fault itself (here: waste ≤ 10%) instead of banning the quantity.
 
 Judgement rules that now stand:
 
@@ -137,4 +140,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — v7 M1 note approved; M2 build under way.
+Last updated: 2026-10-22 — v7 M2: growth on arriving grain with a waste check (D90).

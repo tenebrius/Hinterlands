@@ -775,6 +775,18 @@ Then stop for review.
 - **Reported:** as in the note, plus the share of towns over 2,000 whose food is fully paid.
 - **Stop** and report either way. If it passes, `marketplaces` becomes the default and the gravity grain push is retired.
 
+**M2 first build (20db863, D89) and the designer's decision (D90).** No towns form, untuned or tuned (largest place 1,371–2,475 against 14,537). The implementer's diagnosis is right. With W growing on grain sold, and grain at a market bought almost only by its own market people, turnover scales with W itself and the feedback dies. The error is the designer's. M0 measured grain arriving, and the brief then said only grain sold may count. I treated arriving grain as P3 in disguise without asking what it means economically.
+
+**What arriving grain means.** Grain brought to a market and not yet eaten is a supply of food there. When a market has more grain than its people eat, food is cheap and people come: that is the Malthusian draw of a town with plenty. The newcomers then eat the grain. This is how a market town grows on its trade in a real economy, and it is what the Rihll–Wilson `D_j` stands for. P3 was something else. v6 wasted about 70% of what arrived (K 3.39 per market person against 1–1.2 eaten) and still counted all of it, so the waste was permanent.
+
+**Decided: option A, with K re-read as consumption and waste made a gated check.**
+1. **W follows `ε(A_j − K W_j)`,** with `A_j` the grain arriving at market j (rent plus surplus, on W2's ten-year average). That is M0's quantity, which ranks like `market_in`.
+2. **K becomes the grain a market person and their share of the town's establishment consume,** within 1.2–2.0: food, ale, fodder and the lords' households. It is tuned together with `market_share` (the rent share), so that the equilibrium market size, `A_j / K`, stays close to v6. M0 says rents carry the towns, so a lower rent share with a lower K should keep the hierarchy.
+3. **Market people buy and eat what arrives,** at the market price, within their income, as built. Grain still unsold at the floor is lost this year and reported. It is the transient while W catches up, not a permanent sink.
+4. **A new gated check separates this from P3:** after year 200, grain unsold at markets is at most 10% of what arrives (v6 burned about 70%). If the hierarchy holds only with large waste, this design has failed, and we stop.
+
+**Re-run:** first untuned at K 1.5 with `market_share` scaled by 1.5/3.39. Pre-registered: the hierarchy checks pass on at least two maps, and unsold is at most 10%. Then one tuning round over K (1.2–2.0), `market_share`, toll and `market_min`, then the full M2 gate plus the waste check. Stop and report either way. Option B (stores first) is declined: it delays the same problem. Option C is declined: the owner has ruled that v6 is not the end.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
