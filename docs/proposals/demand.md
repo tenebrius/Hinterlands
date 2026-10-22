@@ -4,7 +4,7 @@ From the owner (Divish), drafted with the proposal session on 22 October 2026, f
 
 ## 1. What is asked
 
-The designer is asked to decide whether demand for goods gets a physical basis (replacement of the stocks people, fields, workshops and buildings hold), whether processing chains come in where a separate trade sits between the raw material and its user, and, if so, in what order. Section 8 lists the decisions, with the owner's position where he has taken one.
+The designer is asked to decide whether demand for goods gets a physical basis (replacement of the stocks people, fields, workshops and buildings hold), whether processing chains come in where a separate trade sits between the raw material and its user, and, if so, in what order. Section 8 lists the decisions, with the owner's position where one has been taken.
 
 It stays inside the standing exclusions: no wages, no labour market, no agents, no floating money.
 
