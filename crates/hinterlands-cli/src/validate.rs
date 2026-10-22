@@ -1047,16 +1047,16 @@ pub fn cmd_validate(args: &Args) {
     let mut results = results.into_inner().unwrap();
     results.sort_by_key(|r| (r.map_seed, r.sim_seed));
 
-    // Determinism: rerun the canonical run of the first map.
-    let det = run_one(&terrains[0].1, &params, terrains[0].0, 1, years);
+    // Determinism: rerun the first run of the first map.
+    let det = run_one(&terrains[0].1, &params, terrains[0].0, first_seed, years);
     let det_ok = results
         .iter()
-        .find(|r| r.map_seed == terrains[0].0 && r.sim_seed == 1)
+        .find(|r| r.map_seed == terrains[0].0 && r.sim_seed == first_seed)
         .is_some_and(|r| r.hash == det.hash);
 
     let mut all_ok = det_ok;
     println!(
-        "determinism (map {}, seed 1): {}",
+        "determinism (map {}, seed {first_seed}): {}",
         terrains[0].0,
         if det_ok { "ok" } else { "FAIL" }
     );

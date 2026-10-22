@@ -615,3 +615,13 @@ Development stops here, by the owner's decision (D117).
   - the famine dip (0.19 against a target of 0.10–0.16);
   - store carry-over peaking at 0.44–0.45 of a harvest;
   - the murrain figures (approximate, after Slavin).
+
+## R — The robustness re-tune (D119)
+- **Diagnosis at the current setting:** road length 300–500, over 2,000, top-10 vs off and market spacing bind. Runs passing every check: 8 / 13 / 8.
+- **Searched:** a one-lever screen (24 settings), then a joint grid (`k_maint` × `road_keep_load`, 8 more), each on 3 maps × seeds 1–20.
+- **Best feasible:** `k_maint` 1.2 (13 / 14 / 9; minimum 9, total 36).
+- **Confirmation on seeds 21–40:** `k_maint` 1.2 minimum 7, total 29, against the current setting's minimum 8, total 33. **The current setting is kept.**
+- **Pre-registered** (≥ 12 on every map on seeds 1–20): **not met.**
+- **On fresh seeds the current setting has two gated checks at 14/20:** road length on map 1 and over 2,000 on map 3. The gate's margin is about one seed in twenty.
+- **Golden unchanged, `65aee272c30de1f9`.**
+- **Details:** `docs/retune/r.md`.
