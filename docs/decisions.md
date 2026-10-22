@@ -659,3 +659,22 @@ Kind: model mechanism behind a switch; stopped.
 - **Cause.** Every village's own sales arrive at its own market, so W reaches the whole population everywhere. The farmers vanish, and market people cannot buy the harvest on rent, toll and fees alone.
 - **Options** are in `docs/market/m2.md`.
 Kind: model mechanism behind a switch; stopped.
+
+## D93 — v7 M2: marketplaces in the core; the gate passes
+- **The model** (D88–D92, with two readings made in building):
+  - the gravity grain push is retired, and grain is sold at marketplaces;
+  - W grows on grain drawn from other places, on the ten-year average;
+  - the labour guard counts the farmers the fields are sized to feed, yield-weighted;
+  - fields feed the farmers;
+  - market people consume K per head, eating first up to `food_cap`, with the rest the establishment's;
+  - their budget is rents, a toll on turnover and fees.
+- **Tuning** (one round, recorded): K 1.3, `market_share` 0.4, toll 0.10, `market_min` 100.
+- **Gate: PASSED** (Historical, 20 seeds a map):
+  - every v6 check;
+  - Clark per seed: `b_P` 1.02–1.04, `b_Y` −0.023 to −0.037, R² 0.80–0.90, in 18–20/20;
+  - unsold at markets 1.4–2.1% of arrivals.
+
+  The pre-registered untuned run failed (no towns over 2,000, unsold 23–29%).
+- **Golden** `835e8695b67538f7`; wasm 35.7 ms/year, not gated. Earlier versions are reproducible from commit `4052d01` (v6), not from the version files.
+- **Details:** `docs/market/m2.md`, "Third build".
+Kind: model mechanism (owner's direction D91, designer's decisions D90, D92).

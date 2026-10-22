@@ -459,3 +459,18 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - **v6 is the model of commit `4052d01`**, golden `1faa5c46e3908124`: S1 goods by price, S2′ relief, S3 stores, and W2 (local harvests with the smoothed pull).
 - **Reproducing an earlier version from now on:** check out `4052d01` and use its version files. From v7 the marketplace replaces the gravity grain push in the core, and the old version files no longer reproduce.
 - **The git tag `v6`** was made locally, but this environment's git proxy refuses tag pushes (HTTP 403). The tag can be pushed from a normal clone with `git tag -a v6 4052d01 && git push origin v6`.
+
+## v7 M2 — Marketplaces in the core (D88–D93)
+- **The model:** grain is sold at marketplaces in place of the gravity push. W grows on grain drawn from other places, market people buy within rents, toll and fees, and large markets price grain between them.
+- **Defaults:** K 1.3, `market_share` 0.4, `toll` 0.10, `market_min` 100.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - every v6 check;
+  - Clark per seed: `b_P` 1.02–1.04, `b_Y` −0.024 to −0.033 (medians), R² 0.86–0.90;
+  - unsold at markets 1.4–2.1%.
+  - Runs passing every check: 13 / 15 / 16.
+- **Golden `835e8695b67538f7`.** Release wasm gives the same hash at 35.7 ms/year (not gated, D91).
+- **Kent** (`docs/real/kent-v7/scores.md`):
+  - largest place near Gravesend in 12 seeds, with a share of 0.25;
+  - on-road share 29%, and 43% for places of 1,000 or more;
+  - inland places over 500: 8 per seed at 11.7 km.
+- **Reproducing v6 and earlier:** check out commit `4052d01`.

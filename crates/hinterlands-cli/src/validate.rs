@@ -59,6 +59,10 @@ pub struct RunResult {
     /// v7 (D90): grain unsold at markets as a share of grain arriving, after
     /// year 200; NaN without marketplaces.
     pub waste: f32,
+    /// v7 (D88): Clark's regressions on the market grain prices, years
+    /// 100 to the end: `b_P`, `b_Y`, R² of the regional price; NaN when grain
+    /// is the S2 record.
+    pub clark: (f32, f32, f32),
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -312,6 +316,22 @@ pub const CHECKS: &[Check] = &[
         target: "3-20%",
         ok: |r| r.outside_share.is_nan() || (0.03..=0.20).contains(&r.outside_share),
     },
+    // v7 gate (D88): Clark (1999) on the market grain prices.
+    Check {
+        name: "Clark b_P",
+        target: "0.8-1.2",
+        ok: |r| r.clark.0.is_nan() || (0.8..=1.2).contains(&r.clark.0),
+    },
+    Check {
+        name: "Clark b_Y",
+        target: "-0.15-0",
+        ok: |r| r.clark.1.is_nan() || (-0.15..=0.0).contains(&r.clark.1),
+    },
+    Check {
+        name: "Clark R2",
+        target: ">=0.60",
+        ok: |r| r.clark.2.is_nan() || r.clark.2 >= 0.6,
+    },
     // v7 gate (D90; passes trivially without marketplaces).
     Check {
         name: "unsold at markets",
@@ -374,6 +394,7 @@ pub fn run_one(
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
     let mut waste_acc = (0f32, 0f32);
+    let mut clark_rows: Vec<(u32, u32, f32, f32, f32)> = Vec::new();
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -391,6 +412,23 @@ pub fn run_one(
         sim.step(1);
         if sim.state.year == 200 {
             pop_200 = sim.state.total_pop();
+        }
+        if !params.market_grain && sim.state.year >= 100 {
+            let y = sim.state.year;
+            let rows: Vec<(u32, f32, f32, f32)> = sim
+                .state
+                .settlements
+                .iter()
+                .filter(|s| s.price[0] > 0.0 && !s.fields.is_empty() && s.food_prod > 0.0)
+                .map(|s| (s.id, s.price[0], s.food_prod / s.fields.len() as f32, s.pop))
+                .collect();
+            let wsum: f32 = rows.iter().map(|r| r.3).sum();
+            if wsum > 0.0 {
+                let regional = rows.iter().map(|r| r.1 * r.3).sum::<f32>() / wsum;
+                for (id, pr, yl, _) in rows {
+                    clark_rows.push((id, y, pr.ln(), regional.ln(), yl.ln()));
+                }
+            }
         }
         if !params.market_grain && sim.state.year > 200 {
             waste_acc.0 += sim.state.grain_stats.unsold;
@@ -522,7 +560,13 @@ pub fn run_one(
             at(400),
         ]
     });
+    let clark = if params.market_grain {
+        (f32::NAN, f32::NAN, f32::NAN)
+    } else {
+        clark(&clark_rows)
+    };
     RunResult {
+        clark,
         waste: if !params.market_grain {
             waste_acc.0 / waste_acc.1.max(1.0)
         } else {
@@ -814,6 +858,9 @@ pub fn cmd_validate(args: &Args) {
                     "road length 300-500" => r.road_change,
                     "outside trade" => r.outside_share,
                     "unsold at markets" => r.waste,
+                    "Clark b_P" => r.clark.0,
+                    "Clark b_Y" => r.clark.1,
+                    "Clark R2" => r.clark.2,
                     "plague drop" => r.shock.as_ref().map_or(f32::NAN, |s| s.plague_drop),
                     "recovery by 500" => r.shock.as_ref().map_or(f32::NAN, |s| s.recovery),
                     "poor land deserted" => r
@@ -1121,4 +1168,55 @@ pub fn top10_overlap(t: &hinterlands_core::Terrain, rs: &[&RunResult]) -> f32 {
 /// Whether these runs had goods on (v2 measures are then reported).
 fn params_goods(rs: &[&RunResult]) -> bool {
     rs.iter().any(|r| r.goods.payment_share.is_finite())
+}
+
+/// Clark (1999), as `tools/market/clark.py`: within-settlement OLS of the log
+/// price on the log regional price and the log yield (`b_P`, `b_Y`), and the
+/// pooled R² of the log price on the log regional price. Rows are
+/// (settlement, year, ln p, ln P, ln Y).
+fn clark(rows: &[(u32, u32, f32, f32, f32)]) -> (f32, f32, f32) {
+    use std::collections::BTreeMap;
+    let mut by: BTreeMap<u32, Vec<(f64, f64, f64)>> = BTreeMap::new();
+    for &(id, _, lp, lpr, ly) in rows {
+        by.entry(id)
+            .or_default()
+            .push((lp as f64, lpr as f64, ly as f64));
+    }
+    let (mut saa, mut sab, mut sbb, mut say, mut sby) = (0f64, 0f64, 0f64, 0f64, 0f64);
+    for v in by.values().filter(|v| v.len() >= 3) {
+        let n = v.len() as f64;
+        let my = v.iter().map(|r| r.0).sum::<f64>() / n;
+        let ma = v.iter().map(|r| r.1).sum::<f64>() / n;
+        let mb = v.iter().map(|r| r.2).sum::<f64>() / n;
+        for r in v {
+            let (dy, da, db) = (r.0 - my, r.1 - ma, r.2 - mb);
+            saa += da * da;
+            sab += da * db;
+            sbb += db * db;
+            say += da * dy;
+            sby += db * dy;
+        }
+    }
+    let det = saa * sbb - sab * sab;
+    let (bp, by_) = if det.abs() < 1e-12 {
+        (f64::NAN, f64::NAN)
+    } else {
+        ((say * sbb - sby * sab) / det, (saa * sby - sab * say) / det)
+    };
+    let n = rows.len() as f64;
+    let mx = rows.iter().map(|r| r.3 as f64).sum::<f64>() / n.max(1.0);
+    let my = rows.iter().map(|r| r.2 as f64).sum::<f64>() / n.max(1.0);
+    let (mut sxy, mut sxx, mut syy) = (0f64, 0f64, 0f64);
+    for r in rows {
+        let (dx, dy) = (r.3 as f64 - mx, r.2 as f64 - my);
+        sxy += dx * dy;
+        sxx += dx * dx;
+        syy += dy * dy;
+    }
+    let r2 = if sxx > 0.0 && syy > 0.0 {
+        sxy * sxy / (sxx * syy)
+    } else {
+        f64::NAN
+    };
+    (bp as f32, by_ as f32, r2 as f32)
 }

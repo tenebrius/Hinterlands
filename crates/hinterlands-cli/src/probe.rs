@@ -485,8 +485,8 @@ pub fn cmd_prices(args: &Args) {
             let gs = sim.state.grain_stats;
             r[0] = gs.residual;
             println!(
-                "grain {seed} {y} residual {:.4} passes {} unsold {:.0} harvest {:.0} capped {} arrived {:.0} local {:.0} markets {}",
-                gs.residual, gs.passes, gs.unsold, gs.harvest, gs.capped, gs.arrived, gs.unsold_local, gs.markets
+                "grain {seed} {y} residual {:.4} passes {} unsold {:.0} harvest {:.0} capped {} arrived {:.0} local {:.0} markets {} toll_share {:.3}",
+                gs.residual, gs.passes, gs.unsold, gs.harvest, gs.capped, gs.arrived, gs.unsold_local, gs.markets, gs.toll_share
             );
         }
         let u = sim.state.market_unmet;

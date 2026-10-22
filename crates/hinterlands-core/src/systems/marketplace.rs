@@ -463,8 +463,10 @@ pub fn trade(
     }
     let mut capped_n = 0u32;
     for (j, s) in state.settlements.iter_mut().enumerate() {
-        // The people eat one K-th; the rest is the establishment's use.
-        food_in[j] += eaten_w[j] / p.k_maint.max(1.0);
+        // The people eat first, up to their growth target; the rest is the
+        // establishment's use (D90).
+        let people = s.market.max(0.0).min(s.pop) * fpp;
+        food_in[j] += eaten_w[j].min(cap * people);
         // W grows on the grain brought to its market from other places
         // (D90, D92): a central place's draw from its hinterland.
         market_in[j] += drawn[j];
@@ -484,6 +486,15 @@ pub fn trade(
         arrived: total_t,
         unsold_local,
         markets: nb as u32,
+        toll_share: {
+            let tolls: f32 = nodes_settle.iter().map(|&j| p.toll * turnover[j]).sum();
+            let all: f32 = nodes_settle.iter().map(|&j| budget[j].max(0.0)).sum();
+            if all > 0.0 {
+                tolls / all
+            } else {
+                f32::NAN
+            }
+        },
     };
 }
 

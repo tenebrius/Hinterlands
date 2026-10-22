@@ -34,6 +34,9 @@ pub struct GrainStats {
     pub unsold_local: f32,
     #[serde(default)]
     pub markets: u32,
+    /// The toll's share of the large markets' food budgets (v7).
+    #[serde(default)]
+    pub toll_share: f32,
 }
 
 /// The outside port a partner id names, if it is one.

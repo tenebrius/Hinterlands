@@ -1,14 +1,14 @@
-//! Gravity trade (Wilson 1970; Huff 1964; Barjamovic et al. 2019), in the
-//! Rihll–Wilson form: each settlement sends a fixed marketed share of its harvest,
-//! plus its resource output, to markets in proportion to
-//! `W_j^alpha * exp(-beta * c_ij)`, where `W_j` is the non-farming population, its own market included with weight `home_weight` (D13).
-//! With `outside_ports` (v5, D64) ports at the open-sea edges buy a fixed amount
-//! of grain and are the only sellers of imports, both by the shopping model;
-//! the grain leaves the map along the stored paths.
-//! Food arrives less a loss per unit cost. Flows are assigned to the stored
-//! least-cost paths, giving the load on each cell and the route junctions (hubs).
-//! Writes: flows, cell_load, hub, trade_in, food_in, food_out, through, market_in,
-//! transship, goods_in, sites' sold.
+//! Trade (Wilson 1970; Huff 1964; Rihll & Wilson 1987). Grain is sold at
+//! marketplaces (v7, D88–D93; `marketplace.rs`): each place's rent and surplus
+//! go to markets in proportion to `W_j^alpha * exp(-beta * c_ij)`, its own
+//! market with weight `home_weight` (D13), and large markets price grain
+//! between them; the outside ports buy there (v5, D64). Goods trade by the
+//! price equilibrium (S1, D71). With `market_grain` grain trades by the S2
+//! equilibrium instead (the D78 record). Flows are assigned to the stored
+//! least-cost paths, giving the load on each cell and the route junctions
+//! (hubs). After trade, places in deficit draw on stores and on partners'
+//! surplus (S2′, S3). Writes: flows, cell_load, hub, trade_in, food_in,
+//! food_out, through, market_in, transship, goods_in, sites' sold, store.
 
 use crate::cost::{back_dir, step_dir};
 use crate::params::Params;
