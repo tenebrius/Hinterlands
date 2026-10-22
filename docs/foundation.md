@@ -980,6 +980,28 @@ Decided by the designer on 22 October 2026, on the owner's proposal `docs/propos
 
 Report with the sourced parameter table, then stop.
 
+**L0 result (bf28f36, `docs/wool/l0.md`) and the L1 decisions (D107).**
+- **The parameters are sourced:** sack 364 lb, stocking about 1.5 sheep an acre, fleece 1.4–1.8 lb, wheat about 0.60 s a bushel, and Lloyd's 1294 mean of £5.02 a sack (best abbey wools £8.80).
+- **Under A, the limit on pasture is labour, not price,** and pasture doubles after 1348 (36 → 67 cells; Kent 28 → 75).
+- **A as written puts pasture inward,** because it took free cells nearest first.
+- **B has von Thünen's shape but takes 45–103% of the towns' grain,** so B's condition is not met.
+- **Clark's relative prices** (wool down about 25% against wheat after 1350) say the turn to grass came from labour, not price, which supports A.
+
+Decided for L1:
+1. **Option A, with free cells taken in order of lowest arable rent.** The poorest and farthest land goes to grass first, which is von Thünen's ordering applied to spare land.
+2. **`rho_wool` = 50,** as sourced (wool about 50× wheat by weight). The proposal's 5 was a guess.
+3. **Wool price £5 a sack** (Lloyd's 1294 mean) as the default for a generic English region. £9–10 (Clark, better wools) is reported alongside.
+4. **`pasture_labour` 5 people a cell, recorded as a calibration.** It is consistent with one shepherd's household per flock of a few hundred sheep on a 1 km² cell (about 370 sheep at 1.5 an acre), but not sourced in absolute.
+5. **L1 gate** as D105:
+   - every v7 check, including the price band;
+   - pasture outward and on poor land;
+   - pasture share in 1450 above 1340.
+6. **Reported:**
+   - wool's share of coin, which L0 puts at 39–45% before 1348 against the expected half, and 57–62% after;
+   - W with wool;
+   - Kent: Downs and Marsh against the Weald.
+7. **In the core, no switch** (D91). Iterate as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
