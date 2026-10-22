@@ -301,6 +301,9 @@ define_params! {
         plague_year: u32 = 248, [0, 2000], "Year of the Black Death (historical; 1348)";
         plague_recur_1: u32 = 261, [0, 2000], "First recurrence (historical; 1361)";
         plague_recur_2: u32 = 269, [0, 2000], "Second recurrence (historical; 1369)";
+        plague_later: bool = true, [0, 1], "Hatcher's later national outbreaks, 1375-1479, in the Historical calendar (D108)";
+        plague_later_first: f32 = 0.10, [0, 0.5], "Mortality of the first later outbreak (1375; D108)";
+        plague_later_last: f32 = 0.06, [0, 0.5], "Mortality of the last later outbreak (1479; D108)";
         plague_recur_share: f32 = 0.3333333, [0, 1], "Mortality of a recurrence as a share of the first";
         plague_mortality: f32 = 0.4, [0, 0.95], "Mean share of each settlement's people a plague kills";
         plague_spread: f32 = 0.1, [0, 0.5], "Half-width of the uniform spread of plague mortality between settlements";

@@ -16,6 +16,11 @@ use crate::terrain::Terrain;
 use crate::Rng;
 use rand::Rng as _;
 
+/// The national plague outbreaks after 1369 (D108; Hatcher 1977, approximate:
+/// the designer's list, not checked against the book), in years AD. They are
+/// placed relative to `plague_year` (1348).
+pub const LATER_PLAGUES: [u32; 10] = [1375, 1390, 1400, 1407, 1413, 1434, 1439, 1464, 1471, 1479];
+
 pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     let y = state.year;
     let (famine, plague) = match p.events_mode {
@@ -24,6 +29,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
                 Some(p.plague_mortality)
             } else if y == p.plague_recur_1 || y == p.plague_recur_2 {
                 Some(p.plague_mortality * p.plague_recur_share)
+            } else if let Some(k) = LATER_PLAGUES
+                .iter()
+                .position(|&ad| p.plague_later && ad + p.plague_year == 1348 + y)
+            {
+                // Mortality falls from the first later outbreak to the last.
+                let f = k as f32 / (LATER_PLAGUES.len() - 1).max(1) as f32;
+                Some(p.plague_later_first + (p.plague_later_last - p.plague_later_first) * f)
             } else {
                 None
             };

@@ -2,13 +2,13 @@
 //!
 //! Arable is claimed by need, as before, and has first call on the land: a
 //! grazed cell that cultivation claims stops being pasture. Beyond its arable,
-//! a place grazes free land within its cultivation reach, as many cells as
-//! its farmers can herd once the arable is worked:
-//! `(farmers − arable_labour × fields) / pasture_labour`, per km². It takes
-//! the cells of lowest arable rent first, `yield × (1 − τ c_market)`, so the
-//! poorest and farthest land goes to grass first (von Thünen's order applied
-//! to spare land), and gives up its best-rented pasture first when its people
-//! fall short.
+//! a place grazes the free land within its cultivation reach that is not
+//! worth ploughing at its distance (D108): land whose net arable output,
+//! `yield × ppc × (1 − τ c_market)`, feeds fewer than the `arable_labour` it
+//! would take to work. The poorest and farthest land goes to grass (von
+//! Thünen's order applied to spare land). Its shepherds, `pasture_labour` a
+//! km², come from the place's own people: they are counted with the farmers
+//! in the labour guard (D92).
 //!
 //! A cell carries `sheep_per_acre × fleece_lb` lb of wool a year, sold at the
 //! outside ports at `wool_price_sack` a sack of 364 lb, turned into grain at
@@ -139,30 +139,20 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 if s.price[0] > 0.0 { s.price[0] } else { p.port_world_price },
             )
         };
-        let spare = farmers - p.arable_labour * km2 * fields;
-        let allowed = (spare / (p.pasture_labour * km2)).floor().max(0.0) as usize;
-        let c_mkt = if to_market[i].is_finite() {
-            to_market[i]
-        } else {
-            1.0 / p.market_tau.max(1e-9)
-        };
+        let _ = (farmers, fields);
+        // With no large market in reach the place sells at home.
+        let c_mkt = if to_market[i].is_finite() { to_market[i] } else { 0.0 };
         // Arable rent order: yield net of carriage to market.
         let key = |s: &crate::state::Settlement, c: u32| -> f32 {
             t.food_yield[c as usize] * (1.0 - p.market_tau * (c_mkt + s.reach.cost_to_cell(c as usize))).max(0.0)
         };
         let shepherds = p.pasture_labour * km2 * p.food_per_person * price;
-        if state.settlements[i].pasture.len() > allowed {
-            // Give up the best-rented pasture first.
-            let s = &state.settlements[i];
-            let mut ranked: Vec<(f32, u32)> = s.pasture.iter().map(|&c| (key(s, c), c)).collect();
-            ranked.sort_by(|a, b| b.0.total_cmp(&a.0).then(b.1.cmp(&a.1)));
-            let drop: Vec<u32> = ranked[..s.pasture.len() - allowed].iter().map(|x| x.1).collect();
-            for &c in &drop {
-                state.grazed[c as usize] = NONE;
-            }
-            let grazed = &state.grazed;
-            state.settlements[i].pasture.retain(|&c| grazed[c as usize] == id);
-        } else if state.settlements[i].pasture.len() < allowed {
+        // Land not worth ploughing at its distance: its net arable output
+        // feeds fewer than the people it would take to work it (D108).
+        let not_worth = |s: &crate::state::Settlement, c: u32| -> bool {
+            key(s, c) * p.people_per_prime_cell < p.arable_labour * km2
+        };
+        {
             let s = &state.settlements[i];
             let mut cand: Vec<(f32, u32)> = s
                 .reach
@@ -171,7 +161,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .copied()
                 .filter(|&c| {
                     let ci = c as usize;
-                    t.is_land(ci) && state.owner[ci] == NONE && state.grazed[ci] == NONE && {
+                    t.is_land(ci)
+                        && state.owner[ci] == NONE
+                        && state.grazed[ci] == NONE
+                        && not_worth(s, c)
+                        && {
                         let cp = route_cost + s.reach.cost_to_cell(ci);
                         wool_coin * (1.0 - tau_w * cp).max(0.0) > shepherds
                     }
@@ -179,8 +173,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .map(|c| (key(s, c), c))
                 .collect();
             cand.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
-            let want = allowed - s.pasture.len();
-            let take: Vec<u32> = cand.iter().take(want).map(|x| x.1).collect();
+            let take: Vec<u32> = cand.iter().map(|x| x.1).collect();
             for &c in &take {
                 state.grazed[c as usize] = id;
             }

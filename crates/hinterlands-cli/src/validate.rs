@@ -854,8 +854,10 @@ pub fn run_one(
         },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
+            // Wool is trade with the outside too (D108), in grain units.
+            let w = sim.state.money.wool_in / params.port_world_price.max(1e-6);
             let inflow: f32 = sim.state.settlements.iter().map(|s| s.market_in).sum();
-            (g + i) / inflow.max(1.0)
+            (g + i + w) / (inflow + w).max(1.0)
         } else {
             f32::NAN
         },
