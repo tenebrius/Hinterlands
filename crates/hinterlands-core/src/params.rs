@@ -191,7 +191,7 @@ define_params! {
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
-        shadow_drain: f32 = 0.025, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
+        shadow_drain: f32 = 0.05, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
         drain_radius_km: f32 = 8.0, [0, 40], "Distance, km, within which a much larger neighbour drains a place (with shadow_km, D53)";
         shadow_size_ratio: f32 = 3.0, [1, 20], "A neighbour drains only if this many times larger";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
@@ -228,8 +228,7 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
-        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio below which the year's shortfall sheds people at once (acute hunger, D101, D102)";
-        hunger_years: u32 = 5, [1, 20], "Years over which the food ratio is averaged for growth and chronic shedding (D102; Wrigley & Schofield 1981)";
+        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio above which a shortfall stops growth but sheds nobody (D101, D104)";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Outside" => {
@@ -338,7 +337,7 @@ define_params! {
         road_interval: u32 = 10, [1, 50], "Years between road building steps";
         road_pairs: u32 = 20, [0, 100], "Trading pairs given a road per step (without traffic_roads)";
         traffic_roads: bool = true, [0, 1], "Roads follow traffic: road cells carry a condition that fades where traffic falls (D54)";
-        road_keep_load: f32 = 800.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
+        road_keep_load: f32 = 600.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
         road_decay: f32 = 0.05, [0, 1], "Condition a little-used road cell loses each road step";
         traffic_bridges: bool = true, [0, 1], "A busy road crossing of a river or stream becomes a bridge (D55)";
         bridge_load: f32 = 1600.0, [0, 100000], "Trade value a year over a road crossing that counts towards a bridge";

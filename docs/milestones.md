@@ -505,3 +505,19 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   Carry-over after cheap years is 0.16–0.19 of a harvest, at most 0.27, inside Clark's 40%.
 - **Golden `ff58d1b63e4c56d2`.** Release wasm gives the same hash (`?selftest=500`) at 45.2 ms/year (not gated, D91).
 - **Details:** `docs/market/m3.md`, "Money, second build".
+
+## v7 M4 — Hunger tolerance and the 1315–17 famine (D101–D105)
+- **The model:**
+  - a year's shortfall above `hunger_tolerance` (0.80) stops growth and sheds nobody; below it, a third of the gap below the tolerance sheds;
+  - the famine takes −40%, −60% and −10% in 1315, 1316 and 1317.
+- **Defaults moved:** `hunger_tolerance` 0.80, `famine_loss_2` 0.6, `famine_loss_3` 0.1, `shadow_drain` 0.05, `road_keep_load` 600.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Spacing 17 / 20 / 19 of 20, roads 15 / 17 / 16 of 20.
+  - Clark R² 0.77–0.80 (median).
+  - Price level 20/20 on every map.
+  - Runs passing every check: 8 / 16 / 12.
+- **Pre-registered:**
+  - famine dip 0.17 / 0.17 / 0.18 against 0.10–0.16: **missed**;
+  - population at 200 against no weather 0.85 / 0.85 / 0.90 against ≥ 0.85: met.
+- **Golden `e788381d55fa67d2`.** Release wasm gives the same hash (`?selftest=500`) at 40.8 ms/year (not gated, D91).
+- **Details:** `docs/market/m4.md`.

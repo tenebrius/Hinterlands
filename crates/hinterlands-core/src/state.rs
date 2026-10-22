@@ -205,9 +205,6 @@ pub struct Settlement {
     pub low_years: u32,
     /// Food-driven loss, smoothed over `loss_years`.
     pub smoothed_loss: f32,
-    /// The food of the last `hunger_years` years, oldest first (D102, D103).
-    #[serde(default)]
-    pub recent_food: Vec<f32>,
     /// Cultivated cells in the order they were claimed.
     pub fields: Vec<u32>,
     // Yearly accounts, written by the systems that own them.
@@ -294,7 +291,6 @@ impl Settlement {
             last_fed: year,
             low_years: 0,
             smoothed_loss: 0.0,
-            recent_food: Vec::new(),
             fields: Vec::new(),
             food_prod: 0.0,
             resource_out: 0.0,
