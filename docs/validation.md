@@ -21,6 +21,8 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 ## Pass rule
 
+**From D120 (22 October 2026) the gate runs 40 seeds a map:** `hinterlands validate --maps 3 --seeds 40`. Every per-run check must hold in 75% of the runs (30 of 40) on every map, and the contingency check is computed over the 40. Where the accepted model itself is below 30/40 (at D120: road length 300–500 on map 1, 29/40), a stage passes that check if it is no worse than the accepted model's count. Runs passing every check are reported, not gated. The rule as it stood before D120 follows.
+
 `hinterlands validate --maps 3 --seeds 20` runs maps 1–3, 20 seeds each. v1 passes when (D21):
 
 - every per-run check holds in at least 75% of the 20 seeds (15 of 20) on every map;

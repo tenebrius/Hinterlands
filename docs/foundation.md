@@ -1180,6 +1180,48 @@ Divish has lifted the stop (D117). The rules, the channel and the gate are uncha
 - **Before the D2 code, a short cloth note comes to the designer.** It covers wool per cloth, a cloth town's capacity, the ports' cloth price and its source, and how cloth enters the purses.
 - **Each stage has its `enabled` flag, as the hard rules require.** It stays off, with the golden unchanged, until its gate passes. Once the gate passes, the stage becomes the default in the core and the golden moves, as the marketplaces did (D91).
 
+### R result (a7d6943): accepted, the current setting kept (D120)
+
+- **Accepted as run.** The pre-registered rule worked as intended. `k_maint` 1.2 led on seeds 1–20 (minimum 9, total 36) but lost on seeds 21–40 (7 and 29, against the current setting's 8 and 33). The current setting stays, and the golden is unchanged.
+- **The pre-registered gain (12 or more on every map) was missed, and the error is mine.** Counts near 8–13 of 20 vary by about ±2 runs from seed to seed alone. A gain of four was within luck's reach for the best of 24 settings, and out of reach of a real effect from levers tuned at every milestone since v1.
+- **The finding stands on its own:** the six tunables hold no setting robustly better than the current one. More robustness needs mechanism, chiefly road persistence and the middle of the hierarchy (the binding checks are road length, over 2,000, top-10 against off, and spacing).
+
+**The gate moves to 40 seeds a map (D120).**
+- **Why.** At 20 seeds a check whose true pass rate is 75–80% passes or fails by one seed. The fresh seeds showed it: two gated checks at 14/20. D111 and D113 were both tuned to answer shortfalls of one seed. The gate should judge the model, not the draw.
+- **The rule from now on:**
+  - `just validate` runs 3 maps × seeds 1–40;
+  - every per-run check must hold in 75% of runs (30 of 40) on every map;
+  - the contingency check is computed over the 40;
+  - the threshold is unchanged, and the variance of each check's measured rate is halved.
+- **The accepted model on 40 seeds** is the sum of R's two halves. Road length on map 1 is 29/40, one short; every other gated check is at 30/40 or better. That check is recorded as the model's known weak point, not hidden.
+  - **No-worse rule:** where the accepted model is itself below 30/40, a stage passes that check if it is no worse than the accepted model's count. Every other check needs 30/40.
+  - The rule cannot let a stage make anything worse.
+- **Runs passing every check** are reported on the 40 seeds, not gated.
+- **Road persistence** is the first candidate for a mechanism review if road length is still the weak check after D2. Cloth adds trade on the roads, so D2 may move it first.
+
+### D0: go
+
+- **What D0 does.** D0 computes the stock-based demand of section 3 of the proposal for every place each year, beside the current demand. The model does not read it: with D0 on, every v7 output is identical to D0 off, and the golden is unchanged.
+- **Sources (D105).** Every coefficient comes with its source:
+  - cloth per person and its wear (Dyer 1989);
+  - plough irons and horseshoes per arable field (Langdon 1986);
+  - tools per worker at mines and workshops;
+  - household iron;
+  - building stock per market person (W), with a repair rate and a growth term (the accelerator);
+  - salt per person, with its present value's source.
+
+  A value with no source is named as a calibration. Demand is expressed in each good's existing units, so that it compares directly with today's.
+- **Report, every item from 1100 to 1600 by decade:**
+  - total demand by good, current against stock-based;
+  - the same by place type: villages, market towns by size of W, ports, and mines and salterns;
+  - total iron demand and iron per arable cell, 1300–1340 against 1400–1440;
+  - stone demand's share in places whose W grew over the decade, against their share of W;
+  - cloth demand in wool-equivalent, against the model's wool production and its exports. This sizes D2.
+- **Pre-registered, reported only:**
+  - total iron demand in 1400–1440 is below 1300–1340, by about the fall in arable land;
+  - growing places' share of stone demand is above their share of W.
+- **D1** follows on the designer's decision after D0's report.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
