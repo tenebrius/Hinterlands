@@ -1079,3 +1079,21 @@ pub fn cmd_landuse(args: &Args) {
         println!("{x} {y} {:.1} {:.3} {used}", t.elevation[c], t.food_yield[c]);
     }
 }
+
+/// The log's entries by kind after `--years` (L4 check on chronicle volume).
+pub fn cmd_logkinds(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let mut counts: std::collections::BTreeMap<String, u32> = Default::default();
+    while sim.state.year < years {
+        sim.step(1);
+        for e in &sim.state.log {
+            let k = format!("{:?}", e.kind);
+            let k = k.split([' ', '{', '(']).next().unwrap_or("").to_string();
+            *counts.entry(k).or_default() += 1;
+        }
+    }
+    for (k, n) in counts {
+        println!("{k} {n}");
+    }
+}

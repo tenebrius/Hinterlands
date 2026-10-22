@@ -72,7 +72,20 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         p.wool_fall * (state.year - p.wool_fall_from) as f32
             / (p.wool_fall_to - p.wool_fall_from).max(1) as f32
     };
-    let price_sack = p.wool_price_sack * (1.0 - fall);
+    // The murrain of 1315-22 (L2, D112): flocks cut in the Historical calendar.
+    let since = state.year.wrapping_sub(p.murrain_year);
+    let murrain = if p.murrain && p.events_mode == 1 && state.year >= p.murrain_year {
+        if since < p.murrain_years {
+            p.murrain_loss
+        } else if since < p.murrain_years + p.murrain_late_years {
+            p.murrain_late_loss
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    };
+    let price_sack = p.wool_price_sack * (1.0 - fall) * (1.0 - murrain);
     let wool_coin = acres * p.sheep_per_acre * p.fleece_lb / 364.0 * price_sack * 20.0
         / p.wheat_s_bu.max(1e-6)
         / p.bu_per_person.max(1e-6)
@@ -185,10 +198,31 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .collect();
             cand.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             let take: Vec<u32> = cand.iter().map(|x| x.1).collect();
+            // Old fields (cleared land) going to grass make the chronicle.
+            let old_fields = take
+                .iter()
+                .filter(|&&c| state.forest[c as usize] < p.grass_log_forest)
+                .count() as u32;
             for &c in &take {
                 state.grazed[c as usize] = id;
             }
             state.settlements[i].pasture.extend(take);
+            let quiet = {
+                let g = state.settlements[i].grass_logged;
+                g == 0 || state.year >= g + p.grass_log_gap
+            };
+            if old_fields >= p.grass_log_cells && state.year > 0 && quiet {
+                state.settlements[i].grass_logged = state.year;
+                let s = &state.settlements[i];
+                state.log.push(crate::state::LogEntry {
+                    year: state.year,
+                    settlement: s.id,
+                    name: s.name.clone(),
+                    anchor: s.anchor,
+                    pop: s.pop,
+                    kind: crate::state::LogKind::Grass { cells: old_fields },
+                });
+            }
         }
 
         // The year's clip, sold at the port.
@@ -232,4 +266,23 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         }
     }
     let _ = wool_total;
+    if murrain > 0.0 && since == 0 {
+        // Logged at the place with the most pasture.
+        if let Some(s) = state
+            .settlements
+            .iter()
+            .max_by(|a, b| a.pasture.len().cmp(&b.pasture.len()).then(b.id.cmp(&a.id)))
+            .filter(|s| !s.pasture.is_empty())
+        {
+            let entry = crate::state::LogEntry {
+                year: state.year,
+                settlement: s.id,
+                name: s.name.clone(),
+                anchor: s.anchor,
+                pop: s.pop,
+                kind: crate::state::LogKind::Murrain { loss: murrain },
+            };
+            state.log.push(entry);
+        }
+    }
 }

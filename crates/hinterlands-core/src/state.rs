@@ -271,6 +271,9 @@ pub struct Settlement {
     /// share, tolls and carriage (L1, reported as "W with wool").
     #[serde(default)]
     pub wool_in: f32,
+    /// Year this place last made the chronicle for grass (L4), or 0.
+    #[serde(default)]
+    pub grass_logged: u32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -325,6 +328,7 @@ impl Settlement {
             mpurse: 0.0,
             pasture: Vec::new(),
             wool_in: 0.0,
+            grass_logged: 0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -414,6 +418,14 @@ pub enum LogKind {
     Planted,
     /// Larger ships now sail the coast (v5, D65); not tied to a settlement.
     Ships,
+    /// A place put old fields down to grass this year (L1, L4).
+    Grass {
+        cells: u32,
+    },
+    /// Murrain struck the flocks (L2, D112); logged at the largest grazier.
+    Murrain {
+        loss: f32,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

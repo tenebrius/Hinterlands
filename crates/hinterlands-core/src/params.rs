@@ -232,6 +232,15 @@ define_params! {
         wool_fall: f32 = 0.25, [0, 1], "Fall in the wool price against wheat after the plague (Clark 2004: about a quarter; D109)";
         wool_fall_from: u32 = 250, [0, 2000], "Year the wool price starts to fall (1350; D109)";
         wool_fall_to: u32 = 300, [0, 2000], "Year it reaches its lower level (1400; D109)";
+        murrain: bool = true, [0, 1], "The sheep murrain of 1315-22 in the Historical calendar (L2, D112)";
+        murrain_year: u32 = 215, [0, 2000], "First murrain year (1315)";
+        murrain_loss: f32 = 0.3, [0, 1], "Share of wool lost in the murrain's first years (1315-17; approximate, after Campbell 2000 and Slavin)";
+        murrain_years: u32 = 3, [0, 20], "Years at the first loss";
+        murrain_late_loss: f32 = 0.15, [0, 1], "Share of wool lost in the years after (1318-22; approximate)";
+        murrain_late_years: u32 = 5, [0, 20], "Years at the later loss";
+        grass_log_cells: u32 = 3, [1, 100], "Old fields a place must put to grass in a year to make the chronicle (L4)";
+        grass_log_gap: u32 = 50, [1, 500], "Least years between a place's grass lines in the chronicle (L4)";
+        grass_log_forest: f32 = 0.1, [0, 1], "Forest cover below which a cell counts as an old field (L4)";
         sheep_per_acre: f32 = 1.5, [0, 5], "Sheep a pasture acre carries (Howell; L0)";
         fleece_lb: f32 = 1.5, [0, 5], "Wool a fleece, lb (200-260 fleeces to the sack; L0)";
         wheat_s_bu: f32 = 0.6, [0.1, 5], "Wheat price, shillings a bushel, 1300s (Clark 2004)";
