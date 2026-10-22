@@ -677,7 +677,7 @@ pub fn cmd_money(args: &Args) {
     let years = args.u64("years", 500) as u32;
     let every = args.u64("every", 1) as u32;
     let seed = sim.sim_seed;
-    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold");
+    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped");
     while sim.state.year < years {
         let before = sim.state.money_stock();
         sim.step(1);
@@ -707,7 +707,7 @@ pub fn cmd_money(args: &Args) {
         let m: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
         let gs = st.grain_stats;
         println!(
-            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0}",
+            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {}",
             st.total_pop(),
             after,
             f,
@@ -723,7 +723,8 @@ pub fn cmd_money(args: &Args) {
             sim.params.port_world_price,
             port,
             gs.dearth_bought / gs.dearth_need.max(1e-6),
-            gs.unsold
+            gs.unsold,
+            gs.capped
         );
     }
 }
