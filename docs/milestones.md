@@ -631,3 +631,25 @@ Development stops here, by the owner's decision (D117).
 - **The accepted model's reference** (R's two halves summed) is in `docs/retune/r.md`. Every gated check is at 30/40 or better except road length 300–500 on map 1, at 29/40.
 - **No-worse rule:** where the accepted model is short, a stage passes if it is no worse. In `validate`, `NO_WORSE` holds road length 300–500 on map 1 at 29/40.
 - **Runs passing every check** (reported, not gated): 19 / 27 / 16 of 40.
+
+## D1 — Ports sell iron and salt; demand from stocks (D121)
+- **Step 1 (`port_goods`, today's demand):**
+  - hash `f0bb88df5439f2d9`;
+  - iron from ports 36–58% (map 3 100%), salt 2–37%.
+- **Step 2 (`demand_stocks`):**
+  - salt 15 lb a person (a calibration);
+  - iron from ploughs, households and working sites;
+  - stone from repair plus growth of W;
+  - the D71 iron calibration is retired.
+- **The gate passes, with every check on 40 seeds** (`just validate`, `target/retune/d1_40.txt`):
+  - runs passing every check: 27 / 28 / 17 (reference 19 / 27 / 16);
+  - map 1 road length 32/40, so `NO_WORSE` is not needed.
+- **`demand_stocks` is now the default.** Golden `4a9737eafc305561`, the same in the browser at 47.5 ms a year (`?selftest=500`).
+- **Pre-registered:**
+  - **specialist median under 500:** missed on map 1 (1,009 / 418 / 407);
+  - **town iron price between 1 and parity:** missed narrowly, 1.04–1.06 against 1.003;
+  - **coin:** the coin stock falls 10–25% and wool exports rise 25%, but the price level does not fall;
+  - **outside trade:** inside the band in the medians (0.225 / 0.233 / 0.268; map 3 35/40).
+- **Ports supply** 80–90% of the iron. Their share of the salt rises from 0.12 in 1350 to 0.71 in 1600.
+- **Store carry-over** has fallen to about 0.
+- **Details:** `docs/demand/d1.md`.

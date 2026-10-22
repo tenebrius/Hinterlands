@@ -729,3 +729,20 @@ Kind: tuning (designer's decision D110).
 - **Tried on map 3, per seed** (over 2,000 / spacing): `k_maint` 1.4 (17 / 20), `market_share` 0.32 (19 / 17), `shadow_drain` 0.045 (18 / 19).
 - **Chosen:** the drain, as the smallest change that holds spacing. The gate passes (`docs/wool/l2-l4.md`).
 Kind: tuning (within D110's levers).
+
+## D122 — D1: stock-based demand is the default; the ports sell iron and salt (D121)
+- **Built per D121:**
+  - `port_goods` (ports sell salt and iron at price 1, paid as coin out with imports);
+  - `demand_stocks` (salt, iron and stone from stocks; it also turns on the port supply).
+- **The gate passed on 40 seeds,** so `demand_stocks` is on by default. The D71 iron calibration (`demand_iron` per head) is unused while it is on.
+- **Readings made in building:**
+  - stone growth is W against the previous year's W (`w_last`, written by `goods_trade`);
+  - working sites are those of the holder with output above 0;
+  - arable is the holder's fields × cell area.
+- **Calibrations:**
+  - salt 15 lb a person: no source found, Bridbury 1955 not consulted;
+  - household iron 1 d, site iron 24 d;
+  - the plough-iron part of 36 d a plough;
+  - stone repair 2% a year.
+- **Results:** `docs/demand/d1.md`.
+Kind: model mechanism and default (designer's decision D121).
