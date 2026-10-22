@@ -62,7 +62,18 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let km2 = t.grid.cell_km * t.grid.cell_km;
     let acres = km2 * 247.1;
     // Coin a pasture cell's wool fetches at the port.
-    let wool_coin = acres * p.sheep_per_acre * p.fleece_lb / 364.0 * p.wool_price_sack * 20.0
+    // Wool fell against wheat after the plague, in a straight line from
+    // `wool_fall_from` to `wool_fall_to` (Clark 2004; D109).
+    let fall = if state.year <= p.wool_fall_from {
+        0.0
+    } else if state.year >= p.wool_fall_to {
+        p.wool_fall
+    } else {
+        p.wool_fall * (state.year - p.wool_fall_from) as f32
+            / (p.wool_fall_to - p.wool_fall_from).max(1) as f32
+    };
+    let price_sack = p.wool_price_sack * (1.0 - fall);
+    let wool_coin = acres * p.sheep_per_acre * p.fleece_lb / 364.0 * price_sack * 20.0
         / p.wheat_s_bu.max(1e-6)
         / p.bu_per_person.max(1e-6)
         * p.port_world_price;

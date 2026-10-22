@@ -229,6 +229,9 @@ define_params! {
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
         wool_price_sack: f32 = 5.0, [0, 30], "World price of wool, pounds sterling a sack of 364 lb (Lloyd 1294 mean, D107)";
+        wool_fall: f32 = 0.25, [0, 1], "Fall in the wool price against wheat after the plague (Clark 2004: about a quarter; D109)";
+        wool_fall_from: u32 = 250, [0, 2000], "Year the wool price starts to fall (1350; D109)";
+        wool_fall_to: u32 = 300, [0, 2000], "Year it reaches its lower level (1400; D109)";
         sheep_per_acre: f32 = 1.5, [0, 5], "Sheep a pasture acre carries (Howell; L0)";
         fleece_lb: f32 = 1.5, [0, 5], "Wool a fleece, lb (200-260 fleeces to the sack; L0)";
         wheat_s_bu: f32 = 0.6, [0.1, 5], "Wheat price, shillings a bushel, 1300s (Clark 2004)";
