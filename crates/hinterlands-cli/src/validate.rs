@@ -45,6 +45,9 @@ pub struct RunResult {
     /// v5 (D64): grain bought by the outside ports plus imports sold, as a
     /// share of all gross market inflow, the last year; NaN with ports off.
     pub outside_share: f32,
+    /// Exports a head c. 1300, pence (D126): grain, wool and cloth the ports
+    /// paid for, the mean over years 195-204, against England's about 14 d.
+    pub exports_1300: f32,
     /// S2′ (D80): relief arrived per year, the share of deficit met outside
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
     /// year; `None` with relief off.
@@ -345,10 +348,12 @@ pub const CHECKS: &[Check] = &[
     // v5 gate (D64; passes trivially with outside ports off).
     Check {
         name: "outside trade",
-        target: "3-30%",
+        target: "3-50%",
         // Revised after failure (D110): with wool, the chief export, the
-        // 20% ceiling set for grain and imports alone no longer holds.
-        ok: |r| r.outside_share.is_nan() || (0.03..=0.30).contains(&r.outside_share),
+        // 20% ceiling set for grain and imports alone no longer holds. 50%
+        // from D126: a county-sized region's outside includes the rest of
+        // England; the ceiling guards against an export colony.
+        ok: |r| r.outside_share.is_nan() || (0.03..=0.50).contains(&r.outside_share),
     },
     // v7 gate (D88): Clark (1999) on the market grain prices.
     Check {
@@ -455,6 +460,7 @@ pub fn run_one(
     // Regional stores over need at the end of each year (index = year).
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
+    let mut exports_acc = (0f64, 0f64);
     let mut waste_acc = (0f32, 0f32);
     let mut price_marks = [f32::NAN; 10];
     let mut money_marks = [f32::NAN; 5];
@@ -485,6 +491,14 @@ pub fn run_one(
         sim.step(1);
         if sim.state.year == 200 {
             pop_200 = sim.state.total_pop();
+        }
+        if (195..=204).contains(&sim.state.year) {
+            let l = sim.state.money;
+            let pence = (l.port_in + l.wool_in + l.cloth_in) as f64
+                * (params.wheat_s_bu * 12.0 * params.bu_per_person) as f64
+                / params.port_world_price.max(1e-6) as f64;
+            exports_acc.0 += pence;
+            exports_acc.1 += sim.state.total_pop() as f64;
         }
         if !params.market_grain && sim.state.year >= 100 {
             let y = sim.state.year;
@@ -880,6 +894,11 @@ pub fn run_one(
                 .filter(|id| now.iter().take(10).any(|x| x == *id))
                 .count() as u32;
             (moves.iter().sum::<f32>() / moves.len().max(1) as f32, kept)
+        },
+        exports_1300: if exports_acc.1 > 0.0 {
+            (exports_acc.0 / exports_acc.1) as f32
+        } else {
+            f32::NAN
         },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
@@ -1353,6 +1372,14 @@ pub fn cmd_validate(args: &Args) {
                 med(rs.iter().map(|r| r.top10_churn.0).collect()),
                 med(rs.iter().map(|r| r.top10_churn.1 as f32).collect())
             );
+            println!(
+                "{:<20} {:>12} exports a head c. 1300 (grain, wool, cloth to the ports): median {:.1} d, p10 {:.1}, p90 {:.1} (England about 14 d; D126)",
+                "D126 exports",
+                "(reported)",
+                med(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect()),
+                pct(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect(), 0.1),
+                pct(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect(), 0.9)
+            );
         }
         if rs.iter().any(|r| r.relief.is_some()) {
             let at = |k: usize| {
@@ -1693,4 +1720,13 @@ fn median_of(mut v: Vec<f32>) -> f32 {
     }
     v.sort_by(|a, b| a.total_cmp(b));
     v[v.len() / 2]
+}
+
+/// The `q` quantile of a list (nearest rank); NaN when empty.
+fn pct(mut v: Vec<f32>, q: f32) -> f32 {
+    if v.is_empty() {
+        return f32::NAN;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    v[((v.len() - 1) as f32 * q).round() as usize]
 }
