@@ -874,6 +874,22 @@ D95's pre-registrations stand: famine dip ≤ 0.16, deficit met ≥ 30% in 1315�
 - **Added to the report:** the regional grain price against the world price over time, and coin in and out by channel.
 - **Build into the core** with this change, and iterate as D91 says. The checks are unchanged: the price level stays within 0.4–2.5, and D95's three pre-registrations stand.
 
+**Money, first build (f0566d6, D98) and the designer's decisions (D99).**
+- **Accepted.** Money works: conservation holds exactly for 150 years, unsold grain is 0%, and Clark passes in every seed. Price autocorrelation is 0.48–0.51, Clark's own 0.48, from storage and money alone. D98's three readings are accepted:
+  - ports trade with any market in their reach;
+  - ports buy more below the world price (`port_elast`);
+  - goods are paid from what food leaves.
+- **Misses:** the famine dip is 0.21–0.22 (target ≤ 0.16), and famine deficit met is 0.24–0.27 (target ≥ 0.30). The implementer's finding is right: money moves grain but adds none, so the dip is set by the grain that exists in 1315–17. In dearth, towns outbid villages, because rent grain sells dear and fills the lords' purses.
+
+Answers:
+1. **Farmers' purses: tunable within reason,** `purse_cap` 0.5–2.0 and `purse_loss` 0.05–0.15, since loss now recirculates (D97). This is the implementer's call, recorded.
+2. **What moves the dip: both of the implementer's options, each with historical footing.**
+   - **(a) The establishment gives way first.** The establishment's part of the market people's demand, `(K − 1) W` (malt for ale, fodder, households), gets its own elasticity, `ε_est` 1.5 against food's 0.75. A dearth then turns malt and fodder grain into bread. In dearths, authorities banned or restricted malting to save grain for bread, which is the same response by decree.
+   - **(b) Stores may hold more,** within Clark's evidence: `store_cap` and the holding cost `h` are tunable, provided carry-over after cheap years stays at or below about 40% of a harvest. Report carry-over.
+
+   Then re-run. The dip and deficit targets are design targets, not gates. If principled changes do not reach them, the misses are recorded and M3 goes on, and the targets are never chased by loosening anything else.
+3. **The early price marks: the check is revised, after seeing it fail, so the reason is given.** The values in years 100–150 (0.38–0.43) are not runaway prices. They are the export-parity price of a young region selling most of its grain to the ports, the world price less carriage, which is exactly where Hume's mechanism should put it. The check exists to catch monetary collapse or inflation, so its lower bound becomes **half the world price (0.3)**. A price below that would mean the specie flow had failed. The upper bound stays at 2.5.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
