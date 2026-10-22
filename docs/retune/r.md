@@ -1,9 +1,9 @@
 # R: the robustness re-tune (D119)
 
 ## Diagnosis at the current setting (seeds 1–20)
-- **Map 1:**  runs pass every check. Failing checks (runs failing / of which the only failure): over 2,000 5/3; road length 300-500 5/3; market spacing 3/2; every good worked 1/0; pasture outward 1/0; stability 1/1; top-10 vs off 1/0.
-- **Map 2:**  runs pass every check. Failing checks (runs failing / of which the only failure): road length 300-500 5/3; top-10 vs off 2/2; every good worked 1/0; over 2,000 1/0.
-- **Map 3:**  runs pass every check. Failing checks (runs failing / of which the only failure): top-10 vs off 5/2; over 2,000 4/2; road length 300-500 4/2; stability 2/1; failure rate 1/0; pasture outward 1/0; settlements 1/0.
+- **Map 1:** 8 runs pass every check. Failing checks (runs failing / of which the only failure): over 2,000 5/3; road length 300-500 5/3; market spacing 3/2; every good worked 1/0; pasture outward 1/0; stability 1/1; top-10 vs off 1/0.
+- **Map 2:** 13 runs pass every check. Failing checks (runs failing / of which the only failure): road length 300-500 5/3; top-10 vs off 2/2; every good worked 1/0; over 2,000 1/0.
+- **Map 3:** 8 runs pass every check. Failing checks (runs failing / of which the only failure): top-10 vs off 5/2; over 2,000 4/2; road length 300-500 4/2; stability 2/1; failure rate 1/0; pasture outward 1/0; settlements 1/0.
 
 ## Screen, one lever at a time (seeds 1–20)
 
