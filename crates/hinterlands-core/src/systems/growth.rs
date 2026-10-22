@@ -43,14 +43,15 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             continue;
         }
         // Demographic response follows conditions with a lag (D102; Wrigley &
-        // Schofield 1981): growth and chronic hunger answer the average food
-        // ratio over the last `hunger_years` years.
+        // Schofield 1981): growth and chronic hunger answer the mean food of
+        // the last `hunger_years` years against the people there now (D103),
+        // so a shortfall already shed is not counted again.
         let n = p.hunger_years.max(1) as usize;
-        if s.recent_ratios.len() >= n {
-            s.recent_ratios.drain(..s.recent_ratios.len() + 1 - n);
+        if s.recent_food.len() >= n {
+            s.recent_food.drain(..s.recent_food.len() + 1 - n);
         }
-        s.recent_ratios.push(ratio);
-        let avg = s.recent_ratios.iter().sum::<f32>() / s.recent_ratios.len() as f32;
+        s.recent_food.push(food);
+        let avg = s.recent_food.iter().sum::<f32>() / s.recent_food.len() as f32 / need;
         // Natural term: r_grow at a full surplus, zero when exactly fed, and a
         // shortfall loss spread over `loss_years`.
         let capped = avg.min(p.food_cap);
