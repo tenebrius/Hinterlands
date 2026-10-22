@@ -4,7 +4,7 @@ A self-running regional simulator. Given a map with terrain, water and resources
 
 The brief is [`docs/foundation.md`](docs/foundation.md). Departures from it are in [`docs/decisions.md`](docs/decisions.md), the validation definitions in [`docs/validation.md`](docs/validation.md), each milestone's numbers in [`docs/milestones.md`](docs/milestones.md), and every parameter in [`docs/parameters.md`](docs/parameters.md).
 
-![Map 1, seed 1, 1600](docs/screenshots/release/map1-1600.png)
+![Map 1, seed 1, 1450](docs/screenshots/v7/map1-1450.png)
 
 ## Running it
 
@@ -25,25 +25,25 @@ In the browser, press **Play**. The **What you are watching** panel says what ea
 
 ## The model in one page
 
-The world is a grid of cells (1 km, 128 × 128 by default), generated from a seed or imported from a real elevation model. It has relief, erosion, drainage with navigable rivers, fords and harbours, soil yield, natural forest, and salt, iron and stone sites. Settlements are points with a population and a market size. Each year runs the systems below in a fixed order, from one seeded random generator, so a run is fixed by its seeds and parameters.
+The world is a grid of cells (1 km, 128 × 128 by default), generated from a seed or imported from a real elevation model. It has relief, erosion, drainage with navigable rivers, fords and harbours, soil yield, natural forest, and salt, iron and stone sites. Settlements are points with a population and a number of market people (W). Each year runs the systems below in a fixed order, from one seeded random generator, so a run is fixed by its seeds and parameters. Prices and money are in grain-value units: one person's grain for a year at price 1.
 
 | Mechanism | What it does | Source |
 | --- | --- | --- |
 | **Travel cost** | Each move costs km-equivalents: land with a slope factor, road, river (down and up), and sea, plus fixed costs to cross a river away from a ford, to board or leave a boat, and to transship at a river mouth. Each place keeps its least-cost paths to the places within reach. | Tobler 1993; ORBIS (Scheidel & Meeks) |
-| **Cultivation** | A place claims free cells nearest first until its harvest, less what it sends to market, feeds it. Fields lose their forest; fuel is cut nearest first; abandoned land regrows. A stream among the fields gives a mill (+3%). | von Thünen 1826; Village Ecodynamics Project |
-| **Production** | Salt works, iron mines and quarries are worked by the place that holds them. Iron burns coppiced charcoal from the holder's woods, capped by regrowth. | Weber 1909 |
-| **Trade** | A fixed share of each harvest goes to markets in proportion to `W^α · exp(−β c)`, W being the market's size. Goods are bought by the shopping model and paid in grain. Flows ride the stored paths, and the places they pass earn a margin, more where cargo is transshipped. | Wilson 1970; Rihll & Wilson 1987; Huff 1964; Bleakley & Lin 2012 |
-| **Goods by price** | Salt, iron, stone and imports trade by an entropy-regularised spatial price equilibrium: each buyer pays its own price, sites sell at a supply price, and dear goods draw new works. | Samuelson 1952; Takayama & Judge 1971; Wilson 1970 |
-| **Relief and stores** | After trade, places short of food draw, unpaid, on neighbours' grain above what they can eat. Each place keeps a store of up to a year's need, filled from that surplus and losing 5% a year; it carries grain into the famine of 1315. | Clark 1999 |
-| **Outside world** | One port per open-sea map edge buys a fixed amount of grain a year and is the only seller of imports, bought by market people and paid in grain. | Fujita & Mori 1996 |
-| **Growth** | Villages grow by natural increase on a surplus and shed people when short. Markets grow by `ε(D − K·W)`, with migrants drawn from their partners. A small place near a much larger one is drained (the urban shadow). | Rihll & Wilson 1987; Bosker & Buringh 2017 |
-| **Founding** | Every five years the free cells with water at hand are scored for free farmland, less the shadow of larger neighbours, plus market access, plus noise. The best become hamlets. A free resource site with demand in reach gets a specialist hamlet. | Artificial Anasazi (Dean et al. 2002); Christaller 1933 |
-| **Failure** | An underfed place sheds the people it cannot feed. A place below 20 people for 12 years is removed. Most new foundations fail. | Village Ecodynamics Project |
-| **Roads and bridges** | The busiest routes become road. A road whose traffic falls away loses condition and fades. A busy river crossing gets a bridge that never decays. | Dalgaard et al. 2022 |
-| **Shocks** (calendar from 1100) | The Great Famine of 1315–17 cuts yields by 40%. The Black Death of 1348 kills about 40%, with recurrences in 1361 and 1369. Survivors then leave poor land for vacant good land. One harbour (not the largest place) silts up between 1350 and 1500, and lords plant a town every 50 years from 1250. | Jordan 1996; Benedictow 2004; Dyer; Beresford 1967 |
-| **Better ships** | Sea cost per km falls by 30% between 1300 and 1500. | Unger 1980 (cog, hulk, carrack) |
+| **Cultivation** | A place claims free cells nearest first until its harvest, after rent, feeds its farmers. Fields lose their forest; fuel is cut nearest first; abandoned land regrows. A stream among the fields gives a mill. | von Thünen 1826; Village Ecodynamics Project |
+| **Weather** | Each cell's harvest varies year to year with a spatially correlated shock (about 15 km, sd 15%). | Clark (yields on 65 manors) |
+| **Marketplaces** | Rent (35% of the harvest) and the farmers' surplus go to markets by `W^α · exp(−β c)`. Large markets trade grain among themselves at prices that clear by an entropy-regularised spatial equilibrium, with a toll to the market. Market people buy within their purse, their food first and their establishment (malt, fodder) giving way first in dearth. W grows on the grain a market draws from other places. | Christaller 1933; Wilson 1970; Samuelson 1952; Clark 1999 (price dispersion, R²) |
+| **Money** | Every place holds two purses: the farmers' and the market's (lords, church, merchants). Grain and goods are paid in coin. Unspent coin recirculates (farmers spend at their markets, markets on the farmers they buy from); luxuries bought abroad and coin wear leave the region. Coin enters through the ports' payments for grain and wool, so the price level is set by price-specie flow. Coin is conserved exactly (a unit test). | Mayhew 1995; Hume 1752; Dyer 1989; Britnell 1993 |
+| **Stores** | Large markets keep a store, buying below their ten-year average price less a holding margin and selling into a price spike. Villages short of grain buy with their purse; relief and village stores are unpaid. | Williams & Wright 1991; Clark (carry-over) |
+| **Goods** | Salt, iron, stone and imports trade by the same price equilibrium; each buyer pays its own price, sites sell at a supply price, and dear goods draw new works. Iron burns coppiced charcoal. | Weber 1909; Takayama & Judge 1971 |
+| **Wool and pasture** | Free land within reach that is not worth ploughing at its distance (its net grain would feed fewer than the people it takes to work) goes to grass: poor and far land first. A km² carries about 370 sheep. Its wool sells at the outside ports at £5 a sack, falling a quarter after 1350, and the coin is split by the rent share. Shepherds count with the farmers. | von Thünen 1826; Lloyd 1973; Clark 2004; Campbell 2000 |
+| **Outside world** | One port per open-sea map edge buys grain below the world price and wool at its price, and sells imports. | Fujita & Mori 1996 |
+| **Growth** | Villages grow by natural increase on a surplus. A shortfall stops growth; only a shortfall below 80% of need sheds people. Markets grow by `ε(D − K·W)`, with migrants drawn from their partners; a small place near a much larger one is drained (the urban shadow). | Rihll & Wilson 1987; Livi-Bacci 1991; Bosker & Buringh 2017 |
+| **Founding and failure** | Every five years the free cells with water at hand are scored for farmland, market access and the shadow of larger neighbours; the best become hamlets, and specialist hamlets go to free resource sites. A place below 20 people for 12 years is removed; most new foundations fail. | Artificial Anasazi (Dean et al. 2002); Village Ecodynamics Project |
+| **Roads and bridges** | The busiest routes become road; a road whose traffic falls away fades. A busy river crossing gets a bridge. | Dalgaard et al. 2022 |
+| **The historical calendar** (from 1100) | The Great Famine takes 40%, 60% and 10% of yields in 1315–17; scab and murrain cut wool by 15% in 1315–22 and 10% in 1323–32. The Black Death of 1348 kills about 40%, with recurrences in 1361, 1369 and ten more to 1479, and endemic disease takes 1.5% a year from 1349 to 1480, so the region holds about half its 1340 people in 1450. One harbour silts up; lords plant towns from 1250; sea costs fall 30% from 1300 to 1500. | Jordan 1996; Slavin 2020; Benedictow 2004; Hatcher 1977; Beresford 1967; Unger 1980 |
 
-Names come from a hash of the place and its features (-ford at a ford, -mouth at a river mouth), never from the run's random generator. Everything drawn on screen is derived from each year's snapshot and never feeds back.
+Names come from a hash of the place and its features (-ford at a ford, -mouth at a river mouth), never from the run's random generator. Everything drawn on screen is derived from each year's snapshot and never feeds back. The inspector shows each place's grain price, purses and market store, and the **Grain prices** layer colours places from cheap to dear against the world price.
 
 ## Validation
 
@@ -52,13 +52,15 @@ Names come from a hash of the place and its features (-ford at a ford, -mouth at
 - goods: sites producing, and no specialist as the largest place;
 - a settled road network;
 - the plague's fall and recovery, the desertion of poor land, and the old hierarchy returning;
-- outside trade between 3% and 20% of market inflow.
+- outside trade (grain, imports and wool) between 3% and 30% of market inflow;
+- Clark's tests on grain prices (`b_P` 0.8–1.2, `b_Y` −0.15–0, R² ≥ 0.6), unsold grain under 10%, and the price level between 0.3 and 2.5 at every 50-year mark;
+- pasture outward and on poor land, and more pasture in 1450 than in 1340.
 
-Runs are deterministic, natively and in the browser; `cargo test` checks the golden hash.
+Reported against history: the famine dip, Hatcher's depopulation (1450 at 0.54–0.56 of 1340), wool's share of coin (about 60% before 1348, over 90% after), and store carry-over. Runs are deterministic, natively and in the browser; `cargo test` checks the golden hash and the conservation of coin.
 
 **Real terrain.** The model is also run on real elevation for Kent and the lower Thames, with Roman roads and the real salt, iron and stone sites, and scored against the 70 towns of c.1300 (`just real`; [`docs/real-terrain-experiments.md`](docs/real-terrain-experiments.md)).
 - **Where it does well:** it finds the tidal ports and the river towns, and the largest city forms on the Thames estuary near Gravesend.
-- **Where it falls short:** it places the small inland market towns barely better than chance, and Watling Street mostly fades, since the model carries Continental goods by sea.
+- **Where it falls short:** it places the small inland market towns barely better than chance, Watling Street mostly fades, and Kent's soil layers lack the chalk and marsh that made the Downs and Romney Marsh sheep country.
 
 ## Layout
 
