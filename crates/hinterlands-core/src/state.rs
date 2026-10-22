@@ -66,10 +66,6 @@ pub struct MoneyLedger {
     /// What the ports paid for export cloth (D2).
     #[serde(default)]
     pub cloth_in: f32,
-    /// Export duties to the crown: the wool custom and subsidy, the cloth
-    /// custom (D2, D124).
-    #[serde(default)]
-    pub duties_out: f32,
 }
 
 /// The outside port a partner id names, if it is one.

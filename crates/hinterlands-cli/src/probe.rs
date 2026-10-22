@@ -677,7 +677,7 @@ pub fn cmd_money(args: &Args) {
     let years = args.u64("years", 500) as u32;
     let every = args.u64("every", 1) as u32;
     let seed = sim.sim_seed;
-    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped wool_in pasture salt_port_share iron_port_share cloth_in duties_out");
+    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped wool_in pasture salt_port_share iron_port_share cloth_in");
     while sim.state.year < years {
         let before = sim.state.money_stock();
         sim.step(1);
@@ -688,7 +688,6 @@ pub fn cmd_money(args: &Args) {
         let resid = after
             - before
             - (l.port_in + l.wool_in + l.planted_in + l.cloth_in
-                - l.duties_out
                 - l.imports_out
                 - l.luxury_out
                 - l.wear
@@ -713,7 +712,7 @@ pub fn cmd_money(args: &Args) {
         let m: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
         let gs = st.grain_stats;
         println!(
-            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {} {:.0} {} {:.3} {:.3} {:.1} {:.1}",
+            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {} {:.0} {} {:.3} {:.3} {:.1}",
             st.total_pop(),
             after,
             f,
@@ -735,8 +734,7 @@ pub fn cmd_money(args: &Args) {
             st.settlements.iter().map(|s| s.pasture.len()).sum::<usize>(),
             st.port_supply[0] / st.port_supply[1].max(1e-6),
             st.port_supply[2] / st.port_supply[3].max(1e-6),
-            l.cloth_in,
-            l.duties_out
+            l.cloth_in
         );
     }
 }
@@ -1488,14 +1486,14 @@ pub fn cmd_stores(args: &Args) {
 /// D2 report (D128): by `--every` years, the clip and its three outlets
 /// (home use, the mills, the ports), the home need, the share of the wool
 /// leaving the region that leaves as cloth, the share of cloth made at places
-/// with W 100-2,000, coin by channel with the duties, and the cloth towns.
+/// with W 100-2,000, coin by channel, and the cloth towns.
 pub fn cmd_cloth(args: &Args) {
     let mut sim = make_sim(args);
     let years = args.u64("years", 500) as u32;
     let every = args.u64("every", 10) as u32;
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
-    println!("cloth map seed year pop clip_lb to_mills_lb to_ports_lb home_use_lb home_need_lb cloth_share_out mid_w_share wool_in cloth_in duties_out imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town mill_cap_lb");
+    println!("cloth map seed year pop clip_lb to_mills_lb to_ports_lb home_use_lb home_need_lb cloth_share_out mid_w_share wool_in cloth_in imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town mill_cap_lb");
     while sim.state.year < years {
         sim.step(1);
         let y = sim.state.year;
@@ -1528,7 +1526,7 @@ pub fn cmd_cloth(args: &Args) {
         let l = st.money;
         let out = c[1] + c[2];
         println!(
-            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0} {:.0}",
+            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0} {:.0}",
             st.total_pop(),
             c[0],
             c[1],
@@ -1539,7 +1537,6 @@ pub fn cmd_cloth(args: &Args) {
             if made > 0.0 { mid / made } else { f32::NAN },
             l.wool_in,
             l.cloth_in,
-            l.duties_out,
             l.imports_out,
             l.port_in,
             towns.len(),

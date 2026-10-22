@@ -51,10 +51,10 @@ def main():
     print()
     print("Cloth-making places over 2,000, by decade 1250-1340 (median / max of runs): " + ", ".join(f"{1100 + y} {med(c, y, 'cloth_towns_over2k'):.0f}/{max((float(r[y]['cloth_towns_over2k']) for r in c if y in r), default=float('nan')):.0f}" for y in range(150, 241, 10)))
     print()
-    print("| Year | Coin stock | Price level | Grain to ports | Wool in | Cloth in | Duties out | Imports out | Luxuries out | Wear |")
-    print("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    print("| Year | Coin stock | Price level | Grain to ports | Wool in | Cloth in | Imports out | Luxuries out | Wear |")
+    print("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for y in years:
-        print(f"| {1100 + y} | {med(m, y, 'stock'):,.0f} | {med(m, y, 'price'):.2f} | {med(m, y, 'port_in'):,.0f} | {med(m, y, 'wool_in'):,.0f} | {med(m, y, 'cloth_in'):,.0f} | {med(m, y, 'duties_out'):,.0f} | {med(m, y, 'imports'):,.0f} | {med(m, y, 'luxury'):,.0f} | {med(m, y, 'wear'):,.0f} |")
+        print(f"| {1100 + y} | {med(m, y, 'stock'):,.0f} | {med(m, y, 'price'):.2f} | {med(m, y, 'port_in'):,.0f} | {med(m, y, 'wool_in'):,.0f} | {med(m, y, 'cloth_in'):,.0f} | {med(m, y, 'imports'):,.0f} | {med(m, y, 'luxury'):,.0f} | {med(m, y, 'wear'):,.0f} |")
 
 
 if __name__ == "__main__":

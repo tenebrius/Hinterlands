@@ -365,19 +365,19 @@ struct Seller {
 ///   each adult, spun and woven at home (no coin to the mills), and buys it
 ///   from the sellers in its reach, its own clip first, with elasticity
 ///   `elast_cloth`.
-/// - Ports: they take any amount at the world price less the export duties
-///   (the ancient custom from 1275, the subsidy from 1342), at the nearest
-///   port by port reach.
+/// - Ports: they take any amount at the English price, at the nearest port
+///   by port reach.
 /// - Mills (mill settlements with W, up to `cloth_lb_per_w` × W): they bid
-///   what export cloth fetches (the world cloth price less the custom and
-///   carriage to the nearest port) less the cost of making it: their
+///   what export cloth fetches (Munro's valuation less carriage to the
+///   nearest port) less the cost of making it: their
 ///   capacity at or below the bid, falling with elasticity `elast_mill` above
 ///   it. They sell all their cloth to the ports.
 ///
 /// Quantities are coin at the world wool price. Buyers pay their price, the
 /// sellers get theirs, and carriage and margin go to the buyer's market purse
-/// (to the seller's for the ports). The duty and the cloth custom leave the
-/// region; what the ports pay for wool and cloth enters it. A mill's margin
+/// (to the seller's for the ports). What the ports pay for wool and cloth
+/// enters the region. No export duty is taken: the observed prices are after
+/// it (D132). A mill's margin
 /// over its wool counts to its market's inflow.
 fn wool_market(
     state: &mut State,
@@ -387,33 +387,17 @@ fn wool_market(
     fall: f32,
 ) {
     let m = state.settlements.len();
-    let y = state.year;
     let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
-    // Coin a lb: wool and cloth at the world prices, the duties and the
-    // cost of making cloth.
+    // Coin a lb: wool at the English price (Lloyd, Clark's fall), cloth at
+    // Munro's customs valuation, and the cost of making cloth. Both prices are
+    // observed after the export duties, so no duty is taken again (D132).
     let vw = (p.wool_price_sack * (1.0 - fall) * 240.0 / 364.0 * to_coin).max(1e-9);
     let vc = p.cloth_d_lb * to_coin;
-    let duty_sack = if y >= p.wool_custom_year {
-        p.wool_custom_d
-    } else {
-        0.0
-    } + if y >= p.wool_subsidy_year {
-        p.wool_subsidy_d
-    } else {
-        0.0
-    };
-    let duty_lb = duty_sack / 364.0 * to_coin;
-    let custom_lb = if y >= p.cloth_custom_year {
-        p.cloth_custom_d / p.cloth_lb.max(1.0) * to_coin
-    } else {
-        0.0
-    };
     let make = p.cloth_cost_d_lb * to_coin;
     let tau_w = p.market_tau / p.rho_wool.max(1e-6);
     let tau_c = p.market_tau / p.rho_cloth.max(1e-6);
     let theta = p.beta / p.market_tau.max(1e-9);
     let home_pp = p.cloth_yd_adult * p.adult_share * p.home_lb_per_yd;
-    let port_price = (1.0 - duty_lb / vw).max(0.0);
     for s in state.settlements.iter_mut() {
         s.cloth_made = 0.0;
         s.cloth_wool_cost = 0.0;
@@ -436,7 +420,7 @@ fn wool_market(
             continue;
         }
         let Some((c, _, _)) = route[j] else { continue };
-        cloth_net[j] = vc * (1.0 - tau_c * c).max(0.0) - custom_lb;
+        cloth_net[j] = vc * (1.0 - tau_c * c).max(0.0);
         let bid = (cloth_net[j] - make) / vw;
         if bid > 0.0 {
             // D(p) = cap min(1, (bid / p)^e): its capacity up to its bid.
@@ -498,7 +482,7 @@ fn wool_market(
     };
     let mut sup = vec![1f32; sellers.len()];
     let mut buy = vec![1f32; 2 * m + 1];
-    buy[port] = port_price;
+    buy[port] = 1.0;
     // Four times the goods' passes, and the sellers last, so that each
     // seller's flows sum to its clip.
     let passes = 4 * p.market_passes;
@@ -599,13 +583,12 @@ fn wool_market(
         let lb = q / vw;
         let want = buy[b] * q;
         if b == port {
-            // The port pays the world price; the duty leaves the region.
+            // The port pays the English price.
             let r = (sup[k] * q).clamp(0.0, want);
             receipts[k] += r;
             state.settlements[i].mpurse += want - r;
             state.settlements[i].wool_in += want - r;
-            state.money.wool_in += q;
-            state.money.duties_out += q - want;
+            state.money.wool_in += want;
             state.cloth_stats[2] += lb;
             state.wool_ship.push((
                 state.settlements[i].id,
@@ -686,16 +669,14 @@ fn wool_market(
             continue;
         }
         let gross = vc * milled[j];
-        let custom = custom_lb * milled[j];
         let id = state.settlements[j].id;
         let k1 = route[j].map(|r| r.1);
         let s = &mut state.settlements[j];
         s.cloth_made = milled[j];
         s.cloth_wool_cost = mill_paid[j];
-        s.mpurse += gross - custom;
-        s.cloth_margin = (gross - custom - mill_paid[j]).max(0.0);
+        s.mpurse += gross;
+        s.cloth_margin = (gross - mill_paid[j]).max(0.0);
         state.money.cloth_in += gross;
-        state.money.duties_out += custom;
         if let Some(k1) = k1 {
             state
                 .wool_ship

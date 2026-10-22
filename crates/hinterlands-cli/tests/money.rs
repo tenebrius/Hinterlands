@@ -1,8 +1,8 @@
 //! D96, D97: coin moves only by payment. Each year the stock in all purses
 //! changes by exactly the ports' grain payments and planted towns' coin, less
 //! imports, luxuries bought abroad, wear, and the purses of places removed
-//! with no partner; with wool and cloth, plus what the ports paid for them,
-//! less the export duties (D2).
+//! with no partner; with wool and cloth, plus what the ports paid for them
+//! (D2).
 
 use hinterlands_core::{Params, Sim};
 use hinterlands_mapgen::{generate, MapParams};
@@ -13,7 +13,7 @@ fn coin_is_conserved() {
 }
 
 /// With the ports in reach of every place and cloth (D1b, D2): export cloth
-/// coin in, duties out.
+/// coin in.
 #[test]
 fn coin_is_conserved_with_cloth() {
     let p = Params {
@@ -33,7 +33,6 @@ fn conserved(params: Params) {
         let l = sim.state.money;
         let after = sim.state.money_stock();
         let expect = before + l.port_in + l.wool_in + l.planted_in + l.cloth_in
-            - l.duties_out
             - l.imports_out
             - l.luxury_out
             - l.wear
