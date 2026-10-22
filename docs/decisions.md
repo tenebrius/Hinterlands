@@ -691,3 +691,19 @@ Kind: model mechanism (owner's direction D91, designer's decisions D90, D92).
   - a place that neither sells nor buys surplus keeps both within its own purses.
 - **Results and open points:** `docs/market/m3.md`, "Money, first build".
 Kind: model mechanism (D97 build).
+
+## D100 — v7 M3 money: farmers' purses tuned, the famine dip recorded as missed
+- **Built per D99:**
+  - the establishment's part of the market people's demand, `(K − 1) W`, has its own elasticity, `elast_est` 1.5;
+  - the goods' food reserve uses the same demand;
+  - the price check's floor is 0.3.
+- **Farmers' purses (implementer's choice within D99's ranges):** `purse_cap` 2.0, `purse_loss` 0.05. Famine deficit met is 0.36–0.37, against 0.24–0.27 at 1.0 / 0.10.
+- **Stores left at their defaults.** `store_cap` 2.0, and 2.0 with `h` 0.10 / 0.07, gave famine dips of 0.21–0.23 against 0.21–0.22, with more checks failing (over 2,000 on map 1, 3/5). Carry-over was no higher.
+- **The famine dip, 0.22, is recorded as a miss** (D99: a design target, not a gate). Nothing tried moved it:
+  - `elast_est` 1.5;
+  - farmers' purses;
+  - store size and margin;
+  - as a diagnostic only, not adopted, rent waived below the farmers' need: 0.22.
+
+  In 1315–17 the region has 40% less grain. The levers above only move that grain between people, and none adds any.
+Kind: tuning and recorded miss (designer's decision D99).

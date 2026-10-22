@@ -474,3 +474,34 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - on-road share 29%, and 43% for places of 1,000 or more;
   - inland places over 500: 8 per seed at 11.7 km.
 - **Reproducing v6 and earlier:** check out commit `4052d01`.
+
+## v7 M3 — Money in the core (D96–D100)
+- **The model:**
+  - every place holds a farmers' purse and a market purse;
+  - grain and goods are paid in coin, and loss and overflow recirculate along the D97 paths;
+  - only ports, planted towns, imports, luxuries, wear and removals move the stock (`tests/money.rs`);
+  - stores trade at large markets (D94);
+  - the market establishment gives way first in dearth (`elast_est` 1.5, D99).
+- **Defaults moved:**
+  - `market_stores` on;
+  - `purse_cap` 2.0, `purse_loss` 0.05 (D100);
+  - `mpurse_cap` 2.0, `mpurse_loss` 0.10, `luxury_out` 0.2, `coin_wear` 0.01, `purse_start` 0.5, `planted_coin` 0.5.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Every v6 and M2 check.
+  - Clark per map:
+    - `b_P` 1.04–1.07, `b_Y` −0.064 to −0.068, R² 0.71–0.73 (median);
+    - R² ≥ 0.6 in 18 / 20 / 20.
+  - Price level 0.3–2.5 at every 50-year mark: 20/20 on each map.
+  - Unsold at markets 0%.
+  - Runs passing every check: 10 / 13 / 11.
+- **Design targets** (D95, D99; not gates):
+
+  | Target | Result |
+  | --- | --- |
+  | Detrended price autocorrelation ≥ 0.3 | 0.50–0.52 (met) |
+  | Famine deficit met ≥ 30% | 0.36–0.37 (met) |
+  | Famine dip ≤ 0.16 | **0.22 (missed)** |
+
+  Carry-over after cheap years is 0.16–0.19 of a harvest, at most 0.27, inside Clark's 40%.
+- **Golden `ff58d1b63e4c56d2`.** Release wasm gives the same hash (`?selftest=500`) at 45.2 ms/year (not gated, D91).
+- **Details:** `docs/market/m3.md`, "Money, second build".

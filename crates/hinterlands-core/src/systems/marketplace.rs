@@ -63,6 +63,17 @@ fn small_net(supply: f32, pb: f32, t: f32, floor: f32, want: &dyn Fn(f32) -> f32
     (0.0, 0.5 * (lo + hi))
 }
 
+/// What a market's people would buy at price `b`, before their budget: their
+/// food, `W × food_per_person × min(b^(−ε), food_cap)`, and their
+/// establishment's (malt, fodder, households), `(K − 1)` times that at its
+/// own elasticity `elast_est`, so that in dearth it gives way first (D90, D99).
+pub fn market_demand(p: &Params, people: f32, b: f32) -> f32 {
+    let b = b.max(1e-3);
+    let food = people * p.food_per_person;
+    food * libm::powf(b, -p.elast_grain).min(p.food_cap)
+        + (p.k_maint - 1.0).max(0.0) * food * libm::powf(b, -p.elast_est).min(p.food_cap)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn trade(
     state: &mut State,
@@ -169,9 +180,13 @@ pub fn trade(
     // grain trade. This year's takings are next year's budget.
     let budget: Vec<f32> = state.settlements.iter().map(|s| s.mpurse.max(0.0)).collect();
     let purse: Vec<f32> = state.settlements.iter().map(|s| s.purse.max(0.0)).collect();
+    let people: Vec<f32> = state
+        .settlements
+        .iter()
+        .map(|s| s.market.max(0.0).min(s.pop))
+        .collect();
     let food_w = |j: usize, b: f32| -> f32 {
-        let b = b.max(1e-3);
-        (need_w[j] * libm::powf(b, -eps).min(cap)).min(budget[j] / b)
+        market_demand(p, people[j], b).min(budget[j] / b.max(1e-3))
     };
     let dearth = |j: usize, b: f32| -> f32 { deficit[j].min(purse[j] / b.max(1e-3)) };
     let want = |j: usize, b: f32| -> f32 { food_w(j, b) + dearth(j, b) };
@@ -481,12 +496,12 @@ pub fn trade(
         store_delta[j] = bought - sold_store;
         store_take[j] = sold_store - bought;
         sold_here[j] = turnover[j] * frac;
-        capped[j] = need_w[j] * libm::powf(b, -eps).min(cap) > budget[j] / b.max(1e-3) + 1e-3;
+        capped[j] = market_demand(p, people[j], b) > budget[j] / b.max(1e-3) + 1e-3;
         for &c in &children[bi] {
             let (t, k) = parent[c].map_or((0.0, NONE), |x| (x.1, x.2));
             let (net, pc) = small_net(turnover[c], b, t, p.p_floor, &|q| want(c, q));
             price[c] = pc;
-            capped[c] = need_w[c] * libm::powf(pc, -eps).min(cap) > budget[c] / pc.max(1e-3) + 1e-3;
+            capped[c] = market_demand(p, people[c], pc) > budget[c] / pc.max(1e-3) + 1e-3;
             let local = turnover[c].min(want(c, pc));
             let moved = if net > 0.0 {
                 // Exports share the large market's sell-through.
@@ -527,7 +542,7 @@ pub fn trade(
         sold_here[j] = eaten_w[j];
         unsold += net.max(0.0);
         unsold_local += net.max(0.0);
-        capped[j] = need_w[j] * libm::powf(pc, -eps).min(cap) > budget[j] / pc.max(1e-3) + 1e-3;
+        capped[j] = market_demand(p, people[j], pc) > budget[j] / pc.max(1e-3) + 1e-3;
     }
     let mut to_ports = 0f32;
     let mut pairs = Vec::new();

@@ -250,8 +250,8 @@ define_params! {
         store_margin_late: f32 = 0.10, [0, 0.5], "Holding margin from store_margin_year on (Clark)";
         store_avg_years: f32 = 10.0, [1, 50], "Years over which a market's reference grain price is averaged for its store (D94)";
         relief_market_stores: bool = true, [0, 1], "Relief may draw on market stores as well as village stores (experiment, D94)";
-        purse_loss: f32 = 0.1, [0, 0.5], "Share of the farmers' purse spent each year with their market (dues, cloth, ale, the church; D97)";
-        purse_cap: f32 = 1.0, [0, 5], "Largest farmers' purse, in years of the farmers' need at price 1";
+        purse_loss: f32 = 0.05, [0, 0.5], "Share of the farmers' purse spent each year with their market (dues, cloth, ale, the church; D97)";
+        purse_cap: f32 = 2.0, [0, 5], "Largest farmers' purse, in years of the farmers' need at price 1";
         mpurse_loss: f32 = 0.1, [0, 0.5], "Share of the market's purse spent each year on the farmers it buys from (building, service, alms; D97)";
         mpurse_cap: f32 = 2.0, [0, 10], "Largest market purse, in years of its market people's consumption at price 1";
         luxury_out: f32 = 0.2, [0, 1], "Share of the market's yearly spending that leaves the region as imported luxuries (D97)";
@@ -276,6 +276,7 @@ define_params! {
         market_damping: f32 = 0.7, [0.05, 1], "Share of each Newton step taken";
         market_step: f32 = 1.0, [0.01, 2], "Largest change in log price per pass";
         elast_grain: f32 = 0.75, [0, 3], "Price elasticity of grain demand (Clark)";
+        elast_est: f32 = 1.5, [0, 5], "Price elasticity of the market establishment's grain (malt, fodder): it gives way first in dearth (D99)";
         elast_salt: f32 = 0.2, [0, 3], "Price elasticity of salt demand";
         elast_iron: f32 = 0.5, [0, 3], "Price elasticity of iron demand";
         elast_stone: f32 = 1.0, [0, 3], "Price elasticity of stone demand";

@@ -354,14 +354,14 @@ pub const CHECKS: &[Check] = &[
         target: ">=0.60",
         ok: |r| r.clark.2.is_nan() || r.clark.2 >= 0.6,
     },
-    // v7 M3 gate (D97): the price level stays in range at every 50-year mark.
+    // v7 M3 gate (D97, D99: floor half the world price): the price level stays in range at every 50-year mark.
     Check {
         name: "price level",
-        target: "0.4-2.5",
+        target: "0.3-2.5",
         ok: |r| {
             r.price_marks
                 .iter()
-                .all(|p| p.is_nan() || (0.4..=2.5).contains(p))
+                .all(|p| p.is_nan() || (0.3..=2.5).contains(p))
         },
     },
     // v7 gate (D90; passes trivially without marketplaces).
