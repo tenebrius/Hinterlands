@@ -63,7 +63,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let trade_in = vec![0f32; m];
     let mut food_in = vec![0f32; m];
     let mut food_out = vec![0f32; m];
-    let mut market_in = vec![0f32; m];
+    // Export cloth's margin is its mill's inflow (D2).
+    let mut market_in: Vec<f32> = state.settlements.iter().map(|s| s.cloth_margin).collect();
     let mut flows = Vec::new();
 
     // Goods (v2, D39): each site's output goes to consumers in proportion to

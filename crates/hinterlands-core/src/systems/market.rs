@@ -29,8 +29,6 @@ use crate::Rng;
 
 /// Goods priced: grain, then salt, iron, stone, imports.
 pub const PRICED: usize = 5;
-/// Cloth's index in goods trade (D2), after the priced goods.
-pub const CLOTH: usize = 5;
 
 /// One directed arc: supplier index, buyer index, transport price, premium.
 /// Indices at or above the settlement count are outside ports.
@@ -378,18 +376,11 @@ pub fn goods_trade(
     let mut buys: Vec<Buy> = Vec::new();
     let mut unmet = [0f32; PRICED];
     let mut sold_by = vec![[0f32; 3]; m];
-    // Cloth (D2) is good CLOTH after the imports, in coin at the world cloth
-    // price: a lb of wool content is `vc` units.
-    let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
-    let vc = p.cloth_d_lb * to_coin;
-    let mut cloth_sold = vec![0f32; m];
-    let last = if p.cloth { CLOTH + 1 } else { PRICED };
-    for g in 1..last {
+    for g in 1..PRICED {
         let rho = match g {
             1 => p.rho_salt,
             2 => p.rho_iron,
             3 => p.rho_stone,
-            CLOTH => p.rho_cloth,
             _ => p.rho_import,
         };
         let tau = p.market_tau / rho.max(1e-6);
@@ -397,7 +388,6 @@ pub fn goods_trade(
             1 => p.elast_salt,
             2 => p.elast_iron,
             3 => p.elast_stone,
-            CLOTH => p.elast_cloth,
             _ => p.elast_import,
         };
         let demand: Vec<f32> = state
@@ -412,19 +402,10 @@ pub fn goods_trade(
                             crate::systems::trade::urban_pop(s, p)
                         }
                 }
-                // Home cloth, held constant a head (D123).
-                CLOTH => p.cloth_yd_adult * p.adult_share * p.home_lb_per_yd * s.pop.max(0.0) * vc,
                 _ => crate::systems::trade::demand(s, p, Good::ALL[g - 1]),
             })
             .collect();
         let mut cap = vec![0f32; m];
-        // Only the home tier's cloth is offered at home; the export tier's
-        // goes to the ports (D2).
-        if g == CLOTH {
-            for (i, s) in state.settlements.iter().enumerate() {
-                cap[i] = s.cloth_made_home.max(0.0) * vc;
-            }
-        }
         if g < 4 {
             let good = Good::ALL[g - 1];
             for site in state.sites.iter().filter(|x| x.good == good) {
@@ -465,14 +446,7 @@ pub fn goods_trade(
             }
         }
         if arcs.is_empty() {
-            if g < PRICED {
-                unmet[g] = demand.iter().sum();
-            } else {
-                for (j, s) in state.settlements.iter_mut().enumerate() {
-                    s.cloth_price = cloth_unreached(s.cloth_price, demand[j]);
-                    s.cloth_sup = 0.0;
-                }
-            }
+            unmet[g] = demand.iter().sum();
             continue;
         }
         let mut by_from: Vec<Vec<usize>> = vec![Vec::new(); m + ports];
@@ -486,18 +460,7 @@ pub fn goods_trade(
         let mut buy_p: Vec<f32> = state
             .settlements
             .iter()
-            .map(|s| {
-                let v = if g == CLOTH {
-                    s.cloth_price
-                } else {
-                    s.price[g]
-                };
-                if v > 0.0 {
-                    v
-                } else {
-                    1.0
-                }
-            })
+            .map(|s| if s.price[g] > 0.0 { s.price[g] } else { 1.0 })
             .collect();
         let mut sup_p: Vec<f32> = (0..m + ports)
             .map(|i| {
@@ -505,13 +468,6 @@ pub fn goods_trade(
                 // settlement suppliers.
                 if i >= m || g == 4 {
                     1.0
-                } else if g == CLOTH {
-                    let v = state.settlements[i].cloth_sup;
-                    if v > 0.0 {
-                        v
-                    } else {
-                        1.0
-                    }
                 } else {
                     let v = state.settlements[i].supply_price[g - 1];
                     if v > 0.0 {
@@ -579,9 +535,6 @@ pub fn goods_trade(
             if i < m && g < 4 {
                 sold_by[i][g - 1] += q;
             }
-            if i < m && g == CLOTH {
-                cloth_sold[i] += q;
-            }
             if g == 1 || g == 2 {
                 let k = 2 * (g - 1);
                 state.port_supply[k + 1] += q;
@@ -599,81 +552,15 @@ pub fn goods_trade(
                 g,
             });
         }
-        if g < PRICED {
-            unmet[g] = (0..m).map(|j| (demand[j] - got[j]).max(0.0)).sum();
-        }
+        unmet[g] = (0..m).map(|j| (demand[j] - got[j]).max(0.0)).sum();
         // A buyer that no working supply reaches has no price: it is recorded
         // as 0, unreached, not as the solver's floor.
         for (j, s) in state.settlements.iter_mut().enumerate() {
             let reached = demand[j] > 0.0 && got[j] > 1e-6 * demand[j].max(1e-6);
-            if g == CLOTH {
-                s.cloth_price = if reached {
-                    buy_p[j]
-                } else {
-                    cloth_unreached(s.cloth_price, demand[j])
-                };
-                s.cloth_sup = if cap[j] > 0.0 { sup_p[j] } else { 0.0 };
-                continue;
-            }
             s.price[g] = if reached { buy_p[j] } else { 0.0 };
             if g < 4 {
                 s.supply_price[g - 1] = if cap[j] > 0.0 { sup_p[j] } else { 0.0 };
             }
-        }
-    }
-    // Cloth not sold at home goes to the nearest port at the world cloth price
-    // (D2, D124): the custom leaves the region, the rest is the mill's market
-    // purse's (carriage is paid to its own carriers). The margin over its
-    // wool counts to its market's inflow.
-    if p.cloth {
-        let custom_unit = if state.year >= p.cloth_custom_year {
-            p.cloth_custom_d / p.cloth_lb.max(1.0) * to_coin / vc.max(1e-9)
-        } else {
-            0.0
-        };
-        for i in 0..m {
-            let s = &state.settlements[i];
-            let made = s.cloth_made.max(0.0) * vc;
-            if made <= 0.0 {
-                state.settlements[i].cloth_home = 0.0;
-                continue;
-            }
-            let sold = cloth_sold[i].min(made);
-            state.cloth_stats[3] += sold / vc.max(1e-9);
-            state.settlements[i].cloth_home = sold / vc.max(1e-9);
-            let s = &state.settlements[i];
-            let out = made - sold;
-            if out <= 0.0 {
-                continue;
-            }
-            // Nearest port in reach, else beyond it (port reach, D124).
-            let near = s
-                .reach
-                .partners
-                .iter()
-                .enumerate()
-                .filter(|(_, q)| port_of(q.id).is_some())
-                .map(|(k, q)| (q.cost, k as u32))
-                .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)))
-                .or_else(|| {
-                    s.reach
-                        .port
-                        .as_ref()
-                        .map(|q| (q.cost, crate::state::FAR_PORT))
-                });
-            let Some((_, k)) = near else { continue };
-            let custom = custom_unit * out;
-            let wool = s.cloth_wool_cost * out / made;
-            let id = s.id;
-            let s = &mut state.settlements[i];
-            s.mpurse += out - custom;
-            market_in[i] += (out - custom - wool).max(0.0);
-            state.money.cloth_in += out;
-            state.money.duties_out += custom;
-            state.cloth_stats[4] += out / vc.max(1e-9);
-            state
-                .wool_ship
-                .push((id, k, out / p.port_world_price.max(1e-6)));
         }
     }
     // Goods arcs for the report: (supplier id, buyer id, quantity, price gap,
@@ -750,7 +637,7 @@ pub fn goods_trade(
         // imports from the market's.
         if !p.market_grain {
             let bs = &state.settlements[b.buyer];
-            let share_m = if b.g == 1 || b.g == 2 || b.g == CLOTH {
+            let share_m = if b.g == 1 || b.g == 2 {
                 (bs.market.max(0.0) / bs.pop.max(1.0)).clamp(0.0, 1.0)
             } else {
                 1.0
@@ -825,15 +712,4 @@ pub fn goods_trade(
     }
     state.market_unmet = unmet;
     paid
-}
-
-/// The home cloth price where no cloth reached (D2): with demand it rises a
-/// tenth a year from at least the world price, up to ten times it, a signal
-/// the mills answer the next year; with none it is 0.
-fn cloth_unreached(last: f32, demand: f32) -> f32 {
-    if demand > 0.0 {
-        (last.max(1.0) * 1.1).min(10.0)
-    } else {
-        0.0
-    }
 }

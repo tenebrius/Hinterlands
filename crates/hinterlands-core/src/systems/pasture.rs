@@ -284,17 +284,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         let gross = wool_coin * cells as f32 + gross_fallow;
         let gate_pasture: f32 = s.pasture.iter().map(|&c| gate(wool_coin, c)).sum();
         if p.cloth {
-            // Sold after the mills have bought (D2).
+            // Sold in the wool market below (D2, D128).
             let lb_cell = acres * p.fleece_lb * (1.0 - murrain);
             sellers.push(Seller {
                 i,
                 k1,
                 lb_p: lb_cell * p.sheep_per_acre * cells as f32,
                 lb_f: lb_cell * p.fallow_share * p.sheep_per_fallow_acre * field_cells as f32,
-                gross_p: wool_coin * cells as f32,
-                gross_f: gross_fallow,
-                gate_p: gate_pasture,
-                gate_f: gate_fallow,
             });
             continue;
         }
@@ -331,7 +327,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
     let _ = wool_total;
     if p.cloth {
-        mills_and_sale(state, p, &route, &sellers, murrain, fall);
+        wool_market(state, p, &route, &sellers, fall);
     }
     if murrain > 0.0 && since == 0 {
         // Logged at the place with the most pasture.
@@ -354,44 +350,49 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
 }
 
-/// One place's clip under D2: lb and coin, pasture and fallow.
+/// One place's clip under D2: lb, pasture and fallow.
 struct Seller {
     i: usize,
     k1: u32,
     lb_p: f32,
     lb_f: f32,
-    gross_p: f32,
-    gross_f: f32,
-    gate_p: f32,
-    gate_f: f32,
 }
 
-/// D2 (D123, D124): the mills buy wool, then the rest is exported.
+/// The wool market (D2, D128). Wool has three outlets, split by the S1
+/// entropy form as the goods are: home use, the ports and the mills.
 ///
-/// Solved from the finished good to the raw one on last year's prices: a mill
-/// bids for a lb of wool what its cloth fetches less the cost of making it
-/// (`cloth_cost_d_lb`). Export cloth fetches the world cloth price less the
-/// custom and carriage to the nearest port; home cloth, up to what the mill
-/// sold at home last year, the better of that and last year's home price at
-/// the mill (its supply price, or its buyers' price where none reached them). A place's wool is worth its export netback: the port's
-/// price less carriage and the export duties (the ancient custom from 1275,
-/// the subsidy from 1342). Pairs of seller and mill in reach are taken in
-/// order of surplus, the mill's bid less carriage of the wool to it less the
-/// seller's netback, within the mill's capacity (`cloth_lb_per_w` × W) and
-/// purse. The seller is paid its netback either way, so its purses are as if
-/// it had exported; the mill pays from its market purse. What is not milled is
-/// exported; the duty leaves the region.
-fn mills_and_sale(
+/// - Home: every place needs `cloth_yd_adult × home_lb_per_yd` lb a year for
+///   each adult, spun and woven at home (no coin to the mills), and buys it
+///   from the sellers in its reach, its own clip first, with elasticity
+///   `elast_cloth`.
+/// - Ports: they take any amount at the world price less the export duties
+///   (the ancient custom from 1275, the subsidy from 1342), at the nearest
+///   port by port reach.
+/// - Mills (mill settlements with W, up to `cloth_lb_per_w` × W): they bid
+///   what export cloth fetches (the world cloth price less the custom and
+///   carriage to the nearest port) less the cost of making it: their
+///   capacity at or below the bid, falling with elasticity `elast_mill` above
+///   it. They sell all their cloth to the ports.
+///
+/// Quantities are coin at the world wool price. Buyers pay their price, the
+/// sellers get theirs, and carriage and margin go to the buyer's market purse
+/// (to the seller's for the ports). The duty and the cloth custom leave the
+/// region; what the ports pay for wool and cloth enters it. A mill's margin
+/// over its wool counts to its market's inflow.
+fn wool_market(
     state: &mut State,
     p: &Params,
     route: &[Option<(f32, u32, u32)>],
     sellers: &[Seller],
-    _murrain: f32,
     fall: f32,
 ) {
     let m = state.settlements.len();
     let y = state.year;
     let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
+    // Coin a lb: wool and cloth at the world prices, the duties and the
+    // cost of making cloth.
+    let vw = (p.wool_price_sack * (1.0 - fall) * 240.0 / 364.0 * to_coin).max(1e-9);
+    let vc = p.cloth_d_lb * to_coin;
     let duty_sack = if y >= p.wool_custom_year {
         p.wool_custom_d
     } else {
@@ -403,85 +404,58 @@ fn mills_and_sale(
     };
     let duty_lb = duty_sack / 364.0 * to_coin;
     let custom_lb = if y >= p.cloth_custom_year {
-        p.cloth_custom_d / p.cloth_lb.max(1.0)
+        p.cloth_custom_d / p.cloth_lb.max(1.0) * to_coin
     } else {
         0.0
-    } * to_coin;
-    let vc = p.cloth_d_lb * to_coin;
+    };
     let make = p.cloth_cost_d_lb * to_coin;
-    let vw = p.wool_price_sack * (1.0 - fall) * 240.0 / 364.0 * to_coin;
     let tau_w = p.market_tau / p.rho_wool.max(1e-6);
     let tau_c = p.market_tau / p.rho_cloth.max(1e-6);
+    let theta = p.beta / p.market_tau.max(1e-9);
     let home_pp = p.cloth_yd_adult * p.adult_share * p.home_lb_per_yd;
-    // Mills, two tiers each: for the home market, what it sold at home last
-    // year (a tenth more when it sold out at a premium, never less than its
-    // own people's need) at the better of last year's home supply price and
-    // export; the rest of its capacity at export. Node 2j is j's home tier,
-    // 2j + 1 its export tier.
-    let mut cap = vec![0f32; 2 * m];
-    let mut bid = vec![f32::NEG_INFINITY; 2 * m];
-    let mut purse = vec![0f32; m];
-    for (j, s) in state.settlements.iter().enumerate() {
-        if !s.mill || s.market <= 0.0 {
-            continue;
-        }
-        let export = match route[j] {
-            Some((c, _, _)) => vc * (1.0 - tau_c * c).max(0.0) - custom_lb,
-            None => 0.0,
-        };
-        let total = p.cloth_lb_per_w * s.market;
-        let last = if s.cloth_sup > 1.0 {
-            s.cloth_home * 1.1
-        } else {
-            s.cloth_home
-        };
-        let home_q = last.max(home_pp * s.pop.max(0.0)).min(total);
-        cap[2 * j] = home_q;
-        bid[2 * j] = (s.cloth_sup.max(s.cloth_price).max(0.0) * vc).max(export) - make;
-        cap[2 * j + 1] = total - home_q;
-        bid[2 * j + 1] = export - make;
-        purse[j] = s.mpurse.max(0.0);
-    }
+    let port_price = (1.0 - duty_lb / vw).max(0.0);
     for s in state.settlements.iter_mut() {
         s.cloth_made = 0.0;
-        s.cloth_made_home = 0.0;
         s.cloth_wool_cost = 0.0;
+        s.cloth_margin = 0.0;
     }
     let mut idx_of = vec![usize::MAX; state.next_id as usize];
     for (i, s) in state.settlements.iter().enumerate() {
         idx_of[s.id as usize] = i;
     }
-    // Each seller's netback a lb, after the duty (never below 0).
-    let lb: Vec<f32> = sellers.iter().map(|x| x.lb_p + x.lb_f).collect();
-    let rec: Vec<(f32, f32)> = sellers
-        .iter()
-        .map(|x| {
-            (
-                (x.gate_p - duty_lb * x.lb_p).max(0.0),
-                (x.gate_f - duty_lb * x.lb_f).max(0.0),
-            )
-        })
-        .collect();
-    let net: Vec<f32> = (0..sellers.len())
-        .map(|k| {
-            if lb[k] > 0.0 {
-                (rec[k].0 + rec[k].1) / lb[k]
-            } else {
-                0.0
-            }
-        })
-        .collect();
-    // Seller-mill pairs with a surplus, best first.
-    let mut cand: Vec<(f32, usize, usize)> = Vec::new();
+    // Buyer nodes: 0..m home, m..2m mills, 2m the ports (fixed price).
+    let port = 2 * m;
+    let mut d0 = vec![0f32; 2 * m];
+    let mut elast = vec![p.elast_cloth; 2 * m];
+    // A mill's cloth value a lb at its port, and its port route.
+    let mut cloth_net = vec![0f32; m];
+    let mut mill_bid = vec![0f32; m];
+    for (j, s) in state.settlements.iter().enumerate() {
+        d0[j] = home_pp * s.pop.max(0.0) * vw;
+        if !s.mill || s.market <= 0.0 || p.cloth_lb_per_w <= 0.0 {
+            continue;
+        }
+        let Some((c, _, _)) = route[j] else { continue };
+        cloth_net[j] = vc * (1.0 - tau_c * c).max(0.0) - custom_lb;
+        let bid = (cloth_net[j] - make) / vw;
+        if bid > 0.0 {
+            // D(p) = cap min(1, (bid / p)^e): its capacity up to its bid.
+            elast[m + j] = p.elast_mill;
+            mill_bid[j] = bid;
+            d0[m + j] = p.cloth_lb_per_w * s.market * vw;
+        }
+    }
+    // Arcs: (seller, buyer node, transport).
+    let mut arcs: Vec<(usize, usize, f32)> = Vec::new();
+    let cap: Vec<f32> = sellers.iter().map(|x| (x.lb_p + x.lb_f) * vw).collect();
     for (k, x) in sellers.iter().enumerate() {
-        if lb[k] <= 0.0 {
+        if cap[k] <= 0.0 {
             continue;
         }
         let s = &state.settlements[x.i];
-        for t in [2 * x.i, 2 * x.i + 1] {
-            if cap[t] > 0.0 && bid[t] - net[k] > 0.0 {
-                cand.push((bid[t] - net[k], k, t));
-            }
+        arcs.push((k, x.i, 0.0));
+        if d0[m + x.i] > 0.0 {
+            arcs.push((k, m + x.i, 0.0));
         }
         for q in &s.reach.partners {
             let Some(&j) = idx_of.get(q.id as usize) else {
@@ -490,79 +464,211 @@ fn mills_and_sale(
             if j == usize::MAX {
                 continue;
             }
-            for t in [2 * j, 2 * j + 1] {
-                if cap[t] <= 0.0 {
-                    continue;
-                }
-                let sur = bid[t] - vw * tau_w * q.cost - net[k];
-                if sur > 0.0 {
-                    cand.push((sur, k, t));
-                }
+            let t = tau_w * q.cost;
+            if d0[j] > 0.0 {
+                arcs.push((k, j, t));
+            }
+            if d0[m + j] > 0.0 {
+                arcs.push((k, m + j, t));
             }
         }
+        if let Some((c, _, _)) = route[x.i] {
+            arcs.push((k, port, tau_w * c));
+        }
     }
-    cand.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
-    let mut left = lb.clone();
-    let mut milled = vec![0f32; sellers.len()];
-    for &(_, k, t) in &cand {
-        if left[k] <= 0.0 || cap[t] <= 0.0 {
+    if arcs.is_empty() {
+        return;
+    }
+    let mut by_from: Vec<Vec<usize>> = vec![Vec::new(); sellers.len()];
+    let mut by_to: Vec<Vec<usize>> = vec![Vec::new(); 2 * m];
+    for (a, &(k, b, _)) in arcs.iter().enumerate() {
+        by_from[k].push(a);
+        if b < port {
+            by_to[b].push(a);
+        }
+    }
+    let lse = |v: &[f32]| -> f32 {
+        let top = v.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        if !top.is_finite() {
+            return f32::NEG_INFINITY;
+        }
+        top + libm::logf(v.iter().map(|&x| libm::expf(x - top)).sum::<f32>())
+    };
+    let mut sup = vec![1f32; sellers.len()];
+    let mut buy = vec![1f32; 2 * m + 1];
+    buy[port] = port_price;
+    // Four times the goods' passes, and the sellers last, so that each
+    // seller's flows sum to its clip.
+    let passes = 4 * p.market_passes;
+    for pass in 0..=passes {
+        // Sellers sell their whole clip: θ p + ln cap = ln Σ exp(θ (p_b − t)).
+        for k in 0..sellers.len() {
+            if by_from[k].is_empty() {
+                continue;
+            }
+            let v: Vec<f32> = by_from[k]
+                .iter()
+                .map(|&a| theta * (buy[arcs[a].1] - arcs[a].2))
+                .collect();
+            sup[k] = ((lse(&v) - libm::logf(cap[k].max(1e-9))) / theta).clamp(-1e3, 1e3);
+        }
+        if pass == passes {
+            break;
+        }
+        // Buyers: θ p + ln Σ exp(−θ (p_k + t)) = ln D0 − e ln p.
+        for b in 0..2 * m {
+            if by_to[b].is_empty() || d0[b] <= 0.0 {
+                continue;
+            }
+            let v: Vec<f32> = by_to[b]
+                .iter()
+                .map(|&a| -theta * (sup[arcs[a].0] + arcs[a].2))
+                .collect();
+            let lb = lse(&v);
+            let ld = libm::logf(d0[b].max(1e-9));
+            let e = elast[b];
+            let mut pb = buy[b];
+            if b >= m {
+                // A mill: ln D = ln cap − e max(0, ln p − ln bid).
+                let lbid = libm::logf(mill_bid[b - m].max(1e-6));
+                for _ in 0..8 {
+                    let over = libm::logf(pb.max(1e-6)) > lbid;
+                    let f = theta * pb + lb - ld
+                        + if over {
+                            e * (libm::logf(pb.max(1e-6)) - lbid)
+                        } else {
+                            0.0
+                        };
+                    let df = theta + if over { e / pb.max(1e-6) } else { 0.0 };
+                    pb = (pb - f / df).clamp(1e-3, 1e3);
+                }
+            } else {
+                for _ in 0..4 {
+                    let f = theta * pb + lb - ld + e * libm::logf(pb.max(1e-6));
+                    pb = (pb - f / (theta + e / pb.max(1e-6))).clamp(1e-3, 1e3);
+                }
+            }
+            buy[b] = pb;
+        }
+    }
+    // The flows and their coin.
+    let mut receipts = vec![0f32; sellers.len()];
+    let mut milled = vec![0f32; m];
+    let mut mill_paid = vec![0f32; m];
+    let food_of = |s: &crate::state::Settlement| -> f32 {
+        let b = if s.price[0] > 0.0 { s.price[0] } else { 1.0 };
+        crate::systems::marketplace::market_demand(p, s.market.max(0.0).min(s.pop), b) * b
+    };
+    for &(k, b, t) in &arcs {
+        let q = libm::expf((theta * (buy[b] - sup[k] - t)).min(60.0));
+        if !(q > 0.0) {
             continue;
         }
-        let j = t / 2;
-        let price = net[k];
-        let afford = if price > 0.0 {
-            purse[j] / price
+        let i = sellers[k].i;
+        let lb = q / vw;
+        let want = buy[b] * q;
+        if b == port {
+            // The port pays the world price; the duty leaves the region.
+            let r = (sup[k] * q).clamp(0.0, want);
+            receipts[k] += r;
+            state.settlements[i].mpurse += want - r;
+            state.settlements[i].wool_in += want - r;
+            state.money.wool_in += q;
+            state.money.duties_out += q - want;
+            state.cloth_stats[2] += lb;
+            state.wool_ship.push((
+                state.settlements[i].id,
+                sellers[k].k1,
+                q / p.port_world_price.max(1e-6),
+            ));
+            continue;
+        }
+        let (j, mill) = if b >= m { (b - m, true) } else { (b, false) };
+        if j == i && !mill {
+            // Own use: no coin moves.
+            state.cloth_stats[3] += lb;
+            continue;
+        }
+        // The buyer pays from what its market people's food leaves (D93), by
+        // head with its farmers for home wool, from the market for a mill.
+        let bs = &state.settlements[j];
+        let share_m = if mill {
+            1.0
         } else {
-            f32::INFINITY
+            (bs.market.max(0.0) / bs.pop.max(1.0)).clamp(0.0, 1.0)
         };
-        let q = left[k].min(cap[t]).min(afford);
-        if q <= 0.0 {
-            continue;
-        }
-        left[k] -= q;
-        cap[t] -= q;
-        purse[j] -= q * price;
-        milled[k] += q;
-        let s = &mut state.settlements[j];
-        s.mpurse -= q * price;
-        s.cloth_made += q;
-        if t % 2 == 0 {
-            s.cloth_made_home += q;
-        }
-        s.cloth_wool_cost += q * price;
-    }
-    // Sellers are paid their netback on all their wool; the port pays for
-    // what was exported, the crown takes the duty on it.
-    for (k, x) in sellers.iter().enumerate() {
-        if lb[k] <= 0.0 {
-            continue;
-        }
-        let (r_p, r_f) = rec[k];
-        let lords = p.market_share * r_p;
-        let farmers_share = r_p + r_f - lords;
-        let toll = p.toll * farmers_share;
-        let f = (1.0 - milled[k] / lb[k]).clamp(0.0, 1.0);
-        let gross = (x.gross_p + x.gross_f) * f;
-        let gate = (x.gate_p + x.gate_f) * f;
-        let duty = gate - (r_p + r_f) * f;
-        let carriage = gross - gate;
+        let food = food_of(bs);
+        let from_m = (want * share_m).min((bs.mpurse - food).max(0.0));
+        let from_f = (want * (1.0 - share_m)).min(bs.purse.max(0.0));
+        let paid = from_m + from_f;
+        let r = (sup[k] * q).clamp(0.0, paid);
+        receipts[k] += r;
         {
-            let s = &mut state.settlements[x.i];
-            s.mpurse += lords + toll + carriage;
-            s.purse += farmers_share - toll;
-            s.wool_in += lords + toll + carriage;
+            let bs = &mut state.settlements[j];
+            bs.mpurse -= from_m;
+            bs.purse -= from_f;
+            bs.mpurse += paid - r;
         }
-        state.money.wool_in += gross;
-        state.money.duties_out += duty;
-        state.fallow_wool += x.gross_f;
-        state.cloth_stats[0] += lb[k];
-        state.cloth_stats[1] += milled[k];
-        state.cloth_stats[2] += lb[k] - milled[k];
-        if gross > 0.0 {
-            let id = state.settlements[x.i].id;
+        if mill {
+            milled[j] += lb;
+            mill_paid[j] += r;
+            state.cloth_stats[1] += lb;
+        } else {
+            state.cloth_stats[3] += lb;
+        }
+        // On the seller's path to the buyer, for road loads.
+        if let Some(pi) = state.settlements[i]
+            .reach
+            .partners
+            .iter()
+            .position(|q| q.id == state.settlements[j].id)
+        {
+            state.wool_ship.push((
+                state.settlements[i].id,
+                pi as u32,
+                q / p.port_world_price.max(1e-6),
+            ));
+        }
+    }
+    // Sellers: the lords' share of the pasture's part, the farmers' the rest
+    // less the toll.
+    for (k, x) in sellers.iter().enumerate() {
+        let lb = x.lb_p + x.lb_f;
+        if lb <= 0.0 {
+            continue;
+        }
+        state.cloth_stats[0] += lb;
+        let r = receipts[k];
+        let lords = p.market_share * r * x.lb_p / lb;
+        let farmers_share = r - lords;
+        let toll = p.toll * farmers_share;
+        let s = &mut state.settlements[x.i];
+        s.mpurse += lords + toll;
+        s.purse += farmers_share - toll;
+        s.wool_in += lords + toll;
+        state.fallow_wool += r * x.lb_f / lb;
+    }
+    state.cloth_stats[4] = d0[..m].iter().sum::<f32>() / vw;
+    // Mills make export cloth and sell it at the nearest port.
+    for j in 0..m {
+        if milled[j] <= 0.0 {
+            continue;
+        }
+        let gross = vc * milled[j];
+        let custom = custom_lb * milled[j];
+        let id = state.settlements[j].id;
+        let k1 = route[j].map(|r| r.1);
+        let s = &mut state.settlements[j];
+        s.cloth_made = milled[j];
+        s.cloth_wool_cost = mill_paid[j];
+        s.mpurse += gross - custom;
+        s.cloth_margin = (gross - custom - mill_paid[j]).max(0.0);
+        state.money.cloth_in += gross;
+        state.money.duties_out += custom;
+        if let Some(k1) = k1 {
             state
                 .wool_ship
-                .push((id, x.k1, gross / p.port_world_price.max(1e-6)));
+                .push((id, k1, gross / p.port_world_price.max(1e-6)));
         }
     }
 }

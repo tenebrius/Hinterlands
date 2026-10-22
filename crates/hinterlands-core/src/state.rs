@@ -299,25 +299,17 @@ pub struct Settlement {
     /// Year this place last made the chronicle for grass (L4), or 0.
     #[serde(default)]
     pub grass_logged: u32,
-    /// Cloth made this year, lb of wool content (D2; a mill settlement's, from
-    /// the wool it bought), written by pasture.
+    /// Export cloth made this year, lb of wool content (D2; a mill
+    /// settlement's, from the wool it bought), written by pasture.
     #[serde(default)]
     pub cloth_made: f32,
     /// What its wool cost the mill this year, coin (D2).
     #[serde(default)]
     pub cloth_wool_cost: f32,
-    /// Of which made for the home market (the home tier, D2).
+    /// The export cloth's margin over its wool this year (D2), counted to the
+    /// market's inflow by trade.
     #[serde(default)]
-    pub cloth_made_home: f32,
-    /// Home cloth prices (D2), value units: the buyers' price, and the mill's
-    /// supply price, last solved by goods trade.
-    #[serde(default)]
-    pub cloth_price: f32,
-    #[serde(default)]
-    pub cloth_sup: f32,
-    /// Cloth this mill sold at home this year, lb of wool content (D2).
-    #[serde(default)]
-    pub cloth_home: f32,
+    pub cloth_margin: f32,
     /// Arable land, km² (D1: plough iron), written by cultivation.
     #[serde(default)]
     pub arable_km2: f32,
@@ -384,10 +376,7 @@ impl Settlement {
             grass_logged: 0,
             cloth_made: 0.0,
             cloth_wool_cost: 0.0,
-            cloth_made_home: 0.0,
-            cloth_price: 0.0,
-            cloth_sup: 0.0,
-            cloth_home: 0.0,
+            cloth_margin: 0.0,
             arable_km2: 0.0,
             works: 0,
             w_last: 0.0,
@@ -569,8 +558,8 @@ pub struct State {
     /// Coin the fallow flock's wool fetched at the ports this year (D2, D123).
     #[serde(default)]
     pub fallow_wool: f32,
-    /// Wool and cloth this year (D2), lb of wool: clip, to the mills, wool
-    /// exported, cloth sold at home, cloth exported.
+    /// Wool this year (D2), lb: the clip, to the mills (all exported as
+    /// cloth), to the ports, used at home for home cloth, home need.
     #[serde(default)]
     pub cloth_stats: [f32; 5],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,

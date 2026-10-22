@@ -262,6 +262,7 @@ define_params! {
         cloth_d_lb: f32 = 5.7, [0, 50], "World price of cloth, pence a lb of wool content: about 2 pounds a broadcloth of 84 lb, 1371-1450 (Munro, from the customs particulars; D124)";
         cloth_cost_d_lb: f32 = 3.2, [0, 50], "Cost of making cloth, pence a lb of wool content (calibration, D2): bracketed by the record, above 5.7 - 3.3 + 0.22 (raw wool, not cloth, was exported before the subsidy) and below 5.7 - 0.17 - (3.3 - 1.54) (cloth overtook it after 1347); the midpoint";
         cloth_lb_per_w: f32 = 30.0, [0, 1000], "Cloth a mill settlement can make a year, lb of wool content per head of W (calibration; D2)";
+        elast_mill: f32 = 20.0, [0, 50], "Elasticity of a mill's demand for wool about its bid, so that it buys little above it (calibration; D128)";
         rho_cloth: f32 = 86.0, [0.1, 500], "Value density of cloth relative to grain: wool's 50 scaled by cloth's price over wool's (derived; D2)";
         elast_cloth: f32 = 1.0, [0, 3], "Price elasticity of home cloth demand (calibration; D2): unit, a fixed outlay at the reference quantity, since at 0.3 scarce early supply drove prices to 4-9 times the world price and drained purses";
         wool_custom_d: f32 = 80.0, [0, 2000], "The ancient custom on wool exported, pence a sack: 6s 8d (1275)";

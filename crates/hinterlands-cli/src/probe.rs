@@ -1485,17 +1485,17 @@ pub fn cmd_stores(args: &Args) {
     }
 }
 
-/// D2 report (D123, D124): by `--every` years, the clip and where it went
-/// (mills, export), cloth sold at home and exported, the share of the clip
-/// made into cloth, the share of cloth made at places with W 100-2,000, coin
-/// by channel with the duties, and the sizes of the cloth towns.
+/// D2 report (D128): by `--every` years, the clip and its three outlets
+/// (home use, the mills, the ports), the home need, the share of the wool
+/// leaving the region that leaves as cloth, the share of cloth made at places
+/// with W 100-2,000, coin by channel with the duties, and the cloth towns.
 pub fn cmd_cloth(args: &Args) {
     let mut sim = make_sim(args);
     let years = args.u64("years", 500) as u32;
     let every = args.u64("every", 10) as u32;
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
-    println!("cloth map seed year pop clip_lb to_mills_lb wool_out_lb cloth_home_lb cloth_out_lb cloth_share mid_w_share wool_in cloth_in duties_out imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town home_price_median home_price_p90 home_bill_per_head");
+    println!("cloth map seed year pop clip_lb to_mills_lb to_ports_lb home_use_lb home_need_lb cloth_share_out mid_w_share wool_in cloth_in duties_out imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town");
     while sim.state.year < years {
         sim.step(1);
         let y = sim.state.year;
@@ -1518,40 +1518,17 @@ pub fn cmd_cloth(args: &Args) {
             .map(|s| s.pop)
             .collect();
         towns.sort_by(|a, b| a.total_cmp(b));
-        let mut hp: Vec<f32> = st
-            .settlements
-            .iter()
-            .filter(|s| s.cloth_price > 0.0)
-            .map(|s| s.cloth_price)
-            .collect();
-        hp.sort_by(|a, b| a.total_cmp(b));
-        let to_coin = sim.params.port_world_price
-            / (sim.params.wheat_s_bu * 12.0 * sim.params.bu_per_person).max(1e-6);
-        let vc = sim.params.cloth_d_lb * to_coin;
-        // Home cloth paid a head, in coin, at the buyers' prices.
-        let bill: f32 = st
-            .settlements
-            .iter()
-            .map(|s| {
-                s.cloth_price
-                    * vc
-                    * s.pop
-                    * sim.params.cloth_yd_adult
-                    * sim.params.adult_share
-                    * sim.params.home_lb_per_yd
-            })
-            .sum::<f32>()
-            / st.total_pop().max(1.0);
         let l = st.money;
+        let out = c[1] + c[2];
         println!(
-            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0} {:.2} {:.2} {:.3}",
+            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0}",
             st.total_pop(),
             c[0],
             c[1],
             c[2],
             c[3],
             c[4],
-            if c[0] > 0.0 { c[1] / c[0] } else { f32::NAN },
+            if out > 0.0 { c[1] / out } else { f32::NAN },
             if made > 0.0 { mid / made } else { f32::NAN },
             l.wool_in,
             l.cloth_in,
@@ -1561,10 +1538,7 @@ pub fn cmd_cloth(args: &Args) {
             towns.len(),
             towns.iter().filter(|&&p| p > 2000.0).count(),
             towns.get(towns.len() / 2).copied().unwrap_or(f32::NAN),
-            towns.last().copied().unwrap_or(f32::NAN),
-            hp.get(hp.len() / 2).copied().unwrap_or(f32::NAN),
-            hp.get(hp.len() * 9 / 10).copied().unwrap_or(f32::NAN),
-            bill
+            towns.last().copied().unwrap_or(f32::NAN)
         );
     }
 }
