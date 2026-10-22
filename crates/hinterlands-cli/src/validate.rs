@@ -392,7 +392,7 @@ pub fn run_one(
         if sim.state.year == 200 {
             pop_200 = sim.state.total_pop();
         }
-        if params.marketplaces && sim.state.year > 200 {
+        if !params.market_grain && sim.state.year > 200 {
             waste_acc.0 += sim.state.grain_stats.unsold;
             waste_acc.1 += sim.state.grain_stats.arrived;
         }
@@ -523,7 +523,7 @@ pub fn run_one(
         ]
     });
     RunResult {
-        waste: if params.marketplaces {
+        waste: if !params.market_grain {
             waste_acc.0 / waste_acc.1.max(1.0)
         } else {
             f32::NAN

@@ -285,7 +285,22 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if p.growth_enabled {
             s.pop = (s.pop + delta[i]).max(0.0);
             if p.market_state {
-                s.market = (s.market + market_delta[i]).min(s.pop).max(p.market_floor);
+                // Labour guard (D92): market people are those the fields do
+                // not need. The fields need the farmers they are sized to
+                // feed, after rent, at the cultivation margin.
+                let field_need = s
+                    .fields
+                    .iter()
+                    .map(|&c| t.food_yield[c as usize])
+                    .sum::<f32>()
+                    * p.people_per_prime_cell
+                    * (1.0 - p.market_share)
+                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3));
+                let room = (s.pop - field_need).max(p.market_floor);
+                s.market = (s.market + market_delta[i])
+                    .min(s.pop)
+                    .min(room)
+                    .max(p.market_floor);
             }
         }
         if s.pop < p.fail_pop {

@@ -543,6 +543,8 @@ pub fn trade(
             f32::NAN
         },
         arrived: 0.0,
+        unsold_local: 0.0,
+        markets: 0,
     };
     state.market_arcs = arcs
         .iter()

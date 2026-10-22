@@ -28,6 +28,12 @@ pub struct GrainStats {
     /// Grain arriving at markets this year (v7, D90).
     #[serde(default)]
     pub arrived: f32,
+    /// Grain unsold at places with no large market in reach, and the number
+    /// of large markets (v7).
+    #[serde(default)]
+    pub unsold_local: f32,
+    #[serde(default)]
+    pub markets: u32,
 }
 
 /// The outside port a partner id names, if it is one.

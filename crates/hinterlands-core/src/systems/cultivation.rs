@@ -38,13 +38,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             p.market_share
         };
-        // Under S2 the market people buy their grain; the fields feed the
-        // farmers (D79).
-        let fed = if p.market_grain {
-            (s.pop - s.market.max(0.0)).max(0.0) * p.food_per_person
-        } else {
-            s.need(p)
-        };
+        // Market people buy their grain at market; the fields feed the
+        // farmers (D79, D92).
+        let fed = (s.pop - s.market.max(0.0)).max(0.0) * p.food_per_person;
         let target = fed * p.cult_margin / (1.0 - share).max(0.05);
         let mut produce: f32 = s
             .fields

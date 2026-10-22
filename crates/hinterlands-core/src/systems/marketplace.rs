@@ -21,8 +21,9 @@
 //! ports, up to `outside_grain` at up to the world price. Places in deficit
 //! have no surplus to sell, so they rely on relief and stores (S2′, S3). Grain
 //! that does not clear at the floor is lost and does not count as turnover.
-//! Goods are paid as in S1. W grows on the grain arriving at its market
-//! (D90). Writes food_in, food_out, market_in (grain arriving at the market), flows, settlements' `price[0]` and `capped`,
+//! Goods are paid as in S1. W grows on the grain brought to its market from
+//! other places (D90, D92). Writes food_in, food_out, market_in (grain
+//! arriving from other places), flows, settlements' `price[0]` and `capped`,
 //! `grain_stats` and `outside_trade.0`.
 
 use crate::params::Params;
@@ -94,6 +95,8 @@ pub fn trade(
     // 1. Village to market.
     let mut own = vec![0f32; m];
     let mut turnover = vec![0f32; m];
+    // Grain arriving from other places: a central place's draw (D92).
+    let mut drawn = vec![0f32; m];
     let mut rent_in = vec![0f32; m];
     for (i, s) in state.settlements.iter().enumerate() {
         let h = s.food_prod.max(0.0);
@@ -125,6 +128,9 @@ pub fn trade(
             let sent = sale * w / total;
             let arrived = sent * (1.0 - p.transport_loss * c).max(0.0);
             turnover[j] += arrived;
+            if j != i {
+                drawn[j] += arrived;
+            }
             rent_in[j] += arrived * rent_frac;
             if k != NONE && sent >= p.grain_flow_min {
                 flows.push(Flow {
@@ -144,10 +150,12 @@ pub fn trade(
 
     // Market people's demand at price `b`, within their budget in grain:
     // rents sold here, the toll and last year's fees.
+    // What a market's people consume, K per market person (D90): their
+    // food and their establishment's (malt, fodder, households).
     let need_w: Vec<f32> = state
         .settlements
         .iter()
-        .map(|s| s.market.max(0.0).min(s.pop) * fpp)
+        .map(|s| p.k_maint * s.market.max(0.0).min(s.pop) * fpp)
         .collect();
     let budget: Vec<f32> = (0..m)
         .map(|j| rent_in[j] + p.toll * turnover[j] + state.settlements[j].fee_earned)
@@ -365,6 +373,8 @@ pub fn trade(
     let mut sold_here = vec![0f32; m];
     let mut capped = vec![false; m];
     let mut unsold = 0f32;
+    // Of which, at places with no large market in reach.
+    let mut unsold_local = 0f32;
     for (bi, &j) in nodes_settle.iter().enumerate() {
         let b = buy[bi];
         price[j] = b;
@@ -426,6 +436,7 @@ pub fn trade(
         eaten_w[j] = turnover[j] - net.max(0.0);
         sold_here[j] = eaten_w[j];
         unsold += net.max(0.0);
+        unsold_local += net.max(0.0);
         capped[j] = need_w[j] * libm::powf(pc, -eps).min(cap) > budget[j] + 1e-3;
     }
     let mut to_ports = 0f32;
@@ -452,10 +463,11 @@ pub fn trade(
     }
     let mut capped_n = 0u32;
     for (j, s) in state.settlements.iter_mut().enumerate() {
-        food_in[j] += eaten_w[j];
-        // W grows on the grain arriving at its market (D90): food supply
-        // that draws the people who then eat it.
-        market_in[j] += turnover[j];
+        // The people eat one K-th; the rest is the establishment's use.
+        food_in[j] += eaten_w[j] / p.k_maint.max(1.0);
+        // W grows on the grain brought to its market from other places
+        // (D90, D92): a central place's draw from its hinterland.
+        market_in[j] += drawn[j];
         s.price[0] = price[j];
         s.capped = capped[j];
         capped_n += capped[j] as u32;
@@ -470,6 +482,8 @@ pub fn trade(
         capped: capped_n,
         estab_share: f32::NAN,
         arrived: total_t,
+        unsold_local,
+        markets: nb as u32,
     };
 }
 
