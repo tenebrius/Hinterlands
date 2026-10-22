@@ -45,6 +45,20 @@ pub struct GrainStats {
     pub dearth_bought: f32,
 }
 
+/// The year's coin entering and leaving the region (D96, D97), grain-value
+/// units: what the outside ports paid for grain, planted towns' coin, imports
+/// paid, luxuries bought abroad, coin wear, and purses of removed places with
+/// no partner to take them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct MoneyLedger {
+    pub port_in: f32,
+    pub planted_in: f32,
+    pub imports_out: f32,
+    pub luxury_out: f32,
+    pub wear: f32,
+    pub removed: f32,
+}
+
 /// The outside port a partner id names, if it is one.
 pub fn port_of(id: u32) -> Option<usize> {
     (id <= OUTSIDE && id > OUTSIDE - MAX_PORTS).then(|| (OUTSIDE - id) as usize)
@@ -244,6 +258,9 @@ pub struct Settlement {
     /// The farmers' purse, in grain-value units (D95).
     #[serde(default)]
     pub purse: f32,
+    /// The market's purse: its lords, church and merchants (D96).
+    #[serde(default)]
+    pub mpurse: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -295,6 +312,7 @@ impl Settlement {
             avg_price: 0.0,
             store_income: 0.0,
             purse: 0.0,
+            mpurse: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -446,6 +464,9 @@ pub struct State {
     pub port_grain: Vec<f32>,
     #[serde(default)]
     pub grain_stats: GrainStats,
+    /// This year's coin in and out (D97).
+    #[serde(default)]
+    pub money: MoneyLedger,
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -626,6 +647,7 @@ impl State {
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
+            money: MoneyLedger::default(),
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
@@ -685,6 +707,11 @@ impl State {
         self.index_of(id).map(|i| &self.settlements[i])
     }
 
+    /// All coin in the region's purses (D97).
+    pub fn money_stock(&self) -> f32 {
+        self.settlements.iter().map(|s| s.purse + s.mpurse).sum()
+    }
+
     pub fn total_pop(&self) -> f32 {
         self.settlements.iter().map(|s| s.pop).sum()
     }
@@ -726,6 +753,11 @@ impl State {
         let name = crate::names::settlement_name(t, anchor as usize, id as u64, &taken);
         let mut s = Settlement::new(id, name, anchor, pop, self.year, initial);
         s.market = p.market_w0.min(pop);
+        // The starting hamlets' coin (D96).
+        if initial {
+            s.purse = p.purse_start * (pop - s.market).max(0.0) * p.food_per_person;
+            s.mpurse = p.purse_start * s.market * p.food_per_person;
+        }
         s.history.push(pop);
         self.settlements.push(s);
         let idx = self.settlements.len() - 1;

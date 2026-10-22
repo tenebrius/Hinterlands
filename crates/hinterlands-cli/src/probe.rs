@@ -668,3 +668,62 @@ pub fn cmd_marketplaces(args: &Args) {
         }
     }
 }
+
+/// D97 money: each year the coin stock, the farmers' and markets' purses,
+/// coin in and out by channel, the conservation residual, and the regional
+/// grain price (median over large markets) against the world price.
+pub fn cmd_money(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let every = args.u64("every", 1) as u32;
+    let seed = sim.sim_seed;
+    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold");
+    while sim.state.year < years {
+        let before = sim.state.money_stock();
+        sim.step(1);
+        let y = sim.state.year;
+        let st = &sim.state;
+        let l = st.money;
+        let after = st.money_stock();
+        let resid =
+            after - before - (l.port_in + l.planted_in - l.imports_out - l.luxury_out - l.wear - l.removed);
+        if y % every != 0 {
+            continue;
+        }
+        let mut ps: Vec<f32> = st
+            .settlements
+            .iter()
+            .filter(|s| s.market >= sim.params.market_min && s.price[0] > 0.0)
+            .map(|s| s.price[0])
+            .collect();
+        ps.sort_by(|a, b| a.total_cmp(b));
+        let price = ps.get(ps.len() / 2).copied().unwrap_or(f32::NAN);
+        let port = if st.port_grain.is_empty() {
+            f32::NAN
+        } else {
+            st.port_grain.iter().sum::<f32>() / st.port_grain.len() as f32
+        };
+        let f: f32 = st.settlements.iter().map(|s| s.purse).sum();
+        let m: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
+        let gs = st.grain_stats;
+        println!(
+            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0}",
+            st.total_pop(),
+            after,
+            f,
+            m,
+            l.port_in,
+            l.planted_in,
+            l.imports_out,
+            l.luxury_out,
+            l.wear,
+            l.removed,
+            resid / after.max(1.0),
+            price,
+            sim.params.port_world_price,
+            port,
+            gs.dearth_bought / gs.dearth_need.max(1e-6),
+            gs.unsold
+        );
+    }
+}

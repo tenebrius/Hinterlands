@@ -75,6 +75,16 @@ pub struct RunResult {
     /// at years 200, 214, 217 and 400 for places under 500 and over 2,000.
     pub purse_met: (f32, f32, f32),
     pub purse_level: [[f32; 4]; 2],
+    /// D97: the regional grain price (population-weighted median over the
+    /// places with a price) at each 50-year mark, years 50 to 500; NaN
+    /// without marketplaces.
+    pub price_marks: [f32; 10],
+    /// D97 money: stock over the region's need at the 100-year marks; the
+    /// farmers' share of the stock then; coin over the run: ports in,
+    /// planted, imports out, luxuries out, wear, removed.
+    pub money_marks: [f32; 5],
+    pub farm_share: [f32; 5],
+    pub coin: [f32; 6],
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -344,6 +354,16 @@ pub const CHECKS: &[Check] = &[
         target: ">=0.60",
         ok: |r| r.clark.2.is_nan() || r.clark.2 >= 0.6,
     },
+    // v7 M3 gate (D97): the price level stays in range at every 50-year mark.
+    Check {
+        name: "price level",
+        target: "0.4-2.5",
+        ok: |r| {
+            r.price_marks
+                .iter()
+                .all(|p| p.is_nan() || (0.4..=2.5).contains(p))
+        },
+    },
     // v7 gate (D90; passes trivially without marketplaces).
     Check {
         name: "unsold at markets",
@@ -408,6 +428,10 @@ pub fn run_one(
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
     let mut waste_acc = (0f32, 0f32);
+    let mut price_marks = [f32::NAN; 10];
+    let mut money_marks = [f32::NAN; 5];
+    let mut farm_share = [f32::NAN; 5];
+    let mut coin = [0f32; 6];
     let mut clark_rows: Vec<(u32, u32, f32, f32, f32)> = Vec::new();
     // Regional price, market stores and harvest per year from year 100.
     let mut series: Vec<(f32, f32, f32)> = Vec::new();
@@ -449,6 +473,43 @@ pub fn run_one(
                 }
             }
         }
+        if !params.market_grain {
+            let y = sim.state.year;
+            let l = sim.state.money;
+            for (k, v) in [l.port_in, l.planted_in, l.imports_out, l.luxury_out, l.wear, l.removed]
+                .into_iter()
+                .enumerate()
+            {
+                coin[k] += v;
+            }
+            if y % 50 == 0 && (50..=500).contains(&y) {
+                let mut ps: Vec<(f32, f32)> = sim
+                    .state
+                    .settlements
+                    .iter()
+                    .filter(|s| s.price[0] > 0.0)
+                    .map(|s| (s.price[0], s.pop))
+                    .collect();
+                ps.sort_by(|a, b| a.0.total_cmp(&b.0));
+                let half = ps.iter().map(|x| x.1).sum::<f32>() / 2.0;
+                let mut acc = 0.0;
+                for (pr, w) in ps {
+                    acc += w;
+                    if acc >= half {
+                        price_marks[(y / 50 - 1) as usize] = pr;
+                        break;
+                    }
+                }
+                if y % 100 == 0 {
+                    let k = (y / 100 - 1) as usize;
+                    let need: f32 = sim.state.settlements.iter().map(|s| s.need(params)).sum();
+                    let stock = sim.state.money_stock();
+                    let f: f32 = sim.state.settlements.iter().map(|s| s.purse).sum();
+                    money_marks[k] = stock / need.max(1.0);
+                    farm_share[k] = f / stock.max(1e-6);
+                }
+            }
+        }
         if !params.market_grain && sim.state.year > 200 {
             waste_acc.0 += sim.state.grain_stats.unsold;
             waste_acc.1 += sim.state.grain_stats.arrived;
@@ -458,7 +519,7 @@ pub fn run_one(
             let held: f32 = sim.state.settlements.iter().map(|s| s.store).sum();
             store_share.push(held / need.max(1.0));
         }
-        if params.purses {
+        if !params.market_grain {
             let gs = sim.state.grain_stats;
             let y = sim.state.year - 1;
             let famine =
@@ -636,6 +697,10 @@ pub fn run_one(
         (purse_acc[3] + purse_acc[4]) / purse_acc[2].max(1.0),
     );
     RunResult {
+        price_marks,
+        money_marks,
+        farm_share,
+        coin,
         purse_met,
         purse_level,
         price_ac,
@@ -933,6 +998,19 @@ pub fn cmd_validate(args: &Args) {
                     "road length 300-500" => r.road_change,
                     "outside trade" => r.outside_share,
                     "unsold at markets" => r.waste,
+                    "price level" => r
+                        .price_marks
+                        .iter()
+                        .copied()
+                        .filter(|p| p.is_finite())
+                        .fold(f32::NAN, |a, p| {
+                            // The mark furthest outside 1.0 in log terms.
+                            if a.is_nan() || p.ln().abs() > a.ln().abs() {
+                                p
+                            } else {
+                                a
+                            }
+                        }),
                     "Clark b_P" => r.clark.0,
                     "Clark b_Y" => r.clark.1,
                     "Clark R2" => r.clark.2,
@@ -1164,7 +1242,7 @@ pub fn cmd_validate(args: &Args) {
                 ws.len()
             );
         }
-        if params.purses {
+        if !params.market_grain {
             let a = |f: &dyn Fn(&RunResult) -> f32| {
                 med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
             };
@@ -1183,6 +1261,40 @@ pub fn cmd_validate(args: &Args) {
                 a(&|r| r.purse_level[1][1]),
                 a(&|r| r.purse_level[1][2]),
                 a(&|r| r.purse_level[1][3])
+            );
+        }
+        if rs.iter().any(|r| r.price_marks.iter().any(|p| p.is_finite())) {
+            let a = |f: &dyn Fn(&RunResult) -> f32| {
+                med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
+            };
+            let marks: Vec<String> = (0..10)
+                .map(|k| format!("{:.2}", a(&|r| r.price_marks[k])))
+                .collect();
+            println!(
+                "{:<20} {:>12} regional grain price at 50..500 (world {:.2}): {}",
+                "D97 price",
+                "(reported)",
+                params.port_world_price,
+                marks.join(" ")
+            );
+            let stock: Vec<String> = (0..5)
+                .map(|k| format!("{:.2}", a(&|r| r.money_marks[k])))
+                .collect();
+            let farm: Vec<String> = (0..5)
+                .map(|k| format!("{:.2}", a(&|r| r.farm_share[k])))
+                .collect();
+            println!(
+                "{:<20} {:>12} coin stock / need at 100..500: {}; farmers' share {}; over the run, ports in {:.0}, planted {:.0}, imports out {:.0}, luxuries out {:.0}, wear {:.0}, removed {:.0}",
+                "D97 money",
+                "(reported)",
+                stock.join(" "),
+                farm.join(" "),
+                a(&|r| r.coin[0]),
+                a(&|r| r.coin[1]),
+                a(&|r| r.coin[2]),
+                a(&|r| r.coin[3]),
+                a(&|r| r.coin[4]),
+                a(&|r| r.coin[5])
             );
         }
         if rs.iter().any(|r| r.price_ac.is_finite()) {

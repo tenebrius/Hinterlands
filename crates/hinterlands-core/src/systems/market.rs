@@ -337,8 +337,8 @@ pub fn goods_trade(
     state: &mut State,
     p: &Params,
     idx_of: &[u32],
-    food_in: &mut [f32],
-    food_out: &mut [f32],
+    _food_in: &mut [f32],
+    _food_out: &mut [f32],
     market_in: &mut [f32],
     flows: &mut Vec<crate::state::Flow>,
 ) -> Vec<f32> {
@@ -566,10 +566,11 @@ pub fn goods_trade(
         .map(|i| {
             // Under S2 goods are paid in value from last year's income (D78).
             let s = &state.settlements[i];
+            // Under money (D96, D97) goods are paid from the purses.
             let budget = if p.market_grain {
                 s.income.max(0.0)
             } else {
-                s.food_prod * p.market_share
+                s.purse.max(0.0) + s.mpurse.max(0.0)
             };
             if bill[i] > budget {
                 budget / bill[i]
@@ -588,9 +589,6 @@ pub fn goods_trade(
         let buyer = &state.settlements[b.buyer];
         let pay = b.pj * b.q * scale[b.buyer];
         paid[b.buyer] += pay;
-        if !p.market_grain {
-            food_out[b.buyer] += pay;
-        }
         let to = buyer.reach.partners[b.k as usize].id;
         let good = (b.g < 4).then(|| Good::ALL[b.g - 1]);
         // The goods come in on the buyer's path; the payment goes out on it.
@@ -605,19 +603,38 @@ pub fn goods_trade(
             import: b.g == 4,
             relief: false,
         });
-        // Under S2 payment is in value and travels no path (D78).
+        // Payment is in coin and travels no path (D78, D96): salt and iron
+        // from the farmers' and the market's purses by head, stone and
+        // imports from the market's.
         if !p.market_grain {
-            flows.push(Flow {
-                from: buyer.id,
-                to,
-                amount: pay,
-                food: pay,
-                partner_idx: b.k,
-                good: None,
-                payment: true,
-                import: false,
-                relief: false,
-            });
+            let bs = &state.settlements[b.buyer];
+            let share_m = if b.g == 1 || b.g == 2 {
+                (bs.market.max(0.0) / bs.pop.max(1.0)).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            // Paid from whichever purse has it, the market's share first.
+            let from_m = (pay * share_m).min(bs.mpurse.max(0.0));
+            let from_f = (pay - from_m).min(bs.purse.max(0.0));
+            let short = pay - from_m - from_f;
+            let from_m = from_m + short.min((bs.mpurse - from_m).max(0.0));
+            let pay = from_m + from_f;
+            let bs = &mut state.settlements[b.buyer];
+            bs.mpurse -= from_m;
+            bs.purse -= from_f;
+            if b.from >= m {
+                imported += pay;
+                state.money.imports_out += pay;
+                continue;
+            }
+            // The producer's holder gets the supply price; carriage and the
+            // margin go to the buyer's market (D97).
+            let received = (b.pi * b.q * scale[b.buyer]).min(pay);
+            state.settlements[b.from].mpurse += received;
+            state.settlements[b.buyer].mpurse += pay - received;
+            market_in[b.from] += received;
+            goods_in[b.from] += received;
+            continue;
         }
         if b.from >= m {
             imported += pay;
@@ -625,10 +642,6 @@ pub fn goods_trade(
         }
         // The producer gets the supply price; carriage and margin are lost.
         let received = b.pi * b.q * scale[b.buyer];
-        if !p.market_grain {
-            food_in[b.from] += received;
-            market_in[b.from] += received;
-        }
         goods_in[b.from] += received;
     }
     // Each holder's sales shared over its sites by capacity.

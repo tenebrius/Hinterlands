@@ -138,7 +138,7 @@ pub fn trade(
                 drawn[j] += arrived;
             }
             rent_in[j] += arrived * rent_frac;
-            if p.purses && rent_frac < 1.0 {
+            if rent_frac < 1.0 {
                 surplus_arr.push((i, j, arrived * (1.0 - rent_frac)));
             }
             if k != NONE && sent >= p.grain_flow_min {
@@ -157,8 +157,6 @@ pub fn trade(
         }
     }
 
-    // Market people's demand at price `b`, within their budget in grain:
-    // rents sold here, the toll and last year's fees.
     // What a market's people consume, K per market person (D90): their
     // food and their establishment's (malt, fodder, households).
     let need_w: Vec<f32> = state
@@ -166,30 +164,32 @@ pub fn trade(
         .iter()
         .map(|s| p.k_maint * s.market.max(0.0).min(s.pop) * fpp)
         .collect();
-    let budget: Vec<f32> = (0..m)
-        .map(|j| {
-            let s = &state.settlements[j];
-            rent_in[j] + p.toll * turnover[j] + s.fee_earned + s.store_income
-        })
-        .collect();
-    // Farmers short of grain buy it with their purse (D95).
+    // Market people buy within their market's purse, and farmers short of
+    // grain within theirs (D95, D97): the coin held at the start of the
+    // grain trade. This year's takings are next year's budget.
+    let budget: Vec<f32> = state.settlements.iter().map(|s| s.mpurse.max(0.0)).collect();
     let purse: Vec<f32> = state.settlements.iter().map(|s| s.purse.max(0.0)).collect();
-    let dearth = |j: usize, b: f32| -> f32 {
-        if p.purses {
-            deficit[j].min(purse[j] / b.max(1e-3))
-        } else {
-            0.0
-        }
+    let food_w = |j: usize, b: f32| -> f32 {
+        let b = b.max(1e-3);
+        (need_w[j] * libm::powf(b, -eps).min(cap)).min(budget[j] / b)
     };
-    let want = |j: usize, b: f32| -> f32 {
-        (need_w[j] * libm::powf(b.max(1e-3), -eps).min(cap)).min(budget[j].max(0.0)) + dearth(j, b)
-    };
+    let dearth = |j: usize, b: f32| -> f32 { deficit[j].min(purse[j] / b.max(1e-3)) };
+    let want = |j: usize, b: f32| -> f32 { food_w(j, b) + dearth(j, b) };
 
     // 2. Large markets, and each small market's nearest large one in reach.
+    // A place with an outside port in reach trades with the ships whatever
+    // its size: that is where coin enters the region (D97).
     let big: Vec<bool> = state
         .settlements
         .iter()
-        .map(|s| s.market >= p.market_min)
+        .map(|s| {
+            s.market >= p.market_min
+                || (ports > 0
+                    && s.reach
+                        .partners
+                        .iter()
+                        .any(|q| port_of(q.id).is_some_and(|k| k < ports)))
+        })
         .collect();
     let mut node_of = vec![usize::MAX; m];
     let mut nodes_settle: Vec<usize> = Vec::new();
@@ -329,7 +329,7 @@ pub fn trade(
         }
         let j = nodes_settle[bi];
         let t = turnover[j];
-        let left = (budget[j] - want(j, b)).max(0.0);
+        let left = (budget[j] / b.max(1e-3) - food_w(j, b)).max(0.0);
         (p.store_gain * (floor_price - b) / pbar[bi] * t)
             .min((p.store_cap * t - held[bi]).max(0.0))
             .min(left)
@@ -355,7 +355,7 @@ pub fn trade(
     };
     let demand = |n: usize, b: f32| -> f32 {
         if n >= nb {
-            return p.outside_grain * libm::powf(b / p.port_world_price, -p.port_elast).min(1.0);
+            return p.outside_grain * libm::powf(b / p.port_world_price, -p.port_elast);
         }
         position(n, b).1
     };
@@ -481,12 +481,12 @@ pub fn trade(
         store_delta[j] = bought - sold_store;
         store_take[j] = sold_store - bought;
         sold_here[j] = turnover[j] * frac;
-        capped[j] = need_w[j] * libm::powf(b, -eps).min(cap) > budget[j] + 1e-3;
+        capped[j] = need_w[j] * libm::powf(b, -eps).min(cap) > budget[j] / b.max(1e-3) + 1e-3;
         for &c in &children[bi] {
             let (t, k) = parent[c].map_or((0.0, NONE), |x| (x.1, x.2));
             let (net, pc) = small_net(turnover[c], b, t, p.p_floor, &|q| want(c, q));
             price[c] = pc;
-            capped[c] = need_w[c] * libm::powf(pc, -eps).min(cap) > budget[c] + 1e-3;
+            capped[c] = need_w[c] * libm::powf(pc, -eps).min(cap) > budget[c] / pc.max(1e-3) + 1e-3;
             let local = turnover[c].min(want(c, pc));
             let moved = if net > 0.0 {
                 // Exports share the large market's sell-through.
@@ -527,7 +527,7 @@ pub fn trade(
         sold_here[j] = eaten_w[j];
         unsold += net.max(0.0);
         unsold_local += net.max(0.0);
-        capped[j] = need_w[j] * libm::powf(pc, -eps).min(cap) > budget[j] + 1e-3;
+        capped[j] = need_w[j] * libm::powf(pc, -eps).min(cap) > budget[j] / pc.max(1e-3) + 1e-3;
     }
     let mut to_ports = 0f32;
     let mut pairs = Vec::new();
@@ -561,43 +561,95 @@ pub fn trade(
             relief: false,
         });
     }
-    // Purses (D95): the farmers' surplus sold, at the market's price less the
-    // toll, as much of it as the market sold; and what they bought in dearth.
-    let mut revenue = vec![0f32; m];
-    for &(i, j, q) in &surplus_arr {
+    // 4. Grain settles in coin (D96, D97). Buyers pay their price for what
+    // they took, within their purses, and the ports from outside. Sellers
+    // get their market's price on what it sold, less the toll: rent to the
+    // market's purse, the farmers' surplus to theirs, store grain to the
+    // market's. The toll goes to the market where the grain is sold, and the
+    // rest of what buyers paid, carriage and handling, to the buyers' markets.
+    let mut paid_m = vec![0f32; m];
+    let mut paid_f = vec![0f32; m];
+    let (mut dearth_need, mut dearth_got_all) = (0f32, 0f32);
+    let mut dearth_got = vec![0f32; m];
+    for j in 0..m {
+        let all = want(j, price[j]).max(1e-9);
+        dearth_got[j] = eaten_w[j] * dearth(j, price[j]) / all;
+        dearth_need += deficit[j];
+        dearth_got_all += dearth_got[j];
+        let b = price[j];
+        paid_f[j] = (dearth_got[j] * b).min(purse[j]);
+        let store_cost = if big[j] { (-store_take[j]).max(0.0) * b } else { 0.0 };
+        paid_m[j] = ((eaten_w[j] - dearth_got[j]) * b + store_cost).min(budget[j]);
+    }
+    let port_in: f32 = (nb..nodes).map(|n| inflow[n] * buy[n]).sum();
+    let pool: f32 = paid_m.iter().sum::<f32>() + paid_f.iter().sum::<f32>() + port_in;
+    // What each place sold, at its price.
+    let mut value = vec![0f32; m];
+    for j in 0..m {
         let frac = if turnover[j] > 0.0 {
             (sold_here[j] / turnover[j]).min(1.0)
         } else {
             0.0
         };
-        revenue[i] += q * frac * price[j] * (1.0 - p.toll);
+        value[j] = frac * price[j];
     }
-    let (mut dearth_need, mut dearth_got_all) = (0f32, 0f32);
+    let mut owed_m = vec![0f32; m];
+    let mut owed_f = vec![0f32; m];
+    for j in 0..m {
+        owed_m[j] += rent_in[j] * value[j] + store_take[j].max(0.0) * price[j];
+    }
+    for &(i, j, q) in &surplus_arr {
+        owed_f[i] += q * value[j];
+    }
+    let owed: f32 = owed_m.iter().sum::<f32>() + owed_f.iter().sum::<f32>();
+    // Sellers are paid in full if buyers paid that much, else pro rata.
+    let scale = if owed > pool { pool / owed.max(1e-9) } else { 1.0 };
+    let gap = pool - owed * scale;
+    let paid_all: f32 = paid_m.iter().sum::<f32>() + paid_f.iter().sum::<f32>();
+    let mut tolls = 0f32;
+    let mut m_income = 0f32;
+    for (j, s) in state.settlements.iter_mut().enumerate() {
+        let carriage = if paid_all > 0.0 {
+            gap * (paid_m[j] + paid_f[j]) / paid_all
+        } else {
+            0.0
+        };
+        // The toll on rent grain stays with the market it is paid to.
+        s.mpurse += owed_m[j] * scale - paid_m[j] + carriage;
+        s.purse += owed_f[j] * scale * (1.0 - p.toll) - paid_f[j];
+        tolls += p.toll * owed_m[j] * scale;
+        m_income += owed_m[j] * scale + carriage;
+    }
+    // The toll on the farmers' grain goes to the market that sold it.
+    for &(_, j, q) in &surplus_arr {
+        let t = p.toll * q * value[j] * scale;
+        state.settlements[j].mpurse += t;
+        tolls += t;
+        m_income += t;
+    }
+    if gap > 0.0 && paid_all <= 0.0 {
+        // Only the ports bought: their carriage goes to the markets that sold.
+        let total: f32 = (0..m).map(|j| sold_here[j]).sum::<f32>().max(1e-9);
+        for j in 0..m {
+            state.settlements[j].mpurse += gap * sold_here[j] / total;
+        }
+    }
+    state.money.port_in += port_in;
+
     let mut capped_n = 0u32;
     for (j, s) in state.settlements.iter_mut().enumerate() {
-        // What it took splits between the farmers' dearth purchase and its
-        // market people in proportion to their demand.
-        let all = want(j, price[j]).max(1e-9);
-        let dearth_got = eaten_w[j] * dearth(j, price[j]) / all;
-        let market_got = eaten_w[j] - dearth_got;
-        dearth_need += deficit[j];
-        dearth_got_all += dearth_got;
-        if p.purses {
-            let spent = dearth_got * price[j];
-            s.purse = ((s.purse - spent).max(0.0) + revenue[j]) * (1.0 - p.purse_loss);
-            s.purse = s.purse.min(p.purse_cap * s.need(p));
-        }
+        let market_got = eaten_w[j] - dearth_got[j];
         // The people eat first, up to their growth target; the rest is the
         // establishment's use (D90).
         let people = s.market.max(0.0).min(s.pop) * fpp;
-        food_in[j] += dearth_got + market_got.min(cap * people);
+        food_in[j] += dearth_got[j] + market_got.min(cap * people);
         // W grows on the grain brought to its market from other places
         // (D90, D92): a central place's draw from its hinterland.
         market_in[j] += drawn[j];
         s.price[0] = price[j];
         s.capped = capped[j];
-        // Stores: this year's trade, then the year's loss; the takings are
-        // next year's income; the average price follows (M3, D94).
+        // Stores: this year's trade, then the year's loss; the average price
+        // follows (M3, D94).
         if big[j] {
             s.mstore = ((s.mstore + store_delta[j]) * (1.0 - p.store_loss)).max(0.0);
             s.store_income = store_take[j].max(0.0);
@@ -613,6 +665,60 @@ pub fn trade(
         }
         capped_n += capped[j] as u32;
     }
+
+    // 5. Year end (D97). The farmers spend `purse_loss` of their purse, and
+    // any excess over its cap, with the markets they sell to; the markets
+    // spend `mpurse_loss` of theirs, and any excess, on the farmers whose
+    // grain they take, less `luxury_out` that leaves the region. Then coin
+    // wears.
+    let mut sells_to: Vec<f32> = vec![0f32; m];
+    for &(i, _, q) in &surplus_arr {
+        sells_to[i] += q;
+    }
+    let mut buys_from: Vec<f32> = vec![0f32; m];
+    for &(_, j, q) in &surplus_arr {
+        buys_from[j] += q;
+    }
+    let mut out_f = vec![0f32; m];
+    let mut out_m = vec![0f32; m];
+    for (j, s) in state.settlements.iter().enumerate() {
+        let need_f = (s.pop - s.market.max(0.0)).max(0.0) * fpp;
+        let f = s.purse.max(0.0);
+        out_f[j] = f * p.purse_loss + (f * (1.0 - p.purse_loss) - p.purse_cap * need_f).max(0.0);
+        let mm = s.mpurse.max(0.0);
+        out_m[j] = mm * p.mpurse_loss + (mm * (1.0 - p.mpurse_loss) - p.mpurse_cap * need_w[j]).max(0.0);
+    }
+    let mut luxury = 0f32;
+    for j in 0..m {
+        state.settlements[j].purse -= out_f[j];
+        state.settlements[j].mpurse -= out_m[j];
+        if sells_to[j] <= 0.0 {
+            state.settlements[j].mpurse += out_f[j];
+        }
+        let lux = out_m[j] * p.luxury_out;
+        luxury += lux;
+        if buys_from[j] <= 0.0 {
+            state.settlements[j].purse += out_m[j] - lux;
+        }
+    }
+    for &(i, j, q) in &surplus_arr {
+        if sells_to[i] > 0.0 {
+            state.settlements[j].mpurse += out_f[i] * q / sells_to[i];
+        }
+        if buys_from[j] > 0.0 {
+            state.settlements[i].purse += out_m[j] * (1.0 - p.luxury_out) * q / buys_from[j];
+        }
+    }
+    state.money.luxury_out += luxury;
+    let mut wear = 0f32;
+    for s in state.settlements.iter_mut() {
+        let w = (s.purse.max(0.0) + s.mpurse.max(0.0)) * p.coin_wear;
+        wear += w;
+        s.purse -= s.purse.max(0.0) * p.coin_wear;
+        s.mpurse -= s.mpurse.max(0.0) * p.coin_wear;
+    }
+    state.money.wear += wear;
+
     state.port_grain = buy[nb..].to_vec();
     state.outside_trade.0 = to_ports;
     state.market_pairs = pairs;
@@ -628,14 +734,10 @@ pub fn trade(
         markets: nb as u32,
         dearth_need,
         dearth_bought: dearth_got_all,
-        toll_share: {
-            let tolls: f32 = nodes_settle.iter().map(|&j| p.toll * turnover[j]).sum();
-            let all: f32 = nodes_settle.iter().map(|&j| budget[j].max(0.0)).sum();
-            if all > 0.0 {
-                tolls / all
-            } else {
-                f32::NAN
-            }
+        toll_share: if m_income > 0.0 {
+            tolls / m_income
+        } else {
+            f32::NAN
         },
     };
 }
