@@ -200,7 +200,7 @@ v1 is done when the checks below pass on three generated maps, judged by pass ra
 | Forest near cities | under 30% cover within 5 km of any settlement over 5,000 | Fuel ring not clearing |
 | Stability | total population changes less than 5% year on year after year 100 | Oscillation |
 | Contingency | over 20 seeds on the same terrain, the ten largest places differ between runs: for each pair of runs, the share of one run’s ten largest with one of the other run’s ten largest within 5 km; the mean over all pairs is at most 0.80 (gated, v1.2). Reported, not gated: the share of runs whose largest city lies outside the modal cluster, the share of seeds with a settlement over 5,000 on the main river corridor or the coast within 15 km of it, and the distance from the largest city to the main river mouth. Contingency lives in the middle tier; a clearly best site may hold the largest city in every seed, and the per-seed siting check carries the transport claim | Too deterministic: geography alone decides the hierarchy |
-| Performance | one year under 50 ms in release WASM | Budget |
+| Performance | time per year in release WASM, reported, not gated (owner, D91) | Watchability |
 
 **Real-terrain tests** (a DEM of a documented region, scored against its medieval towns) are not a v1 gate, but the CLI accepts the ground-truth file from the start. The standing rule, from the Kent test (D23–D31): judge placement only where the inputs carry signal, and judge count and spacing where they do not. On Kent, terrain and soil hold no information about where the small inland towns sat (feature scores 0.20–0.48 against real sites, 0.5 being none); their sites came from roads, market spacing and lordship. So for towns under about 1,000 the yardstick is count and nearest-neighbour spacing (real Kent: 29 inland places over 500, 10.6 km apart), and placement is judged for ports, river towns and towns over 1,000, using AUC against lowland cells, which cannot be fooled by “towns sit low”. Second-nature inputs such as an initial road network are data in `Terrain`, not model changes, and are the next source of placement signal.
 
@@ -786,6 +786,11 @@ Then stop for review.
 4. **A new gated check separates this from P3:** after year 200, grain unsold at markets is at most 10% of what arrives (v6 burned about 70%). If the hierarchy holds only with large waste, this design has failed, and we stop.
 
 **Re-run:** first untuned at K 1.5 with `market_share` scaled by 1.5/3.39. Pre-registered: the hierarchy checks pass on at least two maps, and unsold is at most 10%. Then one tuning round over K (1.2–2.0), `market_share`, toll and `market_min`, then the full M2 gate plus the waste check. Stop and report either way. Option B (stores first) is declined: it delays the same problem. Option C is declined: the owner has ruled that v6 is not the end.
+
+**Owner's directions for v7 (Divish, 22 October 2026; D91).**
+1. **Marketplaces go into the core, not behind a switch.** The marketplace replaces the gravity grain push in the trade system. The trade system keeps its `enabled` flag, as every system must. Before the replacement, tag the current default commit `v6` so that every earlier version stays reproducible from git. The old version files stop reproducing their hashes from the new code, and that is expected. The golden test moves to the new hash.
+2. **Don't give up easily.** v7 has no stop rule. When a gate fails, the implementer diagnoses, fixes within the design (M1 and D90), and re-runs, reporting at each real finding. Design questions come to the designer, who answers them and keeps going. The waste check (unsold ≤ 10%) and the v6 checks stay as the definition of success. Persistence means fixing the model, not loosening the tests.
+3. **The 50 ms budget is dropped.** Time per year is reported, not gated.
 
 ## Future versions
 

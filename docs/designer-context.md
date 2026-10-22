@@ -13,6 +13,8 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 
 **Divish, 2026-10-22: v6 is not the end.** Underlying mechanics that are not a real trade economy break the fun. The model must become one (v7, marketplaces).
 
+**Divish, 2026-10-22, on v7 (D91):** marketplaces go in the core, not behind a switch (tag `v6` first). Don't give up easily: no stop rule; keep diagnosing and fixing, but never by loosening the tests. The 50 ms budget is dropped; time is reported.
+
 **Design authority (Divish, 2026-10-21).** The designer has full control of the design requirements: defaults, the acceptance test, scope, versions and the order of work. The aim is a **semi-realistic but satisfying** simulation that keeps moving forward; realism is a means, not the goal. So:
 - Decide, don't escalate. Record every such decision in `docs/decisions.md` or `docs/foundation.md`, and tell Divish of major changes of direction.
 - Weigh each round by what it adds to the simulation someone watches, not only by what it adds to a score. A real-terrain miss is worth chasing only when the fix improves the model in general.
@@ -140,4 +142,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — v7 M2: growth on arriving grain with a waste check (D90).
+Last updated: 2026-10-22 — v7 in the core, no stop rule, no time gate (D91).
