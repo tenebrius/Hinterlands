@@ -14,6 +14,7 @@ mod labels;
 mod lines;
 mod outside;
 pub mod wool;
+mod prices;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;
@@ -197,6 +198,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(events::EventsLayer),
         Box::new(outside::OutsideLayer),
         Box::new(wool::WoolLayer),
+        Box::new(prices::PricesLayer),
         Box::new(granary::GranaryLayer),
         Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
