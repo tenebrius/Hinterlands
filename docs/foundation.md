@@ -890,6 +890,22 @@ Answers:
    Then re-run. The dip and deficit targets are design targets, not gates. If principled changes do not reach them, the misses are recorded and M3 goes on, and the targets are never chased by loosening anything else.
 3. **The early price marks: the check is revised, after seeing it fail, so the reason is given.** The values in years 100–150 (0.38–0.43) are not runaway prices. They are the export-parity price of a young region selling most of its grain to the ports, the world price less carriage, which is exactly where Hume's mechanism should put it. The check exists to catch monetary collapse or inflation, so its lower bound becomes **half the world price (0.3)**. A price below that would mean the specie flow had failed. The upper bound stays at 2.5.
 
+**M3 passed (5550243, D100; golden `ff58d1b63e4c56d2`, 45.2 ms a year in wasm).** Money, market stores and purses are in the core.
+- **The gate passes on every map:** Clark R² 0.71–0.73; the price level within its band in 20/20; unsold 0%.
+- **Targets met:** price autocorrelation 0.50–0.52 (Clark 0.48); famine deficit met 0.36–0.37; carry-over 0.16–0.19 of a harvest (within Clark's 40%).
+- **Target missed: the famine dip, 0.22.** None of D99's levers moved it, because they only move grain between people.
+
+**Reading against history.** England's composite yields fell by roughly 40%, 60% and 10% in 1315, 1316 and 1317. That is about 110% of a year's harvest in all, close to the model's three years at 40%. Mortality was perhaps 10–15% in northern Europe ([Great Famine of 1315–1317](https://en.wikipedia.org/wiki/Great_Famine_of_1315%E2%80%931317); [Writing Medieval](https://writingmedieval.substack.com/p/the-great-famine-and-murrains-in); [Antwerp repository, 2020](https://repository.uantwerpen.be/docman/irua/cce274/153929_2020_01_01.pdf)). So the model's famine kills too many for the grain it loses. The fault is not the market. It is the hunger response: D34 sheds people for any shortfall at all. People endured a moderate shortfall by eating less, eating substitutes, slaughtering stock and eating the seed corn, and death rose steeply only below that (Livi-Bacci 1991, *Population and Nutrition*; Ó Gráda 2009, *Famine: A Short History*). The same rigidity is the likely cause of weather's growth cost under markets (population at year 200 is 0.68–0.70 of the run without weather).
+
+**M4, the hunger response and the famine shape (approved, D101).**
+1. **Tolerance.** Above `hunger_tolerance` × need (0.85), a shortfall stops growth but sheds nobody. Below it, D34 sheds a third of the gap below the tolerance each year.
+2. **The famine follows the record:** yields at −40%, −60% and −10% in 1315, 1316 and 1317, in place of −40% three times.
+3. **Pre-registered:**
+   - the famine dip within 0.10–0.16;
+   - population at year 200 at least 0.85 of the same seed without weather.
+4. **Gate:** every check passes as at M3.
+5. **Tuning.** `hunger_tolerance` within 0.8–0.9 is the implementer's. Iterate as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
