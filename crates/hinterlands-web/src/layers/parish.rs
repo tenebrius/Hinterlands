@@ -164,7 +164,13 @@ impl Layer for FootpathsLayer {
             };
         }
         let z = d.camera.zoom;
-        let stroke = Stroke::new((0.05 * z).clamp(1.0, 2.2), PATH);
+        // A map symbol: it fades out close in with the roads' symbols. (Paths at
+        // true width belong with the fields, in the next stage of the overhaul.)
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
+        let stroke = Stroke::new((0.05 * z).clamp(1.0, 2.2), PATH.gamma_multiply(fade));
         let dash = (0.14 * z).clamp(3.0, 9.0);
         draw_dashed(d, &self.1.lines, stroke, dash, dash * 0.8);
     }

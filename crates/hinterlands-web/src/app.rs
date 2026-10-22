@@ -112,6 +112,22 @@ impl App {
         if let Some(k) = url_param("season") {
             view::update(&mut view, &mut sim, Msg::SetSeason(Some(k.min(3) as u8)));
         }
+        // `?at=X,Y,Z` opens the view centred on map point (X, Y) in cells, at
+        // Z points per cell.
+        if let Some(at) = url_text("at") {
+            let n: Vec<f32> = at.split(',').filter_map(|x| x.parse().ok()).collect();
+            if let [x, y, z] = n[..] {
+                let max = crate::scale::max_zoom(view.terrain.grid.cell_km);
+                view::update(
+                    &mut view,
+                    &mut sim,
+                    Msg::SetCamera(Camera {
+                        center: egui::vec2(x, y),
+                        zoom: z.clamp(0.5, max),
+                    }),
+                );
+            }
+        }
         // `?year=N` opens the run already advanced to year N.
         if let Some(year) = url_param("year") {
             view::update(&mut view, &mut sim, Msg::Step(year));
@@ -190,7 +206,12 @@ impl App {
         if let Some(pos) = resp.hover_pos() {
             let scroll = ui.input(|i| i.smooth_scroll_delta.y);
             if scroll != 0.0 {
-                cam.zoom_at(rect, pos, (scroll * 0.002).exp());
+                cam.zoom_at(
+                    rect,
+                    pos,
+                    (scroll * 0.002).exp(),
+                    crate::scale::max_zoom(g.cell_km),
+                );
                 cam_changed = true;
             }
             let cell = cam.pick(rect, g.w, g.h, pos);
@@ -236,6 +257,7 @@ impl App {
         if self.view.layer_on("legend") {
             layers::draw_legend(&d, &self.layers);
         }
+        crate::scale::draw_bar(&painter, rect, cam.zoom, g.cell_km);
         out
     }
 }

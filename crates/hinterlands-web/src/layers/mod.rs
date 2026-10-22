@@ -13,11 +13,10 @@ mod history;
 mod labels;
 mod lines;
 mod outside;
-pub mod wool;
-mod prices;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;
+mod prices;
 mod relief;
 mod rivers;
 mod routes;
@@ -26,6 +25,8 @@ mod selection;
 mod settlements;
 mod smoke;
 pub mod terrain;
+mod ways;
+pub mod wool;
 
 use crate::camera::Camera;
 use crate::view::ViewState;
@@ -89,6 +90,37 @@ impl Layer for HoverCardLayer {
     }
     fn name(&self) -> &'static str {
         "Hover card (what is under the cursor)"
+    }
+    fn draw(&mut self, _d: &DrawCtx) {}
+}
+
+/// Roads at their real width, drawn by the relief shader (R9); this is its toggle.
+pub struct TrueRoadsLayer;
+
+impl Layer for TrueRoadsLayer {
+    fn id(&self) -> &'static str {
+        "roads"
+    }
+    fn name(&self) -> &'static str {
+        "Roads at true width (close in)"
+    }
+    fn draw(&mut self, _d: &DrawCtx) {}
+}
+
+/// Keeps the map symbols of roads, rivers and trade at full strength at every
+/// zoom; otherwise they fade out close in, where the true-width landscape
+/// takes over (R9).
+pub struct SymbolsLayer;
+
+impl Layer for SymbolsLayer {
+    fn id(&self) -> &'static str {
+        "symbols"
+    }
+    fn name(&self) -> &'static str {
+        "Map symbols at full zoom"
+    }
+    fn default_on(&self) -> bool {
+        false
     }
     fn draw(&mut self, _d: &DrawCtx) {}
 }
@@ -173,6 +205,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
     vec![
         Box::new(terrain::TerrainLayer::default()),
         Box::new(relief::ReliefLayer::default()),
+        Box::new(TrueRoadsLayer),
         Box::new(fields::FieldsLayer::default()),
         Box::new(countryside::CountrysideLayer::new(
             countryside::Kind::Grazing,
@@ -191,6 +224,7 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(overlay_cost::CostOverlay::default()),
         Box::new(overlay_score::ScoreOverlay::default()),
         Box::new(routes::RoutesLayer::default()),
+        Box::new(SymbolsLayer),
         Box::new(settlements::SettlementsLayer::default()),
         Box::new(buildings::BuildingsLayer::default()),
         Box::new(dots::DotsLayer::default()),

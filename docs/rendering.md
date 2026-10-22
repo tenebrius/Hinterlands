@@ -8,8 +8,9 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 This section describes what is waiting to be merged; it is rewritten each time.
 
-- **Nothing is waiting.** R1–R8 are merged (D36, D37, D42, D43, D45, D46, D47, D68).
-- **Next step:** the real-scale overhaul below is planned but not started. By the owner's decision it is built and handed over only after the current development stops.
+- **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
+- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
+- **Next step:** stage 2, once the owner has judged stage 1 on screen.
 
 ## R1 — Smooth relief drawn by a shader
 
@@ -127,6 +128,70 @@ So that someone watching can tell what is happening without opening the inspecto
 
 Kind: rendering (viewer).
 
+## R9 — Real scale, stage 1: the scale framework, and roads and rivers at true width
+
+The first stage of the real-scale overhaul (below). The map now zooms in to about a metre per screen point, and roads and rivers are drawn into the terrain at their real width.
+
+- **Zoom.** The deepest zoom is 1 m per screen point (about 0.5 m per physical pixel on a high-density screen): `cell_km × 1000` points per cell, 1,000 for the 1 km cells of maps 1–3. Before, it was 64 points per cell (15.6 m). The rules are in `scale.rs`; nothing assumes the cell size.
+- **Scale bar.** In the map's lower-left corner: a round length of about 120 points, and the metres per point.
+- **Symbols past the old deepest zoom.**
+  - Icons, smoke, the selection ring, squares and bridges stop growing at 64 points per cell.
+  - The map symbols of roads, rivers, trade flows (goods, wool, imports), footpaths, the trade dots and the bridge and ford glyphs fade out between 64 and 256 points per cell (15.6 to 3.9 m per point). There the true-width landscape has taken over.
+  - **"Map symbols at full zoom"**, a new layer toggle (off by default), keeps them at full strength at every zoom. The routes layer is renamed "Roads and trade routes (map symbols)".
+- **True width: the technique.**
+  - **Lines.** The centrelines are the same runs the symbols use: the river paths and the year's road network (roads and land tracks).
+  - **Smoothing.** Four rounds of corner cutting give segments of about 1/16 of a cell, so bends turn a few degrees at a time. They are uploaded as a data texture.
+  - **Index.** Each square of a 250 m index grid lists the segments that can reach into it.
+  - **Per pixel.** The shader takes the distance to the nearest road and the nearest river. Coverage is box-filtered, so a line thinner than a pixel fades instead of vanishing.
+  - **When.** The pass runs once a pixel is under 15 m, which is past the old deepest zoom, and stops looking at a pixel more than 40 m from any line.
+- **Widths, from the model.**
+  - **Rivers:** 0.6 √A m, with A the drainage area in km². That gives 4.6 m where a stream starts (60 km²), 8.5 m where rivers become navigable (200 km²) and 55 m on the largest (8,460 km² on map 1).
+  - **Estuaries** open to four times the width over the last 1.5 km. Spring widens every river by half, as the symbols do.
+  - **Roads:** 3 m when quiet up to 8 m at full traffic, where "busy" is the routes layer's rule (full at a tenth of the largest flow). Land trade off the roads runs on 2.2 m tracks.
+  - **Road condition** (`road_q`, D54) is not in the snapshot, so widths follow traffic alone.
+- **Rivers, drawn.**
+  - **Water:** shaded from the margins to the deeper middle, with streaks drawn out along the current. Ice forms at the edges in winter.
+  - **Banks:** a muddy edge, and reeds in patches (fewer in woods, straw-coloured in autumn and winter). In a town with the buildings layer on, the banks are stone quays.
+  - **Meanders:** the swing is 2 + 0.8 × the half-width in metres. The wavelengths are fixed, 90 m for brooks blending to 420 m for large rivers; a wavelength that followed the width shifted the phase wherever the width changed, and made the river shiver.
+  - **Joins:** the swing dies away at the ends of each line, so rivers meet each other and the sea cleanly. A tributary keeps its own width to the join.
+- **Roads, drawn.**
+  - **Surface:** a worn surface the colour of the soil, darker on better land and dustier on busy roads. Wheel ruts run 1.4 m apart, one pair to a lane, and quiet lanes have grass down the middle.
+  - **Edges:** grass verges, worn bare next to the road. Where a quiet lane cuts into a slope, the bank facing the light is lit and the other shaded.
+  - **Highways** (busy above half, in open country): a ditch each side and a hedge beyond it, broken by gates, casting its shadow away from the light.
+  - **Weather:** on low flat ground the road spreads by up to half again, where carts go round the mud. Puddles stand in spring and winter, and frost lies in winter.
+  - **Towns:** paved through built-up areas.
+  - **Bridges:** over water the road is a bridge, stone on busy roads and timber otherwise, with parapets.
+- **Natural, not repetitive.**
+  - **Wander.** Roads and rivers wander about 20 m either side of their course over most of a kilometre, and a few metres over a furlong, so nothing runs dead straight along the grid. They wander together, so they stay apart.
+  - **Roads beside rivers.** A road that runs along a river, through the same cells, is moved out to the bank. It goes to the side it is already on, or the higher side if it lies on the river's line. Crossings stay where they are.
+  - **Patterns** come from the integer hash of map position, as before, so they stay put under pan and zoom.
+- **Toggles.**
+  - "Roads at true width (close in)" is a new layer, on by default.
+  - The rivers in the shader follow the Rivers toggle.
+- **`?at=X,Y,Z`** opens the view centred on map point (X, Y) in cells at Z points per cell, for screenshots.
+- **Left for later stages.**
+  - **Stage 2:** footpaths at true width (they fade out close in for now), and fields and woods, which are still at the old scale: tree crowns about 250 m across, strips 166 m.
+  - **Stage 3:** town footprints, still about 333 m street blocks. At full zoom they dwarf the true-width roads (`11-village-1m`).
+  - **Stage 4:** bridges sized and placed at the model's bridges. Today any road over water is drawn as a bridge.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - The release wasm build gives the same hash at `?selftest=500` (30.5 ms/year).
+  - No change to the core, mapgen or CLI.
+- **Frame time.** The check ran in headless Chromium with SwiftShader, a software renderer far slower than any graphics card, so only the ratios mean anything. Median ms per frame, 1,400 × 900 window, map 1, year 450, around Asherfield:
+
+  | View | Before | R9 |
+  |---|---|---|
+  | 64 points per cell (deepest before) | 550 | 633 |
+  | 256 points per cell (4 m) | — | 683 |
+  | 1,000 points per cell (1 m) | — | 783 |
+  | 1,000, true-width roads and rivers off | — | 667 |
+
+  - **At 64 points per cell** the true-width pass is skipped, yet frames are about 15% slower in SwiftShader. That is probably the larger shader; a graphics card skips a branch that is uniform across the frame.
+  - **At full zoom** the pass adds about 17%.
+  - **Still owed:** a check on real weak hardware.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -136,13 +201,20 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R5, on v2 G3: `7-town` (Langden, a walled city, at full zoom; before is the per-cell view).
 - R7: `8-lettering` (the whole map and panels). R6: `9-port` (Wenenford: quays on the smoothed shore, smoothed footpaths).
 - R8: `10-hover-town` (the card over Langden, the filtered chronicle) and `10-hover-land` (the card over pasture by a road, with Dareswood selected).
+- R9, on v7 (year 450, summer unless named), around Asherfield, a village of 475 on a busy road:
+  - `11-village-before` is the deepest zoom before R9 (64 points per cell); `11-village-after` is the same view after;
+  - `11-village-4m` is at 4 m per point and `11-village-1m` at 1 m;
+  - `11-highway-1m` is the highway leaving the village, `11-highway-1m-winter` the same in winter, and `11-highway-1m-symbols` the same with "Map symbols at full zoom" on;
+  - `11-brook-1m` is the brook into Chaleford;
+  - `11-stream-road-2m` is Caley at 2.5 m: a lane kept to the bank of its stream, and a bridge over the larger river;
+  - `11-estuary-4m` is the mouth at Dewermouth.
 
-## Next: the real-scale overhaul (planned, not started)
+## Next: the real-scale overhaul (in progress: stage 1 is R9)
 
 Recorded on 22 October 2026 from the owner's conversation with the graphics session.
 
 ### Status and rules
-- **Status:** planned, not started. It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
+- **Status:** stage 1 built (R9), waiting for the owner's judgement before stage 2. It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
 - **When:** the owner asks that it be built and handed to the implementer only after the current development stops, so as not to disturb the designer and implementer.
 - **Approval:** frontend only, so the owner's approval stands in for the designer's.
 - **Handover:** it goes to the implementer as one batch, built in stages (below) so that each stage can be judged on screen.

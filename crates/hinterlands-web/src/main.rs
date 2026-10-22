@@ -6,6 +6,7 @@ mod granary;
 mod hover;
 mod layers;
 mod panels;
+mod scale;
 mod sim_handle;
 mod style;
 mod view;

@@ -31,6 +31,22 @@ uniform vec2 u_p0;
 uniform vec2 u_p1;
 // Physical screen pixels per cell.
 uniform float u_px;
+// Roads and rivers at true width (R9). Segments, two texels each:
+// (x0, y0, x1, y1) in cells, then (half-width at each end in metres,
+// 4 x kind + busy, metres along the line at the start). Kinds: 0 stream,
+// 1 navigable river, 2 track, 3 road. On rivers, busy is replaced by the
+// kilometres to the end of the line (up to 0.999).
+uniform sampler2D u_ways;
+// Per square of the index grid (u_wsub squares to a cell along a side): first
+// entry in u_widx and how many segments reach into the square.
+uniform sampler2D u_wcell;
+uniform float u_wsub;
+// Segment numbers, four to a texel.
+uniform sampler2D u_widx;
+// True-width roads on, rivers on, spring widening of the rivers.
+uniform vec3 u_way_show;
+// Metres per cell.
+uniform float u_cell_m;
 
 in vec2 v_uv;
 out vec4 o_color;
@@ -411,6 +427,258 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     return c;
 }
 
+// ---- Roads and rivers at true width (R9) ----
+
+const int WAY_ROW = 2048;
+// Most segments read per index square (MAX_WAYS in relief.rs).
+const int WAY_MAX = 96;
+const vec3 WATER_DEEP = vec3(0.21, 0.36, 0.47);
+const vec3 WATER_EDGE = vec3(0.38, 0.48, 0.45);
+const vec3 MUD = vec3(0.40, 0.34, 0.25);
+const vec3 REED = vec3(0.47, 0.52, 0.31);
+const vec3 QUAY_STONE = vec3(0.58, 0.55, 0.50);
+
+// The nearest line of one family (roads or rivers).
+struct Way {
+    // Metres to its edge, negative inside.
+    float sd;
+    // Metres from its centreline, signed: positive to the left going along it.
+    float x;
+    float hw;
+    // Metres along the line from its start.
+    float along;
+    vec2 dir;
+    int kind;
+    float busy;
+};
+
+vec4 way_texel(sampler2D s, int k) {
+    return texelFetch(s, ivec2(k % WAY_ROW, k / WAY_ROW), 0);
+}
+
+// Metres per physical pixel.
+float mpx() {
+    return u_cell_m / u_px;
+}
+
+// How much of the band lo..hi metres across a pixel centred at x covers:
+// a box filter, so lines thinner than a pixel fade instead of vanishing.
+float band(float x, float lo, float hi) {
+    float m = mpx();
+    return clamp((min(x + 0.5 * m, hi) - max(x - 0.5 * m, lo)) / m, 0.0, 1.0);
+}
+
+// Detail of this size in metres, faded out before it is small enough to shimmer.
+float fine(float metres) {
+    return smoothstep(1.5, 4.0, metres / mpx());
+}
+
+// How far a river swings from its line, metres: fixed wavelengths blended by
+// size (a wavelength that followed the width would shift the phase wherever
+// the width changes), so brooks wind every hundred metres or so and large
+// rivers over several hundred. It dies away near the ends of a line, where
+// rivers meet each other or the sea.
+float meander(float along, float to_end, float hw) {
+    float amp = 2.0 + 0.8 * hw;
+    float big = smoothstep(3.0, 20.0, hw);
+    float swing = mix(vnoise(vec2(along / 90.0, 0.5), 211), vnoise(vec2(along / 420.0, 0.5), 212), big);
+    float ends = smoothstep(0.0, 60.0 + 6.0 * hw, min(along, to_end));
+    return amp * ends * (swing * 2.0 - 1.0);
+}
+
+void ways_near(vec2 pw, out Way road, out Way river) {
+    road = Way(1e9, 0.0, 0.0, 0.0, vec2(1.0, 0.0), -1, 0.0);
+    river = road;
+    ivec2 sq = clamp(ivec2(floor(pw * u_wsub)), ivec2(0), ivec2(u_grid * u_wsub) - 1);
+    vec4 cell = texelFetch(u_wcell, sq, 0);
+    int start = int(cell.r);
+    int n = min(int(cell.g), WAY_MAX);
+    for (int k = 0; k < WAY_MAX; k++) {
+        if (k >= n) {
+            break;
+        }
+        int j = start + k;
+        int id = int(way_texel(u_widx, j >> 2)[j & 3]);
+        vec4 a = way_texel(u_ways, 2 * id);
+        vec4 b = way_texel(u_ways, 2 * id + 1);
+        vec2 ab = a.zw - a.xy;
+        vec2 ap = pw - a.xy;
+        float l2 = max(dot(ab, ab), 1e-12);
+        float t = clamp(dot(ap, ab) / l2, 0.0, 1.0);
+        float d = length(ap - ab * t) * u_cell_m;
+        float hw = mix(b.x, b.y, t);
+        float sd = d - hw;
+        int kind = int(floor(b.z / 4.0));
+        float extra = b.z - 4.0 * float(kind);
+        if (kind >= 2) {
+            if (sd < road.sd) {
+                float side = ab.x * ap.y - ab.y * ap.x < 0.0 ? -1.0 : 1.0;
+                float len = sqrt(l2);
+                road = Way(sd, side * d, hw, b.w + t * len * u_cell_m, ab / len, kind, extra);
+            }
+        } else if (sd - (2.0 + 0.8 * hw) < river.sd) {
+            // Rivers are compared after their meander, which can bring a farther
+            // line nearer; only lines within a swing of the nearest are worth it.
+            float side = ab.x * ap.y - ab.y * ap.x < 0.0 ? -1.0 : 1.0;
+            float len = sqrt(l2);
+            float along = b.w + t * len * u_cell_m;
+            float to_end = extra * 1000.0 - t * len * u_cell_m;
+            float x = side * d - meander(along, extra >= 0.998 ? 1e9 : to_end, hw);
+            float msd = abs(x) - hw;
+            if (msd < river.sd) {
+                river = Way(msd, x, hw, along, ab / len, kind, 0.0);
+            }
+        }
+    }
+}
+
+// Roads and rivers drawn into the land colour at their real width, at map point
+// `p` with the smoothed cell values `s` (its alpha is the hillshade).
+vec3 ways_color(vec3 c, vec2 p, vec4 s) {
+    float shade = s.a;
+    vec2 pm = p * u_cell_m;
+    // Lines wander either side of their smoothed course, some 20 m over most of a
+    // kilometre and a few metres over a furlong, so no road runs dead straight
+    // along the grid. Roads and rivers wander together, so they stay apart.
+    vec2 wander = (vec2(vnoise(pm / 700.0, 201), vnoise(pm / 700.0, 203)) - 0.5) * 40.0
+        + (vec2(vnoise(pm / 160.0, 205), vnoise(pm / 160.0, 207)) - 0.5) * 8.0;
+    vec2 pw = p + wander / u_cell_m;
+    Way road, river;
+    ways_near(pw, road, river);
+    if (min(road.sd, river.sd) > 40.0) {
+        return c;
+    }
+    // How far inside a built-up area, and how wooded.
+    float town = 0.0;
+    if (u_town_show.x > 0.5) {
+        vec4 tv, tgx, tgy;
+        town_smooth(p, tv, tgx, tgy);
+        town = smoothstep(-0.02, 0.02, field_dist(tv.r, tgx.r, tgy.r));
+    }
+    float wood = smoothstep(0.4, 0.8, cover_smooth(p).r);
+    bool winter = u_season == 3;
+    bool wet = u_season == 0 || winter;
+
+    // Rivers: open water shading from the margins to the deeper middle, a muddy
+    // bank, reeds in patches, quays in town; swinging in meanders sized to the river.
+    float rcov = 0.0;
+    float rd = 1e9;
+    float rhw = 0.0;
+    if (u_way_show.y > 0.5 && river.sd < 40.0) {
+        rhw = river.hw * u_way_show.z;
+        float x = river.x;
+        rd = abs(x);
+        if (town > 0.5 && u_town_show.y > 0.5) {
+            c = mix(c, QUAY_STONE * (0.9 + 0.2 * vnoise(pm / 1.2, 219) * fine(1.2)), band(rd, rhw, rhw + 1.6));
+            c = mix(c, vec3(0.30, 0.27, 0.24), band(rd, rhw + 1.6, rhw + 1.9));
+        } else {
+            float patches = smoothstep(0.35, 0.7, vnoise(vec2(river.along / 35.0, sign(x) * 3.0), 213));
+            float reach = (1.0 + 0.12 * rhw) * (0.3 + patches) * (1.0 - 0.6 * wood);
+            vec3 reed = REED * (0.85 + 0.3 * vnoise(pm / 0.7, 215) * fine(0.7));
+            if (u_season == 2 || winter) {
+                reed = mix(reed, vec3(0.62, 0.55, 0.38), 0.6);
+            }
+            c = mix(c, reed, band(rd, rhw, rhw + 0.5 + reach) * 0.85);
+            c = mix(c, MUD, band(rd, rhw - 0.2, rhw + 0.3 + 0.03 * rhw) * 0.8);
+        }
+        float depth = clamp(1.0 - rd / max(rhw, 0.1), 0.0, 1.0);
+        vec3 water = mix(WATER_EDGE, WATER_DEEP, smoothstep(0.0, 0.7, depth) * clamp(rhw / 12.0, 0.35, 1.0));
+        // Streaks drawn out along the current.
+        float streak = vnoise(vec2(river.along / 9.0, x / 1.4), 217);
+        water *= 0.95 + 0.1 * streak * fine(1.4);
+        if (winter) {
+            water = mix(water, vec3(0.80, 0.85, 0.88), 0.5 * (1.0 - smoothstep(0.0, 3.0, rhw - rd)));
+        }
+        rcov = band(rd, -rhw, rhw);
+        c = mix(c, water, rcov);
+    }
+
+    // Roads: a worn surface the colour of the soil, ruts, grass down the middle of
+    // quiet lanes, worn verges, banks where a lane cuts into a slope, and ditches
+    // and hedges along the highways; paved streets in town; bridges over water.
+    if (u_way_show.x > 0.5 && road.sd < 40.0) {
+        float busy = road.busy;
+        bool track = road.kind == 2;
+        float level = 1.0 - smoothstep(0.06, 0.18, abs(shade - 1.0));
+        // Carts spread round the mud on low, flat ground.
+        float spread = 1.0 + 0.45 * level * smoothstep(0.55, 0.85, vnoise(vec2(road.along / 70.0, 0.5), 221));
+        float hw = road.hw * (town > 0.5 ? 1.0 : spread);
+        float x = road.x;
+        float d = abs(x);
+        float side = sign(x);
+        vec3 soil = mix(vec3(0.68, 0.57, 0.42), vec3(0.52, 0.42, 0.30), clamp(s.b, 0.0, 1.0));
+        vec3 surf = mix(soil, vec3(0.78, 0.69, 0.52), 0.45 * busy);
+        surf *= 0.92 + 0.16 * vnoise(pm / 2.5, 223) * fine(2.5);
+        // Wheel ruts 1.4 m apart, one pair to a lane, worn deeper on busy roads.
+        bool two = hw > 2.6;
+        float lx = two ? abs(d - 0.5 * hw) : d;
+        float rut = band(lx, 0.5, 0.9) * (0.4 + 0.6 * vnoise(vec2(road.along / 11.0, side), 225));
+        float mid = two ? 0.0 : band(lx, -0.35, 0.35) * (1.0 - smoothstep(0.1, 0.4, busy));
+        surf = mix(surf, mix(c, vec3(0.50, 0.56, 0.33), 0.4), mid * 0.65 * (1.0 - town));
+        if (wet) {
+            float pud = smoothstep(0.66, 0.74, vnoise(pm / 1.7, 227)) * (1.0 - smoothstep(0.7, 1.0, d / hw));
+            surf = mix(surf, vec3(0.55, 0.61, 0.66), pud * 0.85);
+        }
+        if (winter) {
+            surf = mix(surf, vec3(0.90, 0.91, 0.93), 0.4);
+        }
+        surf *= 1.0 - (0.22 + 0.15 * busy) * rut;
+        if (town > 0.0) {
+            // Paved or cobbled through the town.
+            vec3 street = vec3(0.64, 0.61, 0.56) * (0.9 + 0.2 * vnoise(pm / 0.6, 237) * fine(0.6));
+            surf = mix(surf, street, town * 0.8);
+        }
+        float open = 1.0 - town;
+        // Verges: grass kept short by passing stock, worn bare next to the road.
+        float vw = (0.8 + 2.4 * busy) * (0.75 + 0.5 * vnoise(vec2(road.along / 14.0, side * 2.0), 229));
+        vec3 grass = vec3(0.50, 0.60, 0.33) * (0.92 + 0.16 * vnoise(pm / 1.3, 241) * fine(1.3));
+        if (u_field_season == 2) {
+            grass = mix(grass, vec3(0.60, 0.57, 0.36), 0.35);
+        } else if (u_field_season == 3) {
+            grass = mix(grass, vec3(0.60, 0.60, 0.50), 0.6);
+        }
+        c = mix(c, grass, band(d, hw, hw + vw) * open * (track ? 0.4 : 0.85));
+        c = mix(c, mix(soil, grass, 0.5), band(d, hw, hw + 0.4 + 0.6 * busy) * open);
+        // A lane worn into a slope: the bank facing the light is lit, the other shaded.
+        float sunk = (1.0 - level) * (1.0 - busy) * open;
+        vec2 nrm = vec2(-road.dir.y, road.dir.x) * side;
+        float lit = dot(-nrm, vec2(-0.7071, -0.7071));
+        c *= 1.0 + 0.4 * lit * sunk * band(d, hw, hw + 1.8);
+        if (busy > 0.5 && !track) {
+            // Highways: a ditch each side, and a hedge beyond it, broken by gates.
+            float hi = smoothstep(0.5, 0.8, busy) * open;
+            float dd = hw + vw;
+            vec3 ditch = wet ? vec3(0.33, 0.41, 0.46) : vec3(0.27, 0.31, 0.19);
+            c = mix(c, ditch, band(d, dd, dd + 1.0) * hi);
+            float hz = dd + 1.2;
+            float gate = smoothstep(0.1, 0.18, vnoise(vec2(road.along / 45.0, side * 7.0), 231));
+            float hwid = 1.8 + 1.0 * vnoise(vec2(road.along / 7.0, side * 3.0), 233)
+                + 0.6 * (vnoise(vec2(road.along / 2.2, side * 5.0), 243) - 0.5);
+            float hedge_on = hi * gate * (1.0 - wood);
+            // The hedge's shadow, about its height, on the side away from the light.
+            float shadow = dot(nrm, vec2(-0.7071, -0.7071)) > 0.0
+                ? band(d, hz - 1.6, hz) : band(d, hz + hwid, hz + hwid + 1.6);
+            c *= 1.0 - 0.3 * shadow * hedge_on;
+            vec3 hedge = HEDGE * (0.8 + 0.45 * vnoise(pm / 1.1, 235) * fine(1.1));
+            c = mix(c, hedge, band(d, hz, hz + hwid) * hedge_on);
+        }
+        // Over water the road is a bridge: stone for busy roads, timber otherwise,
+        // with parapets along its edges.
+        float over = rcov > 0.0 ? band(rd, -rhw - 2.0, rhw + 2.0) : 0.0;
+        if (over > 0.0) {
+            vec3 deck = busy > 0.3 ? vec3(0.66, 0.62, 0.55) : vec3(0.52, 0.40, 0.28);
+            surf = mix(surf, deck * (0.93 + 0.14 * vnoise(vec2(road.along / 0.5, x), 239) * fine(0.5)), over);
+            float hwb = hw + 0.5;
+            c = mix(c, vec3(0.30, 0.27, 0.24), band(d, hw, hwb) * over);
+            hw = mix(hw, hwb, over);
+        }
+        c = mix(c, surf, band(d, -hw, hw));
+        // A faint edge where the surface meets the grass.
+        c = mix(c, c * 0.86, band(d, hw - 0.3, hw + 0.1) * open * (1.0 - over));
+    }
+    return c;
+}
+
 void main() {
     vec2 p = mix(u_p0, u_p1, v_uv);
     if (p.x < 0.0 || p.y < 0.0 || p.x >= u_grid.x || p.y >= u_grid.y) {
@@ -422,7 +690,14 @@ void main() {
     float shade = clamp(s.a, 0.45, 1.45);
 
     vec3 sea = sea_color(s, coast);
-    vec3 land = land_color(s, p, coast) * shade;
+    vec3 land = land_color(s, p, coast);
+    // Roads and rivers at true width, once a pixel is under 15 m: past the old
+    // deepest zoom, where the map symbols begin to fade. Further out they are
+    // a fraction of a pixel and the symbols carry them.
+    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5) && mpx() < 15.0) {
+        land = ways_color(land, p, s);
+    }
+    land *= shade;
     float w = aa(coast);
     vec3 c = mix(sea, land, smoothstep(-w, w, coast));
     // Coastline in ink once a cell is a few pixels across.

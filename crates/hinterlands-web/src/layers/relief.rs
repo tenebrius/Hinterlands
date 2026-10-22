@@ -2,13 +2,15 @@
 //! cells instead of painting squares. Coast, shallows, hillshade and the forest
 //! canopy are derived per pixel from the cell values, and so are the farmed
 //! countryside (field strips, pasture, hedgerows, old fields), the built-up
-//! footprints of settlements with ruins and city walls, and the season tints,
-//! each drawn only while its own layer is on. If the shader cannot be
+//! footprints of settlements with ruins and city walls, the season tints, and,
+//! close in, roads and rivers at their true width (from `ways`), each drawn
+//! only while its own layer is on. If the shader cannot be
 //! built the layer falls back to the cell texture of `TerrainLayer`, and the
 //! countryside layers draw their cells as before.
 
 use super::countryside::{hash, strip_orientation};
 use super::terrain::TerrainLayer;
+use super::ways::Ways;
 use super::{DrawCtx, Layer, Swatch};
 use crate::view::{ViewState, NEVER};
 use eframe::egui_glow;
@@ -36,6 +38,9 @@ const COAST_REACH: i32 = 6;
 const ESTABLISHED: u32 = 50;
 const GHOST_YEARS: u32 = 200;
 
+/// Road and river pieces the shader reads per index square (as `WAY_MAX` in the shader).
+const MAX_WAYS: usize = 96;
+
 /// Set when the shader could not be built, so the cell layers take over again.
 static FAILED: AtomicBool = AtomicBool::new(false);
 
@@ -51,23 +56,31 @@ pub struct ReliefLayer {
     key: Option<(u64, u32)>,
     terrain_key: Option<u64>,
     fallback: TerrainLayer,
+    ways: Ways,
+    /// Squares of the road and river index per cell along a side.
+    way_sub: f32,
 }
+
+/// The textures, by unit, and the sampler each is bound to.
+const LAND: usize = 0;
+const COVER: usize = 1;
+const PLOT: usize = 2;
+const TOWN: usize = 3;
+const WAYS: usize = 4;
+const WAY_CELL: usize = 5;
+const WAY_IDX: usize = 6;
+const SAMPLERS: [&str; 7] = [
+    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx",
+];
 
 /// GL objects, owned behind a mutex because egui runs paint callbacks later in the frame.
 #[derive(Default)]
 struct Gpu {
     program: Option<glow::Program>,
     vao: Option<glow::VertexArray>,
-    land: Option<glow::Texture>,
-    cover: Option<glow::Texture>,
-    plot: Option<glow::Texture>,
-    town: Option<glow::Texture>,
-    /// Data waiting to be uploaded on the next paint.
-    land_data: Option<Vec<f32>>,
-    cover_data: Option<Vec<f32>>,
-    plot_data: Option<Vec<f32>>,
-    town_data: Option<Vec<f32>>,
-    size: (i32, i32),
+    tex: Vec<glow::Texture>,
+    /// Data waiting to be uploaded on the next paint: texture, size, texels.
+    pending: Vec<(usize, (i32, i32), Vec<f32>)>,
     failed: bool,
 }
 
@@ -87,6 +100,11 @@ struct Frame {
     show: [f32; 4],
     /// Settlements and buildings layers on (footprints; walls).
     town: [f32; 2],
+    /// True-width roads on, rivers on, flood widening of the rivers.
+    ways: [f32; 3],
+    /// Metres per cell.
+    cell_m: f32,
+    way_sub: f32,
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -203,6 +221,12 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
 }
 
 impl Gpu {
+    /// Queues texels for a texture, replacing any not yet uploaded.
+    fn queue(&mut self, k: usize, size: (i32, i32), data: Vec<f32>) {
+        self.pending.retain(|p| p.0 != k);
+        self.pending.push((k, size, data));
+    }
+
     unsafe fn init(&mut self, gl: &glow::Context) -> Result<(), String> {
         let header = if gl.version().is_embedded {
             "#version 300 es\n"
@@ -231,10 +255,9 @@ impl Gpu {
         }
         self.program = Some(program);
         self.vao = Some(gl.create_vertex_array()?);
-        self.land = Some(gl.create_texture()?);
-        self.cover = Some(gl.create_texture()?);
-        self.plot = Some(gl.create_texture()?);
-        self.town = Some(gl.create_texture()?);
+        for _ in SAMPLERS {
+            self.tex.push(gl.create_texture()?);
+        }
         Ok(())
     }
 
@@ -274,37 +297,26 @@ impl Gpu {
                     return;
                 }
             }
-            let (Some(program), Some(land), Some(cover), Some(plot), Some(town)) =
-                (self.program, self.land, self.cover, self.plot, self.town)
-            else {
+            let Some(program) = self.program else {
                 return;
             };
-            for (tex, data) in [
-                (land, self.land_data.take()),
-                (cover, self.cover_data.take()),
-                (plot, self.plot_data.take()),
-                (town, self.town_data.take()),
-            ] {
-                if let Some(data) = data {
-                    Self::upload(gl, tex, self.size, &data);
-                }
+            for (k, size, data) in std::mem::take(&mut self.pending) {
+                Self::upload(gl, self.tex[k], size, &data);
             }
             gl.use_program(Some(program));
             gl.bind_vertex_array(self.vao);
-            for (unit, tex) in [
-                (glow::TEXTURE3, town),
-                (glow::TEXTURE2, plot),
-                (glow::TEXTURE1, cover),
-                (glow::TEXTURE0, land),
-            ] {
-                gl.active_texture(unit);
-                gl.bind_texture(glow::TEXTURE_2D, Some(tex));
+            // Bound from the last unit down, so unit 0 is left active as egui expects.
+            for k in (0..SAMPLERS.len()).rev() {
+                gl.active_texture(glow::TEXTURE0 + k as u32);
+                gl.bind_texture(glow::TEXTURE_2D, Some(self.tex[k]));
             }
             let at = |name: &str| gl.get_uniform_location(program, name);
-            gl.uniform_1_i32(at("u_land").as_ref(), 0);
-            gl.uniform_1_i32(at("u_cover").as_ref(), 1);
-            gl.uniform_1_i32(at("u_plot").as_ref(), 2);
-            gl.uniform_1_i32(at("u_town").as_ref(), 3);
+            for (k, name) in SAMPLERS.iter().enumerate() {
+                gl.uniform_1_i32(at(name).as_ref(), k as i32);
+            }
+            gl.uniform_3_f32(at("u_way_show").as_ref(), f.ways[0], f.ways[1], f.ways[2]);
+            gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
+            gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
             gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
             gl.uniform_1_f32(at("u_year").as_ref(), f.year);
             gl.uniform_1_i32(at("u_season").as_ref(), f.season);
@@ -366,17 +378,28 @@ impl Layer for ReliefLayer {
             self.fallback.draw(d);
             return;
         }
+        let size = (t.grid.w as i32, t.grid.h as i32);
         if self.terrain_key != Some(v.terrain_version) {
-            gpu.land_data = Some(land_data(t));
-            gpu.size = (t.grid.w as i32, t.grid.h as i32);
+            gpu.queue(LAND, size, land_data(t));
             self.terrain_key = Some(v.terrain_version);
         }
         let key = (v.terrain_version, v.snapshot.year);
         if self.key != Some(key) {
             let (cover, plot) = year_data(v);
-            gpu.cover_data = Some(cover);
-            gpu.plot_data = Some(plot);
-            gpu.town_data = Some(town_data(v));
+            gpu.queue(COVER, size, cover);
+            gpu.queue(PLOT, size, plot);
+            gpu.queue(TOWN, size, town_data(v));
+            let w = self.ways.build(v);
+            if w.most > MAX_WAYS {
+                log::warn!(
+                    "an index square lists {} road and river pieces; the shader reads {MAX_WAYS}",
+                    w.most
+                );
+            }
+            gpu.queue(WAYS, w.seg_size, w.seg);
+            gpu.queue(WAY_CELL, w.cell_size, w.cell);
+            self.way_sub = w.sub;
+            gpu.queue(WAY_IDX, w.idx_size, w.idx);
             self.key = Some(key);
         }
         drop(gpu);
@@ -402,6 +425,17 @@ impl Layer for ReliefLayer {
             field_season: v.season_index(d.time) as i32,
             show: ["fields", "strips", "grazing", "history"].map(|id| v.layer_on(id) as u8 as f32),
             town: ["settlements", "buildings"].map(|id| v.layer_on(id) as u8 as f32),
+            ways: [
+                v.layer_on("roads") as u8 as f32,
+                v.layer_on("rivers") as u8 as f32,
+                if v.layer_on("seasons") && v.season_index(d.time) == 0 {
+                    1.5
+                } else {
+                    1.0
+                },
+            ],
+            cell_m: t.grid.cell_km * 1000.0,
+            way_sub: self.way_sub,
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

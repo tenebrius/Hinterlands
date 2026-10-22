@@ -52,9 +52,11 @@ impl Camera {
         )
     }
 
-    pub fn zoom_at(&mut self, view: Rect, screen: Pos2, factor: f32) {
+    /// Zoom by `factor` about a screen point, no further in than `max` (points
+    /// per cell, from `scale::max_zoom`).
+    pub fn zoom_at(&mut self, view: Rect, screen: Pos2, factor: f32, max: f32) {
         let before = self.to_map(view, screen);
-        self.zoom = (self.zoom * factor).clamp(0.5, 64.0);
+        self.zoom = (self.zoom * factor).clamp(0.5, max);
         let after = self.to_map(view, screen);
         self.center += before - after;
     }
