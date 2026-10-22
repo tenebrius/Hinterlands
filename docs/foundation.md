@@ -1265,6 +1265,48 @@ Divish has lifted the stop (D117). The rules, the channel and the gate are uncha
 
 D0 found the region's own cloth needs 3–5 times the wool it grows at Dyer's figure.
 
+### D1 result (c96bd73): accepted; four traces, then D2 with the fallow flock (D123)
+
+**Accepted.** The gate passes on 40 seeds. `demand_stocks` is the default, and the golden is `4a9737eafc305561`.
+- Runs passing every check rise from 19 / 27 / 16 to 27 / 28 / 17, the first robustness gain since v7. Map 1's road length clears 30/40, so `NO_WORSE` is no longer needed.
+- Iron falls 35% with the arable land. Ports supply 80–90% of the iron, as England's did (Childs 1981).
+
+**The pre-registrations, read:**
+1. **Specialist median under 500: missed on map 1 (1,009).** The port caps iron's price, not the volume a site sells. Salt demand rose 5.6 times, and the region's salterns supplied most of it in 1250–1400. If map 1's large specialists are salterns, they are Droitwich-like salt towns and acceptable. If they are iron or stone, they are not. **Traced before D2.**
+2. **Iron 4–6% above parity: accepted as the entropy margin.** It is the dispersion the equilibrium is built to have. My band forgot it.
+
+   **The three run-years at 16–21 are not accepted untraced.** A whole region paying sixteen times the port's price is either a defect or a supply cut. **Traced before D2.**
+3. **The price level does not fall: my pre-registration was wrong, and the model is right.** The region takes its prices from outside: wool at the world price, grain at port parity, iron and salt at the port. A price-taking economy settles its balance of payments through the money stock and quantities, not the price level. This is the monetary approach to the balance of payments, and McCloskey and Zecher (1976) found it in the gold standard itself. Coin is 10–25% lower, wool exports are up 25% and luxuries down 23%: that is the adjustment.
+4. **Outside trade:** in the band in the medians, with 35/40 on map 3. **The five runs out are broken down by side and good.**
+
+**Regression: market store carry-over has fallen to about 0** (it was 0.13–0.14). Competitive storage is a v7 mechanism the viewer shows, so its silent loss is not accepted. **Traced:** is it short purses, the order in which purses spend, or the spike rule's margin no longer being met? A defect in the spending order is fixed. A real budget effect is reported, and I decide.
+
+**The cloth note: decided.**
+1. **Cloth per adult: 1.5 yards, held constant in D2. No straight-line path to 1500.** A path in time is a script, not a mechanism. The rise after 1348 comes from income per head, in D3. Dyer's three yards in 1500 then becomes D3's check, not D2's input.
+2. **Wool per yard: accepted.** Home cloth takes 2 lb a yard and export cloth 3.5 lb, both approximate.
+   - **One cloth good, measured by its wool content.** The Leontief coefficient is then 1 lb of wool to 1 lb of cloth content, and the two kinds differ only in how many yards that content makes.
+3. **The fallow flock: accepted,** as step 1 of D2. It is built and reported, with the gate on the whole of D2, as D1 was.
+   - It puts sheep on the fallow and commons at a rate per arable km². Its wool is counted with the pasture's and sold by the farmers. Source: Campbell 2000, Slavin 2020; otherwise it is named as a calibration.
+   - **Reported:** wool per person in 1300 against England's 3–5 lb (2–3.5 lb exported plus home cloth), and outside trade. Wool exports will rise until cloth takes some of the wool, which is why the gate waits for step 2.
+4. **The ports sell no wool and no cloth: accepted.** Fine cloth stays in imports.
+5. **Added: the ports buy export cloth, and wool pays the export subsidy (the cause the note did not name).**
+   - Cloth overtook raw wool as an export chiefly because of the crown's taxes. From the 1340s the wool subsidy took about a third of wool's export value. Cloth paid a small custom from 1347, a few percent.
+   - The duty is the wedge that made English cloth-making the better way to sell English wool. Sources: Carus-Wilson & Coleman 1963; Power 1941; Ormrod on the subsidy.
+   - The ports buy export cloth at a world cloth price. Both duties enter the calendar at the sourced years and rates, with the values to be confirmed from the sources.
+   - Cloth is made at mill settlements (D56), with capacity scaling with W. Its margin over wool goes to the market purse. It is solved from the finished good to the raw one on last year's prices, as in the proposal.
+
+**D2 gate:** every check on 40 seeds.
+
+**Pre-registered for D2, reported only.** Each item names its mechanism, for the implementer to confirm in the code before the run (rule 5).
+- **The share of the region's wool made into cloth is under 0.4 in 1300–1340 and over 0.6 in 1450–1500.** This rests on the export-duty wedge (home cloth per head is constant until D3). England went from about a quarter of its clip to most of it.
+- **Cloth is made mostly in small and middle places, not the largest town or the ports.** At least half of cloth output comes from places with W 100–2,000. This rests on mills sitting on streams, away from the estuary towns, which is Carus-Wilson's movement of cloth-making to the countryside. "Cloth towns on mill streams" holds by construction, so it is not the test.
+- **Outside trade stays inside 3–30%.** Export cloth carries more value per pound of wool, so this could break. If it does, the report says by how much, and the band is not revised before I have seen it.
+
+**Reported:**
+- coin by channel, including the duties;
+- cloth towns' sizes, against the over-2,000 check;
+- wool to ports against cloth to ports, by decade.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
