@@ -1108,6 +1108,25 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 
 Development ends here.
 
+## For when development resumes: demand from stocks and processing chains (D118)
+
+Decided by the designer on 22 October 2026, on the owner's proposal `docs/proposals/demand.md`, while development is stopped (D117). Nothing here starts until development resumes.
+
+**Why.** The proposal's charge is right. Only grain's demand has a source. Salt, iron, stone and imports are starting values or calibrations (iron's 0.0013 was fitted to supply in D71). Demand is for nothing, it ignores wealth, and raw demand is never derived from what it is used for. Replacement of stocks is the standard reading of durable-goods demand, with Leontief coefficients and Weber's location for the processing step.
+
+**Decisions (section 8):**
+1. **Demand is replacement of stocks plus growth (owner): accepted.** People hold clothing, arable fields and workers hold iron, and buildings hold stone. Salt and grain stay consumed as used.
+2. **Chains only where a separate trade in another place sits between (owner): accepted.** Cloth comes first and alone, made at fulling-mill towns (D56 mills) from wool. Grain, bread, ale and village smithing stay as they are.
+3. **Wealth raises stocks (D3): accepted,** after the chain.
+4. **Building stock from W, not from built cells: accepted.** The footprint stays rendering only, as the architecture requires. Built cells are tried only if W fails its check.
+5. **When: accepted.** It comes after the robustness re-tune and replaces the cloth note (D116.3). The order on resuming is the robustness re-tune, then D0 to D3, with growth after 1480 still noted.
+6. **Milling toll: left out for now.** The mills already act through yield (D56), and a grain transfer to the lord would add a flow with no check that needs it. It can be reconsidered after D2.
+
+**Added:**
+- D105's sourcing rule applies to every new parameter.
+- At D1, S1's iron calibration (D71) is redone, since iron demand will follow arable land.
+- D2's gate includes cloth towns on mill streams, the share of wool going to cloth rising after 1400, and every v7 check, the hierarchy included.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
