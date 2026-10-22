@@ -564,3 +564,33 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - **`just validate` (Historical, 20 seeds a map): PASSED.** Runs passing every check: 8 / 13 / 8.
 - **Golden `b4f78a0e4adf502b`;** wasm gives the same hash at 45.4 ms/year.
 - **Details:** `docs/wool/hatcher.md`.
+
+## v7 release (D115)
+- **The model:**
+  - grain sold at marketplaces at clearing prices (M2);
+  - money in two purses per place, conserved exactly (M3);
+  - market stores and village purses;
+  - the hunger tolerance and the record's famine (M4);
+  - wool on land not worth ploughing, sold to the ports (L1);
+  - the murrain after Slavin (L2);
+  - Hatcher's later plagues and the endemic era (D108, D114);
+  - the wool view (L4).
+- **The view:**
+  - prices, purses and stores in the inspector;
+  - a "Grain prices" layer;
+  - "What you are watching" rewritten for seven phases;
+  - screenshots in `docs/screenshots/v7/` (1300, 1316, 1349, 1450, 1600).
+- **Docs:** `README.md` rewritten on the model as it is, with sources; `docs/parameters.md` regenerated.
+- **`just test`:** passes, including the conservation of coin.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Runs passing every check: 8 / 13 / 8.
+  - Hatcher: 1450 at 0.54–0.56 of 1340.
+  - Wool brings about 60% of coin entering before 1348 and over 90% after.
+  - Famine dip 0.19 (pre-registered ≤ 0.16, missed). Weather 0.87–0.88.
+- **Kent (`just real`, 20 seeds):**
+  - the largest place is near Gravesend in 14 seeds and Milton Regis in 4, with a share of 0.30;
+  - real towns found within 5 km: river 59%, coast 48%, inland 27%;
+  - inland places over 500 are 13.2 km apart (real 10.6 km);
+  - almost no pasture (the soil layers lack chalk and marsh; geology is next, D116).
+- **Golden `65aee272c30de1f9`.** Release wasm gives the same hash (`?selftest=500`) at 45.9 ms/year.
+- **Reproducing v7:** check out this commit.
