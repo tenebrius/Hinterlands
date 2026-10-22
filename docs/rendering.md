@@ -9,8 +9,8 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 This section describes what is waiting to be merged; it is rewritten each time.
 
 - **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
-- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
-- **Next step:** stage 2, once the owner has judged stage 1 on screen.
+- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9 and stage 2 is R10. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
+- **Next step:** stage 3, once the owner has judged stage 2 on screen. The owner has put optimisation off to a later stage, so that the results are right first.
 
 ## R1 — Smooth relief drawn by a shader
 
@@ -192,6 +192,93 @@ The first stage of the real-scale overhaul (below). The map now zooms in to abou
 
 Kind: rendering.
 
+## R10 — Real scale, stage 2: fields, woods and pasture
+
+The countryside drawn as it would look from the air at a metre a pixel. Each thing fades in once it is a few pixels across. The detail is invented, but where it lies comes from the cells: which land is farmed, wooded or grazed, and since when. The new shader code is in `country.frag`, spliced into `relief.frag`.
+
+- **New per-cell data.** A ground texture carries:
+  - wetness: a river cell, or one beside a river, on flat ground;
+  - the year each cell was first farmed in this session;
+  - the original forest cover.
+- **Parcels.**
+  - **Tessellation.** The farmland is cut into parcels of about 170 m, a Voronoi tessellation of scattered sites. Their edges bend about 30 m over a quarter of a kilometre and a few metres over a strip's width. Over most of a kilometre the parcels stretch and squeeze, so no lattice shows (see the check below).
+  - **Which are farmed.** A parcel is farmed when the far-out field outline covers its site. Close in, the outline follows parcel edges, and it matches the far view to within a parcel.
+  - **Uses.** About 60% of the farmed parcels are arable, as planned. The rest are meadow (most likely on wet land), common grazing, closes, and scrub.
+  - **Assarts.** Where land was cleared late from woodland (original cover over about 0.45, first farmed after about 1220), arable parcels become small closes rather than open field.
+- **Furlongs.**
+  - **Strips:** 10–20 m wide, with irregular widths and a tone of their own. Each strip is a ridge, lit on the side facing the sun, higher on heavy land (good yield, flat), with the reversed S of the plough team. Rows run along the strip.
+  - **Angle:** each furlong lies at its own angle around R3's rule (away from the nearest road or river). On wet or heavy sloping land the strips run downhill, to drain.
+  - **Edges:** headlands of grass where the boundary crosses the strip ends, and narrow balks along their sides.
+  - **Rotation:** furlongs are grouped into three great fields by a coarser tessellation of about 650 m. One field lies fallow each year and the others carry winter and spring corn, in R3's colours by season. In summer about a third of the winter-corn strips are already reaped.
+- **Other parcels.**
+  - **Meadows** are lush. In summer half of them are mown, with the hay in windrows about 6 m apart.
+  - **Commons and scrub** are grazed turf.
+  - **Closes** are each cut again into fields of about 70 m, under grass or ploughed in broad ridges ("lands").
+  - **Old fields:** where fields went out of cultivation, ridge and furrow shows under the grass, fading over R3's 200 years.
+- **Hedges.**
+  - **Where:** round closes, round meadows, round the field block once it has been farmed fifty years (R3's rule), and between holdings.
+  - **Age:** a hedge thickens as it ages, from about 1.6 m to 3.6 m wide over 50–400 years, and holds more standard trees (Hooper's rule). The trees are oak or birch, 3–7.5 m across, one by chance in each stretch of about 40 m.
+  - **Detail:** gates now and then. The hedge and its trees cast shadows away from the light. Far out, a hedge stays a fine line so the field pattern reads.
+- **Woods.**
+  - **Outline.** The wood's outline is the old cell-scale one, refined by finer noise at 90 m and 25 m as you zoom in, so its shape holds across zooms.
+  - **Far out** a wood is a tint, as before. From about 25 m per pixel it is a texture of stands and groups, and from about 7 m per pixel single crowns appear.
+  - **Crowns:** 3.5–8 m across (up to 10 m on lone trees), domed and lit, with shadows. The woodland floor shows between crowns inside the wood.
+  - **Species** follow the ground: alder and willow by wet streams, beech on dry upland, birch on poor land, oak elsewhere. Trees of a kind grow in stands of about 150 m. Each species has its own colour by season (beech orange in autumn, and so on), and deciduous trees are bare in winter.
+  - **Lattice.** Trees come from three jittered grids at different angles and sizes, each holding a third of them. With one grid, the 11 m lattice showed in the repetition check (spectral peak 93; 8 with three).
+  - **Old wood** (dense cover) has larger crowns. Lone trees past the wood's edge are fewer and broader.
+  - **Coppice** (cover cut below its original, the rule of the coppice glyphs): hazel underwood in coupes of about 80 m, each at its own stage of regrowth (most grown back, a few newly cut), under scattered oak standards.
+- **Downland.** On the model's grazed land:
+  - grazed turf mottled at three scales, rank in patches;
+  - gorse and thorn;
+  - dew ponds on the upland, about one to every 700 m square;
+  - sheep folds, hurdle pens on trampled ground.
+
+  Far out, tussock marks, eight to a cell, draw rough grazing the old way, so the turn to grass shows across the map (the implementer's request in the v7 notes).
+- **Open land.** Open land that is neither farmed, grazed nor wooded gets the same turf texture, with thorn thin on poor land.
+- **Footpaths at true width** (left over from R9):
+  - the footpaths layer's walk, every five years, drawn as 1.2 m trodden lines that wander a little, with plank bridges over streams;
+  - kept off the rivers like the roads;
+  - they follow the Footpaths toggle, and the symbol still fades out close in.
+- **Retired.** These are replaced at every zoom:
+  - the old six strips per cell;
+  - the cell-scale hedges and ghost-strip lines;
+  - the 250 m tree crowns.
+
+  Far out, the field and forest tints are unchanged.
+- **Toggles.** Each part follows its layer as in R3:
+  - furlongs, meadows and closes follow Fields;
+  - strips and ridges follow Strips;
+  - commons and downland follow Pasture;
+  - hedges and old fields follow Hedgerows and old fields.
+- **Repetition check.**
+  - **The tool.** `tools/rhythm.py` measures the sharpest peak of a screenshot's power spectrum. It compares each peak with both the spectrum's level at that radius and its neighbours along the same ray, so straight lines and edges, which spread along a ray, do not count. A score above 30 is a rhythm. The autocorrelation peak is reported for diagnosis only.
+  - **Results.** Before (R9) and after (R10), at the same views:
+
+    | View | R9 | R10 |
+    |---|---|---|
+    | 64 points per cell | 18.5 | 14.2 |
+    | 4 m, Asherfield | 22.6 | 44.6 |
+    | 4 m, town blanked out | 6.7 | 7.2 |
+    | 1 m, highway in fields | 54.4 | 37.1 |
+    | 1 m, wood | 7.0 | 8.0 |
+    | 64, downland | 8.8 | 10.0 |
+
+  - **4 m view.** The rhythm there is Asherfield's street grid of 333 m blocks (period 41 px, about 170 m). It is unchanged from R5 and is replaced in stage 3. With the town blanked out, R10 scores 7.2. R9's score at that view also held its old six strips per cell.
+  - **1 m view.** The score comes from the highway's parallel bands (ditch, verge, hedge). Without the road the view scores 10.9.
+- **Frame time.** Not optimised in this stage, by the owner's decision. Median ms per frame in headless Chromium with SwiftShader (a software renderer, so only the ratios mean anything), measured one after another in the same session. R9 measured slower here than in R9's own check because the machine was loaded differently.
+
+  | View | R9 | R10 |
+  |---|---|---|
+  | 64 points per cell | 733 | 1,200 |
+  | 1 m, highway in fields | 733 | 3,000 |
+  | 1 m, wood | — | 2,533 |
+  | 4 m, Asherfield | — | 3,250 |
+
+  At full zoom stage 2 costs about four times stage 1. Most of it is the parcel tessellation (with both parcels' data for hedges), and the three tree grids, each searched twice for shadows. These are the first targets when optimisation comes: the planned cache of the rendered map, levels of detail, and a parcel texture built on the CPU.
+- **Checks.** The golden hash is unchanged (`65aee272c30de1f9`), `just test` passes, and `?selftest=500` matches. No change to the core, mapgen or CLI.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -208,13 +295,18 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
   - `11-brook-1m` is the brook into Chaleford;
   - `11-stream-road-2m` is Caley at 2.5 m: a lane kept to the bank of its stream, and a bridge over the larger river;
   - `11-estuary-4m` is the mouth at Dewermouth.
+- R10, the same village (year 450, summer unless named):
+  - **Pairs** (R9, then R10): `12-village-64-before`/`-after` (64 points per cell), `12-village-4m-before`/`-after`, `12-fields-1m-before`/`-after` (furlongs, closes and a copse by the highway), `12-wood-1m-before`/`-after`, and `12-downland-64-before`/`-after` (the tussock marks, round Falecote on the upland).
+  - **Close views:** `12-closes-1m` (small hedged closes and ridge and furrow under grass), `12-wood-edge-2m`, `12-coppice-1m` and `12-downland-1m` (dew pond, folds, gorse).
+  - **Seasons:** `12-autumn-2m` and `12-winter-2m`.
+  - **Year 200 (1300), at the height of the open fields:** `12-open-fields-1300-4m` and `12-open-fields-1300-1m`.
 
-## Next: the real-scale overhaul (in progress: stage 1 is R9)
+## Next: the real-scale overhaul (in progress: stage 1 is R9, stage 2 is R10)
 
 Recorded on 22 October 2026 from the owner's conversation with the graphics session.
 
 ### Status and rules
-- **Status:** stage 1 built (R9), waiting for the owner's judgement before stage 2. It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
+- **Status:** stages 1 and 2 built (R9, R10), waiting for the owner's judgement before stage 3. It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
 - **When:** the owner asks that it be built and handed to the implementer only after the current development stops, so as not to disturb the designer and implementer.
 - **Approval:** frontend only, so the owner's approval stands in for the designer's.
 - **Handover:** it goes to the implementer as one batch, built in stages (below) so that each stage can be judged on screen.

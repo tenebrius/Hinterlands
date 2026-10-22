@@ -34,7 +34,7 @@ uniform float u_px;
 // Roads and rivers at true width (R9). Segments, two texels each:
 // (x0, y0, x1, y1) in cells, then (half-width at each end in metres,
 // 4 x kind + busy, metres along the line at the start). Kinds: 0 stream,
-// 1 navigable river, 2 track, 3 road. On rivers, busy is replaced by the
+// 1 navigable river, 2 track, 3 road, 4 footpath. On rivers, busy is replaced by the
 // kilometres to the end of the line (up to 0.999).
 uniform sampler2D u_ways;
 // Per square of the index grid (u_wsub squares to a cell along a side): first
@@ -43,8 +43,8 @@ uniform sampler2D u_wcell;
 uniform float u_wsub;
 // Segment numbers, four to a texel.
 uniform sampler2D u_widx;
-// True-width roads on, rivers on, spring widening of the rivers.
-uniform vec3 u_way_show;
+// True-width roads on, rivers on, spring widening of the rivers, footpaths on.
+uniform vec4 u_way_show;
 // Metres per cell.
 uniform float u_cell_m;
 
@@ -166,27 +166,6 @@ float fbm(vec2 p, int k) {
     return 0.5 * vnoise(p, k) + 0.3 * vnoise(p * 2.03, k + 1) + 0.2 * vnoise(p * 4.11, k + 2);
 }
 
-// Tree crowns: distance to the nearest crown centre (in crown units) and that crown's id.
-vec2 crowns(vec2 q, int k, out ivec2 id) {
-    ivec2 b = ivec2(floor(q));
-    float best = 9.0;
-    float r = 0.0;
-    id = b;
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            ivec2 c = b + ivec2(dx, dy);
-            vec2 o = vec2(hash(c, k), hash(c, k + 7)) * 0.7 + 0.15;
-            float d = length(vec2(c) + o - q);
-            if (d < best) {
-                best = d;
-                id = c;
-                r = 0.38 + 0.22 * hash(c, k + 13);
-            }
-        }
-    }
-    return vec2(best, r);
-}
-
 // Width of one screen pixel in the units of `v`.
 float aa(float v) {
     return max(fwidth(v), 1e-4);
@@ -219,10 +198,7 @@ const vec3 FIELDS[12] = vec3[12](
     vec3(140.0, 118.0, 92.0) / 255.0, vec3(126.0, 104.0, 80.0) / 255.0, vec3(136.0, 142.0, 108.0) / 255.0);
 const vec3 HEDGE = vec3(44.0, 92.0, 40.0) / 255.0;
 
-// Field boundaries follow the cells, but wander so furlongs are not squares.
-vec2 warp(vec2 p) {
-    return p + (vec2(vnoise(p * 2.0, 51), vnoise(p * 2.0, 53)) - 0.5) * 0.35;
-}
+// @include country.frag
 
 vec3 land_color(vec4 s, vec2 p, float coast) {
     float e = s.r;
@@ -242,98 +218,86 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     // A thin strand along the shore.
     c = mix(c, vec3(0.86, 0.81, 0.64), (1.0 - smoothstep(0.0, 0.12, coast)) * 0.6);
 
-    // Pasture beyond the fields: a meadow green with ragged edges.
+    vec2 pm = p * u_cell_m;
+    vec4 gr = ground_smooth(p);
+    float upland = smoothstep(150.0, 400.0, e);
+    // Wetness, upland, poor land: what the trees and grass follow.
+    vec4 env = vec4(gr.r, upland, 1.0 - y, 0.0);
+    // Close in, the rough grass of open land varies at three scales, as turf does.
+    c = turf(c, pm);
+
+    // Pasture (the model's grazed land): downland turf, with tussock marks far out.
+    float past = 0.0;
     if (u_show.z > 0.5) {
         float m = cv.b + (fbm(p * 2.5, 61) - 0.5) * 0.5;
-        float past = smoothstep(0.45, 0.45 + max(aa(m), 0.04), m);
-        vec3 grass = u_field_season == 3 ? vec3(0.60, 0.60, 0.50) : vec3(0.60, 0.73, 0.40);
-        grass *= 0.94 + 0.12 * vnoise(p * 14.0, 63) * detail;
-        c = mix(c, grass, past * 0.75);
+        past = smoothstep(0.45, 0.45 + max(aa(m), 0.04 * (1.0 - fine(60.0)) + 0.006), m);
+        c = downland(c, p, pm, past * 0.85, upland);
     }
 
-    // The fields: one smooth outline around each block of farmed cells.
+    // The fields: far out, one smooth outline round each block of farmed cells
+    // in the season's mean crop colour; closer in, furlongs of strips, meadows,
+    // closes and commons, parcel by parcel, with their hedges.
     float fm = cv.g + (fbm(p * 2.2, 71) - 0.5) * 0.45;
     float field = smoothstep(0.5 - max(aa(fm), 0.02), 0.5 + max(aa(fm), 0.02), fm);
-    vec2 q = warp(p);
-    vec4 pl = plot_at(ivec2(floor(q)));
-
-    // Land that has gone out of cultivation keeps the faint lines of its strips.
-    if (u_show.w > 0.5) {
-        float gm = smoothstep(0.02, 0.15, cv.a) * (1.0 - field);
-        float s2 = q.y * 4.0;
-        float e2 = min(fract(s2), 1.0 - fract(s2));
-        float line = 1.0 - smoothstep(0.0, aa(s2) * 1.2, e2);
-        c = mix(c, vec3(0.38, 0.33, 0.24), line * gm * (0.15 + 0.4 * cv.a) * smoothstep(6.0, 10.0, u_px));
-    }
-
-    float show = max(u_show.x, u_show.y * smoothstep(5.0, 7.0, u_px));
-    if (show > 0.0) {
-        // Strips run away from the nearest road or river, with the reversed S of the plough team,
-        // and one in three lies fallow, moving on each year.
-        float g = pl.g;
-        bool horiz = mod(g, 2.0) > 0.5;
-        float rot = floor(g / 2.0 + 0.01);
-        float along = horiz ? q.x : q.y;
-        float across = (horiz ? q.y : q.x) + 0.03 * sin(along * 6.2832);
-        float sk = across * 6.0;
-        float k = floor(sk);
+    float mosaic = smoothstep(2.0, 5.0, PARCEL / mpx());
+    if (u_show.x > 0.5 || u_show.y > 0.5) {
         int base = u_field_season * 3;
-        vec3 crop = mod(k, 2.0) < 0.5 ? FIELDS[base] : FIELDS[base + 1];
-        vec3 strip = mod(k + u_year + rot, 3.0) < 0.5 ? FIELDS[base + 2] : crop;
-        float fs = min(fract(sk), 1.0 - fract(sk));
-        strip *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, aa(sk) * 1.2, fs));
-        strip *= 0.95 + 0.10 * vnoise(vec2(along * 24.0, k * 3.1), 73);
-        vec3 avg = (FIELDS[base] + FIELDS[base + 1]) / 3.0 + FIELDS[base + 2] / 3.0;
-        float stripes = smoothstep(10.0, 22.0, u_px) * u_show.y;
-        c = mix(c, mix(avg, strip, stripes), field * show * mix(0.75, 1.0, stripes));
+        vec3 avg = (FIELDS[base] + FIELDS[base + 1] + FIELDS[base + 2]) / 3.0;
+        c = mix(c, avg, field * 0.75 * (1.0 - mosaic));
+    }
+    if (mosaic > 0.0 && (fm > 0.15 || cv.a > 0.02)) {
+        c = farmland(c, p, pm, mosaic, upland);
     }
 
-    // Forest: the cover is smooth, its edge broken by noise so woods have ragged margins.
-    // Far out that would be speckle, so cover is a plain tint until cells are a few pixels wide.
+    // Forest: the cover is smooth, its edge broken by noise so woods have ragged
+    // margins, more finely the closer in. Far out it is a plain tint; then a
+    // texture of stands and groups; close in, single crowns with their shadows,
+    // and single trees beyond the wood's edge.
     float f = cv.r;
     float n = clamp((fbm(p * 1.3, 21) - 0.5) * 2.4 + 0.5, 0.0, 1.0);
-    float edge = f - n;
-    float clumps = smoothstep(0.0, max(aa(edge), 0.05), edge);
+    float edge = f - n + (vnoise(pm / 90.0, 25) - 0.5) * 0.16 * fine(30.0)
+        + (vnoise(pm / 25.0, 27) - 0.5) * 0.06 * fine(8.0);
+    float clumps = smoothstep(0.0, max(aa(edge), 0.02), edge);
     float wood = mix(smoothstep(0.05, 0.85, f), clumps, smoothstep(5.0, 12.0, u_px));
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));
     green = mix(green, vec3(0.24, 0.36, 0.25), smoothstep(400.0, 1000.0, e));
     if (u_season == 2) {
         green = mix(green, vec3(0.66, 0.42, 0.18), 0.35 * smoothstep(0.3, 0.7, f));
     }
-    if (detail > 0.0) {
-        // Close up the wood resolves into crowns; single trees stand out past its edge.
-        ivec2 id;
-        vec2 cw = crowns(p * 4.0, 31, id);
-        float inside = 1.0 - smoothstep(cw.y - aa(cw.x), cw.y, cw.x);
-        float lit = clamp(1.0 - cw.x / cw.y, 0.0, 1.0);
-        vec3 crown = green * (0.80 + 0.40 * lit);
-        vec3 gap = green * 0.62;
-        vec3 canopy = mix(gap, crown, inside);
-        green = mix(green, canopy, detail);
-        float stray = step(hash(id, 41), f * 0.6) * inside * (1.0 - wood);
-        c = mix(c, crown, stray * detail * 0.9);
+    // Coppice (cover cut below its original by fuel cutting) and old wood.
+    float cop = clamp((gr.b - f - 0.08) / 0.25, 0.0, 1.0) * step(0.15, f);
+    float old = smoothstep(0.6, 0.9, f) * (1.0 - cop);
+    float big = 1.0 + 0.2 * old - 0.15 * cop;
+    // Tree density, kept per crown from its value and gradient here.
+    float dens = wood * 0.9 + (1.0 - wood) * f * 0.035;
+    vec2 dgrad = vec2(dFdx(dens) / dFdx(pm.x), dFdy(dens) / dFdy(pm.y));
+    vec3 woodc = green;
+    float tex = smoothstep(25.0, 12.0, mpx());
+    if (tex > 0.0) {
+        woodc = mix(green, canopy_texture(pm, env, 5.0 * big), tex);
     }
-    c = mix(c, green, wood * 0.92);
-
-    // Hedgerows round fields farmed for fifty years: on the outline of the field block
-    // and between neighbouring holdings, thickening and thinning like real hedges.
-    if (u_show.w > 0.5 && u_px > 6.0) {
-        float hw = max(0.05, 1.0 / u_px);
-        float hedged = plot_smooth(p).b;
-        float grad = length(vec2(dFdx(fm), dFdy(fm))) * u_px;
-        float rim = abs(fm - 0.5) / max(grad, 1e-3);
-        float on = (1.0 - smoothstep(hw * 0.6, hw, rim)) * step(0.3, hedged);
-        if (pl.r >= 0.0 && pl.b > 0.5) {
-            vec2 off[4] = vec2[4](vec2(hw, 0.0), vec2(-hw, 0.0), vec2(0.0, hw), vec2(0.0, -hw));
-            for (int k = 0; k < 4; k++) {
-                vec4 o = plot_at(ivec2(floor(warp(p + off[k]))));
-                if (o.r >= 0.0 && abs(o.r - pl.r) > 1e-4) {
-                    on = max(on, field);
-                }
-            }
+    float crownsf = fine(10.0);
+    vec3 bare = c;
+    c = mix(c, woodc, wood * 0.92 * (1.0 - crownsf));
+    if (crownsf > 0.0) {
+        vec3 floorc = u_field_season == 3 ? vec3(0.36, 0.29, 0.22) : vec3(0.16, 0.22, 0.12);
+        vec3 cc = bare;
+        if (cop > 0.0) {
+            // Underwood cut in coupes on a rotation, so each coupe has its own height.
+            float age = coupe(pm);
+            cc = draw_crowns(cc, pm, 4.5, wood * cop * mix(0.3, 0.95, age), vec2(0.0),
+                0.5 + 1.2 * age, 1.0 + 1.8 * age, 521, vec4(env.xyz, 2.0), mix(floorc, vec3(0.45, 0.38, 0.27), 1.0 - age), wood * cop);
         }
-        float bushes = 0.55 + 0.45 * smoothstep(0.3, 0.6, vnoise(p * 28.0, 81));
-        c = mix(c, HEDGE * (0.85 + 0.3 * vnoise(p * 60.0, 83)), on * bushes * smoothstep(6.0, 10.0, u_px));
+        // The woodland floor shows between crowns only well inside the wood.
+        cc = draw_crowns(cc, pm, 11.0, dens * (1.0 - 0.8 * cop), dgrad * (1.0 - 0.8 * cop),
+            3.5 * big, 8.0 * big, 511, env, floorc, smoothstep(0.55, 0.8, wood) * (1.0 - cop));
+        c = mix(c, cc, crownsf);
+    }
+
+    // Gorse and thorn scattered on the downland, and thinly on poor open land.
+    float thorn = past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015;
+    if (thorn > 0.0 && fine(3.0) > 0.0) {
+        c = mix(c, draw_crowns(c, pm, 13.0, thorn, vec2(0.0), 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0), fine(3.0));
     }
 
     // Settlements: one smooth outline round each built-up area, ruins fading grey,
@@ -454,23 +418,6 @@ struct Way {
 
 vec4 way_texel(sampler2D s, int k) {
     return texelFetch(s, ivec2(k % WAY_ROW, k / WAY_ROW), 0);
-}
-
-// Metres per physical pixel.
-float mpx() {
-    return u_cell_m / u_px;
-}
-
-// How much of the band lo..hi metres across a pixel centred at x covers:
-// a box filter, so lines thinner than a pixel fade instead of vanishing.
-float band(float x, float lo, float hi) {
-    float m = mpx();
-    return clamp((min(x + 0.5 * m, hi) - max(x - 0.5 * m, lo)) / m, 0.0, 1.0);
-}
-
-// Detail of this size in metres, faded out before it is small enough to shimmer.
-float fine(float metres) {
-    return smoothstep(1.5, 4.0, metres / mpx());
 }
 
 // How far a river swings from its line, metres: fixed wavelengths blended by
@@ -596,7 +543,20 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s) {
     // Roads: a worn surface the colour of the soil, ruts, grass down the middle of
     // quiet lanes, worn verges, banks where a lane cuts into a slope, and ditches
     // and hedges along the highways; paved streets in town; bridges over water.
-    if (u_way_show.x > 0.5 && road.sd < 40.0) {
+    if (road.kind == 4) {
+        // A footpath: a trodden line, wandering a little, narrower in the grass.
+        if (u_way_show.w > 0.5 && road.sd < 10.0) {
+            float hw = road.hw * (0.75 + 0.5 * vnoise(vec2(road.along / 8.0, 0.5), 251));
+            float d = abs(road.x + 0.6 * (vnoise(vec2(road.along / 25.0, 1.5), 253) - 0.5));
+            vec3 trod = mix(vec3(0.62, 0.55, 0.42), c, 0.35) * (0.92 + 0.16 * vnoise(pm / 0.8, 255) * fine(0.8));
+            if (winter) {
+                trod = mix(trod, vec3(0.42, 0.36, 0.30), 0.4);
+            }
+            float over = rcov > 0.0 ? band(rd, -rhw - 1.0, rhw + 1.0) : 0.0;
+            trod = mix(trod, vec3(0.52, 0.40, 0.28), over);
+            c = mix(c, trod, band(d, -hw, hw) * (1.0 - town * 0.5));
+        }
+    } else if (u_way_show.x > 0.5 && road.sd < 40.0) {
         float busy = road.busy;
         bool track = road.kind == 2;
         float level = 1.0 - smoothstep(0.06, 0.18, abs(shade - 1.0));
@@ -694,7 +654,7 @@ void main() {
     // Roads and rivers at true width, once a pixel is under 15 m: past the old
     // deepest zoom, where the map symbols begin to fade. Further out they are
     // a fraction of a pixel and the symbols carry them.
-    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5) && mpx() < 15.0) {
+    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && mpx() < 15.0) {
         land = ways_color(land, p, s);
     }
     land *= shade;

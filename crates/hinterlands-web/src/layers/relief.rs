@@ -3,8 +3,9 @@
 //! canopy are derived per pixel from the cell values, and so are the farmed
 //! countryside (field strips, pasture, hedgerows, old fields), the built-up
 //! footprints of settlements with ruins and city walls, the season tints, and,
-//! close in, roads and rivers at their true width (from `ways`), each drawn
-//! only while its own layer is on. If the shader cannot be
+//! close in, roads and rivers at their true width (from `ways`) and the
+//! countryside at real scale (`country.frag`: furlongs, closes, hedges, single
+//! trees, downland), each drawn only while its own layer is on. If the shader cannot be
 //! built the layer falls back to the cell texture of `TerrainLayer`, and the
 //! countryside layers draw their cells as before.
 
@@ -31,6 +32,8 @@ void main() {
 "#;
 
 const FRAG: &str = include_str!("relief.frag");
+/// The real-scale countryside (R10), spliced into `FRAG` at its marker.
+const COUNTRY: &str = include_str!("country.frag");
 
 /// How far the coast distance field is searched, in cells.
 const COAST_REACH: i32 = 6;
@@ -69,8 +72,9 @@ const TOWN: usize = 3;
 const WAYS: usize = 4;
 const WAY_CELL: usize = 5;
 const WAY_IDX: usize = 6;
-const SAMPLERS: [&str; 7] = [
-    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx",
+const GROUND: usize = 7;
+const SAMPLERS: [&str; 8] = [
+    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx", "u_ground",
 ];
 
 /// GL objects, owned behind a mutex because egui runs paint callbacks later in the frame.
@@ -100,8 +104,8 @@ struct Frame {
     show: [f32; 4],
     /// Settlements and buildings layers on (footprints; walls).
     town: [f32; 2],
-    /// True-width roads on, rivers on, flood widening of the rivers.
-    ways: [f32; 3],
+    /// True-width roads on, rivers on, flood widening of the rivers, footpaths on.
+    ways: [f32; 4],
     /// Metres per cell.
     cell_m: f32,
     way_sub: f32,
@@ -220,6 +224,32 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
     (cover, plot)
 }
 
+/// Per cell for this year: wetness (a river or beside one, on flat ground, or a
+/// flood meadow), the year first farmed in this session / 100 (-1 if never),
+/// and the original forest cover.
+fn ground_data(v: &ViewState) -> Vec<f32> {
+    let t = &v.terrain;
+    let mut out = Vec::with_capacity(t.n() * 4);
+    for i in 0..t.n() {
+        let flat = 1.0 - ((t.slope[i] - 0.02) / 0.06).clamp(0.0, 1.0);
+        let by = if t.is_river(i) || t.is_nav(i) {
+            1.0
+        } else if t.touches(i, |j| t.is_river(j) || t.is_nav(j)) {
+            0.7
+        } else {
+            0.0
+        };
+        let wet = if t.is_land(i) { by * flat } else { 0.0 };
+        let first = if v.farm_first[i] == NEVER {
+            -1.0
+        } else {
+            v.farm_first[i] as f32 / 100.0
+        };
+        out.extend_from_slice(&[wet, first, t.forest0[i], 0.0]);
+    }
+    out
+}
+
 impl Gpu {
     /// Queues texels for a texture, replacing any not yet uploaded.
     fn queue(&mut self, k: usize, size: (i32, i32), data: Vec<f32>) {
@@ -235,7 +265,11 @@ impl Gpu {
         };
         let program = gl.create_program()?;
         let mut shaders = Vec::new();
-        for (kind, src) in [(glow::VERTEX_SHADER, VERT), (glow::FRAGMENT_SHADER, FRAG)] {
+        let frag = FRAG.replace("// @include country.frag\n", COUNTRY);
+        for (kind, src) in [
+            (glow::VERTEX_SHADER, VERT),
+            (glow::FRAGMENT_SHADER, frag.as_str()),
+        ] {
             let s = gl.create_shader(kind)?;
             gl.shader_source(s, &format!("{header}{src}"));
             gl.compile_shader(s);
@@ -314,7 +348,13 @@ impl Gpu {
             for (k, name) in SAMPLERS.iter().enumerate() {
                 gl.uniform_1_i32(at(name).as_ref(), k as i32);
             }
-            gl.uniform_3_f32(at("u_way_show").as_ref(), f.ways[0], f.ways[1], f.ways[2]);
+            gl.uniform_4_f32(
+                at("u_way_show").as_ref(),
+                f.ways[0],
+                f.ways[1],
+                f.ways[2],
+                f.ways[3],
+            );
             gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
             gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
             gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
@@ -389,6 +429,7 @@ impl Layer for ReliefLayer {
             gpu.queue(COVER, size, cover);
             gpu.queue(PLOT, size, plot);
             gpu.queue(TOWN, size, town_data(v));
+            gpu.queue(GROUND, size, ground_data(v));
             let w = self.ways.build(v);
             if w.most > MAX_WAYS {
                 log::warn!(
@@ -433,6 +474,7 @@ impl Layer for ReliefLayer {
                 } else {
                     1.0
                 },
+                v.layer_on("footpaths") as u8 as f32,
             ],
             cell_m: t.grid.cell_km * 1000.0,
             way_sub: self.way_sub,

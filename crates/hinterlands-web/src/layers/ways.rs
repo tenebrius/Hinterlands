@@ -25,6 +25,7 @@ const STREAM: f32 = 0.0;
 const RIVER: f32 = 1.0;
 const TRACK: f32 = 2.0;
 const ROAD: f32 = 3.0;
+const PATH: f32 = 4.0;
 /// Metres beyond a road's edge that its verges, ditches, hedges and their
 /// shadows reach (roads spread by up to half again on mud), and beyond a
 /// river's edge for its banks, reeds and quays; plus half the widest pixel at
@@ -36,6 +37,8 @@ const RIVER_REACH: f32 = 8.0 + 8.0;
 const INDEX_M: f32 = 250.0;
 /// Width of a land track, and of a road from quiet to busiest, in metres.
 const TRACK_W: f32 = 2.2;
+/// Width of a footpath, metres.
+const PATH_W: f32 = 1.2;
 const ROAD_W: (f32, f32) = (3.0, 8.0);
 /// Metres kept between a road and the water where it runs beside a river.
 const RIVER_GAP: f32 = 8.0;
@@ -273,6 +276,44 @@ fn roads(v: &ViewState, banks: &Banks) -> Vec<Line> {
     out
 }
 
+/// Footpaths from each place to its fields and its nearest neighbours (the
+/// footpaths layer's walk), as lines like the roads, kept off the rivers.
+fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)]) -> Vec<Line> {
+    let t = &v.terrain;
+    let g = t.grid;
+    let edges: std::collections::BTreeSet<(u32, u32)> = edges.iter().copied().collect();
+    let pins: std::collections::BTreeSet<u32> =
+        v.snapshot.settlements.iter().map(|s| s.anchor).collect();
+    lines::chains(&edges, &pins)
+        .into_iter()
+        .map(|cells| {
+            let pts: Vec<Vec2> = cells
+                .iter()
+                .map(|&c| {
+                    let (x, y) = g.xy(c as usize);
+                    Vec2::new(x as f32 + 0.5, y as f32 + 0.5)
+                })
+                .collect();
+            let zero = vec![0.0; pts.len()];
+            let (pts, _) = lines::chaikin(&pts, &zero, ROUNDS, |a, _, _| a);
+            let last = pts.len() - 1;
+            let pts: Vec<Vec2> = (0..=last)
+                .map(|k| {
+                    let dir = (k > 0 && k < last).then(|| (pts[k + 1] - pts[k - 1]).normalized());
+                    banks.push(t, pts[k], dir)
+                })
+                .collect();
+            let n = pts.len();
+            Line {
+                kind: PATH,
+                busy: vec![0.0; n],
+                hw: vec![0.5 * PATH_W; n],
+                pts,
+            }
+        })
+        .collect()
+}
+
 /// Builds the textures from the river lines (cached per terrain by the caller)
 /// and this year's roads.
 fn layout(t: &Terrain, lines: &[&Line]) -> WayData {
@@ -361,6 +402,8 @@ pub struct Ways {
     rivers: Vec<Line>,
     banks: Option<Banks>,
     terrain_key: Option<u64>,
+    /// The footpaths' walk, shared with the footpaths layer's rule.
+    walk: super::parish::Local,
 }
 
 impl Ways {
@@ -370,10 +413,14 @@ impl Ways {
             self.banks = Some(Banks::new(&v.terrain, &self.rivers));
             self.terrain_key = Some(v.terrain_version);
         }
-        let roads = match &self.banks {
+        let mut roads = match &self.banks {
             Some(banks) => roads(v, banks),
             None => Vec::new(),
         };
+        if let Some(banks) = &self.banks {
+            let edges = super::parish::footpaths(v, &mut self.walk).to_vec();
+            roads.extend(footpaths(v, banks, &edges));
+        }
         let all: Vec<&Line> = self.rivers.iter().chain(roads.iter()).collect();
         layout(&v.terrain, &all)
     }
