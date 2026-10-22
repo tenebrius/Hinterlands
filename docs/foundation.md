@@ -1350,6 +1350,49 @@ D0 found the region's own cloth needs 3–5 times the wool it grows at Dyer's fi
 
    The gate and pre-registrations are as in D123. D1b and D2 are reported together.
 
+### D1b result (95d6737): the mechanism is accepted, the outside-trade ceiling is re-founded, and D1b and D2 are judged together (D126)
+
+**What D1b showed.** Both pre-registrations are met. The specialist median falls from 1,009 / 418 / 407 to 79 / 47 / 33, and iron in the formerly portless places costs 1.06 against 7–30. The inland iron towns were an artefact of districts no supplier could reach, and they are gone. The gate failed on three checks:
+- **Outside trade:** 14/40 on map 2 and 5/40 on map 3. The portless third now buys port iron and salt, and earns the coin back in wool.
+- **Over 2,000:** 25/40 on map 3.
+- **Roads:** 28/40 on map 1, one short of `NO_WORSE`.
+
+The last two lost the artefact towns that had been counted among the places over 2,000.
+
+**1. The outside-trade ceiling becomes 50%. It is revised after seeing it fail, so the reason has to stand without D1b's numbers.**
+- **Scale.** The band has never had a source. v5 set it at 20% and L1 raised it to 30%, each time reasoning as if the region were a nation. But each map is about the size of a large county. Its "outside" is the rest of England as well as overseas: London, the other shires and the ports beyond. Openness falls with the size of an economy (Alesina, Spolaore & Wacziarg 2000), and a county sells and buys far more beyond its borders than a kingdom does. England's overseas trade was only about a tenth of its output (wool alone about £250–300k against a GDP of about £4.5m; Broadberry et al. 2015), so a national band gives no upper bound for a region.
+- **Definition.** The measure now holds every channel the record gives the region: grain, wool, imported luxuries, the iron and salt England imported (Childs 1981; Bridbury 1955), and from D2 export cloth. Each was added on its source. A ceiling that fails whenever a sourced channel is added measures its own definition, not the model.
+- **The number comes from what the check guards against: an export colony,** a region whose market is mostly outside trade. Mostly means more than half. In L1 I wrote that "30% still catches an export colony", which was true but set no bound; the bound is 50%. The 3% floor, against a closed region, is unchanged.
+- **Reported, not gated:** exports per head in pence against England's c. 1300 (about 14 d a head from overseas exports alone). A county-sized region should stand above that.
+
+**2. D1b is right and is not undone. It is judged with D2 as one stage.**
+- D1b removed towns that were artefacts, and that exposed the thin middle of the hierarchy R had already found. D2's cloth towns at the mills are the mechanism meant to supply real middle towns. Judging the correction without the mechanism it makes room for would only measure the gap.
+- **The gate on the combined stage (`port_reach` and `cloth` on) is unchanged:**
+  - every check at 30/40 on every map, with outside trade at its new ceiling;
+  - roads on map 1 at `NO_WORSE` 29/40 or better;
+  - over 2,000 at 30/40 on map 3.
+
+  If it fails, stop and report per check.
+
+**3. The D2 calibrations, read honestly.**
+- **The cost of making cloth, 3.2 d a pound of wool content, is accepted as a calibration.** But it is chosen between the values that make wool win before the subsidy (2.62) and cloth win after it (3.77). So **the pre-registered cloth share (under 0.4 before 1340, over 0.6 after 1450) is no longer a test. Given the wedge, it is built in, and it becomes reported.**
+- **The real test of the explanation is independent of D2's code.** Find a source for the share of wool in the value of an English broadcloth (Munro, or Carus-Wilson & Coleman) and report where the implied making cost falls against the 2.62–3.77 bracket.
+  - Inside the bracket, the record and the duty-wedge explanation agree.
+  - Below it, cloth would have won before the subsidy, so something the model lacks held English cloth back before 1340 (Flemish skill and quality are the usual answer). That is reported for me; nothing is tuned.
+- **Home cloth's elasticity of 1.0 is accepted as a calibration.** Note that much home cloth (russets, unfulled cloth) was made in households without a mill. If home cloth is too scarce early on, that is the mechanism to consider, not a higher elasticity.
+
+**Pre-registered for the combined stage, reported only. Each names its mechanism (rule 5).**
+- **At least half of cloth output comes from places with W 100–2,000.** This rests on mills on streams away from the estuaries.
+- **Over 2,000 on map 3 returns to at least 30/40** (gated in any case). This rests on the cloth margin going to the market purse of mill settlements and growing their W.
+- **Outside trade:** median under 0.40 on every map.
+- **Exports per head** above England's 14 d.
+
+**Reported:**
+- the cloth share by decade;
+- coin by channel, with the duties;
+- the stores on the D124 measure;
+- the cloth towns' sizes and places.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

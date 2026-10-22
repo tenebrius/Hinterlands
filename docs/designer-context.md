@@ -108,6 +108,11 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Stores: the measure lost its sample; re-read on the cheapest decile against trend; no claim ahead of goods.
   - Accepted: fallow flock (3.6 lb a person in 1300) and the cloth prices and duties (Munro, Barnes).
   - D1b then D2, reported together.
+- **D1b (95d6737) failed the gate, D126:**
+  - Pre-registrations met: specialists 79/47/33, inland iron 1.06.
+  - Outside-trade ceiling re-founded at 50% (scale: a county-sized region is not a nation, Alesina et al. 2000; the definition now holds every sourced channel; 'export colony' means more than half).
+  - D1b and D2 are gated together, since D1b removed artefact middle towns and cloth is the mechanism for real ones.
+  - The cloth-share pre-registration is built in by the 3.2 d making-cost bracket, so it is now reported. The independent test is a sourced wool share of broadcloth value against the 2.62–3.77 bracket.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
 - **v7 RELEASED (1a94a88):** README rewritten for the trade economy; parameters regenerated; watching panel with seven phases; prices, purses and stores in the inspector, plus a grain-price layer (red in 1316); screenshots in `docs/screenshots/v7/`; golden `65aee272c30de1f9`, 45.9 ms/year wasm. Kent: largest near Gravesend 14/20, inland spacing 13.2 km (real 10.6). Kent geology next.
@@ -182,4 +187,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — D123 traces decided (D124): port reach (a), stores re-read; D1b then D2 sent.
+Last updated: 2026-10-22 — D1b failed; outside-trade ceiling re-founded at 50%; D1b+D2 gated together (D126).
