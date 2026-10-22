@@ -942,6 +942,16 @@ Answers:
 3. **Pre-registered targets as before:** dip 0.10–0.16, which the first build reached at 0.16–0.17. Weather (0.84–0.87 in the first build) is recorded against its 0.85 target as it falls.
 4. **Then run the full gate,** move the defaults and the golden, and report. Iterate as D91 says. If the drain cannot restore spacing without breaking other checks, report and I will decide.
 
+**M4 passed (36fa76a, D106; golden `e788381d55fa67d2`, 40.8 ms a year in wasm).** Acute shedding below 0.80 is in the core. Spacing was restored through the drain (`shadow_drain` 0.025 → 0.05), with `road_keep_load` 600. Validation passes. Runs passing every check are 8/16/12; map 1 is thin and to be watched.
+- **Weather met:** 0.85–0.90 of the run without weather.
+- **Famine dip missed:** 0.17–0.18 against ≤ 0.16, close to history's 10–15%.
+- **Also moved:**
+  - famine deficit met falls to 0.24–0.26, because only shortfalls below the tolerance count now;
+  - **market stores no longer carry grain** (carry-over 0.00), because prices rarely fall below the buy threshold;
+  - price autocorrelation is 0.39–0.40, still at least 0.3.
+
+  Idle stores are a regression to revisit: the buy rule `p < p̄(1 − h)` is too strict once weather and tolerance smooth prices. It is noted and not scheduled before the wool stages. L0 is approved to start.
+
 ## Wool and land use plan (D105)
 
 Decided by the designer on 22 October 2026, on the owner's proposal `docs/proposals/wool.md`. The proposal holds the case, the evidence and the design; this section holds the decisions.
