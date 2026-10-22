@@ -1238,3 +1238,50 @@ pub fn cmd_demand(args: &Args) {
         }
     }
 }
+
+/// D1 (D121): at the 100-year marks, the median iron price over towns
+/// (W ≥ market_min) and their median port parity: the port's price, 1, plus
+/// iron's carriage, `market_tau / rho_iron` per unit of travel cost, to the
+/// nearest port in reach.
+pub fn cmd_ironprice(args: &Args) {
+    use hinterlands_core::state::port_of;
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let seed = sim.sim_seed;
+    let tau = sim.params.market_tau / sim.params.rho_iron.max(1e-6);
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if y % 100 != 0 {
+            continue;
+        }
+        let mut price = Vec::new();
+        let mut parity = Vec::new();
+        for s in &sim.state.settlements {
+            if s.market < sim.params.market_min || s.price[2] <= 0.0 {
+                continue;
+            }
+            price.push(s.price[2]);
+            let c = s
+                .reach
+                .partners
+                .iter()
+                .filter(|q| port_of(q.id).is_some())
+                .map(|q| q.cost)
+                .fold(f32::INFINITY, f32::min);
+            if c.is_finite() {
+                parity.push(1.0 + tau * c);
+            }
+        }
+        let med = |mut v: Vec<f32>| {
+            v.sort_by(|a, b| a.total_cmp(b));
+            v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
+        };
+        println!(
+            "ironprice {seed} {y} towns {} median_price {:.3} median_parity {:.3}",
+            price.len(),
+            med(price),
+            med(parity)
+        );
+    }
+}

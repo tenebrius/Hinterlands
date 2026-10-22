@@ -468,6 +468,7 @@ fn main() {
         "landuse" => probe::cmd_landuse(&args),
         "logkinds" => probe::cmd_logkinds(&args),
         "demand" => probe::cmd_demand(&args),
+        "ironprice" => probe::cmd_ironprice(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),
         "bench" => cmd_bench(&args),
