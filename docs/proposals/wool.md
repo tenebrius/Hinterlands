@@ -1,10 +1,10 @@
 # Proposal: wool and land use
 
-From the owner (Divish), drafted with the proposal session on 22 October 2026, for the designer to decide. Nothing here is decided. It is not a request to interrupt v7: the earliest stage would start after M4 is settled.
+From the owner (Divish), drafted with the proposal session on 22 October 2026, for the designer to decide. Nothing here is decided. The owner has taken a position on each open decision (section 9); the designer decides. It is not a request to interrupt v7: the earliest stage would start after M4 passes.
 
 ## 1. What is asked
 
-The designer is asked to decide whether wool and a choice of land use come into the model, in what form and order, and with which gates. Section 9 lists the decisions.
+The designer is asked to decide whether wool and a choice of land use come into the model, in what form and order, and with which gates. Section 9 gives the owner's position on each decision.
 
 It stays inside the standing exclusions: no wages, no labour market, no agents, no floating money. Farmers choose land use by price, but the settlement stays the unit, and the labour a pasture or a field needs comes from the settlement's own people.
 
@@ -47,7 +47,10 @@ Each claimed land cell is **arable** or **pasture**. A new field per cell, writt
 - `Good::Wool`, produced on each settlement's pasture, not at point sites.
 - High value for its weight (`ρ` about 5): it was carted long distances to the ports.
 - **Buyers:** the outside ports, at a world wool price `port_wool_price` with an elasticity, as grain is bought now (D98). Domestic demand for cloth waits for a later stage.
-- **Paid in coin** to the farmers' purse of the selling settlement, less the rent share and toll, as grain sales are. Wool then becomes the main way coin enters the region, and the price–specie anchor (D97) gets its historical export.
+- **How it travels.** By the S1 goods machinery: from each producing settlement to the ports, at prices that clear, on the stored paths. Towns on the route earn handling and transshipment income on it, as on any good.
+- **Who is paid.** The sale is split by the existing rent share: `market_share` of it goes to the market purse (the lords: demesne flocks and rent), the rest to the farmers' purse, less the toll. This needs no new parameter, and it follows the record: large demesne flocks before 1350, peasant flocks after (Campbell 2000).
+- Wool then becomes the main way coin enters the region, and the price–specie anchor (D97) gets its historical export.
+- **Shepherds** are counted with the farmers in the labour guard (D92): `pasture_labour` per pasture cell is added to the people the land needs, so pasture never draws on the market people.
 
 ### Choosing the use: two options, smaller first
 
@@ -71,7 +74,7 @@ Recommended: Option A first, Option B only if A's checks pass and it is still wa
 ### What wool does to existing systems
 
 - **Trade:** wool is traded by the S1 machinery (goods by price) and pays the carriage and handling of any good, so the route from the downs to a port gains handling income.
-- **Growth:** whether wool passing through a market counts towards its W is a design question (section 9). Counting it would let wool towns grow, as Salisbury and the Cotswold towns did.
+- **Growth:** wool does not count towards W at first. W grows on grain drawn from other places (D90, D92), and every hierarchy check is calibrated on that. Wool earns market towns tolls and handling income, which is real money, but not W. L1 reports what W would be if wool counted; that decides whether wool towns, as Salisbury and the Cotswold boroughs were, come in later.
 - **Events:** a sheep murrain, in the v4 queue, cuts wool output by a share in its years (1315–25 in the Historical calendar).
 - **Founding:** unchanged. Pastoral villages are founded as any other.
 
@@ -83,19 +86,24 @@ Each stage is behind its own switch, off by default, with the golden unchanged w
 | --- | --- | --- |
 | **L0 Diagnostic** | Compute, for every claimed and free cell, the arable and pasture rents at this year's prices and a trial wool price. Record where pasture would go under A and B. No feedback. | Reported: pasture share by travel cost to market and by yield band; the wool price at which pasture first pays; the would-be coin from wool against today's coin from grain. |
 | **L1 Wool on spare land (A)** | Land use per cell, pasture beyond need, wool sold to the ports. | Every v7 check; the reported items below. |
-| **L2 The murrain** | Sheep murrain events in the Historical calendar. | Every check; the wool dip in 1315–25. |
+| **L2 The murrain** | Sheep murrain events in the Historical calendar. Kept apart from L1 because it strikes in the years of the 1315–17 famine that M4 tunes, and both at once could not be told apart. | Every check; the wool dip in 1315–25. |
 | **L3 Price competition (B)** | Arable and pasture compete on rent. | Every check; the conversion and desertion checks gated. |
 | **L4 View** | The viewer's pasture and sheep come from the model, as mills and bridges did; wool as a route colour; chronicle lines ("1420. The fields of Ashby are put down to grass."). | No model change. |
 
-A later stage, not proposed now: domestic cloth, with fulling mills on the streams where mills already sit, taking over from raw wool exports in the fifteenth century.
+Cloth is named, not scheduled: domestic cloth, with fulling mills on the streams where mills already sit, taking over from raw wool exports in the fifteenth century. It is decided after L3.
 
 ### Proposed checks
 
-- **Pasture lies outward and on poor land.** The pasture share rises with travel cost to the nearest market and falls with yield (von Thünen). Gated at L1.
-- **Wool is the main export.** Coin from wool is at least half of all coin entering the region before 1348. Reported at L1; gated at L3 if the designer wishes.
-- **Conversion after the plague.** The pasture share of claimed land in 1450 is above its 1340 level. Gated at L1 (Option A should give it through released arable).
-- **Desertion on poor land.** The existing D59 desertion check holds, and the deserted places' land goes to pasture more often than not. Reported.
-- **Kent.** The pasture share on the Downs and Romney Marsh against the Weald and the lowland. Reported.
+**Gated at L1:**
+- every v7 check, the price-level band (0.3–2.5) included, since wool adds a second export and so changes the money stock;
+- **pasture lies outward and on poor land:** the pasture share rises with travel cost to the nearest market and falls with yield (von Thünen);
+- **conversion after the plague:** the pasture share of claimed land in 1450 is above its 1340 level. Option A should give it through released arable.
+
+**Reported** (gated later only once their figures are sourced):
+- **wool is the main export:** coin from wool against all coin entering the region before 1348, expected above half;
+- **desertion on poor land:** the D59 check already holds; reported is whether the deserted places' land goes to pasture more often than not;
+- **W with wool:** what each market's W would be if wool counted (decision 3);
+- **Kent:** the pasture share on the Downs and Romney Marsh against the Weald and the lowland.
 
 ## 7. Parameters
 
@@ -108,15 +116,20 @@ New: `wool_per_cell`, `pasture_labour`, `rho_wool`, `port_wool_price`, `elast_wo
 - **Labour without a labour market.** Pasture labour comes from the settlement's own people, as the labour guard (D92) does for fields. No wage is set.
 - **Scope.** Four stages plus a view stage. Each stands alone, and the designer may stop after any of them.
 
-## 9. Decisions asked of the designer
+## 9. Decisions: the owner's positions
 
-1. Whether wool and land use come in at all, and when (proposed: after M4).
-2. Option A first (proposed), B directly, or A only.
-3. Whether wool passing through a market counts towards its W.
-4. Who owns wool income: the farmers' purse less rent (proposed), or a share to the lords' market purse as demesne income.
-5. Which checks are gated, and at which stage.
-6. Whether the murrain comes in with L1 or waits for L2.
-7. Whether cloth is planned at all.
+The owner has worked through each decision. The design authority stays with the designer, who may accept or change any of them; each is stated with its reason.
+
+1. **When: after M4 passes** (owner). M4 is still iterating, and the wool stages need a settled famine baseline.
+2. **Option A first, B after** (owner). B comes only if A passes its gate and L0 shows that price competition would not starve the towns of grain.
+3. **Wool does not grow W at first.** It earns tolls and handling income; L1 reports W with wool, which decides whether it counts later (section 5).
+4. **Wool income is split by the existing rent share:** `market_share` to the market purse, the rest to the farmers' purse, less the toll (section 5).
+5. **Gates at L1** as in section 6: every v7 check, pasture outward and on poor land, conversion after the plague. Wool's share of coin and the Kent comparison are reported until their figures are sourced.
+6. **The murrain waits for L2,** apart from the famine years M4 tunes.
+7. **Cloth is named, not scheduled** (owner). It is decided after L3.
+8. **Wool travels by the S1 goods machinery** to the ports, and shepherds count in the labour guard (section 5). This was not in the first list.
+
+What the designer is asked: to accept, change or decline these, and if accepted, to brief L0.
 
 ## References
 
