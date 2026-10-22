@@ -942,6 +942,34 @@ Answers:
 3. **Pre-registered targets as before:** dip 0.10–0.16, which the first build reached at 0.16–0.17. Weather (0.84–0.87 in the first build) is recorded against its 0.85 target as it falls.
 4. **Then run the full gate,** move the defaults and the golden, and report. Iterate as D91 says. If the drain cannot restore spacing without breaking other checks, report and I will decide.
 
+## Wool and land use plan (D105)
+
+Decided by the designer on 22 October 2026, on the owner's proposal `docs/proposals/wool.md`. The proposal holds the case, the evidence and the design; this section holds the decisions.
+
+**Why.** It is right on both counts. In v7 the region's coin comes in only through grain sold to the ports, where England's came chiefly through wool. And land use answers to need, never to price, although the brief has used von Thünen's geometry since v1 without his economics. Both now have the machinery to be fixed: goods by price (S1), purses and coin (D96–D99), and the labour guard (D92).
+
+**The owner's positions (section 9) are all accepted:**
+1. it starts after M4 passes;
+2. Option A (pasture on land arable does not use) first, and Option B (von Thünen by rent) only if A passes and L0 shows that the towns keep their grain;
+3. wool does not grow W at first, and L1 reports W with wool;
+4. wool income is split by the existing rent share;
+5. the L1 gates as proposed: every v7 check including the price band, pasture outward and on poor land, and the pasture share in 1450 above 1340;
+6. the murrain waits for L2;
+7. cloth is named, not scheduled;
+8. wool travels by the S1 machinery, and shepherds count in the labour guard.
+
+**One addition: parameters must be sourced before L1.** No wool parameter is set until L0 has reported, with a source for each. `wool_per_cell` comes from stocking rates and fleece weights, `port_wool_price` from the price of a sack against wheat (Campbell 2000; Lloyd 1973), and `pasture_labour` from shepherds per flock. Where a figure cannot be found, the L0 report says so, and the value is set where the land-use check holds, as the proposal intends, and recorded as a calibration, not a fact.
+
+**L0 brief (approved, to run after M4 passes).** A diagnostic with no feedback, golden unchanged, 3 seeds a map plus Kent:
+- for every claimed and free land cell, the arable and pasture rents at this year's prices, at three trial wool prices;
+- where pasture would go under A and under B;
+- pasture share by travel cost to the nearest market and by yield band;
+- the wool price at which pasture first pays;
+- the would-be coin from wool against today's coin from grain, before and after 1348;
+- under B, the grain the towns would lose.
+
+Report with the sourced parameter table, then stop.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
