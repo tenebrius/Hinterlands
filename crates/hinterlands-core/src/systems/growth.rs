@@ -42,9 +42,18 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if !p.growth_enabled {
             continue;
         }
+        // Demographic response follows conditions with a lag (D102; Wrigley &
+        // Schofield 1981): growth and chronic hunger answer the average food
+        // ratio over the last `hunger_years` years.
+        let n = p.hunger_years.max(1) as usize;
+        if s.recent_ratios.len() >= n {
+            s.recent_ratios.drain(..s.recent_ratios.len() + 1 - n);
+        }
+        s.recent_ratios.push(ratio);
+        let avg = s.recent_ratios.iter().sum::<f32>() / s.recent_ratios.len() as f32;
         // Natural term: r_grow at a full surplus, zero when exactly fed, and a
         // shortfall loss spread over `loss_years`.
-        let capped = ratio.min(p.food_cap);
+        let capped = avg.min(p.food_cap);
         let gain = if capped > 1.0 {
             p.r_grow * (capped - 1.0) / (p.food_cap - 1.0).max(1e-6)
         } else {
@@ -52,15 +61,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         };
         if p.shed_unfed {
             // D34: an underfed place sheds a third of the people its food does
-            // not feed each year; the leavers are lost. People endure a
-            // moderate shortfall: only the gap below `hunger_tolerance` sheds
-            // (D101; Livi-Bacci 1991).
-            let tol = p.hunger_tolerance.min(1.0);
-            let loss = if ratio < tol {
-                (tol - ratio) * s.pop / 3.0
-            } else {
-                0.0
-            };
+            // not feed each year; the leavers are lost. Chronic hunger sheds on
+            // the average ratio; acute hunger only on the year's gap below
+            // `hunger_tolerance`, since people endure a moderate bad year
+            // (D101, D102; Livi-Bacci 1991). The larger applies.
+            let chronic = (1.0 - avg).max(0.0) * s.pop / 3.0;
+            let acute = (p.hunger_tolerance.min(1.0) - ratio).max(0.0) * s.pop / 3.0;
+            let loss = chronic.max(acute);
             s.smoothed_loss = loss;
             natural[i] = gain * s.pop - loss;
         } else {

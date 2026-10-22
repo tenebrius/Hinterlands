@@ -228,7 +228,8 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
-        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio above which a shortfall stops growth but sheds nobody (D101)";
+        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio below which the year's shortfall sheds people at once (acute hunger, D101, D102)";
+        hunger_years: u32 = 5, [1, 20], "Years over which the food ratio is averaged for growth and chronic shedding (D102; Wrigley & Schofield 1981)";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Outside" => {
