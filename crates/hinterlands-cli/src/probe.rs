@@ -1052,3 +1052,30 @@ pub fn cmd_wool(args: &Args) {
         }
     }
 }
+
+/// L1 (D107): each land cell's use at `--years`: x y elevation yield and
+/// use (0 free, 1 arable, 2 pasture).
+pub fn cmd_landuse(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 350) as u32;
+    while sim.state.year < years {
+        sim.step(1);
+    }
+    let t = &sim.terrain;
+    let st = &sim.state;
+    println!("x y elev yield use");
+    for c in 0..t.n() {
+        if !t.is_land(c) {
+            continue;
+        }
+        let (x, y) = t.grid.xy(c);
+        let used = if st.owner[c] != hinterlands_core::state::NONE {
+            1
+        } else if st.grazed.get(c).is_some_and(|&g| g != hinterlands_core::state::NONE) {
+            2
+        } else {
+            0
+        };
+        println!("{x} {y} {:.1} {:.3} {used}", t.elevation[c], t.food_yield[c]);
+    }
+}
