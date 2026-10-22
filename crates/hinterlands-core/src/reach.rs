@@ -2,7 +2,7 @@
 //! cultivation and fuel orders, and the stored paths to trading partners.
 
 use crate::params::Params;
-use crate::state::{Partner, Reach, State, COST_SCALE, COST_UNREACHED, OUTSIDE};
+use crate::state::{port_of, Partner, Reach, State, COST_SCALE, COST_UNREACHED, OUTSIDE};
 use crate::terrain::Terrain;
 
 /// Recompute every settlement's reach.
@@ -69,6 +69,21 @@ pub fn refresh_one(state: &mut State, t: &Terrain, p: &Params, idx: usize) {
             reach.partners.push(Partner {
                 id: OUTSIDE - k as u32,
                 cost: c,
+                path: dj.path_to(node),
+            });
+        }
+    }
+
+    // The nearest port at any cost, when none is in reach (D1b, D124).
+    if p.port_reach
+        && !state.outside.is_empty()
+        && !reach.partners.iter().any(|q| port_of(q.id).is_some())
+    {
+        if let Some(node) = dj.run_nearest(&state.cost, anchor, &state.outside) {
+            let k = state.outside.iter().position(|&x| x == node).unwrap_or(0) as u32;
+            reach.port = Some(Partner {
+                id: OUTSIDE - k,
+                cost: dj.dist[node as usize],
                 path: dj.path_to(node),
             });
         }

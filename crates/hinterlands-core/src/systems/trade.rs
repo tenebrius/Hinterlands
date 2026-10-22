@@ -128,7 +128,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         );
     }
 
-    // Wool to the ports (L1), on the sellers' paths.
+    // Wool to the ports (L1), and export cloth (D2), on the sellers' paths.
     for &(from, k, amount) in &state.wool_ship {
         let Some(i) = idx_of
             .get(from as usize)
@@ -138,7 +138,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             continue;
         };
         let s = &state.settlements[i as usize];
-        let Some(q) = s.reach.partners.get(k as usize) else {
+        // The nearest port beyond reach under D2 (D124), else a partner.
+        let q = if k == crate::state::FAR_PORT {
+            s.reach.port.as_ref()
+        } else {
+            s.reach.partners.get(k as usize)
+        };
+        let Some(q) = q else {
             continue;
         };
         if amount >= p.grain_flow_min {
@@ -186,7 +192,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let mut flow_fee: Vec<f32> = Vec::with_capacity(flows.len());
     for f in &flows {
         let s = &state.settlements[idx_of[f.from as usize] as usize];
-        let path = &s.reach.partners[f.partner_idx as usize].path;
+        let path = &s.reach.partner(f.partner_idx).path;
         let mut fee = 0.0f32;
         for w in path.windows(2).filter(|_| p.handling_income) {
             let (a, b) = (w[0], w[1]);

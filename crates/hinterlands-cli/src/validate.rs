@@ -68,7 +68,7 @@ pub struct RunResult {
     /// the mean harvest (mean, max); median price gap over transport on
     /// market pairs in the last year.
     pub price_ac: f32,
-    pub carry: (f32, f32),
+    pub carry: (f32, f32, f32),
     pub gap_ratio: f32,
     /// D95: share of the farmers' shortfall met by their purses (normal
     /// years, 1315–17), and with relief added in 1315–17; mean purse over need
@@ -198,7 +198,7 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     let mut on_goods = vec![false; t.n()];
     for f in &st.flows {
         let Some(s) = st.get(f.from) else { continue };
-        let q = &s.reach.partners[f.partner_idx as usize];
+        let q = &s.reach.partner(f.partner_idx);
         if f.payment {
             arrived += f.amount * (1.0 - p.transport_loss * q.cost).max(0.0);
         }
@@ -883,8 +883,10 @@ pub fn run_one(
         },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
-            // Wool is trade with the outside too (D108), in grain units.
-            let w = sim.state.money.wool_in / params.port_world_price.max(1e-6);
+            // Wool is trade with the outside too (D108), and export cloth (D2),
+            // in grain units.
+            let w = (sim.state.money.wool_in + sim.state.money.cloth_in)
+                / params.port_world_price.max(1e-6);
             let inflow: f32 = sim.state.settlements.iter().map(|s| s.market_in).sum();
             (g + i + w) / (inflow + w).max(1.0)
         } else {
@@ -1463,12 +1465,13 @@ pub fn cmd_validate(args: &Args) {
         }
         if rs.iter().any(|r| r.price_ac.is_finite()) {
             println!(
-                "{:<20} {:>12} grain price autocorrelation (detrended) {:.2}; market stores after cheap years: mean {:.2}, max {:.2} of a mean harvest; pair price gap / transport {:.2}",
+                "{:<20} {:>12} grain price autocorrelation (detrended) {:.2}; market stores (of a mean harvest): cheapest tenth of years {:.3}, all years {:.3}, peak {:.2}; pair price gap / transport {:.2}",
                 "M3 stores",
                 "(reported)",
                 med(rs.iter().map(|r| r.price_ac).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.carry.0).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.carry.1).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.carry.2).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.gap_ratio).filter(|x| x.is_finite()).collect())
             );
         }
@@ -1635,10 +1638,10 @@ fn clark(rows: &[(u32, u32, f32, f32, f32)]) -> (f32, f32, f32) {
 /// Lag-1 autocorrelation of the log regional price less its centred 21-year
 /// moving average, and the market stores at the end of cheap years (price
 /// below 0.8 of that trend) as a share of the mean harvest: (mean, max).
-fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32)) {
+fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32, f32)) {
     let n = series.len();
     if n < 30 {
-        return (f32::NAN, (f32::NAN, f32::NAN));
+        return (f32::NAN, (f32::NAN, f32::NAN, f32::NAN));
     }
     let lp: Vec<f64> = series.iter().map(|s| (s.0.max(1e-6) as f64).ln()).collect();
     let mut dev = Vec::new();
@@ -1658,17 +1661,27 @@ fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32)) {
     }
     let ac = if den > 0.0 { num / den } else { f64::NAN };
     let mean_h = series.iter().map(|s| s.2 as f64).sum::<f64>() / n as f64;
-    let after: Vec<f64> = trend
+    // Stores (D124): the mean held in the cheapest tenth of years by price
+    // against trend, the mean over all years, and the peak, of a mean harvest.
+    let mut by_dev: Vec<(f64, f64)> = trend
         .iter()
-        .filter(|(t, tr)| (series[*t].0 as f64) < 0.8 * tr)
-        .map(|(t, _)| series[*t].1 as f64 / mean_h.max(1.0))
+        .map(|(t, tr)| {
+            (
+                series[*t].0 as f64 / tr.max(1e-9),
+                series[*t].1 as f64 / mean_h.max(1.0),
+            )
+        })
         .collect();
-    let carry = if after.is_empty() {
-        (0.0, 0.0)
+    by_dev.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let tenth = (by_dev.len() / 10).max(1).min(by_dev.len());
+    let carry = if by_dev.is_empty() {
+        (0.0, 0.0, 0.0)
     } else {
+        let all: Vec<f64> = by_dev.iter().map(|x| x.1).collect();
         (
-            (after.iter().sum::<f64>() / after.len() as f64) as f32,
-            after.iter().cloned().fold(0.0, f64::max) as f32,
+            (by_dev[..tenth].iter().map(|x| x.1).sum::<f64>() / tenth as f64) as f32,
+            (all.iter().sum::<f64>() / all.len() as f64) as f32,
+            all.iter().cloned().fold(0.0, f64::max) as f32,
         )
     };
     (ac as f32, carry)

@@ -204,7 +204,7 @@ impl Snapshot {
                     to: f.to,
                     amount: f.amount,
                     food: f.food,
-                    path: s.reach.partners[f.partner_idx as usize].path.clone(),
+                    path: s.reach.partner(f.partner_idx).path.clone(),
                     good: f.good,
                     payment: f.payment,
                     import: f.import,

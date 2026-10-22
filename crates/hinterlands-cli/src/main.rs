@@ -472,6 +472,7 @@ fn main() {
         "specialists" => probe::cmd_specialists(&args),
         "outside" => probe::cmd_outside(&args),
         "stores" => probe::cmd_stores(&args),
+        "cloth" => probe::cmd_cloth(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),
         "bench" => cmd_bench(&args),

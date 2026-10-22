@@ -12,6 +12,9 @@ pub const NONE: u32 = u32::MAX;
 pub const OUTSIDE: u32 = u32::MAX - 1;
 /// Most outside ports a map can have (one per side).
 pub const MAX_PORTS: u32 = 4;
+/// Partner index of a settlement's nearest port beyond `c_max` (D1b, D124):
+/// see `Reach::port` and `Reach::partner`.
+pub const FAR_PORT: u32 = u32::MAX - 1;
 
 /// The grain market's yearly record (S2, D78): the solver's residual and
 /// passes, grain unsold, the region's harvest, and places capped by budget.
@@ -60,6 +63,13 @@ pub struct MoneyLedger {
     pub luxury_out: f32,
     pub wear: f32,
     pub removed: f32,
+    /// What the ports paid for export cloth (D2).
+    #[serde(default)]
+    pub cloth_in: f32,
+    /// Export duties to the crown: the wool custom and subsidy, the cloth
+    /// custom (D2, D124).
+    #[serde(default)]
+    pub duties_out: f32,
 }
 
 /// The outside port a partner id names, if it is one.
@@ -178,9 +188,24 @@ pub struct Reach {
     /// Settlements within `c_max`, by id.
     pub partners: Vec<Partner>,
     pub refreshed: u32,
+    /// With `port_reach` (D1b, D124), the nearest outside port at any cost when
+    /// none is among the partners: goods traded with the outside are carried
+    /// to and from it at the full travel cost.
+    #[serde(default)]
+    pub port: Option<Partner>,
 }
 
 impl Reach {
+    /// The partner at a flow's partner index, the far port included.
+    #[inline]
+    pub fn partner(&self, k: u32) -> &Partner {
+        if k == FAR_PORT {
+            self.port.as_ref().expect("far port")
+        } else {
+            &self.partners[k as usize]
+        }
+    }
+
     #[inline]
     pub fn cost_to_cell(&self, cell: usize) -> f32 {
         let q = self.cost_field[cell];
@@ -274,6 +299,25 @@ pub struct Settlement {
     /// Year this place last made the chronicle for grass (L4), or 0.
     #[serde(default)]
     pub grass_logged: u32,
+    /// Cloth made this year, lb of wool content (D2; a mill settlement's, from
+    /// the wool it bought), written by pasture.
+    #[serde(default)]
+    pub cloth_made: f32,
+    /// What its wool cost the mill this year, coin (D2).
+    #[serde(default)]
+    pub cloth_wool_cost: f32,
+    /// Of which made for the home market (the home tier, D2).
+    #[serde(default)]
+    pub cloth_made_home: f32,
+    /// Home cloth prices (D2), value units: the buyers' price, and the mill's
+    /// supply price, last solved by goods trade.
+    #[serde(default)]
+    pub cloth_price: f32,
+    #[serde(default)]
+    pub cloth_sup: f32,
+    /// Cloth this mill sold at home this year, lb of wool content (D2).
+    #[serde(default)]
+    pub cloth_home: f32,
     /// Arable land, km² (D1: plough iron), written by cultivation.
     #[serde(default)]
     pub arable_km2: f32,
@@ -338,6 +382,12 @@ impl Settlement {
             pasture: Vec::new(),
             wool_in: 0.0,
             grass_logged: 0,
+            cloth_made: 0.0,
+            cloth_wool_cost: 0.0,
+            cloth_made_home: 0.0,
+            cloth_price: 0.0,
+            cloth_sup: 0.0,
+            cloth_home: 0.0,
             arable_km2: 0.0,
             works: 0,
             w_last: 0.0,
@@ -519,6 +569,10 @@ pub struct State {
     /// Coin the fallow flock's wool fetched at the ports this year (D2, D123).
     #[serde(default)]
     pub fallow_wool: f32,
+    /// Wool and cloth this year (D2), lb of wool: clip, to the mills, wool
+    /// exported, cloth sold at home, cloth exported.
+    #[serde(default)]
+    pub cloth_stats: [f32; 5],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -704,6 +758,7 @@ impl State {
             grazed: vec![NONE; n],
             wool_ship: Vec::new(),
             fallow_wool: 0.0,
+            cloth_stats: [0.0; 5],
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
