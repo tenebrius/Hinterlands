@@ -791,3 +791,13 @@ Kind: model mechanism, held off (designer's decision D126).
   - Map 2 passes every check.
 - **Not made the default.** Details: `docs/demand/d2c.md`.
 Kind: model mechanism, held off (designer's decision D128).
+
+## D131 — D2 with mill capacity bound: gate failed, stopped (D130)
+- **Built:**
+  - mill capacity binds (over-capacity wool to the sellers' ports);
+  - `cloth_lb_per_w` 0.1, a calibration of the start (cloth 0.099 of the wool leaving in 1350–59).
+- **The gate failed:** over 2,000 and top-10 on map 1; over 2,000 and spacing on map 3. Map 2 passes every check.
+- **The cloth share follows the customs record's shape** (0.05 → 0.50 → 0.54 → 0.60) but on almost no wool leaving. After 1342 unit-elastic home demand absorbs 3–4 times the home need, and the coin stock falls by two thirds.
+- **The map 3 diagnosis:** D2's loss at the top is fewer people (1600: 61k against 87–90k). D1b's is the spread.
+- **Not made the default.** Details: `docs/demand/d2b.md`.
+Kind: model mechanism, held off (designer's decision D130).
