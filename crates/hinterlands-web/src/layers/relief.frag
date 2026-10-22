@@ -34,7 +34,7 @@ uniform float u_px;
 // Roads and rivers at true width (R9). Segments, two texels each:
 // (x0, y0, x1, y1) in cells, then (half-width at each end in metres,
 // 4 x kind + busy, metres along the line at the start). Kinds: 0 stream,
-// 1 navigable river, 2 track, 3 road, 4 footpath. On rivers, busy is replaced by the
+// 1 navigable river, 2 track, 3 road, 4 footpath, 5 town street. On rivers, busy is replaced by the
 // kilometres to the end of the line (up to 0.999).
 uniform sampler2D u_ways;
 // Per square of the index grid (u_wsub squares to a cell along a side): first
@@ -245,7 +245,10 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         vec3 avg = (FIELDS[base] + FIELDS[base + 1] + FIELDS[base + 2]) / 3.0;
         c = mix(c, avg, field * 0.75 * (1.0 - mosaic));
     }
-    if (mosaic > 0.0 && (fm > 0.15 || cv.a > 0.02)) {
+    // Within a place's boundary (R11) the parcels are its own closes; the
+    // fields begin at its edge.
+    float inside = u_town_show.x > 0.5 && mosaic > 0.0 ? town_inside(pm) : -1e9;
+    if (mosaic > 0.0 && (fm > 0.15 || cv.a > 0.02 || inside > -200.0)) {
         c = farmland(c, p, pm, mosaic, upland);
     }
 
@@ -259,6 +262,12 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         + (vnoise(pm / 25.0, 27) - 0.5) * 0.06 * fine(8.0);
     float clumps = smoothstep(0.0, max(aa(edge), 0.02), edge);
     float wood = mix(smoothstep(0.05, 0.85, f), clumps, smoothstep(5.0, 12.0, u_px));
+    // Woods give way to a place's plots and gardens (R11), their edge broken
+    // as a wood's edge is.
+    if (u_town_show.x > 0.5 && mpx() < 15.0) {
+        float ins = town_inside(pm) + (vnoise(pm / 25.0, 29) - 0.5) * 30.0;
+        wood *= 1.0 - smoothstep(-5.0, 5.0, ins);
+    }
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));
     green = mix(green, vec3(0.24, 0.36, 0.25), smoothstep(400.0, 1000.0, e));
     if (u_season == 2) {
@@ -300,82 +309,25 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         c = mix(c, draw_crowns(c, pm, 13.0, thorn, vec2(0.0), 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0), fine(3.0));
     }
 
-    // Settlements: one smooth outline round each built-up area, ruins fading grey,
-    // and close up the streets: house plots along the lanes, gardens behind,
-    // thinning towards the edge of town. Roads and rivers are drawn over them.
+    // Deserted places (R5's ruins), drawn at the size of a village since R11:
+    // far out a grey patch fading with the years; close in, the earthworks of
+    // the crofts under grass: their banks and the house platforms, lit and
+    // shaded like low ridges.
     if (u_town_show.x > 0.5) {
         vec4 tv, tgx, tgy;
         town_smooth(p, tv, tgx, tgy);
         float px = 1.0 / u_px;
-        float db = field_dist(tv.r, tgx.r, tgy.r);
-        float inside = smoothstep(-px, px, db);
-        float ruin = smoothstep(-px, px, field_dist(tv.g, tgx.g, tgy.g)) * (1.0 - inside);
-        vec3 rubble = vec3(0.49, 0.45, 0.41);
-        if (u_px > 12.0) {
-            // Broken walls of the old houses.
-            vec2 rq = fract(p * 9.0);
-            float wallv = min(min(rq.x, 1.0 - rq.x), min(rq.y, 1.0 - rq.y));
-            float broken = step(0.45, vnoise(p * 9.0, 111));
-            rubble = mix(rubble, vec3(0.36, 0.33, 0.30), (1.0 - smoothstep(0.04, 0.09, wallv)) * broken);
-        }
-        c = mix(c, rubble, ruin * (0.25 + 0.55 * tv.a));
-
-        vec3 town = mix(vec3(178.0, 74.0, 58.0) / 255.0, vec3(196.0, 160.0, 120.0) / 255.0, smoothstep(3.0, 6.0, u_px));
-        float streets = smoothstep(10.0, 18.0, u_px);
-        if (streets > 0.0) {
-            // Blocks of a third of a cell, the street grid bent a little.
-            vec2 q = p * 3.0 + (vec2(vnoise(p * 1.5, 101), vnoise(p * 1.5, 103)) - 0.5) * 0.6;
-            ivec2 blk = ivec2(floor(q));
-            vec2 u = fract(q);
-            vec2 e = min(u, 1.0 - u);
-            float lane = min(e.x, e.y);
-            float along = e.x < e.y ? u.y : u.x;
-            float plot = floor(along * 7.0);
-            int side = e.x < e.y ? (u.x < 0.5 ? 0 : 1) : (u.y < 0.5 ? 2 : 3);
-            float h = hash(blk * 4 + ivec2(side, int(plot)), 107);
-            float empty = 0.08 + 0.55 * (1.0 - smoothstep(0.0, 0.7, db));
-            vec3 street = vec3(0.86, 0.80, 0.68);
-            vec3 garden = vec3(0.60, 0.65, 0.43);
-            vec3 roof = vec3(0.62, 0.27, 0.19) * (0.82 + 0.3 * hash(blk, 109) + 0.1 * h);
-            float a = aa(lane);
-            float house = smoothstep(0.07, 0.07 + a, lane) * (1.0 - smoothstep(0.33, 0.33 + a, lane));
-            float gap = 1.0 - smoothstep(0.0, 0.08, min(fract(along * 7.0), 1.0 - fract(along * 7.0)));
-            house *= step(empty, h) * (1.0 - gap * 0.8);
-            vec3 blockc = mix(garden, roof, house);
-            blockc = mix(street, blockc, smoothstep(0.07 - a, 0.07, lane));
-            town = mix(town, blockc, streets);
-        }
-        c = mix(c, town, inside);
-        float rim = 1.0 - smoothstep(0.0, 1.3 * px, abs(db));
-        c = mix(c, vec3(0.42, 0.30, 0.22), rim * smoothstep(3.0, 6.0, u_px) * 0.8);
-
-        // City walls on the outline of the walled area, with towers spaced along them.
-        if (u_town_show.y > 0.5 && u_px > 3.0) {
-            vec3 stone = vec3(150.0, 140.0, 125.0) / 255.0;
-            vec3 dark = vec3(0.30, 0.27, 0.24);
-            float dw = field_dist(tv.b, tgx.b, tgy.b);
-            float hw = max(0.035, 1.2 * px);
-            float wall = 1.0 - smoothstep(hw, hw + px, abs(dw));
-            float edgeline = 1.0 - smoothstep(0.0, px, abs(abs(dw) - hw));
-            c = mix(c, stone, wall);
-            c = mix(c, dark, edgeline * wall * smoothstep(5.0, 10.0, u_px));
-            vec2 lp = floor(p * 2.0);
-            for (int dy = 0; dy <= 1; dy++) {
-                for (int dx = 0; dx <= 1; dx++) {
-                    vec2 l = (lp + vec2(float(dx), float(dy))) / 2.0;
-                    vec4 lv, lgx, lgy;
-                    town_smooth(l, lv, lgx, lgy);
-                    vec2 grad = vec2(lgx.b, lgy.b);
-                    float g2 = max(dot(grad, grad), 1e-3);
-                    float dl = field_dist(lv.b, lgx.b, lgy.b);
-                    if (abs(dl) < 0.25 && lv.b > 0.05 && lv.b < 0.95) {
-                        vec2 at = l - grad * (lv.b - 0.5) / g2;
-                        float rt = max(0.07, 2.5 * px);
-                        float r = length(p - at);
-                        c = mix(c, stone, 1.0 - smoothstep(rt - px, rt, r));
-                        c = mix(c, dark, (1.0 - smoothstep(0.0, px, abs(r - rt + 0.5 * px))) * smoothstep(5.0, 10.0, u_px));
-                    }
-                }
+        float ruin = smoothstep(-px, px, field_dist(tv.g, tgx.g, tgy.g) - 0.3) * (1.0 - step(0.5, tv.r));
+        if (ruin > 0.0) {
+            float fresh = 0.25 + 0.55 * tv.a;
+            c = mix(c, vec3(0.49, 0.45, 0.41), ruin * fresh * (1.0 - fine(40.0)));
+            if (fine(4.0) > 0.0) {
+                Parcels E = parcels(pm, 45.0, 801);
+                float lit = dot(-E.n, SUN);
+                float bank = band(E.edge, -1.0, 2.5);
+                float platform = band(max(abs(dot(pm - E.sa, vec2(1.0, 0.0))), abs(dot(pm - E.sa, vec2(0.0, 1.0)))), -6.0, 6.0);
+                float shade = 1.0 + 0.18 * lit * bank + 0.08 * platform * (0.5 + 0.5 * fresh);
+                c *= mix(1.0, shade, ruin * fine(4.0));
             }
         }
     }
@@ -395,7 +347,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
 
 const int WAY_ROW = 2048;
 // Most segments read per index square (MAX_WAYS in relief.rs).
-const int WAY_MAX = 96;
+const int WAY_MAX = 128;
 const vec3 WATER_DEEP = vec3(0.21, 0.36, 0.47);
 const vec3 WATER_EDGE = vec3(0.38, 0.48, 0.45);
 const vec3 MUD = vec3(0.40, 0.34, 0.25);
@@ -420,6 +372,8 @@ vec4 way_texel(sampler2D s, int k) {
     return texelFetch(s, ivec2(k % WAY_ROW, k / WAY_ROW), 0);
 }
 
+// @include town.frag
+
 // How far a river swings from its line, metres: fixed wavelengths blended by
 // size (a wavelength that followed the width would shift the phase wherever
 // the width changes), so brooks wind every hundred metres or so and large
@@ -433,7 +387,8 @@ float meander(float along, float to_end, float hw) {
     return amp * ends * (swing * 2.0 - 1.0);
 }
 
-void ways_near(vec2 pw, out Way road, out Way river) {
+// `calm` scales the meanders: 0 where a town has embanked the river.
+void ways_near(vec2 pw, float calm, out Way road, out Way river) {
     road = Way(1e9, 0.0, 0.0, 0.0, vec2(1.0, 0.0), -1, 0.0);
     river = road;
     ivec2 sq = clamp(ivec2(floor(pw * u_wsub)), ivec2(0), ivec2(u_grid * u_wsub) - 1);
@@ -470,7 +425,7 @@ void ways_near(vec2 pw, out Way road, out Way river) {
             float len = sqrt(l2);
             float along = b.w + t * len * u_cell_m;
             float to_end = extra * 1000.0 - t * len * u_cell_m;
-            float x = side * d - meander(along, extra >= 0.998 ? 1e9 : to_end, hw);
+            float x = side * d - calm * meander(along, extra >= 0.998 ? 1e9 : to_end, hw);
             float msd = abs(x) - hw;
             if (msd < river.sd) {
                 river = Way(msd, x, hw, along, ab / len, kind, 0.0);
@@ -481,7 +436,10 @@ void ways_near(vec2 pw, out Way road, out Way river) {
 
 // Roads and rivers drawn into the land colour at their real width, at map point
 // `p` with the smoothed cell values `s` (its alpha is the hillshade).
-vec3 ways_color(vec3 c, vec2 p, vec4 s) {
+// `town` is how far into a built-up area, `rank` the place's (from the town
+// scan; 0 when the settlements layer is off), `share` how much of the ground
+// round about is built over.
+vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
     float shade = s.a;
     vec2 pm = p * u_cell_m;
     // Lines wander either side of their smoothed course, some 20 m over most of a
@@ -491,16 +449,9 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s) {
         + (vec2(vnoise(pm / 160.0, 205), vnoise(pm / 160.0, 207)) - 0.5) * 8.0;
     vec2 pw = p + wander / u_cell_m;
     Way road, river;
-    ways_near(pw, road, river);
+    ways_near(pw, 1.0 - smoothstep(0.0, 0.08, share), road, river);
     if (min(road.sd, river.sd) > 40.0) {
         return c;
-    }
-    // How far inside a built-up area, and how wooded.
-    float town = 0.0;
-    if (u_town_show.x > 0.5) {
-        vec4 tv, tgx, tgy;
-        town_smooth(p, tv, tgx, tgy);
-        town = smoothstep(-0.02, 0.02, field_dist(tv.r, tgx.r, tgy.r));
     }
     float wood = smoothstep(0.4, 0.8, cover_smooth(p).r);
     bool winter = u_season == 3;
@@ -515,7 +466,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s) {
         rhw = river.hw * u_way_show.z;
         float x = river.x;
         rd = abs(x);
-        if (town > 0.5 && u_town_show.y > 0.5) {
+        if (town > 0.5 && rank > 1.5 && u_town_show.y > 0.5) {
             c = mix(c, QUAY_STONE * (0.9 + 0.2 * vnoise(pm / 1.2, 219) * fine(1.2)), band(rd, rhw, rhw + 1.6));
             c = mix(c, vec3(0.30, 0.27, 0.24), band(rd, rhw + 1.6, rhw + 1.9));
         } else {
@@ -554,9 +505,18 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s) {
             }
             float over = rcov > 0.0 ? band(rd, -rhw - 1.0, rhw + 1.0) : 0.0;
             trod = mix(trod, vec3(0.52, 0.40, 0.28), over);
-            c = mix(c, trod, band(d, -hw, hw) * (1.0 - town * 0.5));
+            // Paths give way to the plots and streets of a place.
+            c = mix(c, trod, band(d, -hw, hw) * (1.0 - max(town, smoothstep(0.05, 0.15, share))));
         }
     } else if (u_way_show.x > 0.5 && road.sd < 40.0) {
+        // The town plans' own streets are town streets throughout.
+        if (road.kind == 5) {
+            town = 1.0;
+        }
+        // Land trade off the roads gives way to a town's own streets.
+        if (road.kind == 2 && rank > 1.5 && max(town, step(0.1, share)) > 0.0) {
+            return c;
+        }
         float busy = road.busy;
         bool track = road.kind == 2;
         float level = 1.0 - smoothstep(0.06, 0.18, abs(shade - 1.0));
@@ -586,7 +546,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s) {
         if (town > 0.0) {
             // Paved or cobbled through the town.
             vec3 street = vec3(0.64, 0.61, 0.56) * (0.9 + 0.2 * vnoise(pm / 0.6, 237) * fine(0.6));
-            surf = mix(surf, street, town * 0.8);
+            surf = mix(surf, street, town * 0.8 * smoothstep(1.2, 2.0, rank));
         }
         float open = 1.0 - town;
         // Verges: grass kept short by passing stock, worn bare next to the road.
@@ -651,11 +611,34 @@ void main() {
 
     vec3 sea = sea_color(s, coast);
     vec3 land = land_color(s, p, coast);
+    vec2 pm = p * u_cell_m;
+    // Towns close in: the ground of their plots, then the streets, then the
+    // shadows and roofs; far out, the share of the ground built over, in the
+    // colour of roofs.
+    bool close_in = mpx() < 15.0;
+    Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
+                  -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
+                  0.0, 0.0, 0.0);
+    if (u_town_show.x > 0.5 && close_in) {
+        T = town_scan(pm);
+        land = town_ground(land, pm, T);
+    }
     // Roads and rivers at true width, once a pixel is under 15 m: past the old
     // deepest zoom, where the map symbols begin to fade. Further out they are
     // a fraction of a pixel and the symbols carry them.
-    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && mpx() < 15.0) {
-        land = ways_color(land, p, s);
+    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && close_in) {
+        land = ways_color(land, p, s, T.near, T.rank, u_town_show.x > 0.5 ? built_share(pm) : 0.0);
+    }
+    if (u_town_show.x > 0.5) {
+        if (close_in) {
+            land *= 1.0 - 0.35 * T.shadow * fine(1.0);
+            land = town_buildings(land, T);
+        }
+        float far = smoothstep(4.0, 15.0, mpx());
+        if (far > 0.0) {
+            float share = built_share(pm);
+            land = mix(land, vec3(0.58, 0.40, 0.31), clamp(share * 1.4, 0.0, 0.9) * far);
+        }
     }
     land *= shade;
     float w = aa(coast);
@@ -663,18 +646,15 @@ void main() {
     // Coastline in ink once a cell is a few pixels across.
     float ink = (1.0 - smoothstep(0.0, w * 1.3, abs(coast))) * smoothstep(1.5, 4.0, u_px);
     c = mix(c, vec3(0.20, 0.26, 0.30), ink * 0.85);
-    // Quays: where a town's footprint meets the sea, the shore is a timber and stone edge.
-    if (u_town_show.y > 0.5 && u_px > 4.0 && abs(coast) < 0.4) {
-        vec4 tv, tgx, tgy;
-        town_smooth(p, tv, tgx, tgy);
-        float near = smoothstep(-0.35, -0.1, field_dist(tv.r, tgx.r, tgy.r));
-        float port = near * step(0.5, tv.a / max(tv.r, 1e-3));
+    // Quays: where a town's plots come down to the sea, the shore is a timber
+    // and stone edge.
+    if (u_town_show.y > 0.5 && close_in && abs(coast) < 0.4 && T.rank > 1.5 && T.near > 0.0) {
         float px = 1.0 / u_px;
-        float qw = max(0.06, 2.5 * px);
+        float qw = max(0.006, 2.5 * px);
         float quay = 1.0 - smoothstep(qw - px, qw, abs(coast - qw * 0.5));
         float edge = 1.0 - smoothstep(0.0, px, abs(coast));
-        c = mix(c, vec3(92.0, 64.0, 40.0) / 255.0, quay * port);
-        c = mix(c, vec3(0.22, 0.16, 0.10), edge * port);
+        c = mix(c, vec3(92.0, 64.0, 40.0) / 255.0, quay * T.near);
+        c = mix(c, vec3(0.22, 0.16, 0.10), edge * T.near);
     }
     o_color = vec4(c, 1.0);
 }

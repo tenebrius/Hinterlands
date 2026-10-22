@@ -34,6 +34,8 @@ void main() {
 const FRAG: &str = include_str!("relief.frag");
 /// The real-scale countryside (R10), spliced into `FRAG` at its marker.
 const COUNTRY: &str = include_str!("country.frag");
+/// Towns at real scale (R11), spliced in at their marker.
+const TOWN_FRAG: &str = include_str!("town.frag");
 
 /// How far the coast distance field is searched, in cells.
 const COAST_REACH: i32 = 6;
@@ -42,7 +44,7 @@ const ESTABLISHED: u32 = 50;
 const GHOST_YEARS: u32 = 200;
 
 /// Road and river pieces the shader reads per index square (as `WAY_MAX` in the shader).
-const MAX_WAYS: usize = 96;
+const MAX_WAYS: usize = 128;
 
 /// Set when the shader could not be built, so the cell layers take over again.
 static FAILED: AtomicBool = AtomicBool::new(false);
@@ -62,6 +64,10 @@ pub struct ReliefLayer {
     ways: Ways,
     /// Squares of the road and river index per cell along a side.
     way_sub: f32,
+    /// Squares of the town index per cell along a side.
+    shape_sub: f32,
+    /// The year the roads and towns were last laid out.
+    ways_year: Option<(u64, u32)>,
 }
 
 /// The textures, by unit, and the sampler each is bound to.
@@ -73,9 +79,20 @@ const WAYS: usize = 4;
 const WAY_CELL: usize = 5;
 const WAY_IDX: usize = 6;
 const GROUND: usize = 7;
-const SAMPLERS: [&str; 8] = [
-    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx", "u_ground",
+const SHAPES: usize = 8;
+const SHAPE_CELL: usize = 9;
+const SHAPE_SQ: usize = 10;
+const SHAPE_IDX: usize = 11;
+const PLACES: usize = 12;
+const SAMPLERS: [&str; 13] = [
+    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx", "u_ground", "u_shapes",
+    "u_scell", "u_ssq", "u_sidx", "u_places",
 ];
+/// Shapes the shader reads per index square (as `SHAPE_MAX` in the shader).
+const MAX_SHAPES: usize = 160;
+/// While the run plays, the roads and town plans are laid out again at most
+/// this often (years); paused, every year.
+const PLAYING_EVERY: u32 = 5;
 
 /// GL objects, owned behind a mutex because egui runs paint callbacks later in the frame.
 #[derive(Default)]
@@ -109,6 +126,7 @@ struct Frame {
     /// Metres per cell.
     cell_m: f32,
     way_sub: f32,
+    shape_sub: f32,
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -195,8 +213,12 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
     for i in 0..t.n() {
         let built = snap.built[i] != NONE;
         let owned = snap.owner[i] != NONE;
-        let forest = snap.forest[i] as f32 / 255.0;
-        let farmed = owned && !built;
+        // Woods stop at a place's plots (R11): a built cell keeps a quarter of
+        // its cover, as copses and trees round its edge.
+        let forest = snap.forest[i] as f32 / 255.0 * if built { 0.25 } else { 1.0 };
+        // Built cells count as farmland too: since R11 a place covers only part
+        // of its cell, and its fields run up to the backs of its plots.
+        let farmed = (owned || built) && t.is_land(i);
         let pasture = v.pasture[i] && !owned && !built;
         let ghost = if !owned && !built && t.is_land(i) && v.farm_last[i] != NEVER {
             let age = year.saturating_sub(v.farm_last[i] as u32);
@@ -265,7 +287,9 @@ impl Gpu {
         };
         let program = gl.create_program()?;
         let mut shaders = Vec::new();
-        let frag = FRAG.replace("// @include country.frag\n", COUNTRY);
+        let frag = FRAG
+            .replace("// @include country.frag\n", COUNTRY)
+            .replace("// @include town.frag\n", TOWN_FRAG);
         for (kind, src) in [
             (glow::VERTEX_SHADER, VERT),
             (glow::FRAGMENT_SHADER, frag.as_str()),
@@ -357,6 +381,7 @@ impl Gpu {
             );
             gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
             gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
+            gl.uniform_1_f32(at("u_ssub").as_ref(), f.shape_sub);
             gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
             gl.uniform_1_f32(at("u_year").as_ref(), f.year);
             gl.uniform_1_i32(at("u_season").as_ref(), f.season);
@@ -430,17 +455,49 @@ impl Layer for ReliefLayer {
             gpu.queue(PLOT, size, plot);
             gpu.queue(TOWN, size, town_data(v));
             gpu.queue(GROUND, size, ground_data(v));
-            let w = self.ways.build(v);
-            if w.most > MAX_WAYS {
-                log::warn!(
-                    "an index square lists {} road and river pieces; the shader reads {MAX_WAYS}",
-                    w.most
-                );
+            let due = match self.ways_year {
+                Some((tv, y)) => {
+                    tv != v.terrain_version
+                        || !v.playing
+                        || v.snapshot.year.abs_diff(y) >= PLAYING_EVERY
+                }
+                None => true,
+            };
+            if due {
+                let (w, shapes, plan) = self.ways.build(v);
+                let pops = v
+                    .snapshot
+                    .settlements
+                    .iter()
+                    .map(|s| (s.id, s.pop))
+                    .collect();
+                for line in plan.summary(&pops) {
+                    log::info!("{line}");
+                }
+                if w.most > MAX_WAYS {
+                    log::warn!(
+                        "an index square lists {} road and river pieces; the shader reads {MAX_WAYS}",
+                        w.most
+                    );
+                }
+                if shapes.most > MAX_SHAPES {
+                    log::warn!(
+                        "a town square lists {} shapes; the shader reads {MAX_SHAPES}",
+                        shapes.most
+                    );
+                }
+                gpu.queue(WAYS, w.seg_size, w.seg);
+                gpu.queue(WAY_CELL, w.cell_size, w.cell);
+                self.way_sub = w.sub;
+                gpu.queue(WAY_IDX, w.idx_size, w.idx);
+                gpu.queue(SHAPES, shapes.shp_size, shapes.shp);
+                gpu.queue(SHAPE_CELL, size, shapes.cell);
+                gpu.queue(SHAPE_SQ, shapes.sq_size, shapes.sq);
+                gpu.queue(SHAPE_IDX, shapes.idx_size, shapes.idx);
+                gpu.queue(PLACES, shapes.places_size, shapes.places);
+                self.shape_sub = shapes.sub;
+                self.ways_year = Some((v.terrain_version, v.snapshot.year));
             }
-            gpu.queue(WAYS, w.seg_size, w.seg);
-            gpu.queue(WAY_CELL, w.cell_size, w.cell);
-            self.way_sub = w.sub;
-            gpu.queue(WAY_IDX, w.idx_size, w.idx);
             self.key = Some(key);
         }
         drop(gpu);
@@ -478,6 +535,7 @@ impl Layer for ReliefLayer {
             ],
             cell_m: t.grid.cell_km * 1000.0,
             way_sub: self.way_sub,
+            shape_sub: self.shape_sub,
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

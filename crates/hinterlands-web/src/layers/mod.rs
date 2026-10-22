@@ -25,6 +25,7 @@ mod selection;
 mod settlements;
 mod smoke;
 pub mod terrain;
+mod town;
 mod ways;
 pub mod wool;
 

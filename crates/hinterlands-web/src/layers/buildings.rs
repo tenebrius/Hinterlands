@@ -224,6 +224,12 @@ impl Layer for BuildingsLayer {
         // them; close in, the relief shader draws the bridge where the road
         // meets the water.
         let crossing = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        // Churches, squares and warehouses are symbols too; since R11 the relief
+        // shader draws them to size close in, so these fade with the others
+        // (the mill stays until stage 4 of the real-scale overhaul).
+        let icons = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        let mut faded = d.painter.clone();
+        faded.multiply_opacity(icons);
         let p = d.painter;
         let thin = Stroke::new(1.0, OUTLINE);
         // The relief shader draws the walls along the smoothed footprint and the
@@ -242,7 +248,10 @@ impl Layer for BuildingsLayer {
                     p.circle(to(c), (0.09 * z).clamp(1.5, 5.0), WALL, thin);
                 }
                 _ if z < 8.0 => {}
+                Glyph::Square(_) | Glyph::Church(_) | Glyph::Cathedral(_) | Glyph::Warehouse(_)
+                    if icons <= 0.0 => {}
                 Glyph::Square(c) => {
+                    let p = &faded;
                     let r = egui::Rect::from_center_size(to(c), egui::vec2(0.36 * zs, 0.36 * zs));
                     p.rect(
                         r,
@@ -253,6 +262,7 @@ impl Layer for BuildingsLayer {
                     );
                 }
                 Glyph::Church(c) => {
+                    let p = &faded;
                     let o = to(c);
                     let body = egui::Rect::from_center_size(
                         o + egui::vec2(0.0, s * 0.2),
@@ -285,6 +295,7 @@ impl Layer for BuildingsLayer {
                     );
                 }
                 Glyph::Cathedral(c) => {
+                    let p = &faded;
                     let o = to(c);
                     let s = s * 1.4;
                     let nave = egui::Rect::from_center_size(
@@ -330,6 +341,7 @@ impl Layer for BuildingsLayer {
                     );
                 }
                 Glyph::Warehouse(c) => {
+                    let p = &faded;
                     let r = egui::Rect::from_center_size(to(c), egui::vec2(s * 0.7, s * 0.4));
                     p.rect(
                         r,

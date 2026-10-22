@@ -81,13 +81,19 @@ impl Layer for SettlementsLayer {
                 Rank::Town => 0.32,
                 Rank::City => 0.42,
             } * z;
-            // Close up the town blocks show the extent; the marker only marks the centre.
+            // Close up the town blocks show the extent; the marker only marks the
+            // centre, and fades with the other symbols (R11) once the place is
+            // drawn house by house.
             let r = if z >= 4.0 { r.min(5.0) } else { r };
+            let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+            if fade <= 0.0 {
+                continue;
+            }
             d.painter.circle(
                 p,
                 r.max(1.5),
-                Color32::from_rgb(120, 30, 22),
-                Stroke::new(1.0, Color32::from_rgb(250, 235, 220)),
+                Color32::from_rgb(120, 30, 22).gamma_multiply(fade),
+                Stroke::new(1.0, Color32::from_rgb(250, 235, 220).gamma_multiply(fade)),
             );
         }
     }

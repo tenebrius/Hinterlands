@@ -1,0 +1,1724 @@
+//! Towns and villages at real scale (R11): each place laid out the way it grew,
+//! from its roads. The roads through a place are its main streets; a town adds
+//! side streets and back lanes; a market place opens where the main street
+//! passes the centre, a green where a village's roads meet. Plots run back from
+//! the streets, one to a household, laid out from the centre outward, narrower
+//! near the middle; each has its house at the street front and, often, a barn
+//! or back range behind. Churches stand one to about a thousand people; a city
+//! has walls round its core with gates where the roads pass, and suburbs along
+//! the roads beyond. Sizes are in metres. Drawing only: nothing feeds back.
+
+use super::countryside::hash;
+use crate::view::ViewState;
+use egui::Vec2;
+use hinterlands_core::state::Rank;
+use hinterlands_core::terrain::Terrain;
+use std::collections::BTreeMap;
+
+/// Kinds of shape, as the shader reads them. Below `BUILDING` they are ground
+/// (drawn under the streets); from it they are buildings (drawn over).
+pub const PLOT: f32 = 0.0;
+pub const MARKET: f32 = 1.0;
+pub const GREEN: f32 = 2.0;
+pub const CHURCHYARD: f32 = 3.0;
+pub const PRECINCT: f32 = 4.0;
+pub const DITCH: f32 = 5.0;
+pub const BUILDING: f32 = 10.0;
+pub const HOUSE: f32 = 10.0;
+pub const BARN: f32 = 11.0;
+pub const CHURCH: f32 = 12.0;
+pub const TOWER: f32 = 13.0;
+pub const WALL: f32 = 14.0;
+pub const WALL_TOWER: f32 = 15.0;
+pub const GATE: f32 = 16.0;
+pub const HALL: f32 = 17.0;
+pub const CLOISTER: f32 = 18.0;
+
+/// A rectangle (or, for greens and wall towers, an ellipse) in metres.
+#[derive(Clone, Copy, Debug)]
+pub struct Shape {
+    pub c: Vec2,
+    /// Half its length (along `angle`) and half its width.
+    pub h: Vec2,
+    pub angle: f32,
+    pub kind: f32,
+    /// 0..1, for small differences of colour and texture.
+    pub tone: f32,
+    /// Plots: the place's rank (0 hamlet .. 3 city). Houses and barns: roof,
+    /// 0 thatch, 1 tile, 2 stone slate. Others: unused.
+    pub extra: f32,
+    /// Metres high, for shadows.
+    pub height: f32,
+}
+
+/// A street the planner made (side streets, back lanes, lanes of hamlets off
+/// the roads): points in metres, half-width in metres.
+pub struct Street {
+    pub pts: Vec<Vec2>,
+    pub hw: f32,
+}
+
+/// One place's plan, for the record and for other layers.
+pub struct Place {
+    pub id: u32,
+    pub centre: Vec2,
+    pub households: u32,
+    pub houses: u32,
+    /// Metres from the centre to the farthest plot.
+    pub reach: f32,
+    pub walled: bool,
+    /// The place's boundary: metres from the centre in each of `BOUND`
+    /// directions (from east, turning as the map's y runs). Fields stop here;
+    /// within it the land is the place's own closes, gardens and orchards.
+    pub bound: [f32; BOUND],
+}
+
+impl Plan {
+    /// One line per place of a thousand or more: households, houses placed,
+    /// and the settled area inside the boundary against the expected area
+    /// for its size (`expected_ha`), for the record of R11.
+    pub fn summary(&self, pops: &BTreeMap<u32, f32>) -> Vec<String> {
+        let mut out = Vec::new();
+        for p in &self.places {
+            let pop = pops.get(&p.id).copied().unwrap_or(0.0);
+            if pop < 1000.0 {
+                continue;
+            }
+            let step = std::f32::consts::TAU / BOUND as f32;
+            let area: f32 = p.bound.iter().map(|r| 0.5 * r * r * step).sum::<f32>() / 1e4;
+            out.push(format!(
+                "place {} pop {:.0} households {} houses {} reach {:.0} m walled {} area {:.0} ha expected {:.0} ha",
+                p.id,
+                pop,
+                p.households,
+                p.houses,
+                p.reach,
+                p.walled,
+                area,
+                expected_ha(pop)
+            ));
+        }
+        out
+    }
+}
+
+/// Directions of a place's boundary.
+pub const BOUND: usize = 64;
+
+/// The boundary round a place's ground (plots, yards, greens, market): the
+/// farthest corner in each direction plus a margin for its back hedges and
+/// lanes, with gaps between neighbouring directions bridged so it does not
+/// reach out in single spikes.
+fn boundary(centre: Vec2, shapes: &[Shape]) -> [f32; BOUND] {
+    let mut r = [0.0f32; BOUND];
+    for s in shapes.iter().filter(|s| s.kind < DITCH) {
+        for c in s.corners().into_iter().chain(std::iter::once(s.c)) {
+            let d = c - centre;
+            let a = d.y.atan2(d.x) / std::f32::consts::TAU;
+            let k = ((a + 1.0) * BOUND as f32) as usize % BOUND;
+            r[k] = r[k].max(d.length() + 12.0);
+        }
+    }
+    let base = 30.0f32;
+    let mut out = [0.0f32; BOUND];
+    for k in 0..BOUND {
+        let (a, b) = (r[(k + BOUND - 1) % BOUND], r[(k + 1) % BOUND]);
+        out[k] = r[k].max(0.7 * a.min(b)).max(base);
+    }
+    out
+}
+
+#[derive(Default)]
+pub struct Plan {
+    pub shapes: Vec<Shape>,
+    pub streets: Vec<Street>,
+    pub places: Vec<Place>,
+}
+
+/// What the planner needs to know about water: metres a point keeps from any
+/// river's water (negative inside), and whether a point is land.
+pub trait Water {
+    fn river_gap(&self, p_m: Vec2) -> f32;
+    fn land(&self, p_m: Vec2) -> bool;
+}
+
+fn h01(i: usize, k: u32) -> f32 {
+    (hash(i, k) & 0xffffff) as f32 / 16777216.0
+}
+
+fn perp(v: Vec2) -> Vec2 {
+    Vec2::new(-v.y, v.x)
+}
+
+fn dir(a: f32) -> Vec2 {
+    Vec2::new(a.cos(), a.sin())
+}
+
+fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// Distance from p to the segment ab.
+fn seg_dist(p: Vec2, a: Vec2, b: Vec2) -> f32 {
+    let ab = b - a;
+    let t = ((p - a).dot(ab) / ab.dot(ab).max(1e-9)).clamp(0.0, 1.0);
+    (p - (a + ab * t)).length()
+}
+
+impl Shape {
+    fn axes(&self) -> (Vec2, Vec2) {
+        let u = dir(self.angle);
+        (u, perp(u))
+    }
+    fn corners(&self) -> [Vec2; 4] {
+        let (u, w) = self.axes();
+        let (a, b) = (u * self.h.x, w * self.h.y);
+        [
+            self.c + a + b,
+            self.c + a - b,
+            self.c - a - b,
+            self.c - a + b,
+        ]
+    }
+    fn overlaps(&self, o: &Shape) -> bool {
+        let (ca, cb) = (self.corners(), o.corners());
+        let (u1, w1) = self.axes();
+        let (u2, w2) = o.axes();
+        for ax in [u1, w1, u2, w2] {
+            let pa = ca.iter().map(|p| p.dot(ax));
+            let pb = cb.iter().map(|p| p.dot(ax));
+            let (amin, amax) = pa.fold((f32::MAX, f32::MIN), |m, x| (m.0.min(x), m.1.max(x)));
+            let (bmin, bmax) = pb.fold((f32::MAX, f32::MIN), |m, x| (m.0.min(x), m.1.max(x)));
+            if amax <= bmin || bmax <= amin {
+                return false;
+            }
+        }
+        true
+    }
+    fn bounds(&self) -> (Vec2, Vec2) {
+        let c = self.corners();
+        let mut lo = c[0];
+        let mut hi = c[0];
+        for p in &c[1..] {
+            lo = lo.min(*p);
+            hi = hi.max(*p);
+        }
+        (lo, hi)
+    }
+    /// Points to test against streets and water: corners, mid-edges, centre.
+    fn probes(&self) -> [Vec2; 9] {
+        let c = self.corners();
+        [
+            c[0],
+            c[1],
+            c[2],
+            c[3],
+            (c[0] + c[1]) * 0.5,
+            (c[1] + c[2]) * 0.5,
+            (c[2] + c[3]) * 0.5,
+            (c[3] + c[0]) * 0.5,
+            self.c,
+        ]
+    }
+}
+
+/// A polyline in metres with its arc lengths, for walking along it.
+struct Poly {
+    pts: Vec<Vec2>,
+    acc: Vec<f32>,
+    hw: f32,
+    /// A road (main street) rather than one the planner made.
+    main: bool,
+}
+
+impl Poly {
+    fn new(pts: Vec<Vec2>, hw: f32, main: bool) -> Self {
+        let mut acc = vec![0.0];
+        for k in 1..pts.len() {
+            acc.push(acc[k - 1] + (pts[k] - pts[k - 1]).length());
+        }
+        Self { pts, acc, hw, main }
+    }
+    fn len(&self) -> f32 {
+        *self.acc.last().unwrap_or(&0.0)
+    }
+    /// Point and unit tangent at arc length s.
+    fn at(&self, s: f32) -> (Vec2, Vec2) {
+        let s = s.clamp(0.0, self.len());
+        let k = self
+            .acc
+            .partition_point(|&a| a < s)
+            .clamp(1, self.pts.len() - 1);
+        let (a, b) = (self.pts[k - 1], self.pts[k]);
+        let seg = (self.acc[k] - self.acc[k - 1]).max(1e-6);
+        let f = ((s - self.acc[k - 1]) / seg).clamp(0.0, 1.0);
+        (a + (b - a) * f, (b - a).normalized())
+    }
+    /// Arc length of the point nearest p.
+    fn nearest(&self, p: Vec2) -> (f32, f32) {
+        let mut best = (f32::MAX, 0.0);
+        for k in 1..self.pts.len() {
+            let (a, b) = (self.pts[k - 1], self.pts[k]);
+            let ab = b - a;
+            let t = ((p - a).dot(ab) / ab.dot(ab).max(1e-9)).clamp(0.0, 1.0);
+            let d = (p - (a + ab * t)).length();
+            if d < best.0 {
+                best = (d, self.acc[k - 1] + t * ab.length());
+            }
+        }
+        best
+    }
+}
+
+/// Buckets of 50 m, for finding shapes and street segments near a point.
+const BUCKET: f32 = 50.0;
+
+fn buckets(lo: Vec2, hi: Vec2) -> impl Iterator<Item = (i32, i32)> {
+    let (x0, y0) = (
+        (lo.x / BUCKET).floor() as i32,
+        (lo.y / BUCKET).floor() as i32,
+    );
+    let (x1, y1) = (
+        (hi.x / BUCKET).floor() as i32,
+        (hi.y / BUCKET).floor() as i32,
+    );
+    (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| (x, y)))
+}
+
+/// Everything placed so far, for collision tests.
+#[derive(Default)]
+struct Space {
+    shapes: Vec<Shape>,
+    shape_at: BTreeMap<(i32, i32), Vec<u32>>,
+    /// Street segments: ends and half-width.
+    segs: Vec<(Vec2, Vec2, f32)>,
+    seg_at: BTreeMap<(i32, i32), Vec<u32>>,
+}
+
+impl Space {
+    fn add_shape(&mut self, s: Shape) {
+        let id = self.shapes.len() as u32;
+        let (lo, hi) = s.bounds();
+        for b in buckets(lo, hi) {
+            self.shape_at.entry(b).or_default().push(id);
+        }
+        self.shapes.push(s);
+    }
+    fn add_street(&mut self, pts: &[Vec2], hw: f32) {
+        for w in pts.windows(2) {
+            let id = self.segs.len() as u32;
+            let m = Vec2::splat(hw + 1.0);
+            for b in buckets(w[0].min(w[1]) - m, w[0].max(w[1]) + m) {
+                self.seg_at.entry(b).or_default().push(id);
+            }
+            self.segs.push((w[0], w[1], hw));
+        }
+    }
+    /// Whether a shape is clear of every shape placed and of every street by
+    /// `gap` metres.
+    fn clear(&self, s: &Shape, gap: f32) -> bool {
+        self.clear_of_shapes(s) && self.off_streets(s, gap)
+    }
+    fn clear_of_shapes(&self, s: &Shape) -> bool {
+        let (lo, hi) = s.bounds();
+        let mut seen: Vec<u32> = Vec::new();
+        for b in buckets(lo, hi) {
+            if let Some(ids) = self.shape_at.get(&b) {
+                for &i in ids {
+                    if !seen.contains(&i) {
+                        seen.push(i);
+                        if self.shapes[i as usize].overlaps(s) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
+    fn off_streets(&self, s: &Shape, gap: f32) -> bool {
+        let (lo, hi) = s.bounds();
+        let probes = s.probes();
+        for b in buckets(lo, hi) {
+            if let Some(ids) = self.seg_at.get(&b) {
+                for &i in ids {
+                    let (a, c, hw) = self.segs[i as usize];
+                    for p in probes {
+                        if seg_dist(p, a, c) < hw + gap {
+                            return false;
+                        }
+                    }
+                    // A street crossing the shape between probes.
+                    if crosses(s, a, c) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+}
+
+/// Whether segment ac passes through the rectangle s.
+fn crosses(s: &Shape, a: Vec2, c: Vec2) -> bool {
+    let (u, w) = s.axes();
+    let la = Vec2::new((a - s.c).dot(u), (a - s.c).dot(w));
+    let lc = Vec2::new((c - s.c).dot(u), (c - s.c).dot(w));
+    // Liang-Barsky clip against the box.
+    let d = lc - la;
+    let (mut t0, mut t1) = (0.0f32, 1.0f32);
+    for (p, q) in [
+        (-d.x, la.x + s.h.x),
+        (d.x, s.h.x - la.x),
+        (-d.y, la.y + s.h.y),
+        (d.y, s.h.y - la.y),
+    ] {
+        if p.abs() < 1e-9 {
+            if q < 0.0 {
+                return false;
+            }
+        } else {
+            let r = q / p;
+            if p < 0.0 {
+                t0 = t0.max(r);
+            } else {
+                t1 = t1.min(r);
+            }
+        }
+    }
+    t0 <= t1
+}
+
+/// The plan's sizes for a place of `pop` people: frontage and depth of its
+/// plots, metres. Burgage plots in towns are narrow and long; a village's tofts
+/// and crofts broad; a hamlet's broader still.
+fn plot_size(pop: f32) -> (f32, f32) {
+    let l = pop.max(10.0).log10();
+    // log10: 50 -> 1.7, 300 -> 2.5, 800 -> 2.9, 3000 -> 3.5, 10000 -> 4.
+    let front = if l < 2.5 {
+        32.0 + (20.0 - 32.0) * smoothstep(1.7, 2.5, l)
+    } else if l < 2.9 {
+        20.0 + (9.0 - 20.0) * smoothstep(2.5, 2.9, l)
+    } else {
+        9.0 + (5.5 - 9.0) * smoothstep(2.9, 4.0, l)
+    };
+    // Crofts run back some 70 m; burgage plots shorten as towns crowd, to
+    // about 45 m in the largest cities.
+    let depth = 70.0 - 25.0 * smoothstep(2.9, 4.2, l);
+    (front, depth)
+}
+
+/// Settled area in hectares by Cesaretti et al. (2016) for English towns,
+/// with the crofts of villages: for comparison with what the plan builds.
+pub fn expected_ha(pop: f32) -> f32 {
+    0.12 * pop.max(1.0).powf(0.73) + (pop / 4.5) * 0.3 * (1.0 - smoothstep(300.0, 1500.0, pop))
+}
+
+/// Clips a polyline to a disc, giving the runs inside.
+fn clip_disc(pts: &[Vec2], c: Vec2, r: f32) -> Vec<Vec<Vec2>> {
+    let mut out = Vec::new();
+    let mut run: Vec<Vec2> = Vec::new();
+    for &p in pts {
+        if (p - c).length() <= r {
+            run.push(p);
+        } else if run.len() >= 2 {
+            out.push(std::mem::take(&mut run));
+        } else {
+            run.clear();
+        }
+    }
+    if run.len() >= 2 {
+        out.push(run);
+    }
+    out
+}
+
+/// A plot ready to be placed: where it fronts and how big.
+struct Slot {
+    pri: f32,
+    street: usize,
+    s: f32,
+    side: f32,
+    front: f32,
+}
+
+/// Lays out every place this year. `roads` are the road and track lines in
+/// metres with their half-widths; `water` answers for rivers and the sea.
+pub fn plan(v: &ViewState, roads: &[(Vec<Vec2>, f32, bool)], water: &dyn Water) -> Plan {
+    let t = &v.terrain;
+    let g = t.grid;
+    let cell_m = g.cell_km * 1000.0;
+    let snap = &v.snapshot;
+    let mut space = Space::default();
+    // Roads are obstacles everywhere; tracks only where a hamlet or village
+    // takes them for its street (towns draw over them, R11).
+    for (pts, hw, road) in roads {
+        if *road {
+            space.add_street(pts, *hw);
+        }
+    }
+    let bounds: Vec<(Vec2, Vec2)> = roads
+        .iter()
+        .map(|(pts, _, _)| {
+            pts.iter().fold(
+                (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN)),
+                |(lo, hi), p| (lo.min(*p), hi.max(*p)),
+            )
+        })
+        .collect();
+    let mut plan = Plan::default();
+    let largest = snap
+        .settlements
+        .iter()
+        .map(|s| s.pop)
+        .fold(0.0f32, f32::max);
+    // Largest first, so a town's plots are not crowded out by a hamlet's.
+    let mut order: Vec<usize> = (0..snap.settlements.len()).collect();
+    order.sort_by(|&a, &b| {
+        let (sa, sb) = (&snap.settlements[a], &snap.settlements[b]);
+        sb.pop.total_cmp(&sa.pop).then(sa.id.cmp(&sb.id))
+    });
+    for k in order {
+        let s = &snap.settlements[k];
+        let (x, y) = g.xy(s.anchor as usize);
+        let anchor = Vec2::new((x as f32 + 0.5) * cell_m, (y as f32 + 0.5) * cell_m);
+        let walled = s.rank == Rank::City;
+        let cathedral = s.rank == Rank::City && (s.pop >= 8000.0 || s.pop >= largest);
+        let place = lay_out(
+            t, s.id, anchor, s.pop, s.rank, walled, cathedral, roads, &bounds, water, &mut space,
+            &mut plan,
+        );
+        plan.places.push(place);
+    }
+    plan.shapes = space.shapes;
+    plan
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lay_out(
+    t: &Terrain,
+    id: u32,
+    anchor: Vec2,
+    pop: f32,
+    rank: Rank,
+    walled: bool,
+    cathedral: bool,
+    roads: &[(Vec<Vec2>, f32, bool)],
+    bounds: &[(Vec2, Vec2)],
+    water: &dyn Water,
+    space: &mut Space,
+    plan: &mut Plan,
+) -> Place {
+    let seed = id as usize;
+    let start_shapes = space.shapes.len();
+    let start_streets = plan.streets.len();
+    let households = (pop / 4.5).round().max(1.0) as u32;
+    let (front0, depth0) = plot_size(pop);
+    let r_est = (households as f32 * front0 * depth0 * 1.5 / std::f32::consts::PI).sqrt();
+    // The largest cities spread further along their roads, as suburbs.
+    let reach_max = ((2.4 + 0.8 * smoothstep(5000.0, 15000.0, pop)) * r_est).max(160.0);
+    let cell_m = t.grid.cell_km * 1000.0;
+    let (cx, cy) = ((anchor.x / cell_m) as i32, (anchor.y / cell_m) as i32);
+    let ci = t.grid.idx(
+        cx.clamp(0, t.grid.w as i32 - 1),
+        cy.clamp(0, t.grid.h as i32 - 1),
+    );
+    let upland = t.elevation[ci] > 250.0;
+    let poor = t.food_yield[ci] < 0.35;
+
+    // Main streets: the roads within reach. The centre is the nearest point on
+    // them to the anchor (the roads were kept off the rivers), or the anchor.
+    let mut streets: Vec<Poly> = Vec::new();
+    // Towns take only the roads for their main streets (land trade off the
+    // roads gives way to them); smaller places, and towns no road reaches,
+    // their tracks too.
+    let near = |lo: &Vec2, hi: &Vec2| {
+        let r = Vec2::splat(reach_max);
+        !(anchor.x + r.x < lo.x
+            || anchor.x - r.x > hi.x
+            || anchor.y + r.y < lo.y
+            || anchor.y - r.y > hi.y)
+    };
+    let has_road = roads.iter().zip(bounds).any(|((pts, _, road), (lo, hi))| {
+        *road && near(lo, hi) && !clip_disc(pts, anchor, reach_max).is_empty()
+    });
+    for ((pts, hw, road), (lo, hi)) in roads.iter().zip(bounds) {
+        if !road && pop >= 500.0 && has_road {
+            continue;
+        }
+        if !near(lo, hi) {
+            continue;
+        }
+        for run in clip_disc(pts, anchor, reach_max) {
+            if !road {
+                space.add_street(&run, *hw);
+            }
+            streets.push(Poly::new(run, *hw, true));
+        }
+    }
+    // On dry land: a place whose anchor is on its river (a bridge town) has
+    // its centre, and its market, on the nearer bank.
+    let mut centre = anchor;
+    let mut best = f32::MAX;
+    let dry = |p: Vec2| water.land(p) && water.river_gap(p) > 30.0;
+    for st in &streets {
+        let mut s = 0.0;
+        while s <= st.len() {
+            let p = st.at(s).0;
+            let d = (p - anchor).length();
+            if d < best && d < 400.0 && dry(p) {
+                best = d;
+                centre = p;
+            }
+            s += 10.0;
+        }
+    }
+    // A place on no road gets a lane of its own through it.
+    // It runs from the nearest dry ground, the way that keeps longest on it.
+    if streets.is_empty() {
+        let half = r_est.clamp(60.0, 300.0);
+        let mut start = anchor;
+        'find: for r in [0.0f32, 20.0, 40.0, 70.0, 100.0, 150.0] {
+            for k in 0..12 {
+                let p = anchor + dir(k as f32 / 12.0 * std::f32::consts::TAU) * r;
+                if water.land(p) && water.river_gap(p) > 30.0 {
+                    start = p;
+                    break 'find;
+                }
+            }
+        }
+        let a0 = h01(seed, 11) * std::f32::consts::PI;
+        let pts = (0..6)
+            .map(|k| {
+                let a = a0 + k as f32 / 6.0 * std::f32::consts::PI;
+                let pts = vec![start - dir(a) * half, start, start + dir(a) * half];
+                truncate_both(pts, start, water)
+            })
+            .max_by_key(|p| p.len())
+            .unwrap_or_default();
+        if pts.len() >= 2 {
+            space.add_street(&pts, 2.5);
+            plan.streets.push(Street {
+                pts: pts.clone(),
+                hw: 2.5,
+            });
+            // It is the place's high street, and lanes branch off it.
+            streets.push(Poly::new(pts, 2.5, true));
+        }
+    }
+
+    // The market place, where the main street passes the centre (towns), with a
+    // market hall in the larger; or a green where a village's roads meet.
+    let mut reserved: Vec<Shape> = Vec::new();
+    let main_near: Option<(usize, f32)> = streets
+        .iter()
+        .enumerate()
+        .filter(|(_, st)| st.main)
+        .map(|(i, st)| (i, st.nearest(centre)))
+        .min_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
+        .map(|(i, (_, s))| (i, s));
+    if pop >= 500.0 {
+        if let Some((i, s)) = main_near {
+            let (p, tan) = streets[i].at(s);
+            let len = (38.0 * (pop / 500.0).sqrt()).clamp(38.0, 150.0);
+            let wid = (0.42 * len).clamp(18.0, 60.0) + 2.0 * streets[i].hw;
+            let m = Shape {
+                c: p,
+                h: Vec2::new(len * 0.5, wid * 0.5),
+                angle: tan.y.atan2(tan.x),
+                kind: MARKET,
+                tone: h01(seed, 13),
+                extra: 0.0,
+                height: 0.0,
+            };
+            if water.land(m.c) {
+                reserved.push(m);
+                if pop >= 1500.0 {
+                    let side = if h01(seed, 14) < 0.5 { 1.0 } else { -1.0 };
+                    let off = perp(tan) * side * (wid * 0.5 - 8.0);
+                    reserved.push(Shape {
+                        c: p + off,
+                        h: Vec2::new(9.0 + 4.0 * h01(seed, 15), 4.5),
+                        angle: m.angle,
+                        kind: HALL,
+                        tone: h01(seed, 16),
+                        extra: 1.0,
+                        height: 9.0,
+                    });
+                }
+            }
+        }
+    } else if pop >= 100.0 {
+        let arms = streets
+            .iter()
+            .filter(|st| st.main)
+            .filter(|st| {
+                (st.pts[0] - centre).length() < 90.0
+                    || (st.pts[st.pts.len() - 1] - centre).length() < 90.0
+            })
+            .count();
+        if arms >= 3 {
+            let r = 30.0 + 25.0 * h01(seed, 17);
+            let g = Shape {
+                c: centre,
+                h: Vec2::new(r, r * (0.6 + 0.3 * h01(seed, 18))),
+                angle: h01(seed, 19) * 3.14,
+                kind: GREEN,
+                tone: h01(seed, 20),
+                extra: 0.0,
+                height: 0.0,
+            };
+            if water.land(g.c) {
+                reserved.push(g);
+            }
+        }
+    }
+
+    // Side streets in towns, grown in generations: lanes off the main
+    // streets, then lanes off those in the larger towns, each kept a block's
+    // depth from every street but the one it leaves, so they join into blocks
+    // of about 1.5 plot depths; and back lanes behind the main streets' plots.
+    if pop >= 350.0 {
+        // A town on only one or two roads (often by a river, which takes half
+        // its frontage) grows more lanes, further out, to house its people.
+        let mains = streets.iter().filter(|st| st.main).count();
+        let few = mains <= 2;
+        let generations = if pop < 1500.0 {
+            1
+        } else if pop < 5000.0 {
+            2
+        } else {
+            3
+        } + if few { 2 } else { 0 };
+        let spacing = 130.0 - 50.0 * smoothstep(500.0, 5000.0, pop);
+        let reach = r_est * if few { 1.7 } else { 1.25 };
+        let hw = 1.6 + 1.0 * smoothstep(800.0, 5000.0, pop);
+        let mut from = 0usize;
+        for gen in 0..generations {
+            let upto = streets.len();
+            let mut made: Vec<(usize, Vec<Vec2>, bool)> = Vec::new();
+            for (i, st) in streets.iter().enumerate().take(upto).skip(from) {
+                if gen == 0 && !st.main {
+                    continue;
+                }
+                let (_, s0) = st.nearest(centre);
+                let chance = if gen == 0 { 0.5 } else { 0.4 };
+                for sgn in [1.0f32, -1.0] {
+                    let mut s = s0 + sgn * spacing * 0.6;
+                    let mut n = 0usize;
+                    while s > 0.0 && s < st.len() && (st.at(s).0 - centre).length() < reach {
+                        let (p, tan) = st.at(s);
+                        for side in [1.0f32, -1.0] {
+                            let key = seed * 7919
+                                + i * 131
+                                + n * 2
+                                + (side > 0.0) as usize
+                                + gen * 100_003;
+                            if h01(key, 21) > chance {
+                                continue;
+                            }
+                            let a = (perp(tan) * side).y.atan2((perp(tan) * side).x)
+                                + (h01(key, 22) - 0.5) * 0.5;
+                            let len = depth0 * 1.6 + 30.0 + 120.0 * h01(key, 23);
+                            let start = p + perp(tan) * side * (st.hw + 0.5);
+                            // A lane bends a little as it goes.
+                            let bend = (h01(key, 24) - 0.5) * 0.6;
+                            let pts: Vec<Vec2> = (0..=10)
+                                .map(|j| j as f32 / 10.0)
+                                .scan((start, a), |st8, f| {
+                                    let (p0, a0) = *st8;
+                                    let p1 = p0 + dir(a0) * len / 10.0;
+                                    *st8 = (p1, a0 + bend * f * 0.4);
+                                    Some(p0)
+                                })
+                                .collect();
+                            made.push((i, pts, true));
+                        }
+                        s += sgn * spacing * (0.8 + 0.4 * h01(seed + n + gen * 77, 25));
+                        n += 1;
+                    }
+                }
+                // Back lanes behind the main streets' plots.
+                if gen == 0 && pop >= 800.0 {
+                    for side in [1.0f32, -1.0] {
+                        let off = st.hw + depth0 * 0.85 + 3.0;
+                        let pts: Vec<Vec2> = (0..)
+                            .map(|k| s0 - 1.4 * r_est + k as f32 * 20.0)
+                            .take_while(|&s| s <= s0 + 1.4 * r_est)
+                            .filter(|&s| s > 0.0 && s < st.len())
+                            .map(|s| {
+                                let (p, tan) = st.at(s);
+                                p + perp(tan) * side * off
+                            })
+                            .collect();
+                        if pts.len() >= 3 {
+                            made.push((i, pts, false));
+                        }
+                    }
+                }
+            }
+            for (own, pts, side_street) in made {
+                // How far a point keeps from street j: the block's depth from
+                // any street but the lane's own (which it leaves, or which a
+                // back lane follows at its plots' depth).
+                let ok = |p: Vec2, from_start: f32, streets: &Vec<Poly>| -> bool {
+                    if !water.land(p)
+                        || water.river_gap(p) < 4.0
+                        || (p - centre).length() > reach_max
+                    {
+                        return false;
+                    }
+                    if reserved.iter().any(|s| {
+                        let (u, v) = s.axes();
+                        let l = p - s.c;
+                        l.dot(u).abs() < s.h.x + 2.0 && l.dot(v).abs() < s.h.y + 2.0
+                    }) {
+                        return false;
+                    }
+                    for (j, st) in streets.iter().enumerate() {
+                        let keep = if j == own {
+                            if side_street {
+                                continue;
+                            }
+                            st.hw + depth0 * 0.5
+                        } else if from_start < 12.0 {
+                            continue;
+                        } else {
+                            st.hw + hw + depth0 * 0.7
+                        };
+                        if st.nearest(p).0 < keep {
+                            return false;
+                        }
+                    }
+                    true
+                };
+                let mut runs: Vec<Vec<Vec2>> = Vec::new();
+                let mut run: Vec<Vec2> = Vec::new();
+                let mut along = 0.0f32;
+                'walk: for w in pts.windows(2) {
+                    let n = ((w[1] - w[0]).length() / 5.0).ceil().max(1.0) as usize;
+                    for k in 0..n {
+                        let p = w[0] + (w[1] - w[0]) * (k as f32 / n as f32);
+                        if ok(p, along, &streets) {
+                            run.push(p);
+                        } else {
+                            if run.len() >= 2 {
+                                runs.push(std::mem::take(&mut run));
+                            }
+                            run.clear();
+                            if side_street {
+                                break 'walk;
+                            }
+                        }
+                        along += (w[1] - w[0]).length() / n as f32;
+                    }
+                }
+                if run.len() >= 2 {
+                    runs.push(run);
+                }
+                if side_street {
+                    runs.truncate(1);
+                }
+                for r in runs {
+                    let len: f32 = r.windows(2).map(|w| (w[1] - w[0]).length()).sum();
+                    if len < 40.0 {
+                        continue;
+                    }
+                    // Thin the points to about every 15 m.
+                    let mut pts: Vec<Vec2> = r.iter().step_by(3).copied().collect();
+                    if pts.last() != r.last() {
+                        pts.push(*r.last().unwrap());
+                    }
+                    space.add_street(&pts, hw);
+                    plan.streets.push(Street {
+                        pts: pts.clone(),
+                        hw,
+                    });
+                    streets.push(Poly::new(pts, hw, false));
+                }
+            }
+            from = upto;
+        }
+    }
+
+    for r in &reserved {
+        space.add_shape(*r);
+    }
+
+    // Churches: one to about a thousand people, in a churchyard beside a street
+    // near the centre, the others spread out; a cathedral in its close in the
+    // greatest city; friaries at the edge of cities.
+    if pop >= 100.0 {
+        let n = ((pop / 1000.0).round() as usize).max(1);
+        for c in 0..n {
+            let big = cathedral && c == 0;
+            let want = if c == 0 {
+                40.0
+            } else {
+                r_est * (0.35 + 0.6 * c as f32 / n as f32)
+            };
+            let (yw, yd) = if big {
+                (190.0, 140.0)
+            } else {
+                (42.0 + 10.0 * smoothstep(500.0, 3000.0, pop), 38.0)
+            };
+            place_church(
+                seed * 31 + c,
+                centre,
+                want,
+                yw,
+                yd,
+                big,
+                pop,
+                &streets,
+                water,
+                space,
+            );
+        }
+        if walled {
+            let friaries = ((pop / 4000.0).floor() as usize).max(1);
+            for f in 0..friaries {
+                place_friary(seed * 37 + f, centre, r_est * 0.85, &streets, water, space);
+            }
+        }
+    }
+
+    // Plots, from the centre outward along every street.
+    let first_shape = space.shapes.len();
+    let wall = if walled {
+        // A first layout finds the core; the wall goes round about half the
+        // houses, then the plots are laid again clear of it.
+        let mark = space.shapes.len();
+        let placed = place_plots(
+            seed,
+            pop,
+            rank,
+            upland,
+            upland && poor,
+            households,
+            centre,
+            reach_max,
+            &streets,
+            water,
+            space,
+            None,
+        );
+        let core: Vec<Shape> = space.shapes[mark..]
+            .iter()
+            .filter(|s| s.kind == PLOT)
+            .take((placed as f32 * 0.5) as usize)
+            .copied()
+            .collect();
+        let line = wall_line(centre, &core);
+        // Undo the first layout.
+        space.shapes.truncate(mark);
+        for v in space.shape_at.values_mut() {
+            v.retain(|&i| (i as usize) < mark);
+        }
+        Some(line)
+    } else {
+        None
+    };
+    let placed = place_plots(
+        seed,
+        pop,
+        rank,
+        upland,
+        upland && poor,
+        households,
+        centre,
+        reach_max,
+        &streets,
+        water,
+        space,
+        wall.as_deref(),
+    );
+    let mut reach = 0.0f32;
+    for s in &space.shapes[first_shape..] {
+        if s.kind == PLOT {
+            reach = reach.max((s.c - centre).length() + s.h.x.max(s.h.y));
+        }
+    }
+    if let Some(line) = &wall {
+        build_wall(seed, line, &streets, space);
+    }
+    let bound = boundary(centre, &space.shapes[start_shapes..]);
+    // The place's own lanes end where its plots do: a lane is cut back to its
+    // last point within the boundary, so none runs on into the fields.
+    let inside = |p: Vec2| {
+        let d = p - centre;
+        let a = d.y.atan2(d.x) / std::f32::consts::TAU;
+        let f = (a + 1.0).fract() * BOUND as f32;
+        let k = f as usize % BOUND;
+        let r = bound[k] + (bound[(k + 1) % BOUND] - bound[k]) * f.fract();
+        d.length() < r - 8.0
+    };
+    for st in &mut plan.streets[start_streets..] {
+        let mut last = 0;
+        for (k, &p) in st.pts.iter().enumerate() {
+            if inside(p) {
+                last = k;
+            }
+        }
+        st.pts.truncate(last + 1);
+    }
+    plan.streets.retain(|st| st.pts.len() >= 2);
+    Place {
+        id,
+        centre,
+        households,
+        houses: placed,
+        reach,
+        walled,
+        bound,
+    }
+}
+
+/// Keeps a lane only where it is on dry land, out from the centre each way.
+fn truncate_both(pts: Vec<Vec2>, centre: Vec2, water: &dyn Water) -> Vec<Vec2> {
+    let ok = |p: Vec2| water.land(p) && water.river_gap(p) > 4.0;
+    let mut out = Vec::new();
+    for w in pts.windows(2) {
+        let n = ((w[1] - w[0]).length() / 5.0).ceil().max(1.0) as usize;
+        for k in 0..=n {
+            let p = w[0] + (w[1] - w[0]) * (k as f32 / n as f32);
+            if (ok(p) || (p - centre).length() < 1.0)
+                && out.last().is_none_or(|q: &Vec2| (*q - p).length() > 4.0)
+            {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
+#[allow(clippy::too_many_arguments)]
+fn place_church(
+    key: usize,
+    centre: Vec2,
+    want: f32,
+    yw: f32,
+    yd: f32,
+    big: bool,
+    pop: f32,
+    streets: &[Poly],
+    water: &dyn Water,
+    space: &mut Space,
+) {
+    // Try spots along the streets, nearest to the wanted distance first.
+    let mut spots: Vec<(f32, usize, f32, f32)> = Vec::new();
+    for (i, st) in streets.iter().enumerate() {
+        let mut s = 10.0;
+        while s < st.len() {
+            let (p, _) = st.at(s);
+            let d = (p - centre).length();
+            for side in [1.0f32, -1.0] {
+                spots.push((
+                    (d - want).abs() + 20.0 * h01(key + i, s as u32 + side as u32),
+                    i,
+                    s,
+                    side,
+                ));
+            }
+            s += 15.0;
+        }
+    }
+    spots.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for &(_, i, s, side) in spots.iter().take(300) {
+        let st = &streets[i];
+        let (p, tan) = st.at(s);
+        let n = perp(tan) * side;
+        let yard = Shape {
+            c: p + n * (st.hw + 2.0 + yd * 0.5),
+            h: Vec2::new(yw * 0.5, yd * 0.5),
+            angle: tan.y.atan2(tan.x),
+            kind: if big { PRECINCT } else { CHURCHYARD },
+            tone: h01(key, 31),
+            extra: 0.0,
+            height: 0.0,
+        };
+        if !yard
+            .probes()
+            .iter()
+            .all(|&q| water.land(q) && water.river_gap(q) > 3.0)
+        {
+            continue;
+        }
+        if !space.clear(&yard, 1.0) {
+            continue;
+        }
+        space.add_shape(yard);
+        // Churches face east, more or less.
+        let a = (h01(key, 32) - 0.5) * 0.25;
+        let (nave, wide) = if big {
+            (110.0, 13.0)
+        } else {
+            let l = 18.0 + 14.0 * smoothstep(100.0, 3000.0, pop);
+            (l, 4.0 + 1.5 * smoothstep(100.0, 3000.0, pop))
+        };
+        let body = Shape {
+            c: yard.c,
+            h: Vec2::new(nave * 0.5, wide),
+            angle: a,
+            kind: CHURCH,
+            tone: h01(key, 33),
+            extra: if pop >= 1500.0 { 1.0 } else { 0.0 },
+            height: if big { 30.0 } else { 11.0 },
+        };
+        space.shapes.push(body);
+        // The tower at the west end; transepts on a cathedral; its cloister.
+        let west = yard.c - dir(a) * (nave * 0.5 + wide * 0.6);
+        space.shapes.push(Shape {
+            c: west,
+            h: Vec2::splat(wide * if big { 0.9 } else { 0.85 }),
+            angle: a,
+            kind: TOWER,
+            tone: h01(key, 34),
+            extra: 0.0,
+            height: if big { 60.0 } else { 22.0 },
+        });
+        if big {
+            space.shapes.push(Shape {
+                c: yard.c + dir(a) * 15.0,
+                h: Vec2::new(wide, 32.0),
+                angle: a,
+                kind: CHURCH,
+                tone: h01(key, 35),
+                extra: 1.0,
+                height: 28.0,
+            });
+            space.shapes.push(Shape {
+                c: yard.c + perp(dir(a)) * 38.0 + dir(a) * 10.0,
+                h: Vec2::splat(20.0),
+                angle: a,
+                kind: CLOISTER,
+                tone: h01(key, 36),
+                extra: 1.0,
+                height: 9.0,
+            });
+        }
+        return;
+    }
+}
+
+fn place_friary(
+    key: usize,
+    centre: Vec2,
+    want: f32,
+    streets: &[Poly],
+    water: &dyn Water,
+    space: &mut Space,
+) {
+    let mut spots: Vec<(f32, usize, f32, f32)> = Vec::new();
+    for (i, st) in streets.iter().enumerate() {
+        let mut s = 10.0;
+        while s < st.len() {
+            let d = (st.at(s).0 - centre).length();
+            for side in [1.0f32, -1.0] {
+                spots.push(((d - want).abs() + 30.0 * h01(key + i, s as u32), i, s, side));
+            }
+            s += 20.0;
+        }
+    }
+    spots.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for &(_, i, s, side) in spots.iter().take(200) {
+        let st = &streets[i];
+        let (p, tan) = st.at(s);
+        let n = perp(tan) * side;
+        let yard = Shape {
+            c: p + n * (st.hw + 2.0 + 50.0),
+            h: Vec2::new(60.0, 50.0),
+            angle: tan.y.atan2(tan.x),
+            kind: PRECINCT,
+            tone: h01(key, 41),
+            extra: 0.0,
+            height: 0.0,
+        };
+        if !yard
+            .probes()
+            .iter()
+            .all(|&q| water.land(q) && water.river_gap(q) > 3.0)
+            || !space.clear(&yard, 1.0)
+        {
+            continue;
+        }
+        space.add_shape(yard);
+        let a = (h01(key, 42) - 0.5) * 0.2;
+        space.shapes.push(Shape {
+            c: yard.c - perp(dir(a)) * 12.0,
+            h: Vec2::new(24.0, 6.0),
+            angle: a,
+            kind: CHURCH,
+            tone: h01(key, 43),
+            extra: 1.0,
+            height: 14.0,
+        });
+        space.shapes.push(Shape {
+            c: yard.c + perp(dir(a)) * 14.0,
+            h: Vec2::splat(15.0),
+            angle: a,
+            kind: CLOISTER,
+            tone: h01(key, 44),
+            extra: 1.0,
+            height: 8.0,
+        });
+        return;
+    }
+}
+
+/// Places one plot per household along the streets, nearest the centre first,
+/// each with its house and often a barn or back range. Returns how many.
+#[allow(clippy::too_many_arguments)]
+fn place_plots(
+    seed: usize,
+    pop: f32,
+    rank: Rank,
+    upland: bool,
+    scattered: bool,
+    households: u32,
+    centre: Vec2,
+    reach_max: f32,
+    streets: &[Poly],
+    water: &dyn Water,
+    space: &mut Space,
+    wall: Option<&[Vec2]>,
+) -> u32 {
+    let (front0, depth0) = plot_size(pop);
+    let town = smoothstep(300.0, 1500.0, pop);
+    let mut slots: Vec<Slot> = Vec::new();
+    for (i, st) in streets.iter().enumerate() {
+        let (_, s0) = st.nearest(centre);
+        for sgn in [1.0f32, -1.0] {
+            let mut s = s0;
+            let mut n = 0u32;
+            loop {
+                let (p, _) = st.at(s);
+                let d = (p - centre).length();
+                if d > reach_max {
+                    break;
+                }
+                // Plots widen towards the edge of the place.
+                let grow = 1.0 + 0.6 * smoothstep(0.2 * reach_max, 0.8 * reach_max, d);
+                let f = front0
+                    * grow
+                    * (0.8 + 0.45 * h01(seed * 977 + i * 31 + n as usize, 51))
+                    * if scattered { 1.4 } else { 1.0 };
+                let mid = s + sgn * f * 0.5;
+                if mid < 0.0 || mid > st.len() {
+                    break;
+                }
+                for side in [1.0f32, -1.0] {
+                    let pri = (st.at(mid).0 - centre).length()
+                        + if st.main { 0.0 } else { 10.0 }
+                        + 15.0 * h01(seed + i * 7 + n as usize * 3 + (side > 0.0) as usize, 53);
+                    slots.push(Slot {
+                        pri,
+                        street: i,
+                        s: mid,
+                        side,
+                        front: f,
+                    });
+                }
+                s += sgn * f;
+                n += 1;
+            }
+        }
+    }
+    slots.sort_by(|a, b| a.pri.total_cmp(&b.pri));
+    let inside_wall = |p: Vec2| wall.is_some_and(|w| point_in(p, w));
+    let near_wall = |p: Vec2| {
+        wall.is_some_and(|w| (0..w.len()).any(|k| seg_dist(p, w[k], w[(k + 1) % w.len()]) < 8.0))
+    };
+    let mut placed = 0u32;
+    for (n, sl) in slots.iter().enumerate() {
+        if placed >= households {
+            break;
+        }
+        let key = seed * 104729 + n;
+        if scattered && h01(key, 55) < 0.35 {
+            continue;
+        }
+        let st = &streets[sl.street];
+        let (p, tan) = st.at(sl.s);
+        let nrm = perp(tan) * sl.side;
+        let angle = tan.y.atan2(tan.x);
+        let setback = 0.6 + (1.0 - town) * 1.5;
+        let mut ok = None;
+        // Plots run back further towards the edge of a town; near its middle,
+        // where land was dear, they are shorter.
+        let d_c = (p - centre).length();
+        let core = 0.6 + 0.4 * smoothstep(0.1 * reach_max, 0.6 * reach_max, d_c);
+        let core = if town > 0.5 { core } else { 1.0 };
+        for depth_f in [1.0f32, 0.75, 0.55] {
+            let depth = depth0 * depth_f * core * (0.65 + 0.7 * h01(key, 57));
+            // The plot's angle is turned so its local y runs from the street
+            // to the back, whichever side of the street it is on.
+            let plot = Shape {
+                c: p + nrm * (st.hw + setback + depth * 0.5),
+                h: Vec2::new(sl.front * 0.5 - 0.15, depth * 0.5),
+                angle: if sl.side < 0.0 {
+                    angle + std::f32::consts::PI
+                } else {
+                    angle
+                },
+                kind: PLOT,
+                tone: h01(key, 59),
+                extra: rank as u8 as f32,
+                height: 0.0,
+            };
+            let probes = plot.probes();
+            if !probes
+                .iter()
+                .all(|&q| water.land(q) && water.river_gap(q) > 2.0)
+            {
+                continue;
+            }
+            if wall.is_some() {
+                let inside = inside_wall(probes[0]);
+                if probes
+                    .iter()
+                    .any(|&q| inside_wall(q) != inside || near_wall(q))
+                {
+                    continue;
+                }
+            }
+            // Streets are tested against the plot set back a little from its
+            // front, so the street it faces, curving, does not graze it.
+            let back = perp(dir(plot.angle));
+            let inset = Shape {
+                c: plot.c + back * 1.5,
+                h: Vec2::new(plot.h.x - 0.3, plot.h.y - 1.5),
+                ..plot
+            };
+            if !space.clear_of_shapes(&plot) || !space.off_streets(&inset, 0.3) {
+                continue;
+            }
+            ok = Some((plot, depth));
+            break;
+        }
+        let Some((plot, depth)) = ok else { continue };
+        space.add_shape(plot);
+        placed += 1;
+        // The house at the street front: in towns the whole frontage, two or
+        // three storeys; in villages a longhouse along the street or end on,
+        // set back a little.
+        let roof = if upland && h01(key, 61) < 0.6 {
+            2.0
+        } else if h01(key, 62) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
+            1.0
+        } else {
+            0.0
+        };
+        let front_edge = p + nrm * (st.hw + setback);
+        let (hl, hd, height, end_on) = if town > 0.5 {
+            (
+                sl.front * 0.5 - 0.2,
+                4.0 + 2.0 * h01(key, 63),
+                8.0 + 3.0 * h01(key, 64),
+                false,
+            )
+        } else {
+            let end_on = h01(key, 65) < 0.3;
+            (
+                5.0 + 2.5 * h01(key, 63),
+                2.8 + 0.7 * h01(key, 64),
+                5.5,
+                end_on,
+            )
+        };
+        let back = if town > 0.5 {
+            0.0
+        } else {
+            2.0 + 6.0 * h01(key, 66)
+        };
+        let (hu, hv, ha) = if end_on {
+            (hl, hd, angle + std::f32::consts::FRAC_PI_2)
+        } else {
+            (hl.min(plot.h.x - 0.3), hd, angle)
+        };
+        let reach_in = if end_on { hu } else { hv };
+        let house = Shape {
+            c: front_edge
+                + nrm * (back + reach_in)
+                + tan
+                    * if end_on {
+                        (h01(key, 67) - 0.5) * (sl.front - 2.0 * hv).max(0.0)
+                    } else {
+                        0.0
+                    },
+            h: Vec2::new(hu, hv),
+            angle: ha,
+            kind: HOUSE,
+            tone: h01(key, 68),
+            extra: roof,
+            height,
+        };
+        space.shapes.push(house);
+        // A barn behind in villages, a back range down the plot in towns.
+        if h01(key, 69) < 0.5 && depth > 30.0 {
+            let b = if town > 0.5 {
+                let len = 4.0 + 5.0 * h01(key, 70);
+                let w = (sl.front * 0.5 - 0.6).clamp(1.5, 2.5);
+                Shape {
+                    c: front_edge
+                        + nrm * (2.0 * hd + 4.0 + len + 10.0 * h01(key, 71))
+                        + tan
+                            * (sl.front * 0.5 - w - 0.3)
+                            * if h01(key, 72) < 0.5 { 1.0 } else { -1.0 },
+                    h: Vec2::new(len, w),
+                    angle: angle + std::f32::consts::FRAC_PI_2,
+                    kind: BARN,
+                    tone: h01(key, 73),
+                    extra: roof,
+                    height: 6.0,
+                }
+            } else {
+                Shape {
+                    c: front_edge + nrm * (depth * (0.4 + 0.2 * h01(key, 74))),
+                    h: Vec2::new(4.0 + 3.0 * h01(key, 75), 2.8 + h01(key, 76)),
+                    angle: angle
+                        + if h01(key, 77) < 0.5 {
+                            0.0
+                        } else {
+                            std::f32::consts::FRAC_PI_2
+                        },
+                    kind: BARN,
+                    tone: h01(key, 78),
+                    extra: roof,
+                    height: 6.0,
+                }
+            };
+            if b.corners().iter().all(|&q| {
+                let l = q - plot.c;
+                l.dot(dir(plot.angle)).abs() < plot.h.x
+                    && l.dot(perp(dir(plot.angle))).abs() < plot.h.y
+            }) {
+                space.shapes.push(b);
+            }
+        }
+    }
+    placed
+}
+
+/// Whether p lies inside the closed polygon w.
+fn point_in(p: Vec2, w: &[Vec2]) -> bool {
+    let mut inside = false;
+    let n = w.len();
+    for k in 0..n {
+        let (a, b) = (w[k], w[(k + 1) % n]);
+        if (a.y > p.y) != (b.y > p.y) && p.x < a.x + (b.x - a.x) * (p.y - a.y) / (b.y - a.y) {
+            inside = !inside;
+        }
+    }
+    inside
+}
+
+/// The line of a city's wall round its core plots: the farthest corner in each
+/// of 48 directions, with room for a lane inside, smoothed.
+fn wall_line(centre: Vec2, core: &[Shape]) -> Vec<Vec2> {
+    const N: usize = 48;
+    let mut r = [0.0f32; N];
+    for s in core {
+        for c in s.corners() {
+            let d = c - centre;
+            let k = ((d.y.atan2(d.x) / std::f32::consts::TAU + 1.0) * N as f32) as usize % N;
+            r[k] = r[k].max(d.length() + 14.0);
+        }
+    }
+    let base = r.iter().copied().fold(0.0f32, f32::max).max(80.0) * 0.5;
+    for x in r.iter_mut() {
+        if *x == 0.0 {
+            *x = base;
+        }
+    }
+    let r: Vec<f32> = (0..N)
+        .map(|k| (r[(k + N - 1) % N] + 2.0 * r[k] + r[(k + 1) % N]) / 4.0)
+        .map(|x| x.max(base * 0.6))
+        .collect();
+    let mut pts: Vec<Vec2> = (0..N)
+        .map(|k| centre + dir(k as f32 / N as f32 * std::f32::consts::TAU) * r[k])
+        .collect();
+    // Two rounds of closed corner cutting.
+    for _ in 0..2 {
+        let n = pts.len();
+        let mut out = Vec::with_capacity(2 * n);
+        for k in 0..n {
+            let (a, b) = (pts[k], pts[(k + 1) % n]);
+            out.push(a + (b - a) * 0.25);
+            out.push(a + (b - a) * 0.75);
+        }
+        pts = out;
+    }
+    pts
+}
+
+/// The wall itself: stretches of curtain wall, round towers about every 55 m,
+/// a gatehouse where each street passes through, and a ditch outside.
+fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space) {
+    let n = line.len();
+    // Where streets cross the wall: (index along the wall, point, street tangent).
+    // Gatehouses where the roads pass; where a lane meets the wall, a
+    // postern: a gap in the wall, without a gatehouse.
+    let mut gates: Vec<(Vec2, Vec2)> = Vec::new();
+    let mut posterns: Vec<Vec2> = Vec::new();
+    for st in streets {
+        for w in st.pts.windows(2) {
+            for k in 0..n {
+                let (a, b) = (line[k], line[(k + 1) % n]);
+                if let Some(x) = intersect(w[0], w[1], a, b) {
+                    if !st.main {
+                        posterns.push(x);
+                    } else if gates.iter().all(|g| (g.0 - x).length() > 25.0) {
+                        gates.push((x, (w[1] - w[0]).normalized()));
+                    }
+                }
+            }
+        }
+    }
+    let near_gate = |p: Vec2, r: f32| {
+        gates.iter().any(|g| (g.0 - p).length() < r)
+            || posterns.iter().any(|q| (*q - p).length() < r * 0.5)
+    };
+    let mut along = 0.0f32;
+    let mut next_tower = 30.0;
+    for k in 0..n {
+        let (a, b) = (line[k], line[(k + 1) % n]);
+        let len = (b - a).length();
+        let t = (b - a) / len.max(1e-6);
+        let mid = (a + b) * 0.5;
+        // Outward: away from the polygon's centre.
+        let centroid = line.iter().fold(Vec2::ZERO, |s, p| s + *p) / n as f32;
+        let out = if perp(t).dot(mid - centroid) > 0.0 {
+            perp(t)
+        } else {
+            -perp(t)
+        };
+        if !near_gate(mid, 12.0) {
+            space.shapes.push(Shape {
+                c: mid,
+                h: Vec2::new(len * 0.5 + 0.4, 1.3),
+                angle: t.y.atan2(t.x),
+                kind: WALL,
+                tone: h01(seed + k, 81),
+                extra: 0.0,
+                height: 8.0,
+            });
+            space.add_shape(Shape {
+                c: mid + out * 9.0,
+                h: Vec2::new(len * 0.5 + 0.4, 4.5),
+                angle: t.y.atan2(t.x),
+                kind: DITCH,
+                tone: h01(seed + k, 82),
+                extra: 0.0,
+                height: 0.0,
+            });
+        }
+        along += len;
+        if along >= next_tower {
+            if !near_gate(b, 20.0) {
+                space.shapes.push(Shape {
+                    c: b + out * 1.0,
+                    h: Vec2::splat(4.2),
+                    angle: 0.0,
+                    kind: WALL_TOWER,
+                    tone: h01(seed + k, 83),
+                    extra: 0.0,
+                    height: 11.0,
+                });
+            }
+            next_tower = along + 50.0 + 15.0 * h01(seed + k, 84);
+        }
+    }
+    for (k, (p, t)) in gates.iter().enumerate() {
+        // The gatehouse spans the street, its passage open along it.
+        space.shapes.push(Shape {
+            c: *p,
+            h: Vec2::new(6.0, 7.5),
+            angle: t.y.atan2(t.x),
+            kind: GATE,
+            tone: h01(seed + k, 85),
+            extra: 0.0,
+            height: 13.0,
+        });
+    }
+}
+
+fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
+    let r = p2 - p1;
+    let s = q2 - q1;
+    let den = r.x * s.y - r.y * s.x;
+    if den.abs() < 1e-9 {
+        return None;
+    }
+    let t = ((q1 - p1).x * s.y - (q1 - p1).y * s.x) / den;
+    let u = ((q1 - p1).x * r.y - (q1 - p1).y * r.x) / den;
+    ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then(|| p1 + r * t)
+}
+
+/// The shapes as textures: the shapes, two texels each; per map cell, where its
+/// squares start in the square table (-1 if it has none); per square, its
+/// entries in the index list and how much of it is built over; the index.
+pub struct ShapeData {
+    pub shp: Vec<f32>,
+    pub shp_size: (i32, i32),
+    pub cell: Vec<f32>,
+    pub sq: Vec<f32>,
+    pub sq_size: (i32, i32),
+    pub idx: Vec<f32>,
+    pub idx_size: (i32, i32),
+    /// Squares per cell along a side.
+    pub sub: f32,
+    pub most: usize,
+    /// Places: per place, a texel (centre x, y) then BOUND / 4 texels of
+    /// boundary radii, in metres.
+    pub places: Vec<f32>,
+    pub places_size: (i32, i32),
+}
+
+/// Texels per place in the places texture.
+pub const PLACE_TEXELS: usize = 1 + BOUND / 4;
+
+const ROW: usize = super::ways::ROW;
+/// Squares of about this many metres index the shapes.
+const SQUARE_M: f32 = 62.5;
+
+pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
+    let g = t.grid;
+    let cell_m = g.cell_km * 1000.0;
+    let sub = (cell_m / SQUARE_M).round().max(1.0) as i32;
+    let sq_m = cell_m / sub as f32;
+    let mut lists: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
+    let mut cover: BTreeMap<(i32, i32), f32> = BTreeMap::new();
+    let (wmax, hmax) = (g.w as i32 * sub, g.h as i32 * sub);
+    for (i, s) in shapes.iter().enumerate() {
+        let (lo, hi) = s.bounds();
+        // Reach: the shadow, and for plots the streets beside them (so the
+        // shader knows it is in town).
+        let m = Vec2::splat(if s.kind == PLOT {
+            10.0
+        } else {
+            2.0 + 0.8 * s.height
+        });
+        let (x0, y0) = (
+            ((lo.x - m.x) / sq_m).floor() as i32,
+            ((lo.y - m.y) / sq_m).floor() as i32,
+        );
+        let (x1, y1) = (
+            ((hi.x + m.x) / sq_m).floor() as i32,
+            ((hi.y + m.y) / sq_m).floor() as i32,
+        );
+        for y in y0.max(0)..=y1.min(hmax - 1) {
+            for x in x0.max(0)..=x1.min(wmax - 1) {
+                lists.entry((x, y)).or_default().push(i as u32);
+            }
+        }
+        // How much of each square the place covers, by points 5 m apart.
+        if s.kind < BUILDING && s.kind != DITCH {
+            let (u, w) = s.axes();
+            let (nu, nw) = ((s.h.x / 2.5).ceil() as i32, (s.h.y / 2.5).ceil() as i32);
+            let area = 4.0 * s.h.x * s.h.y / ((2 * nu) as f32 * (2 * nw) as f32);
+            for a in -nu..nu {
+                for b in -nw..nw {
+                    let p = s.c
+                        + u * ((a as f32 + 0.5) / nu as f32 * s.h.x)
+                        + w * ((b as f32 + 0.5) / nw as f32 * s.h.y);
+                    let key = ((p.x / sq_m).floor() as i32, (p.y / sq_m).floor() as i32);
+                    *cover.entry(key).or_insert(0.0) += area / (sq_m * sq_m);
+                }
+            }
+        }
+    }
+    // Cells with any square listed get a block of sub x sub squares.
+    let mut cell = vec![-1.0f32; t.n() * 4];
+    let mut sq: Vec<f32> = Vec::new();
+    let mut idx: Vec<f32> = Vec::new();
+    let mut most = 0;
+    let cells: std::collections::BTreeSet<(i32, i32)> = lists
+        .keys()
+        .chain(cover.keys())
+        .map(|&(x, y)| (x.div_euclid(sub), y.div_euclid(sub)))
+        .filter(|&(cx, cy)| cx >= 0 && cy >= 0 && cx < g.w as i32 && cy < g.h as i32)
+        .collect();
+    for (cx, cy) in cells {
+        let ci = g.idx(cx, cy);
+        cell[ci * 4] = (sq.len() / 4) as f32;
+        for y in 0..sub {
+            for x in 0..sub {
+                let key = (cx * sub + x, cy * sub + y);
+                let list = lists.get(&key).map(|v| v.as_slice()).unwrap_or(&[]);
+                let cov = cover.get(&key).copied().unwrap_or(0.0).min(1.0);
+                sq.extend_from_slice(&[idx.len() as f32, list.len() as f32, cov, 0.0]);
+                idx.extend(list.iter().map(|&i| i as f32));
+                most = most.max(list.len());
+            }
+        }
+    }
+    let mut shp = Vec::with_capacity(shapes.len() * 8);
+    for s in shapes {
+        // Height in whole metres beside the extra (0..3): extra + 4 x height.
+        shp.extend_from_slice(&[
+            s.c.x,
+            s.c.y,
+            s.h.x,
+            s.h.y,
+            s.angle,
+            s.kind,
+            s.tone,
+            s.extra + 4.0 * s.height.round(),
+        ]);
+    }
+    let pad = |v: &mut Vec<f32>| -> (i32, i32) {
+        let rows = v.len().div_ceil(4).div_ceil(ROW).max(1);
+        v.resize(rows * ROW * 4, 0.0);
+        (ROW as i32, rows as i32)
+    };
+    // Each cell names up to two places whose boundary may reach it (in the
+    // cell texture's second and third values; -1 for none), nearest first.
+    let mut places_tex: Vec<f32> = Vec::with_capacity(places.len() * PLACE_TEXELS * 4);
+    for p in places {
+        places_tex.extend_from_slice(&[p.centre.x, p.centre.y, 0.0, 0.0]);
+        places_tex.extend_from_slice(&p.bound);
+    }
+    let mut near: BTreeMap<usize, Vec<(f32, usize)>> = BTreeMap::new();
+    for (pi, p) in places.iter().enumerate() {
+        let reach = p.bound.iter().copied().fold(0.0f32, f32::max);
+        let lo = ((p.centre - Vec2::splat(reach)) / cell_m).floor();
+        let hi = ((p.centre + Vec2::splat(reach)) / cell_m).floor();
+        for y in (lo.y as i32).max(0)..=(hi.y as i32).min(g.h as i32 - 1) {
+            for x in (lo.x as i32).max(0)..=(hi.x as i32).min(g.w as i32 - 1) {
+                let cc = Vec2::new((x as f32 + 0.5) * cell_m, (y as f32 + 0.5) * cell_m);
+                near.entry(g.idx(x, y))
+                    .or_default()
+                    .push(((cc - p.centre).length() - reach, pi));
+            }
+        }
+    }
+    for i in 0..t.n() {
+        cell[i * 4 + 1] = -1.0;
+        cell[i * 4 + 2] = -1.0;
+    }
+    for (i, mut v) in near {
+        v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        for (k, &(_, pi)) in v.iter().take(2).enumerate() {
+            cell[i * 4 + 1 + k] = pi as f32;
+        }
+    }
+    let places_size = pad(&mut places_tex);
+    let shp_size = pad(&mut shp);
+    let sq_size = pad(&mut sq);
+    let idx_size = pad(&mut idx);
+    ShapeData {
+        shp,
+        shp_size,
+        cell,
+        sq,
+        sq_size,
+        idx,
+        idx_size,
+        sub: sub as f32,
+        most,
+        places: places_tex,
+        places_size,
+    }
+}

@@ -9,8 +9,8 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 This section describes what is waiting to be merged; it is rewritten each time.
 
 - **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
-- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9 and stage 2 is R10. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
-- **Next step:** stage 3, once the owner has judged stage 2 on screen. The owner has put optimisation off to a later stage, so that the results are right first.
+- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9, stage 2 is R10 and stage 3 is R11. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
+- **Next step:** stage 4. The owner asked (22 October) that the remaining stages go ahead without waiting for approval, with towns the focus, and put optimisation off to a later stage so that the results are right first.
 
 ## R1 — Smooth relief drawn by a shader
 
@@ -279,6 +279,91 @@ The countryside drawn as it would look from the air at a metre a pixel. Each thi
 
 Kind: rendering.
 
+## R11 — Real scale, stage 3: villages and towns
+
+Each place is laid out the way it grew, from its roads, by a planner on the CPU (`town.rs`, rebuilt each year, every 5 years while the run plays). The relief shader draws the result (`town.frag`). The owner's notes for this stage:
+- the roads to other places must pass through the towns;
+- buildings gather round the roads;
+- a town's own streets must look like roads;
+- the whole must sit in the land, not look like a sticker on it;
+- fields must end at a real town boundary, not be painted over.
+
+- **Main streets are the roads.**
+  - The roads through a place (the model's roads, smoothed and kept off the rivers as in R9) are its main streets. The centre is the nearest dry point on them to the anchor. A bridge town's centre is on the nearer bank.
+  - Towns ignore land-trade tracks where they have a road. Villages, hamlets and roadless towns use their tracks.
+  - A place on no road or track gets a high street of its own, laid from the nearest dry ground the way that keeps longest on it.
+- **Inner streets.** They are drawn exactly like the roads: the same true-width shader, worn surface, ruts and verges, and paved where the place is a town.
+  - **Side streets** branch off the main streets, roughly every 80–130 m on alternate sides, bending a little as they go. Larger towns grow them in generations: lanes off lanes, two generations from 1,500 people and three from 5,000. A town on only one or two roads grows two more, further out.
+  - **Back lanes** run behind the main streets' plots in towns of 800 or more.
+  - **Spacing.** Every lane keeps a plot's depth from every street but the one it leaves. So lanes join into blocks behind the street fronts, never across them, and a lane ends where it meets another's frontage.
+  - **Ends.** A place's own lanes are cut back to the last point inside its boundary, so none runs on into the fields.
+- **Plots, one per household** (people ÷ 4.5).
+  - **Order:** laid along every street from the centre outward, main streets first.
+  - **Hamlets:** about 32 m frontages.
+  - **Villages:** tofts and crofts about 20 m wide and 70 m deep.
+  - **Towns:** burgage plots narrowing from 9 m to 5.5 m in the largest cities, 70–45 m deep, shorter near the centre where land was dear. Plots widen towards the edge of a place.
+  - **Inside a plot:** a yard about the first 12 m behind the house, a kitchen garden of beds, then grass, an orchard of fruit trees or the croft's own crop at the back. Each plot is fenced, with wattle and walls in towns and hedges in villages.
+  - **Water:** no plot or house stands in water or on a river's banks.
+- **Houses.**
+  - **Towns:** the whole frontage, 4–6 m deep and 8–11 m high.
+  - **Villages:** a longhouse 10–15 m long, along the street or end on (three in ten), set back a little.
+  - **Barns and back ranges:** about half the plots have a barn behind the house, or in a town a back range down one side.
+  - **Roofs:** thatch golden to grey, red-brown tile courses (more of them the larger the town), and stone slates on the upland. Each roof is lit on its slopes, with a ridge and (most houses) a chimney, eaves, and its shadow cast away from the light. Roofs whiten in winter.
+- **Market places and greens.**
+  - Towns of 500 or more have a spindle-shaped market place on the main street at the centre, cobbled, with a cross and stalls. From 1,500 people a market hall stands in it.
+  - Villages where three or more roads meet have a green, often with a pond.
+- **Churches.** One to about a thousand people, in a churchyard with gravestones and a wall: the first by the centre, the rest spread out. Each faces east, with a tower at the west end and a chancel narrower than the nave, roofed in lead in towns.
+  - **Cathedral:** the greatest city, or one over 8,000, has a cathedral (110 m long, with transepts and a cloister) in a close.
+  - **Friaries:** cities have one per 4,000 people, a precinct with church and cloister near the edge.
+- **Walls.**
+  - **Line:** a city's wall goes round about half its first layout of plots, with room for a lane inside. The plots are then laid again clear of it, so the rest form suburbs along the roads beyond.
+  - **Wall:** a crenellated wall walk, round towers about every 50–65 m, and a wet ditch outside.
+  - **Openings:** a gatehouse where each road passes, and a postern (a gap without a gatehouse) where a lane does.
+- **The town's boundary, and the fields.**
+  - **Boundary:** each place has one, round its plots, yards, greens and market in 64 directions, with a 12 m margin for its back hedges and lanes.
+  - **Fields** (R10's parcels) stop at the boundary. Inside it, the parcels are the place's own closes, about 45 m across and hedged with younger trimmed hedges: paddocks, orchards in rough rows, and kitchen gardens.
+  - **Woods** stop at the boundary too, with a broken edge.
+  - **The old R5 drawing** (footprint wash, 333 m street blocks, walls on the cell outline) is retired. Built cells count as farmland in the far-out field tint, and their woods drop to a quarter.
+- **Far out,** a place is drawn as the share of the ground its plots cover, in the colour of roofs, fading out as the houses come in (from 15 m per pixel).
+- **Ruins** (deserted places): far out, R5's grey patch; close in, the earthworks of the crofts under grass, with their banks and house platforms.
+- **Quays** on the sea follow the new plots. Riverbanks are stone quays in towns, as in R9. In a town the river is embanked and does not meander.
+- **Symbols.** The settlement marker, the church, square and warehouse glyphs and the price discs fade with the other map symbols past 64 points per cell. The mill stays until stage 4.
+- **Sizes against the curve.** Settled area inside each boundary against Cesaretti et al.'s curve (plus crofts for villages), map 1 seed 1, places over 1,000 people:
+
+  | Year | Place | People | Houses / households | Area | Expected |
+  |---|---|---|---|---|---|
+  | 200 | Asherfield (walled) | 4,507 | 1,002 / 1,002 | 53 ha | 56 ha |
+  | 200 | (id 24, walled) | 2,271 | 505 / 505 | 34 ha | 34 ha |
+  | 200 | (id 30) | 1,732 | 385 / 385 | 27 ha | 28 ha |
+  | 450 | Liningbourne (walled) | 5,885 | 1,308 / 1,308 | 65 ha | 68 ha |
+  | 450 | Verefield (walled) | 2,479 | 551 / 551 | 41 ha | 36 ha |
+  | 450 | Ordcote | 1,884 | 419 / 419 | 25 ha | 30 ha |
+  | 450 | Dewermouth (walled port) | 15,041 | 2,825 / 3,342 | 171 ha | 134 ha |
+  | 450 | Aldford (port) | 1,293 | 201 / 287 | 20 ha | 29 ha |
+  | 450 | Mereelwick (river, no road) | 1,035 | 132 / 230 | 14 ha | 42 ha |
+
+  Most places house every household, within about a sixth of the expected area.
+
+  **Known shortfall.** Places cramped between river, sea and their few streets fall short of houses. Dewermouth houses 85%, Aldford 70%, Mereelwick 57%. The planner's summary is logged at info level for checking.
+- **Repetition check** (`tools/rhythm.py`, R10 against R11, same views):
+
+  | View | R10 | R11 |
+  |---|---|---|
+  | 4 m, the walled city of 1300 | 42.2 | 15.5 |
+  | 1 m, the same city | 17.2 | 15.1 |
+  | 1 m, Asherfield's highway, 1550 | 15.1 | 9.2 |
+  | 4 m, Dewermouth | 13.2 | 12.9 |
+  | 64 points per cell | 13.9 | 14.6 |
+
+  The street grid's rhythm (R10's one failing view) is gone.
+- **Frame time.** Not optimised in this stage (the owner's decision). At full zoom over Dewermouth a frame takes up to about 50 s in SwiftShader, against about 3 s for R10's fields. The cost is the per-pixel scan of up to 160 town shapes and their shadows. This, with the parcels and trees, is the work for the optimisation stage.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - The release wasm build gives the same hash at `?selftest=500` (30.4 ms/year).
+  - No change to the core, mapgen or CLI.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -300,13 +385,18 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
   - **Close views:** `12-closes-1m` (small hedged closes and ridge and furrow under grass), `12-wood-edge-2m`, `12-coppice-1m` and `12-downland-1m` (dew pond, folds, gorse).
   - **Seasons:** `12-autumn-2m` and `12-winter-2m`.
   - **Year 200 (1300), at the height of the open fields:** `12-open-fields-1300-4m` and `12-open-fields-1300-1m`.
+- R11 (R10, then R11, unless named):
+  - **Asherfield, 1550:** `13-village-64-before`/`-after`, `13-village-1m-before`/`-after` (a street village along the highway).
+  - **Asherfield, 1300,** then a walled city of 4,500: `13-city-1300-4m-before`/`-after`, `13-city-1300-1m-before`/`-after`, and `13-city-1300-winter`.
+  - **Dewermouth** (the port city of 15,000 at the river mouth): `13-port-4m-before`/`-after` and `13-port-1m`.
+  - **Others:** `13-upland-town-2m` (Liningbourne, stone-slate roofs) and `13-river-town-2m` (Mereelwick).
 
-## Next: the real-scale overhaul (in progress: stage 1 is R9, stage 2 is R10)
+## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
 Recorded on 22 October 2026 from the owner's conversation with the graphics session.
 
 ### Status and rules
-- **Status:** stages 1 and 2 built (R9, R10), waiting for the owner's judgement before stage 3. It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
+- **Status:** stages 1–3 built (R9–R11); stage 4 next, without waiting for approval (the owner, 22 October). It replaces the earlier waiting list: the town sizes, the field proportions and the traffic pacing are all folded in here.
 - **When:** the owner asks that it be built and handed to the implementer only after the current development stops, so as not to disturb the designer and implementer.
 - **Approval:** frontend only, so the owner's approval stands in for the designer's.
 - **Handover:** it goes to the implementer as one batch, built in stages (below) so that each stage can be judged on screen.
