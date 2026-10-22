@@ -800,6 +800,37 @@ Then stop for review.
 3. **The farmers' sales revenue belongs to the farmers.** It is their budget for goods, imports and grain in a dearth. With the guard there are always farmers to own it, so option A is not needed.
 4. **Re-run in the core** (D91: no switch; tag `v6` first). First untuned at K 1.5 with `market_share` × 1.5/3.39, with the pre-registration unchanged. Then iterate as D91 says.
 
+**M2 passed (cc8f7ba, D93; golden `835e8695b67538f7`, 35.7 ms a year in wasm).** Hinterlands now runs on a trade economy. Grain is sold at markets and bought by price, towns live on rents and tolls, and nothing is pushed or burned.
+- **The untuned pre-registration failed** (0/20 over 2,000; unsold 23–29%), and that is recorded.
+- **After two fixes within the design and one tuning round,** the gate passes on every map:
+  - the fixes: the labour guard weighted by yield, and people eating first, then the establishment;
+  - the tuning: K 1.3, `market_share` 0.4, toll 0.10, `market_min` 100;
+  - the results: every v6 check passes; Clark per seed has `b_P` 1.02–1.04, `b_Y` −0.024 to −0.033 (Clark: −0.025) and R² 0.86–0.90; unsold is 1.4–2.1%, against v6's roughly 70% burned.
+- **Kent:** lowland AUC 0.58, the best so far, and the largest share 0.25.
+- **Watch items:**
+  - weather costs growth again (population at year 200 is 0.68–0.70 of the run without weather; W2 was 0.95);
+  - outside trade is 2.5–4.4%, at the low edge of its band;
+  - the establishment is always short of K;
+  - relief and village stores are almost idle.
+
+**M3 brief: stores at markets (D94).** Grain stores move to where the grain is, the markets, and trade on price. The published model is competitive storage (Williams & Wright 1991; Deaton & Laroque 1992): store when today's price is below the expected future price less the cost of holding.
+- **Rule.** Each market with `W ≥ market_min` holds a store. Each year, after prices clear:
+  - it buys into store when `p_j < p̄_j (1 − h)`;
+  - it sells out of store when `p_j > p̄_j`.
+
+  `p̄_j` is the market's 10-year average price, and `h` the holding cost: interest plus storage, 0.15 before year 250 and 0.10 after (Clark: 10–11% interest before 1350 and about 5% after, plus up to 5% storage). The amount bought or sold per year is proportional to the price gap, up to `store_cap` × the market's yearly sales. Purchases are paid from the market's income, sales go back to it, and store grain loses `store_loss` a year. Stored grain enters the market as supply when sold.
+- **Village stores (S3) and relief (S2′) stay** and are reported. Retiring them is decided after M3.
+- **Pre-registered:**
+  - the 1315–17 famine dip is at most 0.16 (M2: 0.19–0.20);
+  - the year-to-year autocorrelation of grain prices is at least 0.3 while harvests are drawn fresh each year (Clark: prices 0.48 against yields 0.16).
+- **Reported:**
+  - carry-over after cheap years against Clark's 40%;
+  - the weather cost (population at year 200 against no weather);
+  - price gaps against transport on market pairs (still to be recorded);
+  - outside trade;
+  - the store map and chronicle lines.
+- **Gate:** every check that M2 passes, with Clark per seed. Iterate as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
