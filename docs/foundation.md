@@ -759,6 +759,22 @@ Then stop. The designer reviews the note before any S2 code is written.
 
 Then stop for review.
 
+**M1 note reviewed (5420934, `docs/market/m1-design.md`); decisions (D88).** The note is approved as written. It is coherent end to end. The rent grain arriving at a market is the lords' income. The lords and their households, the market people, buy their food from it at the market price. Any excess clears to deficit villages, ports or other markets, so the v5 loop (grain reaches towns and feeds market people) now runs through prices and nothing is burned.
+1. **`market_min` 50: approved,** as a tuning parameter.
+2. **Deficit villages pay only from their own sales: approved.** Relief and the villages' own stores stay free, as the manor and charity. A region-wide famine will still bite the poorest villages hardest, which is the historical pattern.
+3. **Unsold grain lost in M2, market stores in M3: approved, with one clarification.** S3's village stores and S2′ relief stay on in M2, as in v6 W2. Only the new market-level stores wait for M3. Otherwise the famine dip would not be comparable.
+
+**M2 build (approved),** behind `marketplaces`:
+- **First an untuned run,** to check that K carries over (pre-registered: the hierarchy checks pass on at least two maps without tuning).
+- **Then one tuning round** over `toll` (0.01–0.10), `market_min`, `market_share` and K, with every change recorded.
+- **Gate,** as in the note:
+  - every v6 check with W2 on;
+  - Clark per seed (`b_P` 0.8–1.2, R² ≥ 0.6, `b_Y` −0.15 to 0);
+  - determinism;
+  - at most 50 ms a year in wasm.
+- **Reported:** as in the note, plus the share of towns over 2,000 whose food is fully paid.
+- **Stop** and report either way. If it passes, `marketplaces` becomes the default and the gravity grain push is retired.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
