@@ -169,4 +169,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — project closed at a6f8233 (final golden `65aee272c30de1f9`); development stopped by Divish (D117).
+Last updated: 2026-10-22 — project closed at a6f8233 (final golden `65aee272c30de1f9`); development stopped by Divish (D117); demand proposal accepted for when development resumes (D118, 18fe314).
