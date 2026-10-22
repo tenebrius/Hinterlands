@@ -1393,6 +1393,40 @@ The last two lost the artefact towns that had been counted among the places over
 - the stores on the D124 measure;
 - the cloth towns' sizes and places.
 
+### D1b + D2 result (94b2e8c): a specification error of mine; home cloth is made where it is worn (D128)
+
+**What failed.** Runs passing every check fell from 27 / 28 / 17 to 6 / 5 / 4. Market spacing is too wide on maps 2 and 3 (medians 15.3–15.5 km). Map 1's hierarchy is too flat (rank-size −0.78). Map 2's population after 1400 is lower and recovers to only 0.94. Pasture's rise after the plague fails on map 1. Outside trade passes at the new ceiling.
+
+**The cause is my specification, not the build.**
+- I accepted (D123) home cloth made at mill settlements and bought by everyone. But the owner's own rule, D118.2, models a chain only where a separate trade in another place sits between the material and its user. For everyday cloth there was none.
+  - Spinning was done in nearly every household.
+  - Russets, kerseys and blankets were woven by village weavers.
+  - Much of it was fulled by foot or not at all.
+- In the build, everyone's clothing bill, about a quarter of a person-year of grain, flowed to the hundred mill towns. That is a transfer from the central places that hold spacing and the top of the hierarchy to small places on streams. The implementer's reading says so, and it matches each failing check.
+- **Rule 7 again:** for each flow, ask who actually traded with whom.
+
+**Corrected:**
+1. **Home cloth is made where it is worn.** Each settlement's cloth need, 1.5 yards × 2 lb × adults, becomes a demand for wool at home. It is bought in the wool market from the region's growers like any buyer's, and the making is the household's own labour. No coin goes to mills for it. This is village smithing's rule (D118.2).
+2. **The chain is export cloth only.** Mill settlements buy wool and sell broadcloth to the ports, at Munro's price less the custom and carriage. Their margin is their market inflow, so the cloth towns of the fifteenth century grow on that trade, as Lavenham and the Weald's cloth villages did.
+3. **Wool's three outlets (home use, the ports and the mills) are split by the model's entropy form (S1).** Where netbacks are close, they share the wool. The present all-or-nothing order is what gives a cloth share of exactly 1.00 from 1350. England still shipped about 8,000–10,000 sacks of raw wool in the fifteenth century.
+4. **Kept:** the fallow flock, port reach for wool and cloth, the duties, the making cost of 3.2 d and the switches.
+
+**The wool-share test (D126.4) is read, and nothing is tuned.**
+- Munro's Flemish shares imply a making cost of 1.4–2.7 d a pound, below the 2.62–3.77 bracket. By the record, then, cost alone would not have kept English cloth out of export before 1340. What held it back was quality and skill: Flanders dominated the cloth that fetched Munro's prices, and his price is for 1371–1450, after English cloth had made its name.
+- So the 3.2 d making cost stands in for a pre-1340 quality gap the model does not have. It is recorded as a stand-in, and the cloth share remains reported, not a test.
+
+**Exports per head (9.7–10.9 d against England's 14 d) weaken one of my two reasons for the 50% ceiling (D126).** The region's outside share is high because its own market is small, not because it exports more per head than England. The ceiling stands on the other reason, the export colony at more than half, and it is not moved.
+
+**Next, in this order:**
+1. **Attribution run first.** D1b with the fallow flock and wool by port reach, and no mills, 40 seeds. This separates wool's effects (the clip doubles; the subsidy lowers wool's price from 1342) from the mills'. It matters especially for pasture after 1348 and for recovery.
+2. **Then the corrected D2,** gated with D1b as before. If it fails, stop and report per check.
+
+**Pre-registered for the corrected stage, reported only.** Each names its mechanism (rule 5).
+- **Market spacing and rank-size return to at least D1b's levels** (30/40 or better). This rests on clothing bills staying at home.
+- **Cloth towns grow after 1347, not before.** This rests on export cloth being their only trade, with the wedge from 1342–47. Places over 2,000 that make cloth are 0–1 before 1340.
+- **The cloth share of exported wool rises after 1347 but stays below 0.95 in every decade.** This rests on the entropy split.
+- **Map 2's recovery returns to 30/40.** This rests on the bills staying at home. If the attribution run shows wool causes it, this is withdrawn before the gate, with the reason.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

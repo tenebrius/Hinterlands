@@ -113,6 +113,13 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Outside-trade ceiling re-founded at 50% (scale: a county-sized region is not a nation, Alesina et al. 2000; the definition now holds every sourced channel; 'export colony' means more than half).
   - D1b and D2 are gated together, since D1b removed artefact middle towns and cloth is the mechanism for real ones.
   - The cloth-share pre-registration is built in by the 3.2 d making-cost bracket, so it is now reported. The independent test is a sourced wool share of broadcloth value against the 2.62–3.77 bracket.
+- **D1b + D2 (94b2e8c) failed, D128:**
+  - All-check runs 6/5/4; spacing too wide, rank-size flat, recovery low on map 2.
+  - My spec error 13: home cloth made at mill towns transferred everyone's clothing bill to them, against D118.2.
+  - Corrected: home cloth is made where it is worn (wool demand at home); the chain is export cloth only; wool's outlets are split by the entropy form (share 1.00 is too sharp).
+  - Munro's shares put the making cost below the bracket, so 3.2 d stands in for a pre-1340 quality gap.
+  - Exports per head 10 d against England's 14 d weaken the scale reason for the 50% ceiling; it stands on the export-colony reason.
+  - Attribution run (wool without mills) first, then the corrected D2.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
 - **v7 RELEASED (1a94a88):** README rewritten for the trade economy; parameters regenerated; watching panel with seven phases; prices, purses and stores in the inspector, plus a grain-price layer (red in 1316); screenshots in `docs/screenshots/v7/`; golden `65aee272c30de1f9`, 45.9 ms/year wasm. Kent: largest near Gravesend 14/20, inland spacing 13.2 km (real 10.6). Kent geology next.
@@ -145,6 +152,8 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 11. **I pre-registered a gain inside the noise.** R expected 12 or more runs passing every check on every map, up from 8/13/8, from levers tuned at every milestone. At 20 seeds those counts move ±2 by the draw alone, so the best of 24 settings looked better by chance and lost on fresh seeds. Earlier tunings (D111, D113) had answered one-seed shortfalls. Rules: before pre-registering a gain or setting a gate, compute the run-to-run noise at the sample size; pick among many settings only with a confirmation on fresh seeds; and do not tune to answer a shortfall smaller than the noise.
 
 12. **I predicted from the textbook mechanism without asking which prices the model leaves free.** D121 expected Hume's falling price level. But the region takes its prices from outside (wool, grain at port parity, iron and salt at the port), so it adjusts through coin and quantities: the monetary approach (McCloskey & Zecher 1976). The same slip, a cap on price read as a cap on size, may explain the map 1 specialists. Rule: when pre-registering, say which quantity the mechanism fixes and which it leaves free.
+
+13. **I let a chain into the home.** D123 accepted home cloth made at mill towns and bought by everyone, against the owner's own rule (D118.2: a chain only where a separate trade in another place sits between). Everyday cloth was spun and woven at home and in the village, so the build moved a quarter of everyone's food value to a hundred small places on streams, and spacing, rank-size and recovery broke. This is rule 7 again: for each flow, ask who actually traded with whom, and check each new flow against the rules already decided.
 
 Judgement rules that now stand:
 
@@ -187,4 +196,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — D1b failed; outside-trade ceiling re-founded at 50%; D1b+D2 gated together (D126).
+Last updated: 2026-10-22 — D1b+D2 failed; spec error 13; home cloth at home, export cloth chain, entropy split; attribution run then corrected D2 (D128).
