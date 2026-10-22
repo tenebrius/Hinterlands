@@ -792,6 +792,14 @@ Then stop for review.
 2. **Don't give up easily.** v7 has no stop rule. When a gate fails, the implementer diagnoses, fixes within the design (M1 and D90), and re-runs, reporting at each real finding. Design questions come to the designer, who answers them and keeps going. The waste check (unsold ≤ 10%) and the v6 checks stay as the definition of success. Persistence means fixing the model, not loosening the tests.
 3. **The 50 ms budget is dropped.** Time per year is reported, not gated.
 
+**M2 second build (4052d01) and the designer's decision (D92).** It was built before D91 arrived, so it is still behind the switch. Untuned, the region collapses (map 1 at year 400 has 5k people, largest place 478). The implementer's diagnosis is right. With K at 1.2–2.0 every village's own sales grow its own W towards `A/K`, and within 30 years W is the whole population. Then nobody farms, the harvest has no owner, and the people starve.
+
+**Decided: option C, with B as a guard.**
+1. **Only arrivals from other places grow a market (C).** `A_j` counts the grain brought to j from other places, not a place's own sales at its own market. This is Christaller's centrality: a central place grows on the trade it draws from its hinterland, its surplus of importance (*Bedeutungsüberschuss*), not on its own local exchange. A village selling to itself is not a market town. Only places that draw grain from others grow W, which is what makes the hierarchy.
+2. **Labour guard (B).** W is at most the population beyond the people the place's fields need (`pop − field_need`). Someone has to farm the fields a place holds; market people are those the land does not need.
+3. **The farmers' sales revenue belongs to the farmers.** It is their budget for goods, imports and grain in a dearth. With the guard there are always farmers to own it, so option A is not needed.
+4. **Re-run in the core** (D91: no switch; tag `v6` first). First untuned at K 1.5 with `market_share` × 1.5/3.39, with the pre-registration unchanged. Then iterate as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
