@@ -1307,6 +1307,49 @@ D0 found the region's own cloth needs 3–5 times the wool it grows at Dyer's fi
 - cloth towns' sizes, against the over-2,000 check;
 - wool to ports against cloth to ports, by decade.
 
+### The D123 traces (8ed969e): decided (D124)
+
+**1 and 2: iron mines grow on price in districts no port reaches. Option (a) is adopted.**
+- The cause is a missing mechanism, and the fault is in my D121. I gave the ports iron and salt "with carriage inland as for every good", but goods move only between places within reach, with no resale. So a third of the people could not reach a port at any price.
+- **The rule (D1b), for the goods traded with the outside:**
+  - every settlement has an arc to its nearest port, at the full travel cost;
+  - carriage is charged at τ/ρ per unit of cost as now, so dense goods carry far and bulky ones do not;
+  - the port's distance field is computed once per cost refresh.
+
+  This is how iron and salt actually went inland: by carriers paid by the mile. A mine then competes with the port price plus carriage, not with nothing.
+- (b), two hops, is an arbitrary limit. (c), resale, is the faithful form but is not needed while (a) gives the port price plus carriage.
+- **The same rule applies to wool and export cloth from D2.** Wool's two-hop rule is replaced by it, so that a far district can sell either at its carriage cost. Otherwise reach alone would favour cloth, and D2's test of the duty wedge would be confounded.
+- Grain's trade with the ports is unchanged.
+
+**3: the stores are not emptied. The measure is re-read.**
+- Carry-over is now the mean store held in the cheapest tenth of years relative to the 21-year trend, against its mean over all years. The fixed 0.8 cut-off lost its sample when D1 narrowed the price swings.
+- **Reported:** both means and the peak, against D1 off.
+- **The stores get no claim ahead of goods.** Storage in the model is arbitrage by a purse with limits (Deaton and Laroque with a budget), and ploughs and salt come before speculation. The removed order switch stays removed.
+
+**4: map 3's outside-trade failures are through wool.** This is noted. The check stays as it is and is watched through D2, which takes wool into home cloth.
+
+**Accepted, as built:**
+- **D2 step 1:** the fallow flock, 1.0 sheep a fallow acre on a third of arable (named as a calibration), sold by the farmers less the toll. It gives 3.6 lb of wool a person in 1300, inside England's 3–5 lb.
+- **The cloth values:**
+  - **Cloth:** £1.75–2.3 a broadcloth in 1371–1450 (Munro, from the customs particulars), about 5.7 d a pound of wool content, against wool at 3.3 d.
+  - **The subsidy:** 40s a sack from 1342, plus the ancient custom of 6s 8d (Barnes).
+  - **The cloth custom:** 14d a cloth for denizens from 1347, named as a calibration until it is confirmed.
+
+**Order:**
+1. **D1b, port reach for salt and iron.** It has its own flag and is gated on 40 seeds.
+   - **Pre-registered, reported only:**
+     - median specialist size under 500 on every map. This rests on the port price plus carriage capping the inland price, which the implementer confirms in the code before the run;
+     - the median iron price in places that had no port in reach below 3;
+     - outside trade watched on map 3.
+   - If the gate passes, D1b becomes the default, and work goes straight on to 2 without waiting for me. If it fails, stop and report.
+2. **D2:**
+   - the fallow flock;
+   - port reach for wool and export cloth;
+   - cloth made at mill settlements;
+   - the duties.
+
+   The gate and pre-registrations are as in D123. D1b and D2 are reported together.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
