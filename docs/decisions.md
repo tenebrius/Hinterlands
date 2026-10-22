@@ -746,3 +746,11 @@ Kind: tuning (within D110's levers).
   - stone repair 2% a year.
 - **Results:** `docs/demand/d1.md`.
 Kind: model mechanism and default (designer's decision D121).
+
+## D125 — D1b: port reach built; its gate failed, stopped (D124)
+- **Built:** `port_reach` (off) gives every settlement with no port in reach an arc to its nearest port, at the full travel cost, for salt and iron. A bounded-to-the-first-port Dijkstra finds the port at each reach refresh.
+- **The gate on 40 seeds failed**, on outside trade (14/40 on map 2, 5/40 on map 3), over 2,000 on map 3 (25/40) and road length on map 1 (28/40).
+- **Both pre-registrations were met:** specialists' median size is 79 / 47 / 33, and iron costs about 1.06 in the formerly portless places.
+- **Not made the default.** D2 is built behind `cloth` (off) and not gated.
+- **Details:** `docs/demand/d1b.md`.
+Kind: model mechanism, held off (designer's decision D124).
