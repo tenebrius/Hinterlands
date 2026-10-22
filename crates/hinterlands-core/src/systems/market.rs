@@ -356,6 +356,11 @@ pub fn goods_trade(
             .map(|j| j as usize)
     };
     let theta = p.beta / p.market_tau.max(1e-9);
+    // The outside ports sell salt and iron as they sell imports (D1, D121;
+    // England imported much of its iron and its bay salt: Childs 1981,
+    // Bridbury 1955).
+    let port_sells = |g: usize| (p.port_goods || p.demand_stocks) && (g == 1 || g == 2);
+    state.port_supply = [0.0; 4];
     // Everything bought: (buyer, supplier node, quantity, buyer price,
     // supplier price, transport, buyer's partner index or NONE for own use,
     // good index 1..=4).
@@ -422,8 +427,10 @@ pub fn goods_trade(
                 let Some(i) = node_of(q.id) else { continue };
                 let ok = if g == 4 {
                     i >= m
+                } else if i >= m {
+                    port_sells(g)
                 } else {
-                    i < m && cap[i] > 0.0
+                    cap[i] > 0.0
                 };
                 if ok {
                     arcs.push((i, j, tau * q.cost, k as u32));
@@ -519,6 +526,13 @@ pub fn goods_trade(
             got[j] += q;
             if i < m && g < 4 {
                 sold_by[i][g - 1] += q;
+            }
+            if g == 1 || g == 2 {
+                let k = 2 * (g - 1);
+                state.port_supply[k + 1] += q;
+                if i >= m {
+                    state.port_supply[k] += q;
+                }
             }
             buys.push(Buy {
                 buyer: j,
@@ -680,6 +694,10 @@ pub fn goods_trade(
         s.goods_in = g;
     }
     state.outside_trade.1 = imported;
+    // W at this year's purchase, for next year's new building (D1).
+    for s in state.settlements.iter_mut() {
+        s.w_last = s.market.max(0.0);
+    }
     state.market_unmet = unmet;
     paid
 }

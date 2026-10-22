@@ -73,4 +73,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             site.fuel_want = most * p.fuel_per_iron;
         }
     }
+    // The sites each place works this year (D1: tools from stocks).
+    for s in settlements.iter_mut() {
+        s.works = sites
+            .iter()
+            .filter(|x| x.holder == s.id && x.output > 0.0)
+            .count() as u32;
+    }
 }

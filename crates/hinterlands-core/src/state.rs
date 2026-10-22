@@ -274,6 +274,15 @@ pub struct Settlement {
     /// Year this place last made the chronicle for grass (L4), or 0.
     #[serde(default)]
     pub grass_logged: u32,
+    /// Arable land, km² (D1: plough iron), written by cultivation.
+    #[serde(default)]
+    pub arable_km2: f32,
+    /// Resource sites this place works (D1: tools), written by production.
+    #[serde(default)]
+    pub works: u32,
+    /// W when goods were last bought (D1: new building as W grows).
+    #[serde(default)]
+    pub w_last: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -329,6 +338,9 @@ impl Settlement {
             pasture: Vec::new(),
             wool_in: 0.0,
             grass_logged: 0,
+            arable_km2: 0.0,
+            works: 0,
+            w_last: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -491,6 +503,10 @@ pub struct State {
     pub port_grain: Vec<f32>,
     #[serde(default)]
     pub grain_stats: GrainStats,
+    /// Salt and iron bought from the outside ports and in all this year
+    /// (D1): salt from ports, salt in all, iron from ports, iron in all.
+    #[serde(default)]
+    pub port_supply: [f32; 4],
     /// This year's coin in and out (D97).
     #[serde(default)]
     pub money: MoneyLedger,
@@ -680,6 +696,7 @@ impl State {
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
+            port_supply: [0.0; 4],
             money: MoneyLedger::default(),
             grazed: vec![NONE; n],
             wool_ship: Vec::new(),

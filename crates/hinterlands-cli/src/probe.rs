@@ -677,7 +677,7 @@ pub fn cmd_money(args: &Args) {
     let years = args.u64("years", 500) as u32;
     let every = args.u64("every", 1) as u32;
     let seed = sim.sim_seed;
-    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped wool_in pasture");
+    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped wool_in pasture salt_port_share iron_port_share");
     while sim.state.year < years {
         let before = sim.state.money_stock();
         sim.step(1);
@@ -707,7 +707,7 @@ pub fn cmd_money(args: &Args) {
         let m: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
         let gs = st.grain_stats;
         println!(
-            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {} {:.0} {}",
+            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {} {:.0} {} {:.3} {:.3}",
             st.total_pop(),
             after,
             f,
@@ -726,7 +726,9 @@ pub fn cmd_money(args: &Args) {
             gs.unsold,
             gs.capped,
             l.wool_in,
-            st.settlements.iter().map(|s| s.pasture.len()).sum::<usize>()
+            st.settlements.iter().map(|s| s.pasture.len()).sum::<usize>(),
+            st.port_supply[0] / st.port_supply[1].max(1e-6),
+            st.port_supply[2] / st.port_supply[3].max(1e-6)
         );
     }
 }

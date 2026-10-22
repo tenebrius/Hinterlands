@@ -158,6 +158,15 @@ define_params! {
         rho_salt: f32 = 3.0, [0.1, 20], "Value density of salt relative to grain; its distance decay is beta / rho";
         rho_iron: f32 = 8.0, [0.1, 20], "Value density of iron relative to grain";
         rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
+        port_goods: bool = false, [0, 1], "The outside ports sell salt and iron, as they sell imports (D1 step 1, D121)";
+        demand_stocks: bool = false, [0, 1], "Demand for salt, iron and stone from stocks, and ports selling salt and iron (D1, D121)";
+        salt_lb: f32 = 15.0, [0, 100], "Salt a person uses a year, lb (calibration: no source found, D121)";
+        salt_lb_per_d: f32 = 3.1, [0.1, 100], "Pounds of salt a penny buys (London 1438, secondary)";
+        ploughs_per_km2: f32 = 2.0, [0, 10], "Ploughs per km2 of arable (a ploughland of about 100 acres; approximate)";
+        plough_iron_d: f32 = 36.0, [0, 500], "Iron a plough's irons and shoeing cost a year, pence (shoeing after Langdon 1982; plough irons a calibration)";
+        household_iron_d: f32 = 1.0, [0, 50], "Household iron a person buys a year, pence (calibration)";
+        site_iron_d: f32 = 24.0, [0, 500], "Tools a worked site buys a year, pence (calibration)";
+        stone_repair: f32 = 0.02, [0.001, 0.5], "Share of the building stock repaired a year; the stock per market person is demand_stone over this (calibration, D0)";
         demand_salt: f32 = 0.02, [0, 0.2], "Salt wanted per person a year, grain units";
         demand_iron: f32 = 0.0013, [0, 0.2], "Iron wanted per person a year, grain units";
         demand_stone: f32 = 0.01603657, [0, 0.3], "Stone wanted per market person a year, grain units";

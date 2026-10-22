@@ -445,6 +445,26 @@ pub fn beta(p: &Params, g: Good) -> f32 {
 /// Yearly demand of a settlement for a good, grain units: salt and iron per
 /// person, stone per market person.
 pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
+    // Demand from stocks (D1, D121; D0): replacement of what people, ploughs,
+    // works and buildings hold, in value units of a person-year of grain.
+    if p.demand_stocks {
+        let unit_d = (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
+        return match g {
+            Good::Salt => s.pop * p.salt_lb / p.salt_lb_per_d.max(1e-6) / unit_d,
+            Good::Iron => {
+                (s.arable_km2 * p.ploughs_per_km2 * p.plough_iron_d
+                    + s.pop * p.household_iron_d
+                    + s.works as f32 * p.site_iron_d)
+                    / unit_d
+            }
+            Good::Stone => {
+                // Repair of the stock, plus new stock as W grows (the accelerator).
+                let w = s.market.max(0.0);
+                let grew = if s.w_last > 0.0 { (w - s.w_last).max(0.0) } else { 0.0 };
+                p.demand_stone / p.stone_repair.max(1e-6) * (p.stone_repair * w + grew)
+            }
+        };
+    }
     match g {
         Good::Salt => p.demand_salt * s.pop,
         Good::Iron => p.demand_iron * s.pop,
