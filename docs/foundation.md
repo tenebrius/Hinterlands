@@ -1062,6 +1062,28 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 - **Expect knock-on effects:** fewer people in the 1400s means fewer towns over 2,000 and more pasture. All checks run as usual, and any fix is by the usual levers.
 - **Iterate** as D91 says.
 
+**D114 passed (a92c5bb; golden `b4f78a0e4adf502b`, 45.4 ms a year in wasm).**
+- **`endemic_mortality` 0.015.** Population in 1450 is 0.45–0.64 of 1340 (medians 0.54–0.56), so the pre-registration is met in 60 of 60 runs. The plague loss is regained in 185–198 years.
+- **The full gate passes with no levers needed.** Pasture by 1450 is 0.25–0.28 of used land.
+- **Noted, not gated:**
+  - population by 1600 is 1.43–1.46 × the pre-plague peak, above England's (it had probably not regained 1300 by 1600). After 1480 the model grows at its fast `r_grow`. A post-1480 growth closer to Tudor rates is a later refinement;
+  - carry-over peaks at 0.44–0.45 on two maps, just above Clark's 40%.
+
+**Next (D115): the v7 release pass.** No new mechanisms. Much has changed since the v5 release, and the README, the panels and the screenshots describe a model that no longer exists.
+1. **README:** one page on the model as it now is (marketplaces and prices, money and purses, stores, wool and pasture, the historical calendar), each mechanism with its source.
+2. **`docs/parameters.md`** regenerated from `Params`.
+3. **"What you are watching"** rewritten for the new phases:
+   - the land fills;
+   - markets and the grain trade;
+   - wool and coin;
+   - famine and murrain (1315–22);
+   - the pestilence and the long depopulation (1348–1480);
+   - the turn to grass;
+   - ships and the coast.
+4. **View checks.** Prices, purses and stores should be visible somewhere: in the inspector at least, and as a price map overlay if it is cheap. Leave a note in `docs/rendering.md` for the graphics session on anything larger.
+5. **Screenshots** in `docs/screenshots/v7/`: 1300, 1316, 1349, 1450 and 1600.
+6. **Freeze:** `just test`, validate, wasm timing and Kent. Record "v7 release" with its golden in `milestones.md`.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
