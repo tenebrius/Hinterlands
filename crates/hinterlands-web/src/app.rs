@@ -78,7 +78,7 @@ pub struct App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         crate::style::install(&cc.egui_ctx);
-        let sim = SimHandle::new(1, 1, Params::default());
+        let sim = SimHandle::new(1, 1, url_params());
         let layers = layers::all();
         let on = layers
             .iter()
@@ -91,7 +91,7 @@ impl App {
             sim = SimHandle::new(
                 map as u64,
                 url_param("seed").unwrap_or(1) as u64,
-                Params::default(),
+                url_params(),
             );
             view = ViewState::new(&sim, view.layers_on.clone());
         }
@@ -118,12 +118,41 @@ impl App {
         }
         if let Some(years) = selftest_years() {
             // Cross-platform determinism check: compare with `hinterlands hash --years N`.
-            let mut probe = SimHandle::new(1, 1, Params::default());
+            // `&shadow=1` turns on the shadow market (v6 S0), `&goods=0` the
+            // shopping model instead of goods by the equilibrium (S1), and
+            // `&harvests=1` local harvests (W1), to time them; `&relief=1` below,
+            // and `?stores=1` (S3) for the whole page.
+            let mut params = url_params();
+            params.market_shadow = url_param("shadow") == Some(1);
+            if let Some(g) = url_param("goods") {
+                params.market_goods = g == 1;
+            }
+            if url_param("harvests") == Some(1) {
+                params.local_harvests = true;
+            }
+            // `&relief=1`: grain relief (S2′) with its tuned shadow drain.
+            if url_param("relief") == Some(1) {
+                params.grain_relief = true;
+                params.shadow_drain = 0.025;
+            }
+            let mut probe = SimHandle::new(1, 1, params);
             let start = web_time_now();
             probe.step(years);
             let ms = (web_time_now() - start) / years.max(1) as f64;
             let line = format!(
-                "selftest map 1 seed 1 years {years} hash {:016x} {ms:.1} ms/year",
+                "selftest map 1 seed 1 years {years}{} hash {:016x} {ms:.1} ms/year",
+                [
+                    ("shadow", 1, " shadow"),
+                    ("goods", 0, " shopping"),
+                    ("harvests", 1, " harvests"),
+                    ("relief", 1, " relief"),
+                    ("stores", 1, " stores"),
+                    ("pull", 1, " pull"),
+                ]
+                .iter()
+                .filter(|(k, v, _)| url_param(k) == Some(*v))
+                .map(|(_, _, tag)| *tag)
+                .collect::<String>(),
                 probe.snapshot().hash()
             );
             log::warn!("{line}");
@@ -179,6 +208,14 @@ impl App {
         }
         if cam_changed {
             out.push(Msg::SetCamera(cam));
+        }
+        // The hover card follows the cursor, except while the map is being dragged.
+        if self.view.layer_on("hovercard") && !resp.dragged() {
+            if let Some(cell) = resp.hover_pos().and_then(|p| cam.pick(rect, g.w, g.h, p)) {
+                let view = &self.view;
+                resp.clone()
+                    .on_hover_ui_at_pointer(|ui| crate::hover::card(ui, view, cell));
+            }
         }
 
         let painter = ui.painter_at(rect);
@@ -316,6 +353,22 @@ fn selftest_years() -> Option<u32> {
 }
 
 /// A numeric `?name=N` from the page URL (`HINTERLANDS_<NAME>` natively).
+/// The model's parameters as the address asks: the defaults, and with
+/// `?stores=1` grain stores (S3) at their tuned cap and loss, and with
+/// `?pull=1` the market pull on the ten-year average inflow (W2).
+fn url_params() -> Params {
+    let mut p = Params::default();
+    if url_param("pull") == Some(1) {
+        p.pull_smoothed = true;
+    }
+    if url_param("stores") == Some(1) {
+        p.grain_stores = true;
+        p.store_cap = 1.0;
+        p.store_loss = 0.05;
+    }
+    p
+}
+
 fn url_param(name: &str) -> Option<u32> {
     url_text(name)?.parse().ok()
 }

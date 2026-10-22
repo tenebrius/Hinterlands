@@ -10,5 +10,6 @@
   "traffic_roads": false,
   "traffic_bridges": false,
   "mills": false,
-  "events_mode": 0
+  "events_mode": 0,
+  "outside_ports": false
 }

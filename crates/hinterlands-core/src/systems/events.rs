@@ -163,7 +163,9 @@ fn plant_site(state: &State, t: &Terrain, p: &Params) -> Option<usize> {
     let mut best: Option<(f32, usize)> = None;
     for c in 0..t.n() {
         if !t.touches(c, |j| state.road[j] || t.is_nav(j))
-            || big.iter().any(|&b| t.grid.dist_km(b, c) < p.plant_spacing_km)
+            || big
+                .iter()
+                .any(|&b| t.grid.dist_km(b, c) < p.plant_spacing_km)
             || !crate::systems::founding::is_candidate(state, t, p, c)
         {
             continue;

@@ -216,7 +216,10 @@ pub fn cmd_goods(args: &Args) {
                     println!("works {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
                 }
                 LogKind::Outgrew { good } => {
-                    println!("outgrew {map} {seed} {} {good:?} {x} {yy} {}", e.year, e.name)
+                    println!(
+                        "outgrew {map} {seed} {} {good:?} {x} {yy} {}",
+                        e.year, e.name
+                    )
                 }
                 _ => {}
             }
@@ -309,7 +312,8 @@ fn flow_summary(map: u64, seed: u64, y: u32, sim: &hinterlands_core::Sim) {
 /// Roads report (v3): at each year in `--at`, the road cells and edges, the
 /// share of land that is road, the initial road cells still road, the road
 /// condition (p10, p50), the cells ever road and since abandoned, the bridges
-/// built and the share of settlements with a mill.
+/// built, the share of settlements with a mill, and with `--mask` (a 0/1 grid,
+/// e.g. Watling Street) the mask's cells still road.
 pub fn cmd_roads(args: &Args) {
     let mut sim = make_sim(args);
     let at: Vec<u32> = args
@@ -321,6 +325,14 @@ pub fn cmd_roads(args: &Args) {
     let years = *at.iter().max().unwrap_or(&500);
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
+    let mask: Option<Vec<bool>> = args.str("mask").map(|path| {
+        let text = std::fs::read_to_string(path).unwrap_or_else(|e| die(&format!("{path}: {e}")));
+        text.lines()
+            .filter(|l| l.starts_with(|c: char| c.is_ascii_digit()))
+            .flat_map(|l| l.split_whitespace())
+            .map(|v| v == "1")
+            .collect()
+    });
     let mut ever = sim.state.road.clone();
     while sim.state.year < years {
         sim.step(1);
@@ -345,12 +357,18 @@ pub fn cmd_roads(args: &Args) {
                 .copied()
                 .unwrap_or(0.0)
         };
+        // Cells of a 0/1 mask (e.g. Watling Street) still road.
+        let masked = mask.as_ref().map_or(String::new(), |m| {
+            let all = (0..t.n()).filter(|&i| m[i]).count();
+            let kept = (0..t.n()).filter(|&i| m[i] && st.road[i]).count();
+            format!(" mask_kept {kept}/{all}")
+        });
         let initial = t.initial_road.iter().filter(|&&r| r).count();
         let kept = (0..t.n())
             .filter(|&i| t.initial_road.get(i) == Some(&true) && st.road[i])
             .count();
         println!(
-            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {} bridges {} mill_share {:.2}",
+            "roads {map} {seed} {y} cells {cells} land_share {:.3} initial_kept {kept}/{initial} edges {} condition p10 {:.2} p50 {:.2} ever {} abandoned {} bridges {} mill_share {:.2}{masked}",
             cells as f32 / land as f32,
             st.road_edges.len(),
             q(0.1),
@@ -393,7 +411,11 @@ pub fn cmd_desertion(args: &Args) {
             let fy = if s.fields.is_empty() {
                 f32::NAN
             } else {
-                s.fields.iter().map(|&c| t.food_yield[c as usize]).sum::<f32>() / s.fields.len() as f32
+                s.fields
+                    .iter()
+                    .map(|&c| t.food_yield[c as usize])
+                    .sum::<f32>()
+                    / s.fields.len() as f32
             };
             let near: Vec<usize> = t
                 .grid
@@ -423,5 +445,286 @@ pub fn cmd_desertion(args: &Args) {
             .get(&id)
             .map_or((0, String::from("-")), |(y, c)| (*y, format!("{c:?}")));
         println!("place {map} {seed} {id} {pop:.0} {nf} {fy:.3} {ly:.3} {y} {c} {d:.1}");
+    }
+}
+
+/// Shadow prices (v6 S0): every settlement each year from `--from` (default 1),
+/// `price seed year id x y grain salt iron stone imports yield pop`, where
+/// yield is the harvest per cultivated cell; each year a line
+/// `market seed year residuals... unmet salt iron stone imports` (unmet
+/// goods demand with `market_goods`); each settlement's line ends with its
+/// supply prices of salt, iron and stone, its kind, its whole harvest and its
+/// fields' mean yield multiplier for the year (1 without local harvests, v6
+/// W1); and at `--arcs` years
+/// the grain arcs,
+/// `arc seed year from to flow gap transport`.
+pub fn cmd_prices(args: &Args) {
+    let mut sim = make_sim(args);
+    if !sim.params.market_shadow && !sim.params.market_goods && !sim.params.market_grain {
+        die("prices needs --params with market_shadow or market_goods true");
+    }
+    let years = args.u64("years", 500) as u32;
+    let from = args.u64("from", 1) as u32;
+    let arcs_at: Vec<u32> = args
+        .str("arcs")
+        .unwrap_or("")
+        .split(',')
+        .filter(|v| !v.is_empty())
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let seed = sim.sim_seed;
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if y < from {
+            continue;
+        }
+        let g = sim.terrain.grid;
+        let mut r = sim.state.market_residual;
+        {
+            let gs = sim.state.grain_stats;
+            r[0] = gs.residual;
+            println!(
+                "grain {seed} {y} residual {:.4} passes {} unsold {:.0} harvest {:.0} capped {} arrived {:.0} local {:.0} markets {} toll_share {:.3}",
+                gs.residual, gs.passes, gs.unsold, gs.harvest, gs.capped, gs.arrived, gs.unsold_local, gs.markets, gs.toll_share
+            );
+        }
+        let u = sim.state.market_unmet;
+        println!(
+            "market {seed} {y} {:.4} {:.4} {:.4} {:.4} {:.4} unmet {:.0} {:.0} {:.0} {:.0}",
+            r[0], r[1], r[2], r[3], r[4], u[1], u[2], u[3], u[4]
+        );
+        for s in &sim.state.settlements {
+            let (x, yy) = g.xy(s.anchor as usize);
+            let yld = s.food_prod / s.fields.len().max(1) as f32;
+            // Market prices where the model trades by them, else the shadow's.
+            let mut pr = s.shadow_price;
+            if sim.params.market_goods || sim.params.market_grain {
+                pr[1..].copy_from_slice(&s.price[1..]);
+            }
+            if !sim.params.market_shadow {
+                pr[0] = s.price[0];
+            }
+            let sp = s.supply_price;
+            let hv = &sim.state.harvest;
+            let m = if hv.is_empty() || s.fields.is_empty() {
+                1.0
+            } else {
+                let fy = |c: &u32| sim.terrain.food_yield[*c as usize];
+                s.fields
+                    .iter()
+                    .map(|c| fy(c) * hv[*c as usize])
+                    .sum::<f32>()
+                    / s.fields.iter().map(fy).sum::<f32>().max(1e-9)
+            };
+            println!(
+                "price {seed} {y} {} {x} {yy} {:.5} {:.5} {:.5} {:.5} {:.5} {:.3} {:.0} supply {:.4} {:.4} {:.4} kind {:?} harvest {:.1} m {:.4} grain {:.4} {:.1} {} eaten {:.1} in {:.1}",
+                s.id, pr[0], pr[1], pr[2], pr[3], pr[4], yld, s.pop, sp[0], sp[1], sp[2], s.kind, s.food_prod, m,
+                s.grain_sup, s.income, s.capped as u8, s.food_prod + s.food_in - s.food_out, s.market_in
+            );
+        }
+        if arcs_at.contains(&y) {
+            let arcs = if sim.params.market_shadow {
+                &sim.state.shadow_arcs
+            } else {
+                &sim.state.market_arcs
+            };
+            for &(a, b, x, gap, t) in arcs {
+                println!("arc {seed} {y} {a} {b} {x:.2} {gap:.5} {t:.5}");
+            }
+        }
+    }
+}
+
+/// The largest places' accounts at `--at` years (default 100,200,300):
+/// `town seed year id pop market market_in through transship food_ratio
+/// income grain_price capped`.
+pub fn cmd_towns(args: &Args) {
+    let mut sim = make_sim(args);
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("100,200,300")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let top = args.u64("top", 8) as usize;
+    let seed = sim.sim_seed;
+    let last = at.iter().copied().max().unwrap_or(0);
+    while sim.state.year < last {
+        sim.step(1);
+        if !at.contains(&sim.state.year) {
+            continue;
+        }
+        let mut ss: Vec<_> = sim.state.settlements.iter().collect();
+        ss.sort_by(|a, b| b.pop.total_cmp(&a.pop));
+        for s in ss.iter().take(top) {
+            println!(
+                "town {seed} {} {} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.0} {:.3} {} harvest {:.0} store {:.0} need {:.0} mstore {:.0} avgp {:.3}",
+                sim.state.year,
+                s.id,
+                s.pop,
+                s.market,
+                s.market_in,
+                s.through,
+                s.transship,
+                s.food_ratio,
+                s.income,
+                s.price[0],
+                s.capped as u8,
+                s.food_prod,
+                s.store,
+                s.need(&sim.params),
+                s.mstore,
+                s.avg_price
+            );
+        }
+    }
+}
+
+/// v7 M0 (marketplaces diagnostic; no feedback). Runs with the shadow market
+/// on (inert, D77) and at each `--at` year computes, per settlement:
+/// - turnover under seller routing: each place sells its rent
+///   (`market_share × harvest`) plus what its people do not eat
+///   (`(1 − market_share) × harvest − need`, if positive), routed to markets by
+///   `W^α exp(−β c)` with its own market by `home_weight`, valued at the
+///   market's shadow grain price;
+/// - rents received, the same rents valued at the payer's shadow price and
+///   routed by the same weights;
+/// - fees (`handling_margin × through + transship_margin × transship`) and
+///   goods sales, valued at its own price;
+/// - its food bill: what its people need beyond its own fields after rent, at
+///   its own shadow price.
+///
+/// Prints `mkt seed year id pop market_in turnover rents fees goods bill` per
+/// settlement.
+pub fn cmd_marketplaces(args: &Args) {
+    let mut sim = make_sim(args);
+    sim.params.market_shadow = true;
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("300,450")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let last = at.iter().copied().max().unwrap_or(0);
+    while sim.state.year < last {
+        sim.step(1);
+        let y = sim.state.year;
+        if !at.contains(&y) {
+            continue;
+        }
+        let (st, p) = (&sim.state, &sim.params);
+        let m = st.settlements.len();
+        let attract: Vec<f32> = st
+            .settlements
+            .iter()
+            .map(|s| s.market.max(p.market_floor).powf(p.alpha))
+            .collect();
+        let price: Vec<f32> = st
+            .settlements
+            .iter()
+            .map(|s| {
+                if s.shadow_price[0] > 0.0 {
+                    s.shadow_price[0]
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+        let mut turnover = vec![0f32; m];
+        let mut rents = vec![0f32; m];
+        for (i, s) in st.settlements.iter().enumerate() {
+            let h = s.food_prod;
+            let rent = p.market_share * h;
+            let surplus = ((1.0 - p.market_share) * h - s.need(p)).max(0.0);
+            let sale = rent + surplus;
+            let mut ws: Vec<(usize, f32)> = vec![(i, attract[i] * p.home_weight)];
+            for q in &s.reach.partners {
+                if let Some(j) = st.index_of(q.id) {
+                    ws.push((j, attract[j] * (-p.beta * q.cost).exp()));
+                }
+            }
+            let total: f32 = ws.iter().map(|w| w.1).sum();
+            if total <= 0.0 {
+                continue;
+            }
+            for (j, w) in ws {
+                let share = w / total;
+                turnover[j] += sale * share * price[j];
+                rents[j] += rent * share * price[i];
+            }
+        }
+        for (i, s) in st.settlements.iter().enumerate() {
+            let fees =
+                (p.handling_margin * s.through + p.transship_margin * s.transship) * price[i];
+            let goods = s.goods_in;
+            let bill = (s.need(p) - (1.0 - p.market_share) * s.food_prod).max(0.0) * price[i];
+            println!(
+                "mkt {map} {seed} {y} {} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}",
+                s.id, s.pop, s.market_in, turnover[i], rents[i], fees, goods, bill
+            );
+        }
+    }
+}
+
+/// D97 money: each year the coin stock, the farmers' and markets' purses,
+/// coin in and out by channel, the conservation residual, and the regional
+/// grain price (median over large markets) against the world price.
+pub fn cmd_money(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let every = args.u64("every", 1) as u32;
+    let seed = sim.sim_seed;
+    println!("money seed year pop stock F M port_in planted imports luxury wear removed residual price world ports dearth_met unsold capped");
+    while sim.state.year < years {
+        let before = sim.state.money_stock();
+        sim.step(1);
+        let y = sim.state.year;
+        let st = &sim.state;
+        let l = st.money;
+        let after = st.money_stock();
+        let resid =
+            after - before - (l.port_in + l.planted_in - l.imports_out - l.luxury_out - l.wear - l.removed);
+        if y % every != 0 {
+            continue;
+        }
+        let mut ps: Vec<f32> = st
+            .settlements
+            .iter()
+            .filter(|s| s.market >= sim.params.market_min && s.price[0] > 0.0)
+            .map(|s| s.price[0])
+            .collect();
+        ps.sort_by(|a, b| a.total_cmp(b));
+        let price = ps.get(ps.len() / 2).copied().unwrap_or(f32::NAN);
+        let port = if st.port_grain.is_empty() {
+            f32::NAN
+        } else {
+            st.port_grain.iter().sum::<f32>() / st.port_grain.len() as f32
+        };
+        let f: f32 = st.settlements.iter().map(|s| s.purse).sum();
+        let m: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
+        let gs = st.grain_stats;
+        println!(
+            "money {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1} {:.4} {:.3} {:.3} {:.3} {:.3} {:.0} {}",
+            st.total_pop(),
+            after,
+            f,
+            m,
+            l.port_in,
+            l.planted_in,
+            l.imports_out,
+            l.luxury_out,
+            l.wear,
+            l.removed,
+            resid / after.max(1.0),
+            price,
+            sim.params.port_world_price,
+            port,
+            gs.dearth_bought / gs.dearth_need.max(1e-6),
+            gs.unsold,
+            gs.capped
+        );
     }
 }

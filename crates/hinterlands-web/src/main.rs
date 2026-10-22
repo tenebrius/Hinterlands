@@ -2,6 +2,8 @@
 
 mod app;
 mod camera;
+mod granary;
+mod hover;
 mod layers;
 mod panels;
 mod sim_handle;

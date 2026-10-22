@@ -7,9 +7,12 @@ mod dots;
 mod events;
 mod fields;
 mod goods;
+mod granary;
+pub use granary::GRAIN;
 mod history;
 mod labels;
 mod lines;
+mod outside;
 pub mod overlay_cost;
 mod overlay_score;
 mod parish;
@@ -17,6 +20,7 @@ mod relief;
 mod rivers;
 mod routes;
 mod seasons;
+mod selection;
 mod settlements;
 mod smoke;
 pub mod terrain;
@@ -70,6 +74,19 @@ impl Layer for LegendLayer {
     }
     fn name(&self) -> &'static str {
         "Legend"
+    }
+    fn draw(&mut self, _d: &DrawCtx) {}
+}
+
+/// The hover card's own toggle; the app shows the card itself, at the cursor.
+pub struct HoverCardLayer;
+
+impl Layer for HoverCardLayer {
+    fn id(&self) -> &'static str {
+        "hovercard"
+    }
+    fn name(&self) -> &'static str {
+        "Hover card (what is under the cursor)"
     }
     fn draw(&mut self, _d: &DrawCtx) {}
 }
@@ -177,6 +194,8 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(dots::DotsLayer::default()),
         Box::new(goods::GoodsLayer),
         Box::new(events::EventsLayer),
+        Box::new(outside::OutsideLayer),
+        Box::new(granary::GranaryLayer),
         Box::new(smoke::SmokeLayer),
         Box::new(labels::LabelsLayer {
             class: labels::Class::Waters,
@@ -193,6 +212,8 @@ pub fn all() -> Vec<Box<dyn Layer>> {
         Box::new(labels::LabelsLayer {
             class: labels::Class::Settlements,
         }),
+        Box::new(selection::SelectionLayer),
+        Box::new(HoverCardLayer),
         Box::new(LegendLayer),
     ]
 }

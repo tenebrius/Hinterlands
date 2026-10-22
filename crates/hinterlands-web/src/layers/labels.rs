@@ -1,7 +1,8 @@
 //! Name labels, one layer per class so each can be toggled: settlements (sized
 //! and revealed by rank as you zoom), rivers (along the main stem), ranges, seas
 //! and bays, and forests (hidden once mostly cleared). Labels that would overlap
-//! an earlier one in the same class are skipped. Lettering is the bundled serif,
+//! an earlier one in the same class are skipped. Settlement names take
+//! priority: a feature name that would cover one moves a little, or hides. Lettering is the bundled serif,
 //! italic for water and woodland, on a pale halo so it reads over any ground.
 
 use super::{DrawCtx, Layer};
@@ -27,6 +28,8 @@ pub struct LabelsLayer {
 
 struct Placer {
     taken: Vec<Rect>,
+    /// False for a dry run that only reserves space.
+    draw: bool,
 }
 
 impl Placer {
@@ -81,6 +84,9 @@ fn label(
     if !d.rect.intersects(bounds) || !placer.free(bounds.expand(2.0)) {
         return false;
     }
+    if !placer.draw {
+        return true;
+    }
     // The halo is the text traced at eight points round it.
     let halo = Color32::from_rgba_unmultiplied(250, 246, 235, 150);
     for k in 0..8 {
@@ -95,6 +101,69 @@ fn label(
     d.painter
         .add(TextShape::new(origin, galley, color).with_angle(angle));
     true
+}
+
+/// Settlement names (and town populations), largest first, revealed by rank as
+/// you zoom. With a dry placer this only reserves their space.
+fn place_settlements(d: &DrawCtx, placer: &mut Placer) {
+    let v = d.view;
+    let g = v.terrain.grid;
+    let z = d.camera.zoom;
+    let at = |c: u32| d.camera.cell_center(d.rect, g.w, c as usize);
+    let mut by_size: Vec<_> = v.snapshot.settlements.iter().collect();
+    by_size.sort_by(|a, b| b.pop.total_cmp(&a.pop).then(a.id.cmp(&b.id)));
+    for s in by_size {
+        let (min_zoom, size) = match s.rank {
+            Rank::City => (0.0, 16.0),
+            Rank::Town => (6.0, 13.0),
+            Rank::Village => (12.0, 11.0),
+            Rank::Hamlet => (24.0, 10.0),
+        };
+        if z < min_zoom {
+            continue;
+        }
+        let p = at(s.anchor) + egui::vec2(0.0, -(size * 0.5 + 0.35 * z.min(12.0)));
+        let col = Color32::from_rgb(35, 22, 16);
+        if label(d, placer, &s.name, p, size, col, false, 0.0) && s.rank >= Rank::Town {
+            let q = p + egui::vec2(0.0, size * 0.8);
+            label(
+                d,
+                placer,
+                &format!("{:.0}", s.pop),
+                q,
+                size * 0.62,
+                Color32::from_rgb(90, 70, 60),
+                false,
+                0.0,
+            );
+        }
+    }
+}
+
+/// A feature name at `pos`, or, if that spot is taken, just above, below, left
+/// or right of it; hidden if none is free.
+#[allow(clippy::too_many_arguments)]
+fn label_moving(
+    d: &DrawCtx,
+    placer: &mut Placer,
+    text: &str,
+    pos: Pos2,
+    size: f32,
+    color: Color32,
+    italic: bool,
+    angle: f32,
+) -> bool {
+    let h = size * 1.5;
+    let w = size * 0.3 * text.chars().count() as f32;
+    [
+        egui::vec2(0.0, 0.0),
+        egui::vec2(0.0, -h),
+        egui::vec2(0.0, h),
+        egui::vec2(-w, 0.0),
+        egui::vec2(w, 0.0),
+    ]
+    .iter()
+    .any(|&off| label(d, placer, text, pos + off, size, color, italic, angle))
 }
 
 impl Layer for LabelsLayer {
@@ -122,40 +191,21 @@ impl Layer for LabelsLayer {
         let g = t.grid;
         let z = d.camera.zoom;
         let at = |c: u32| d.camera.cell_center(d.rect, g.w, c as usize);
-        let mut placer = Placer { taken: Vec::new() };
+        let mut placer = Placer {
+            taken: Vec::new(),
+            draw: true,
+        };
+        // Feature names give way to settlement names when those are shown.
+        if self.class != Class::Settlements && v.layers_on.contains("names_settlements") {
+            let mut dry = Placer {
+                taken: Vec::new(),
+                draw: false,
+            };
+            place_settlements(d, &mut dry);
+            placer.taken = dry.taken;
+        }
         match self.class {
-            Class::Settlements => {
-                let mut by_size: Vec<_> = v.snapshot.settlements.iter().collect();
-                by_size.sort_by(|a, b| b.pop.total_cmp(&a.pop).then(a.id.cmp(&b.id)));
-                for s in by_size {
-                    let (min_zoom, size) = match s.rank {
-                        Rank::City => (0.0, 16.0),
-                        Rank::Town => (6.0, 13.0),
-                        Rank::Village => (12.0, 11.0),
-                        Rank::Hamlet => (24.0, 10.0),
-                    };
-                    if z < min_zoom {
-                        continue;
-                    }
-                    let p = at(s.anchor) + egui::vec2(0.0, -(size * 0.5 + 0.35 * z.min(12.0)));
-                    let col = Color32::from_rgb(35, 22, 16);
-                    if label(d, &mut placer, &s.name, p, size, col, false, 0.0)
-                        && s.rank >= Rank::Town
-                    {
-                        let q = p + egui::vec2(0.0, size * 0.8);
-                        label(
-                            d,
-                            &mut placer,
-                            &format!("{:.0}", s.pop),
-                            q,
-                            size * 0.62,
-                            Color32::from_rgb(90, 70, 60),
-                            false,
-                            0.0,
-                        );
-                    }
-                }
-            }
+            Class::Settlements => place_settlements(d, &mut placer),
             Class::Rivers => {
                 for f in t.features.iter().filter(|f| f.kind == FeatureKind::River) {
                     if f.size < 800.0 && z < 10.0 {
@@ -172,7 +222,7 @@ impl Layer for LabelsLayer {
                     }
                     let size = (10.0 + 2.5 * (f.size / 200.0).max(1.0).log2()).clamp(10.0, 17.0);
                     let p = at(f.label_cell) + egui::vec2(-angle.sin(), angle.cos()) * (size * 0.8);
-                    label(
+                    label_moving(
                         d,
                         &mut placer,
                         &f.name,
@@ -193,7 +243,7 @@ impl Layer for LabelsLayer {
                         .chars()
                         .flat_map(|c| [c, '\u{2009}'])
                         .collect();
-                    label(
+                    label_moving(
                         d,
                         &mut placer,
                         spaced.trim_end(),
@@ -216,7 +266,7 @@ impl Layer for LabelsLayer {
                     } else {
                         12.0
                     };
-                    label(
+                    label_moving(
                         d,
                         &mut placer,
                         &f.name,
@@ -240,7 +290,7 @@ impl Layer for LabelsLayer {
                         continue;
                     }
                     let size = (10.0 + (f.size / 60.0).log2() * 1.5).clamp(10.0, 15.0);
-                    label(
+                    label_moving(
                         d,
                         &mut placer,
                         &f.name,

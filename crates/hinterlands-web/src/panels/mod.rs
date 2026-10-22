@@ -9,6 +9,8 @@ mod goods;
 mod inspector;
 mod layers;
 mod params;
+mod stores;
+mod watching;
 
 use crate::view::{Msg, ViewState};
 
@@ -27,12 +29,13 @@ pub trait Panel {
 
 pub fn all() -> Vec<Box<dyn Panel>> {
     vec![
+        Box::new(watching::Watching),
         Box::new(controls::Controls::default()),
+        Box::new(chronicle::Chronicle::default()),
         Box::new(inspector::Inspector),
         Box::new(layers::Layers),
         Box::new(charts::Charts),
         Box::new(events::EventsPanel),
-        Box::new(chronicle::Chronicle),
         Box::new(goods::GoodsPanel),
         Box::new(params::ParamsPanel),
     ]

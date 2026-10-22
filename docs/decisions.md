@@ -413,3 +413,297 @@ Kind: model mechanism (designer's specification); stopped for the designer.
 - **Rule.** In historical mode, at each road step from `ship_from` (200, 1300) to `ship_to` (400, 1500), sea cost per km moves along a straight line to `(1 − ship_gain)` of `cost_sea`. It is written into the state's transport ratios through an event, and the cost grid is rebuilt then, so only at road steps. 1450 is announced in the chronicle.
 - **Default.** `ship_gain` is 0 until O1 is settled. The brief's 0.3 goes in at the O2 gate.
 Kind: model mechanism (designer's specification).
+
+## D66 — Re-tune with outside ports on (designer decision)
+- **Settings.** Outside ports on at `outside_grain` 700 and `import_demand` 0.07. One tuning pass over `shadow_weight`, `found_threshold` and `noise`, the spacing measure unchanged.
+- **Screen.** A search of 24 samples, 3 maps × 4 seeds each, ranked these; the best point went to full validation.
+- **New defaults:** `shadow_weight` 4.5327 (was 4.3476), `found_threshold` 0.4493 (0.3270), `noise` 0.3244 (0.3083).
+- **Full gate** (Historical, 20 seeds a map): **PASSED**.
+  - Every check holds.
+  - Map 1 market spacing: 15/20, exactly at the 75% line; median 8.9 km. Maps 2 and 3: 20/20 and 18/20.
+  - Outside trade: 0.051 / 0.052 / 0.055 of market inflow, 20/20 on every map.
+  - Runs passing every check: 15 / 18 / 16.
+- **Reproducibility.** `data/real/experiments/v4.json` pins the old founding values with ports off and reproduces v4's `2c5e9c5c90ab1d43`. The earlier version files pin them too.
+- **Golden with outside ports, before O2:** `8ee85c10266b1dd2`.
+Kind: change to the defaults (designer decision).
+
+## D65, gated — better ships on
+- **Setting.** `ship_gain` is 0.3, on by default.
+- **Full gate** (Historical, 20 seeds a map, outside ports on): **PASSED**. Every check holds. Outside trade is 0.052 / 0.053 / 0.052. Runs passing every check: 14 / 17 / 17.
+- **Coastal share of the people in places over 2,000, 1300 → 1600:**
+  - with ships: 0.46 → 0.39, 0.20 → 0.22, 0.52 → 0.47;
+  - without (`ship_gain` 0): 0.46 → 0.40, 0.20 → 0.22, 0.52 → 0.41.
+
+  Ships raise the coastal share at 1600 only on map 3, by 6 points; maps 1 and 2 are unchanged. The fall from 1300 happens with or without ships.
+- **Top ten of 1400 by 1600:** mean rank change 4.0 / 4.2 / 4.3, with 8 still in the top ten.
+- **Golden** `4ce58fae34550933`. `data/real/experiments/v5-o1.json` (ships off) gives O1's `8ee85c10266b1dd2`.
+Kind: model mechanism (designer's specification).
+
+## D67 — v5 O3: the outside world in the view
+- **New layer, `layers/outside.rs`.**
+  - Imports are drawn as a sixth route colour, wine red. Only the 25 largest import flows are drawn, thin and partly transparent: every buyer has its own import path, and drawing all of them floods the sea.
+  - Each outside port is a ship at the map edge.
+- **Chronicle.** "1450. Larger ships now sail the coast." comes from the ships event at the midpoint of the drift.
+- **Kent.** `data/real/kent/map-outside.json` is `map-resources.json` plus `outside_file`.
+- **Watling Street mask.** `tools/real/watling.py` writes `watling.asc`: the Roman road cells within 2 km of the line London – Rochester – Canterbury – Dover, 157 cells. `hinterlands roads --mask` reports the share still road.
+Kind: rendering and tooling.
+
+## D68 — Rendering R8 merged (hover card, fuller chronicle)
+- **What.** The graphics session's R8 (branch `claude/elegant-ride-g0sr1h`) is merged into v5 under the owner's standing permission for frontend-only merges: a hover card at the cursor, and a chronicle with filters, growth notes and fly-to.
+- **Conflicts.** R8 was branched before v2, so its conflicts were with the v4/v5 view work:
+  - the chronicle keeps R8's structure, and adds an "Events" filter and the lines for famine, plague, silting, planted towns and ships, in calendar years;
+  - `view.rs` keeps both the event marks and R8's notes;
+  - the panel list keeps the events and goods panels, with the chronicle second as R8 has it.
+- **Check.** The model is unchanged: `?selftest=500` gives `4ce58fae34550933` (27.4 ms/year).
+Kind: rendering (frontend merge).
+
+## D69 — v6 S0: shadow prices (designer's brief, D70 plan)
+- **Switch.** `market_shadow`, off by default. It runs after trade, writes only settlements' `price` and the market records in `State`, and nothing reads them back. The snapshot carries the prices only when the switch is on.
+- **Form.** An entropy-regularised spatial price equilibrium (decision 3), with one price per place and good:
+  - flows `x_ij = m_j · exp(θ (p_j − p_i − t_ij))`, with `t_ij = τ_g c_ij`, `τ_g = market_tau / ρ_g` (`market_tau` 0.002, Clark's carriage);
+  - `θ = β / market_tau`, so that at equal prices the flows fall off with cost as the gravity trade does;
+  - `m_j = W_j^α` for grain (decision 4, the market premium), and 1 for goods.
+- **Supply and demand:**
+  - **Grain:** each place's whole harvest; demand is need × `p^(−ε)`.
+  - **Salt, iron and stone:** supply is what the sites sold this year; demand is the v2 demand.
+  - **Imports:** sold by the ports without limit at a price of 1.
+  - **Ports' grain:** they buy their fixed `outside_grain`.
+  - **Elasticities:** grain 0.75, salt 0.2, iron 0.5, stone 1.0 (the brief), imports 1.0 (mine; the brief gives none).
+- **Solver.** `market_passes` (8) Furness passes, warm-started from last year. Each pass:
+  1. sets the price level so that the region's demand equals its supply, by bisection;
+  2. shares each supplier's supply among its outlets by a max-subtracted softmax;
+  3. moves each buyer's price by a damped Newton step (`market_damping` 0.7, at most `market_step` 1.0).
+
+  The level step is needed because a buyer's own step only moves it against its rivals. Without it, a region-wide famine did not converge.
+- **Result** (report in `docs/market/s0.md`):
+  - 44.9 ms/year in wasm, with the same hash native and in the browser (`7f0884378d30344a`);
+  - `b_P` 0.98–1.15 and R² 0.66–0.98, inside the ranges in 9 of 9 runs;
+  - `b_Y` within ±0.03 of zero, and slightly positive in 5 of 9, because the model has no local yield variation;
+  - price gaps about a quarter of transport on the trading arcs;
+  - 1316 prices about double 1310's, region-wide.
+- **Tooling.** The viewer's `?selftest=N&shadow=1` times it in the browser.
+Kind: model mechanism behind a switch (designer's brief), off.
+
+## D71 — v6 S1: goods by the price equilibrium (stopped: map 2 spacing)
+- **Switch.** `market_goods`, off. When on, salt, iron, stone and imports trade by the S0 equilibrium in place of D41, and the outside ports' import sale moves into it. Grain is the numeraire at 1 and its trade is unchanged.
+- **Supply.** At holders, `capacity × min(1, p_i)`: a site sells all its capacity at a supply price of 1, the old value, or more, and holds back below. This is my reading of "supply up to capacity, with the supply price clearing it". The ports sell imports without limit at 1.
+- **Demand.** `D0 · p^(−ε)` (salt 0.2, iron 0.5, stone 1.0, imports 1.0).
+- **Flows and solver.** Flows are `exp(θ (p_j − p_i − t))` on the stored paths, with a zero-cost arc for a holder's own use. Prices are solved by alternating exact log-space solves, suppliers then buyers, for `market_passes` passes, warm-started each year.
+- **Payment.** The buyer pays `p_j q`, capped at its marketed share as in D41. The producer receives `p_i q` as a grain flow. Carriage and the entropy margin are lost. Own use moves no money.
+- **Gate** (Historical, 20 seeds a map): **FAILED on map 2 market spacing (14/20).**
+  - Every other check holds. Largest not a specialist: 20 / 19 / 20. Outside trade: 4.5–5.4%.
+  - Release wasm 31.2 ms/year; the hash `3e18908a758b4937` is the same natively and in the browser.
+- **Cause.**
+  - **Iron:** at the v2 demand against coppice-limited output (D51), it prices at 22–80, with about 2,000 a year of demand unmet.
+  - **Mines:** the rent makes them large, with specialist medians of 1,500–2,800 people against v5's 40–105. On map 2, which has the most mines, that crowds its spacing.
+  - **Price gaps:** on goods arcs the median gap is 0.85–1.06 of transport.
+- **Report:** `docs/market/s1.md`, with the options. `market_goods` stays off, and the golden is unchanged.
+- **Tooling.** The viewer's `?selftest=N&goods=1` times S1 in the browser.
+Kind: model mechanism behind a switch (designer's brief); stopped for the designer.
+
+## D71, re-run — iron re-scaled to 0.0013 (designer decision, option 1). Stopped: sites producing
+- **The value.** `demand_iron` 0.0013 puts the pooled median town price of iron at about 1.2: 1.0–1.4 on map 1, 5.6–6.9 on map 2, 0.93–0.96 on map 3.
+- **Gate** (Historical, 20 seeds a map, `market_goods` on): **FAILED on "sites producing": 14 / 17 / 14 of 20.**
+  - Market spacing now passes (17 / 19 / 20). Specialists are near v5 sizes (medians 106–334).
+- **Cause.** With iron demand at a fifteenth, the specialist founding rule (D40) finds too little demand in quantity in reach of remote iron sites, and they stay unheld: 7 against 1 on map 1, 3 seeds.
+- **Options** (`docs/market/s1.md`):
+  - value the founding test at the delivered price under `market_goods`;
+  - scale the works threshold;
+  - re-tune founding.
+- **State.** `market_goods` stays off, and the golden is unchanged.
+- **Reporting fix.** A good no working supply reaches is recorded as unreached (price 0), not at the solver's floor.
+Kind: stopped for the designer.
+
+## D72 — The specialist founding test counts demand by value under `market_goods` (designer decision). Gate still short on map 1
+- **Rule.** Under `market_goods` the works test (D40) sums `p_k · q_k · exp(−β_g c)` over buyers, at each buyer's latest price for the good (this year's, set by the trade that runs before founding), or 1 where no working site reaches the buyer.
+- **Gate** (Historical, 20 seeds a map, `demand_iron` 0.0013): **FAILED, sites producing 14/20 on map 1.** Maps 2 and 3 now pass, at 20/20 and 17/20.
+  - **Every other check holds:** spacing 17 / 20 / 18, largest not a specialist 20/20 everywhere, outside trade 4.7–5.4%.
+  - **Specialists:** medians 132 / 44 / 91, maximum 545.
+  - **Runs passing every check:** 10 / 19 / 14.
+- **Iron at year 450,** median town price, 3 seeds a map: **map 1 1.15 / 1.19 / 1.35, map 2 2.71 / 3.26 / 9.61, map 3 0.90 / 1.16 / 1.87.**
+- **Why map 1 is still short.** Its iron is only mildly dear, so valuing demand barely raises it. The same remote eastern sites stay unheld in most seeds: iron at (102,49) and (86,25), stone at (90,54) and (79,46). Under the v2 demand they were reached.
+- **State.** `market_goods` stays off; the golden is unchanged. Stopped for the designer.
+Kind: model mechanism (designer decision); stopped.
+
+## D73 — Under `market_goods`, idle marginal sites are the equilibrium (designer decision); `market_goods` on by default
+- **Rule.** Under `market_goods` the v2 gate's sites-producing quota is reported, not gated. The gate is instead that every good with a site on the map has at least one working site at the final year, in 75% of seeds a map (`every good worked` in `validate`).
+- **Why** (the designer, `docs/foundation.md`, "S1 third gate"): when the working sites meet demand at about cost, the marginal ones correctly stay idle. That is the extensive margin, not a fault.
+- **Gate** (Historical, 20 seeds a map, the defaults below): **PASSED.**
+  - every good worked: 20 / 19 / 18 of 20;
+  - sites producing, now reported: medians 0.73 / 0.80 / 0.73;
+  - spacing 17 / 20 / 18; outside trade 4.7–5.4%;
+  - runs passing every check: 16 / 18 / 15.
+- **Defaults.** `market_goods` true, `demand_iron` 0.0013 (D71). Golden `ec7a24a7caeac414`, native and release wasm (`?selftest=500`, 31.9 ms/year).
+- **Reproducibility.** `data/real/experiments/v5.json` pins `market_goods` off and `demand_iron` 0.02, and gives v5's `4ce58fae34550933`. Every earlier version file pins the same two values. `v4.json` also pins `ship_gain` 0, which it had lacked since D65, and gives v4's `2c5e9c5c90ab1d43` again.
+Kind: validation (designer decision); defaults.
+
+## D74 — v6 W1: local harvests (stopped: map 1 top-10 vs off)
+- **Mechanism, as briefed:** `systems/harvest.rs`, a fresh smooth yield field each year, applied in cultivation after the fields are chosen. It is behind `local_harvests` (off), with `harvest_sd` 0.15, `harvest_km` 15, and the multiplier clamped to 0.5–1.5. Node values are drawn from the run's `Rng`, as u32 uniforms through Box–Muller in `libm`, one field a year.
+- **Gate (Historical, 20 seeds a map): FAILED, top-10 vs off 12/20 on map 1.** Every other check passes on every map. Wasm runs at 30.9 ms/year, and the hash matches native.
+- **Reported:** `b_Y` is identified but tiny (about −0.007). The multiplier's own CV is 0.095. Details are in `docs/market/w1.md`.
+- **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped for the designer.
+Kind: model mechanism; stopped.
+
+## D75 — W1: weather fixed per seed, sd 0.15 at the cells (designer decision). Gate failed; stopped
+- **Rule.** With `local_harvests` on, the node field for `harvest_years` (500) years is drawn at initialisation, before anything else draws from the run's `Rng`. Later years are drawn when reached. The interpolated field is divided by its own sd at each cell, so the multiplier has sd 0.15 at every cell.
+- **Gate: FAILED.**
+  - top-10 vs off: 13 / 10 / 13;
+  - market spacing: 14 / 13 / 16;
+  - failure rate: 8 / 7 / 19, medians about 0.40.
+- **Why.** Noise with mean zero slows early growth, because losses are asymmetric. On map 1 seed 1, population at year 200 is 47.8k with sd 0, 27.6k at 0.095 and 14.8k at 0.15. The shocks then strike a smaller region. Details are in `docs/market/w1.md`.
+- **State.** `local_harvests` stays off, and the golden is unchanged at `ec7a24a7caeac414`. Stopped.
+Kind: model mechanism (designer decision); stopped.
+
+## D77 — S2 design decisions (designer); the shadow market decoupled
+- **The designer's decisions on `docs/market/s2-design.md`:**
+  - rents are paid in value at `rent_share`;
+  - fees are paid by the buyer outside the routing price, which is a deliberate departure from a pure equilibrium, so that break of bulk is not counted twice;
+  - `p_floor` is 0.25 and `c_max` is `food_cap`.
+- **The shadow is decoupled (this commit).** `market_shadow` now writes its own fields: `shadow_price` per settlement and `shadow_arcs`, beside `port_price` and `market_residual`. The model reads none of them, and `price` belongs to the trading equilibria (S1 goods, S2 grain).
+  - Before this, the shadow overwrote S1's goods prices. D72's founding test and S1's warm start then read them, so a shadow-on run differed (`1ed04bc733038208` against `ec7a24a7caeac414`).
+  - `tests/shadow.rs` checks that a run with the shadow on matches one with it off, prices aside.
+  - The snapshot carries `shadow_price` when the shadow is on. The probe prints S1's goods prices and the shadow's grain price.
+Kind: designer decision; fix.
+
+## D78 — v6 S2 first build: grain by equilibrium (stopped: no towns form)
+- **Built as in D77,** behind `market_grain` (off). The golden is unchanged.
+- **Changes from the note, made in building:**
+  - rent is taken in kind, and farmers eat their own grain first;
+  - the outside ports buy up to `outside_grain` at a world price, `port_world_price` 0.6 (elasticity `port_elast` 4 above it);
+  - the solver gets a level step, a common price shift that leaves the flows unchanged, with supply prices stopping at the floor;
+  - goods are paid in value from last year's income, with no grain payment flows;
+  - each flow's buyer pays the handling and transshipment fees its path earns, using the same counts as `through` and `transship`, so fees paid equal fees earned.
+- **Solver:** grain residual about 0.0002 in 8–11 passes, every year. Native cost +3 ms a year.
+- **Result: FAILED before the gate.**
+  - Every place still cultivates for its own need plus rent, so rent grain has no buyers.
+  - About half of each harvest is unsold at the floor, W's real inflow is a fraction of v5's, and no place passes about 600 people (map 1 seed 1).
+  - v5's K (3.39) was tuned on gross inflow that included burned grain (P3).
+- **Options for the designer** are in `docs/market/s2.md`. Recommended: market establishments demand `K × W` grain, paid from rents and fees.
+- **Experiment switch:** `grain_market_people` (off) makes fields feed only pop − W.
+Kind: model mechanism behind a switch; stopped.
+
+## D79 — S2 second build: the establishment demand (designer decision). Gate failed; stopped
+- **Rule.** A market's establishment buys `K × W` grain with elasticity ε and no satiation, paid from rents, goods sales and fees. Fields feed pop − W, and the farmers buy beyond their own grain from their sales. W follows `ε (D − K W)` with `D` = real income / p.
+- **Tuning round** (`rent_share`, K, ε, α; table in `docs/market/s2.md`): no setting forms a town over 2,000. The best is K 10, ε 0.04, rent 0.3, in `data/real/experiments/s2-best.json`.
+- **Gate on the best: FAILED** on every map: places over 2,000 and 5,000, rank-size slope, spacing and siting, all 0/20.
+- **Clark:** R² 0.25–0.37 (fails); `b_P` 1.10–1.18; `b_Y` mostly positive.
+- **State.** `market_grain` stays off, and the golden is unchanged. Stopped.
+Kind: model mechanism (designer decision); stopped.
+
+## D80 — S2 stopped (designer); S2′ grain relief built and gated
+- **The designer's decision.** S2 is stopped by the proposal's stop rule. `market_grain` stays off, with its code kept as the record. S1 stays the default, and Clark is reported on shadow prices only.
+- **S2′, grain relief** (`grain_relief`, off). After trade, places in deficit draw their deficit, unpaid and shopping-model style, on what partners hold above `food_cap × need`. Relief counts as food but not as market inflow, and loads routes without handling.
+- **Gate: PASSED** with `shadow_drain` 0.025 (from 0.0168). With the defaults, map 1 spacing was 14/20.
+  - Wasm 30.9 ms/year, with the same hash natively and in the browser (`f5b32f88ee3fc22f`).
+- **Reported:**
+  - relief of 1,500–2,000 a year;
+  - 86–88% of deficit met in normal years, but 6–8% in 1315–17, so the famine dip is unchanged at 0.24–0.25;
+  - failure rate 0.47–0.48 (S1 0.46–0.48);
+  - 5,300–5,800 a year still lost above `food_cap`.
+- **Details:** `docs/market/relief.md`.
+Kind: model mechanism behind a switch (designer decision).
+
+## D81 — v6 S3: grain stores (designer's brief)
+- **Rule.** Each place keeps a store, behind `grain_stores` (off):
+  - a place in deficit draws on its own store first;
+  - relief draws on partners' surplus and on the stores of partners not in deficit;
+  - what is left above `food_cap × need` fills the store, up to `store_cap × need`;
+  - stores lose `store_loss` a year.
+- **Gate: PASSED** at every setting tried.
+- **Chosen tuning, within the brief's ranges:** `store_cap` 1.0, `store_loss` 0.05 (`data/real/experiments/stores.json`).
+  - The famine dip is 0.17–0.18 (S2′ 0.24–0.25), and 93–99% of stores are drawn down by 1317.
+  - Stores stand at 0.49–0.52 of need before 1315, just over the pre-registered 50% on map 1. No setting in range meets both the dip and the store band on every map; 1.0 / 0.06 keeps the stores under 50% but map 3's dip is 0.19.
+- **Wasm:** 30.8 ms/year, same hash as native.
+- **Details:** `docs/market/stores.md`.
+Kind: model mechanism behind a switch (designer's brief).
+
+## D82 — W1 re-gated with relief and stores (designer's brief). Failed; stopped
+- **S3 is the default** (1e5e332): `grain_stores` with `store_cap` 1.0 and `store_loss` 0.05. Golden `0e65d09ec147b5c7`.
+- **W1 at σ 0.15 with relief and stores: FAILED.** Top-10 vs off fails on every map. Population at year 200 is 0.30–0.34 of the same seed without weather (0/20 within 20%), and stores at year 400 are 0.06–0.08 (pre-registered ≥ 0.2).
+- **At σ 0.10, as the brief allowed: FAILED.** Top-10 vs off fails on maps 1 and 3, and population at 200 is 0.57–0.60. Store tuning (loss 0.03) changes nothing.
+- **Clark in shadow mode: in range** (`b_P` 0.98–1.02, R² 0.85–0.98, `b_Y` −0.011 to −0.015 at σ 0.15).
+- **Cause.** Stores and relief act only below need, while growth needs a ratio of 1.2. Weather cuts mean growth, and the stores it fills are never drawn.
+- **Options** are in `docs/market/w1.md`.
+- **New validate reports:** population at 200 against no weather, and deficit met by own store and by relief.
+Kind: model mechanism behind a switch; stopped.
+
+## D83 — W1's last attempt: stores smooth consumption to the growth target (designer). Failed; W1 dropped
+- **Rule.** `store_smooth` (off): a place tops up its food from its own store to `food_cap × need`. Relief is unchanged.
+- **Gate at σ 0.15: FAILED.** Top-10 vs off is 13/20 on maps 1 and 2. Population at year 200 is 0.33–0.37 of the same seed without weather, and stores at 400 are 0.03–0.05.
+- **Cause.** The remaining asymmetry is in the market term of growth (D15). Positive pull is capped and only moves migrants; negative pull removes people. Harvest variance drains people through it even when every place is fed.
+- **Outcome, by the designer's rule:** W1 is dropped, and `local_harvests` and `store_smooth` stay off as the record.
+Kind: model mechanism behind a switch; dropped.
+
+## D85 — W2: market pull on the ten-year average inflow, with weather (owner-approved, designer's brief)
+- **Rule.** `pull_smoothed` (off): growth's market pull answers `avg_inflow`, the ten-year average, instead of the year's inflow.
+- **Step 1, no weather: PASSED.** Every check is equal or better than v6, and runs passing every check go from 14 / 17 / 15 to 17 / 19 / 19. Recovery by 500 falls to 1.36–1.43, and the famine dip rises to 0.18–0.20.
+- **Step 2, σ 0.15 with relief and stores: gate PASSED.**
+  - Top-10 vs off 20/20 on every map; wasm 30.5 ms/year, same hash.
+  - Pre-registered population at year 200: met, 0.95–0.96 with 20/20 seeds within 20%.
+  - Pre-registered stores at year 400 ≥ 0.2: **not met**, 0.02–0.03.
+  - Clark in range (`b_Y` −0.011 to −0.013); famine dip 0.18–0.20.
+- **State.** Both switches stay off until the designer rules on the missed store condition. Details are in `docs/market/w2.md`.
+Kind: model mechanism behind switches (owner-approved).
+
+## D89 — v7 M2: marketplaces first build (designer's brief D88). Failed; stopped
+- **Built as M1 describes,** behind `marketplaces` (off), with `market_min` 50 and `toll` 0.03. Village sales are routed as before, large markets clear by the entropy solver, market people buy within budgets of rents, toll and fees, and W grows on grain sold.
+- **Untuned run: FAILED** on every map. There is no place over 2,000 in any run, and the rank-size slope is about −0.3. The pre-registered "hierarchy on 2 maps" is not met.
+- **Tuning round** (K 0.6–3.39, `market_share` 0.3/0.49, toll 0.03/0.10, `market_min` 20/50): the largest place at year 400 is at most 2,475. No setting forms the hierarchy, so the gate was not run.
+- **Cause.** W's feedback rested on gross arrivals. Sold grain scales with the market's own people, so the pull loses its positive feedback.
+- **Options** are in `docs/market/m2.md`.
+Kind: model mechanism behind a switch; stopped.
+
+## D90 — M2 second build: W on grain arriving (designer's decision). Failed; stopped
+- **Rule.** Under `marketplaces`, `market_in` is the grain arriving at the market. K is re-read as consumption per market person (1.2–2.0). New gated check: unsold at markets ≤ 10% of arrivals after year 200.
+- **Result.** The untuned setting (K 1.5, `market_share` 0.215) collapses the region: 5,039 people at year 500 on map 1 seed 1. Tuning over K, `market_share` and toll (18 settings) gives population at 400 of 1,285–18,254 and no place over 2,000. No gate was run.
+- **Cause.** Every village's own sales arrive at its own market, so W reaches the whole population everywhere. The farmers vanish, and market people cannot buy the harvest on rent, toll and fees alone.
+- **Options** are in `docs/market/m2.md`.
+Kind: model mechanism behind a switch; stopped.
+
+## D93 — v7 M2: marketplaces in the core; the gate passes
+- **The model** (D88–D92, with two readings made in building):
+  - the gravity grain push is retired, and grain is sold at marketplaces;
+  - W grows on grain drawn from other places, on the ten-year average;
+  - the labour guard counts the farmers the fields are sized to feed, yield-weighted;
+  - fields feed the farmers;
+  - market people consume K per head, eating first up to `food_cap`, with the rest the establishment's;
+  - their budget is rents, a toll on turnover and fees.
+- **Tuning** (one round, recorded): K 1.3, `market_share` 0.4, toll 0.10, `market_min` 100.
+- **Gate: PASSED** (Historical, 20 seeds a map):
+  - every v6 check;
+  - Clark per seed: `b_P` 1.02–1.04, `b_Y` −0.023 to −0.037, R² 0.80–0.90, in 18–20/20;
+  - unsold at markets 1.4–2.1% of arrivals.
+
+  The pre-registered untuned run failed (no towns over 2,000, unsold 23–29%).
+- **Golden** `835e8695b67538f7`; wasm 35.7 ms/year, not gated. Earlier versions are reproducible from commit `4052d01` (v6), not from the version files.
+- **Details:** `docs/market/m2.md`, "Third build".
+Kind: model mechanism (owner's direction D91, designer's decisions D90, D92).
+
+## D98 — v7 M3 money, first build: three readings made in building (D97)
+- **Ports trade with any market in reach of them, whatever its size.** Without this no coin enters before a market reaches `market_min`. Coin drains through imports and wear, and the region has no coin by year 75; with no budget no market grows to `market_min`.
+- **Ports buy more below the world price,** at the same elasticity as above it (`port_elast`). D78 capped their demand at `outside_grain`, so cheap grain brought in less coin: the reverse of price-specie flow. With the cap the price level is 0.30 and unsold grain 20–35% of arrivals.
+- **Goods are paid from what the market people's food leaves** (D93: people eat first). The food reserve is K × W at last year's price. Farmers pay their head share of salt and iron, and the market pays the rest; neither pays the other's share. Paid first from the whole purse, imports took half the inflow of coin, 180 of about 290 markets were short for food, and the price stayed at the ports' level (0.40–0.45, Clark R² 0.18).
+- **Settlement as built:**
+  - sellers are owed their market's price on what it sold, scaled down pro rata if buyers paid less;
+  - the carriage gap goes to buyers' markets in proportion to what they paid;
+  - the farmers' year-end spending goes to the markets they sell to, in proportion to their sales there;
+  - the markets' spending goes to the farmers whose surplus they took, less `luxury_out`;
+  - a place that neither sells nor buys surplus keeps both within its own purses.
+- **Results and open points:** `docs/market/m3.md`, "Money, first build".
+Kind: model mechanism (D97 build).
+
+## D100 — v7 M3 money: farmers' purses tuned, the famine dip recorded as missed
+- **Built per D99:**
+  - the establishment's part of the market people's demand, `(K − 1) W`, has its own elasticity, `elast_est` 1.5;
+  - the goods' food reserve uses the same demand;
+  - the price check's floor is 0.3.
+- **Farmers' purses (implementer's choice within D99's ranges):** `purse_cap` 2.0, `purse_loss` 0.05. Famine deficit met is 0.36–0.37, against 0.24–0.27 at 1.0 / 0.10.
+- **Stores left at their defaults.** `store_cap` 2.0, and 2.0 with `h` 0.10 / 0.07, gave famine dips of 0.21–0.23 against 0.21–0.22, with more checks failing (over 2,000 on map 1, 3/5). Carry-over was no higher.
+- **The famine dip, 0.22, is recorded as a miss** (D99: a design target, not a gate). Nothing tried moved it:
+  - `elast_est` 1.5;
+  - farmers' purses;
+  - store size and margin;
+  - as a diagnostic only, not adopted, rent waived below the farmers' need: 0.22.
+
+  In 1315–17 the region has 40% less grain. The levers above only move that grain between people, and none adds any.
+Kind: tuning and recorded miss (designer's decision D99).

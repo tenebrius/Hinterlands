@@ -13,6 +13,52 @@ pub const OUTSIDE: u32 = u32::MAX - 1;
 /// Most outside ports a map can have (one per side).
 pub const MAX_PORTS: u32 = 4;
 
+/// The grain market's yearly record (S2, D78): the solver's residual and
+/// passes, grain unsold, the region's harvest, and places capped by budget.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct GrainStats {
+    pub residual: f32,
+    pub passes: u32,
+    pub unsold: f32,
+    pub harvest: f32,
+    pub capped: u32,
+    /// The establishment's share of the grain bought by places over 2,000
+    /// (D79).
+    pub estab_share: f32,
+    /// Grain arriving at markets this year (v7, D90).
+    #[serde(default)]
+    pub arrived: f32,
+    /// Grain unsold at places with no large market in reach, and the number
+    /// of large markets (v7).
+    #[serde(default)]
+    pub unsold_local: f32,
+    #[serde(default)]
+    pub markets: u32,
+    /// The toll's share of the large markets' food budgets (v7).
+    #[serde(default)]
+    pub toll_share: f32,
+    /// Farmers' grain shortfall below need, and what their purses bought
+    /// (D95).
+    #[serde(default)]
+    pub dearth_need: f32,
+    #[serde(default)]
+    pub dearth_bought: f32,
+}
+
+/// The year's coin entering and leaving the region (D96, D97), grain-value
+/// units: what the outside ports paid for grain, planted towns' coin, imports
+/// paid, luxuries bought abroad, coin wear, and purses of removed places with
+/// no partner to take them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct MoneyLedger {
+    pub port_in: f32,
+    pub planted_in: f32,
+    pub imports_out: f32,
+    pub luxury_out: f32,
+    pub wear: f32,
+    pub removed: f32,
+}
+
 /// The outside port a partner id names, if it is one.
 pub fn port_of(id: u32) -> Option<usize> {
     (id <= OUTSIDE && id > OUTSIDE - MAX_PORTS).then(|| (OUTSIDE - id) as usize)
@@ -159,6 +205,9 @@ pub struct Settlement {
     pub low_years: u32,
     /// Food-driven loss, smoothed over `loss_years`.
     pub smoothed_loss: f32,
+    /// The food of the last `hunger_years` years, oldest first (D102, D103).
+    #[serde(default)]
+    pub recent_food: Vec<f32>,
     /// Cultivated cells in the order they were claimed.
     pub fields: Vec<u32>,
     // Yearly accounts, written by the systems that own them.
@@ -183,6 +232,46 @@ pub struct Settlement {
     pub mill: bool,
     /// Planted by a lord (D63).
     pub planted: bool,
+    /// Market prices (v6): grain, salt, iron, stone, imports; the goods by
+    /// `market_goods` (S1), grain by `market_grain` (S2); zero otherwise.
+    pub price: [f32; 5],
+    /// Shadow prices, same order (v6 S0, D69), written only by the shadow
+    /// solve and read by nothing in the model (D77).
+    #[serde(default)]
+    pub shadow_price: [f32; 5],
+    /// Supply prices of salt, iron and stone where the place holds sites (D71).
+    pub supply_price: [f32; 3],
+    /// Grain by the equilibrium (S2, D78): the supply price of its harvest,
+    /// its income this year (value units), whether its budget capped its
+    /// grain, and last year's fees: earned, and paid per unit of grain bought
+    /// from others.
+    #[serde(default)]
+    pub grain_sup: f32,
+    /// Grain in store, carried from year to year (S3, D81).
+    #[serde(default)]
+    pub store: f32,
+    /// A large market's store (M3, D94), its ten-year average grain price,
+    /// and last year's net takings from store sales (grain units).
+    #[serde(default)]
+    pub mstore: f32,
+    #[serde(default)]
+    pub avg_price: f32,
+    #[serde(default)]
+    pub store_income: f32,
+    /// The farmers' purse, in grain-value units (D95).
+    #[serde(default)]
+    pub purse: f32,
+    /// The market's purse: its lords, church and merchants (D96).
+    #[serde(default)]
+    pub mpurse: f32,
+    #[serde(default)]
+    pub income: f32,
+    #[serde(default)]
+    pub capped: bool,
+    #[serde(default)]
+    pub fee_earned: f32,
+    #[serde(default)]
+    pub fee_rate: f32,
     /// Ten-year averages of goods sales and gross inflow (v2, D44; growth).
     pub avg_goods_in: f32,
     pub avg_inflow: f32,
@@ -205,6 +294,7 @@ impl Settlement {
             last_fed: year,
             low_years: 0,
             smoothed_loss: 0.0,
+            recent_food: Vec::new(),
             fields: Vec::new(),
             food_prod: 0.0,
             resource_out: 0.0,
@@ -218,6 +308,20 @@ impl Settlement {
             goods_in: 0.0,
             mill: false,
             planted: false,
+            price: [0.0; 5],
+            shadow_price: [0.0; 5],
+            grain_sup: 0.0,
+            store: 0.0,
+            mstore: 0.0,
+            avg_price: 0.0,
+            store_income: 0.0,
+            purse: 0.0,
+            mpurse: 0.0,
+            income: 0.0,
+            capped: false,
+            fee_earned: 0.0,
+            fee_rate: 0.0,
+            supply_price: [0.0; 3],
             avg_goods_in: 0.0,
             avg_inflow: 0.0,
             food_ratio: 1.0,
@@ -251,6 +355,10 @@ pub struct Flow {
     pub payment: bool,
     /// Imports from an outside port (v5, D64), carried on the buyer's path.
     pub import: bool,
+    /// Grain relief (S2′, D80): surplus drawn by a place in deficit, carried
+    /// on the receiver's path; `from` is the receiver.
+    #[serde(default)]
+    pub relief: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -343,6 +451,41 @@ pub struct State {
     pub last_plague: u32,
     /// Anchors of the harbours that have silted, in order (D60; for the view).
     pub silted_ports: Vec<u32>,
+    /// Shadow market (D69): the outside ports' grain prices, the year's
+    /// unmatched excess demand per good as a share of demand, and the grain
+    /// arcs carrying at least one unit (from, to, flow, price gap, transport).
+    #[serde(default)]
+    pub port_price: Vec<f32>,
+    #[serde(default)]
+    pub market_residual: [f32; 5],
+    #[serde(default)]
+    pub market_arcs: Vec<(u32, u32, f32, f32, f32)>,
+    /// Grain by the equilibrium (S2, D78): the regional price level last
+    /// year, the ports' grain prices, and the year's solver and market record.
+    #[serde(default)]
+    pub grain_level: f32,
+    #[serde(default)]
+    pub port_grain: Vec<f32>,
+    #[serde(default)]
+    pub grain_stats: GrainStats,
+    /// This year's coin in and out (D97).
+    #[serde(default)]
+    pub money: MoneyLedger,
+    /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
+    /// relief arrived, surplus left above `food_cap × need` (lost), and own
+    /// store drawn (S3).
+    #[serde(default)]
+    pub relief_stats: [f32; 5],
+    /// Grain flows between large markets this year (v7): from, to, flow,
+    /// price gap, transport price.
+    #[serde(default)]
+    pub market_pairs: Vec<(u32, u32, f32, f32, f32)>,
+    /// The shadow solve's grain arcs, as `market_arcs` (D77).
+    #[serde(default)]
+    pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
+    /// Goods demand left unmet this year by the equilibrium (D71), by good.
+    #[serde(default)]
+    pub market_unmet: [f32; 5],
     /// Settlement whose built-up footprint covers the cell, or `NONE` (rendering only).
     pub built: Vec<u32>,
     /// Years a ruin remains visible.
@@ -368,6 +511,12 @@ pub struct State {
     /// A famine lasts while `year < famine_until`, taking `famine_loss` of yield.
     pub famine_until: u32,
     pub famine_loss: f32,
+    /// This year's yield multiplier per cell (v6 W1); empty unless `local_harvests`.
+    #[serde(default)]
+    pub harvest: Vec<f32>,
+    /// The weather's node values, year after year (D75); empty unless `local_harvests`.
+    #[serde(default)]
+    pub harvest_nodes: Vec<f32>,
     /// Outside ports as water-layer nodes (v5, D64); empty unless `outside_ports`.
     #[serde(default)]
     pub outside: Vec<u32>,
@@ -440,10 +589,11 @@ fn outside_ports(t: &Terrain) -> Vec<u32> {
         if cells.len() < 3 {
             continue;
         }
-        let best = cells
-            .iter()
-            .copied()
-            .min_by(|&a, &b| g.dist_km(a, coast).total_cmp(&g.dist_km(b, coast)).then(a.cmp(&b)));
+        let best = cells.iter().copied().min_by(|&a, &b| {
+            g.dist_km(a, coast)
+                .total_cmp(&g.dist_km(b, coast))
+                .then(a.cmp(&b))
+        });
         if let Some(c) = best {
             let node = n + c as u32;
             if !out.contains(&node) {
@@ -479,12 +629,31 @@ impl State {
             road,
             road_edges: Vec::new(),
             road_q,
-            bridge: if p.traffic_bridges { vec![false; n] } else { Vec::new() },
-            bridge_streak: if p.traffic_bridges { vec![0; n] } else { Vec::new() },
+            bridge: if p.traffic_bridges {
+                vec![false; n]
+            } else {
+                Vec::new()
+            },
+            bridge_streak: if p.traffic_bridges {
+                vec![0; n]
+            } else {
+                Vec::new()
+            },
             silt: Vec::new(),
             silt_year: 0,
             last_plague: NONE,
             silted_ports: Vec::new(),
+            port_price: Vec::new(),
+            market_residual: [0.0; 5],
+            market_arcs: Vec::new(),
+            shadow_arcs: Vec::new(),
+            market_pairs: Vec::new(),
+            grain_level: 0.0,
+            port_grain: Vec::new(),
+            grain_stats: GrainStats::default(),
+            money: MoneyLedger::default(),
+            relief_stats: [0.0; 5],
+            market_unmet: [0.0; 5],
             built: vec![NONE; n],
             ruin: vec![0; n],
             domain: vec![0; n],
@@ -501,6 +670,8 @@ impl State {
             events: Vec::new(),
             famine_until: 0,
             famine_loss: 0.0,
+            harvest: Vec::new(),
+            harvest_nodes: Vec::new(),
             outside_trade: (0.0, 0.0),
             outside: if p.outside_ports {
                 outside_ports(t)
@@ -540,6 +711,11 @@ impl State {
         self.index_of(id).map(|i| &self.settlements[i])
     }
 
+    /// All coin in the region's purses (D97).
+    pub fn money_stock(&self) -> f32 {
+        self.settlements.iter().map(|s| s.purse + s.mpurse).sum()
+    }
+
     pub fn total_pop(&self) -> f32 {
         self.settlements.iter().map(|s| s.pop).sum()
     }
@@ -548,10 +724,20 @@ impl State {
         self.cost = if self.road_q.is_empty() && self.bridge.is_empty() && self.silt.is_empty() {
             CostGrid::build(t, &self.road, &self.transport)
         } else if self.road_q.is_empty() {
-            let q: Vec<f32> = self.road.iter().map(|&r| if r { 1.0 } else { 0.0 }).collect();
+            let q: Vec<f32> = self
+                .road
+                .iter()
+                .map(|&r| if r { 1.0 } else { 0.0 })
+                .collect();
             CostGrid::build_with_condition(t, &q, &self.bridge, &self.silt, &self.transport)
         } else {
-            CostGrid::build_with_condition(t, &self.road_q, &self.bridge, &self.silt, &self.transport)
+            CostGrid::build_with_condition(
+                t,
+                &self.road_q,
+                &self.bridge,
+                &self.silt,
+                &self.transport,
+            )
         };
     }
 
@@ -571,6 +757,11 @@ impl State {
         let name = crate::names::settlement_name(t, anchor as usize, id as u64, &taken);
         let mut s = Settlement::new(id, name, anchor, pop, self.year, initial);
         s.market = p.market_w0.min(pop);
+        // The starting hamlets' coin (D96).
+        if initial {
+            s.purse = p.purse_start * (pop - s.market).max(0.0) * p.food_per_person;
+            s.mpurse = p.purse_start * s.market * p.food_per_person;
+        }
         s.history.push(pop);
         self.settlements.push(s);
         let idx = self.settlements.len() - 1;

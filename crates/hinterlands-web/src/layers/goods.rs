@@ -87,7 +87,9 @@ impl Layer for GoodsLayer {
         let n = t.n() as u32;
         let z = d.camera.zoom;
         let on_screen = |cell: u32| -> Vec2 {
-            let (x, y) = g.xy((cell % n) as usize);
+            let c = cell % n;
+            let c = v.sea_lane.get(c as usize).copied().unwrap_or(c);
+            let (x, y) = g.xy(c as usize);
             vec2(x as f32 + 0.5, y as f32 + 0.5)
         };
         // Goods flows, thickest last so they read on top.

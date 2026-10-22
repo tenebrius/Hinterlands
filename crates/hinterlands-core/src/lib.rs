@@ -42,15 +42,18 @@ pub fn fnv1a(bytes: &[u8]) -> u64 {
 /// Advance one year: events, then the six systems in the fixed order.
 pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     state.log.clear();
+    state.money = Default::default();
     systems::events::run(state, t, p, rng);
     let events = std::mem::take(&mut state.events);
     for e in &events {
         e.apply(state, t, p);
     }
     reach::refresh_due(state, t, p);
+    systems::harvest::run(state, t, p, rng);
     systems::cultivation::run(state, t, p, rng);
     systems::production::run(state, t, p, rng);
     systems::trade::run(state, t, p, rng);
+    systems::market::run(state, t, p, rng);
     systems::growth::run(state, t, p, rng);
     systems::founding::run(state, t, p, rng);
     systems::failure::run(state, t, p, rng);
@@ -76,13 +79,16 @@ impl Sim {
         let terrain_hash = terrain.hash();
         let mut state = State::empty(&terrain, &params);
         init::populate(&mut state, &terrain, &params);
+        let mut rng = rng_from_seed(sim_seed);
+        // The weather is drawn first, so a seed keeps it whatever else draws (D75).
+        systems::harvest::init(&mut state, &terrain, &params, &mut rng);
         Self {
             terrain,
             terrain_hash,
             state,
             params,
             sim_seed,
-            rng: rng_from_seed(sim_seed),
+            rng,
         }
     }
 

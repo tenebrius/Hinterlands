@@ -42,9 +42,19 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if !p.growth_enabled {
             continue;
         }
+        // Demographic response follows conditions with a lag (D102; Wrigley &
+        // Schofield 1981): growth and chronic hunger answer the mean food of
+        // the last `hunger_years` years against the people there now (D103),
+        // so a shortfall already shed is not counted again.
+        let n = p.hunger_years.max(1) as usize;
+        if s.recent_food.len() >= n {
+            s.recent_food.drain(..s.recent_food.len() + 1 - n);
+        }
+        s.recent_food.push(food);
+        let avg = s.recent_food.iter().sum::<f32>() / s.recent_food.len() as f32 / need;
         // Natural term: r_grow at a full surplus, zero when exactly fed, and a
         // shortfall loss spread over `loss_years`.
-        let capped = ratio.min(p.food_cap);
+        let capped = avg.min(p.food_cap);
         let gain = if capped > 1.0 {
             p.r_grow * (capped - 1.0) / (p.food_cap - 1.0).max(1e-6)
         } else {
@@ -52,12 +62,13 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         };
         if p.shed_unfed {
             // D34: an underfed place sheds a third of the people its food does
-            // not feed each year; the leavers are lost.
-            let loss = if ratio < 1.0 {
-                (1.0 - ratio) * s.pop / 3.0
-            } else {
-                0.0
-            };
+            // not feed each year; the leavers are lost. Chronic hunger sheds on
+            // the average ratio; acute hunger only on the year's gap below
+            // `hunger_tolerance`, since people endure a moderate bad year
+            // (D101, D102; Livi-Bacci 1991). The larger applies.
+            let chronic = (1.0 - avg).max(0.0) * s.pop / 3.0;
+            let acute = (p.hunger_tolerance.min(1.0) - ratio).max(0.0) * s.pop / 3.0;
+            let loss = chronic.max(acute);
             s.smoothed_loss = loss;
             natural[i] = gain * s.pop - loss;
         } else {
@@ -80,7 +91,16 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         } else {
             (s.food_in - s.food_out).max(0.0)
         };
-        let inflow = if p.handling_income {
+        let inflow = if p.market_grain {
+            // Under S2 (D79) the inflow is real market income: rents and goods
+            // sales (in `market_in`) and fees, over the grain price.
+            let fees = if p.handling_income {
+                p.handling_margin * s.through + p.transship_margin * s.transship
+            } else {
+                0.0
+            };
+            market + fees / s.price[0].max(1e-3)
+        } else if p.handling_income {
             market
                 + p.through_weight * s.trade_in
                 + p.handling_margin * s.through
@@ -92,6 +112,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             s.avg_goods_in += (s.goods_in - s.avg_goods_in) / 10.0;
             s.avg_inflow += (inflow - s.avg_inflow) / 10.0;
         }
+        // W2 (D85): the pull answers the ten-year average inflow, not the year's.
+        let inflow = if p.pull_smoothed && p.goods_enabled {
+            s.avg_inflow
+        } else {
+            inflow
+        };
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }
@@ -270,7 +296,22 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if p.growth_enabled {
             s.pop = (s.pop + delta[i]).max(0.0);
             if p.market_state {
-                s.market = (s.market + market_delta[i]).min(s.pop).max(p.market_floor);
+                // Labour guard (D92): market people are those the fields do
+                // not need. The fields need the farmers they are sized to
+                // feed, after rent, at the cultivation margin.
+                let field_need = s
+                    .fields
+                    .iter()
+                    .map(|&c| t.food_yield[c as usize])
+                    .sum::<f32>()
+                    * p.people_per_prime_cell
+                    * (1.0 - p.market_share)
+                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3));
+                let room = (s.pop - field_need).max(p.market_floor);
+                s.market = (s.market + market_delta[i])
+                    .min(s.pop)
+                    .min(room)
+                    .max(p.market_floor);
             }
         }
         if s.pop < p.fail_pop {

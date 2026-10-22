@@ -5,7 +5,8 @@
 //! the iron sites a settlement holds (D38). A settlement with a stream or river
 //! among its fields has a mill, which adds `mill_bonus` to its produce (D56).
 //! In a famine year (D57) the harvest is cut by the famine's loss after the
-//! fields are chosen. Writes: owner, fields, forest, food_prod, mill,
+//! fields are chosen, and under local harvests (v6 W1) each field's yield is
+//! multiplied by its cell's multiplier for the year. Writes: owner, fields, forest, food_prod, mill,
 //! resource_out, sites' fuel_got.
 
 use crate::params::Params;
@@ -19,18 +20,34 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
     let ppc = p.people_per_prime_cell;
     let famine = state.year < state.famine_until;
-    let famine_loss = state.famine_loss;
+    // The famine follows the record, 1315–17 (D101): its first year takes
+    // the event's loss, the second `famine_loss_2`, later ones `famine_loss_3`.
+    let famine_loss = match (state.year + p.famine_years).saturating_sub(state.famine_until) {
+        0 => state.famine_loss,
+        1 => p.famine_loss_2,
+        _ => p.famine_loss_3,
+    };
     let State {
         settlements,
         owner,
         forest,
         sites,
+        harvest,
         ..
     } = state;
 
     for s in settlements.iter_mut() {
         // Enough to eat after the marketed share leaves, with the margin on top.
-        let target = s.need(p) * p.cult_margin / (1.0 - p.market_share).max(0.05);
+        // Under S2 the rent is the share that leaves (D78).
+        let share = if p.market_grain {
+            p.rent_share
+        } else {
+            p.market_share
+        };
+        // Market people buy their grain at market; the fields feed the
+        // farmers (D79, D92).
+        let fed = (s.pop - s.market.max(0.0)).max(0.0) * p.food_per_person;
+        let target = fed * p.cult_margin / (1.0 - share).max(0.05);
         let mut produce: f32 = s
             .fields
             .iter()
@@ -67,6 +84,14 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 let c = c as usize;
                 t.is_river(c) && t.flux[c] * cell_km2 >= p.mill_area
             });
+        // Local harvests (v6 W1): the year's weather, after the fields are chosen.
+        if !harvest.is_empty() {
+            produce = s
+                .fields
+                .iter()
+                .map(|&c| t.food_yield[c as usize] * ppc * harvest[c as usize])
+                .sum();
+        }
         s.food_prod = if s.mill {
             produce * (1.0 + p.mill_bonus)
         } else {

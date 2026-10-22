@@ -39,6 +39,13 @@ pub struct SettlementView {
     /// Planted by a lord (v4, D63); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "is_false")]
     pub planted: bool,
+    /// Shadow prices (v6 S0): grain, salt, iron, stone, imports; left out of
+    /// the bytes unless `market_shadow` is on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price: Option<[f32; 5]>,
+    /// Grain in store (S3, D81); left out of the bytes when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub store: f32,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -86,6 +93,9 @@ pub struct FlowView {
     /// Imports from an outside port (v5); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub import: bool,
+    /// Grain relief (S2′, D80); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub relief: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -147,6 +157,8 @@ impl Snapshot {
                 goods_in: s.goods_in,
                 mill: s.mill,
                 planted: s.planted,
+                price: p.market_shadow.then_some(s.shadow_price),
+                store: s.store + s.mstore,
             })
             .collect();
         let flows = state
@@ -164,6 +176,7 @@ impl Snapshot {
                     good: f.good,
                     payment: f.payment,
                     import: f.import,
+                    relief: f.relief,
                 })
             })
             .collect();

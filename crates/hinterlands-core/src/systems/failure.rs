@@ -45,6 +45,25 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         if let Some(j) = moved_to {
             state.settlements[j].pop += dead.pop;
         }
+        // Its purses pass to the partner that takes its people, else to its
+        // largest partner; with none they are lost (D96).
+        let heir = moved_to.or_else(|| {
+            dead.reach
+                .partners
+                .iter()
+                .filter_map(|q| state.index_of(q.id))
+                .max_by(|&a, &b| {
+                    state.settlements[a]
+                        .pop
+                        .total_cmp(&state.settlements[b].pop)
+                        .then(b.cmp(&a))
+                })
+        });
+        let coin = dead.purse.max(0.0) + dead.mpurse.max(0.0);
+        match heir {
+            Some(j) => state.settlements[j].mpurse += coin,
+            None => state.money.removed += coin,
+        }
         if !dead.initial {
             state.tally.failed += 1;
         }

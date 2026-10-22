@@ -298,9 +298,16 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
             .filter(|(c, _)| c.is_finite())
             .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
         let Some((_, di)) = donor else { continue };
+        // The founders bring their share of the donor's farmers' purse (D96).
+        let share = (p.found_pop / state.settlements[di].pop.max(1.0)).min(1.0);
+        let coin = state.settlements[di].purse.max(0.0) * share;
+        state.settlements[di].purse -= coin;
         state.settlements[di].pop -= p.found_pop;
         let donor_id = state.settlements[di].id;
         let id = state.add_settlement(t, p, cell as u32, p.found_pop, false);
+        if let Some(i) = state.index_of(id) {
+            state.settlements[i].purse = coin;
+        }
         state.tally.founded += 1;
         state.log.push(LogEntry {
             year: state.year,
@@ -350,7 +357,20 @@ fn found_works(state: &mut State, t: &Terrain, p: &Params) {
                     .map(|s| {
                         let c = s.reach.cost_to_cell(cell);
                         if c.is_finite() {
-                            trade::demand(s, p, good) * libm::expf(-b * c)
+                            // Under goods by price (D72) demand counts at its
+                            // value: the buyer's latest price for the good, or
+                            // 1 where no working site reaches it.
+                            let price = if p.market_goods {
+                                let v = s.price[1 + good.index()];
+                                if v > 0.0 {
+                                    v
+                                } else {
+                                    1.0
+                                }
+                            } else {
+                                1.0
+                            };
+                            price * trade::demand(s, p, good) * libm::expf(-b * c)
                         } else {
                             0.0
                         }
@@ -370,9 +390,16 @@ fn found_works(state: &mut State, t: &Terrain, p: &Params) {
             .filter(|(c, _)| c.is_finite())
             .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
         let Some((_, di)) = donor else { continue };
+        // The founders bring their share of the donor's farmers' purse (D96).
+        let share = (p.found_pop / state.settlements[di].pop.max(1.0)).min(1.0);
+        let coin = state.settlements[di].purse.max(0.0) * share;
+        state.settlements[di].purse -= coin;
         state.settlements[di].pop -= p.found_pop;
         let donor_id = state.settlements[di].id;
         let id = state.add_settlement(t, p, cell as u32, p.found_pop, false);
+        if let Some(i) = state.index_of(id) {
+            state.settlements[i].purse = coin;
+        }
         if let Some(i) = state.index_of(id) {
             state.settlements[i].kind = match good {
                 Good::Salt => Kind::Saltern,

@@ -200,7 +200,7 @@ v1 is done when the checks below pass on three generated maps, judged by pass ra
 | Forest near cities | under 30% cover within 5 km of any settlement over 5,000 | Fuel ring not clearing |
 | Stability | total population changes less than 5% year on year after year 100 | Oscillation |
 | Contingency | over 20 seeds on the same terrain, the ten largest places differ between runs: for each pair of runs, the share of one run’s ten largest with one of the other run’s ten largest within 5 km; the mean over all pairs is at most 0.80 (gated, v1.2). Reported, not gated: the share of runs whose largest city lies outside the modal cluster, the share of seeds with a settlement over 5,000 on the main river corridor or the coast within 15 km of it, and the distance from the largest city to the main river mouth. Contingency lives in the middle tier; a clearly best site may hold the largest city in every seed, and the per-seed siting check carries the transport claim | Too deterministic: geography alone decides the hierarchy |
-| Performance | one year under 50 ms in release WASM | Budget |
+| Performance | time per year in release WASM, reported, not gated (owner, D91) | Watchability |
 
 **Real-terrain tests** (a DEM of a documented region, scored against its medieval towns) are not a v1 gate, but the CLI accepts the ground-truth file from the start. The standing rule, from the Kent test (D23–D31): judge placement only where the inputs carry signal, and judge count and spacing where they do not. On Kent, terrain and soil hold no information about where the small inland towns sat (feature scores 0.20–0.48 against real sites, 0.5 being none); their sites came from roads, market spacing and lordship. So for towns under about 1,000 the yardstick is count and nearest-neighbour spacing (real Kent: 29 inland places over 500, 10.6 km apart), and placement is judged for ports, river towns and towns over 1,000, using AUC against lowland cells, which cannot be fooled by “towns sit low”. Second-nature inputs such as an initial road network are data in `Terrain`, not model changes, and are the next source of placement signal.
 
@@ -420,7 +420,7 @@ Written by the designer on 21 October 2026, after v3 passed validation (D55–D5
 
 ## v5 specification: the outside world
 
-Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last simulation version. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
+Written by the designer on 21 October 2026, after v4 passed validation (golden `2c5e9c5c90ab1d43`). It is the last version of the gravity-only model; a market layer (v6, D70) follows the v5 release. It adds the two things a region in isolation cannot have: trade with places beyond the map, and ships getting better over the centuries. After v5 the work is a release pass, with no further mechanisms.
 
 **Outside ports.**
 - Map generation marks one outside port on each open-sea map edge, at the sea cell nearest the busiest coastline. Busiest is read as the harbour with the most yield within 10 km, since there is no traffic at year 0 (D64). On imported maps the importer reads them from a file: for Kent, the Continent (off Dover) and the North Sea (off the Thames mouth).
@@ -452,14 +452,495 @@ Written by the designer on 21 October 2026, after v4 passed validation (golden `
 
 As before, report after each stage and carry on unless a check fails or the spec is unclear.
 
-**After v5: release.**
-- Update the README to the full model.
-- Bring `docs/parameters.md` up to date.
-- Add a short guided start in the viewer: a "what you are watching" panel.
-- Make a final screenshot set.
-- Freeze the golden hash.
+**After v5: release** (approved 21 October 2026, after the v5 milestone, golden `4ce58fae34550933`).
+1. **README.** Rewrite it as one page covering the whole model as it now stands: the six systems, goods, roads with bridges and mills, shocks and the outside world. Give each mechanism its source in a line.
+2. **`docs/parameters.md`.** Regenerate it from `Params`, so it matches the defaults exactly.
+3. **"What you are watching" panel.** A short panel open on first load, a few plain sentences per phase of a run: villages fill the farmland (1100–1200); markets and towns pull ahead; works and goods; the famine and the pestilence (1315–1349); recovery and the planted towns; ships and the coast (1450 onward). It closes and is reopened from the panel list.
+4. **View tidy, two items from the v5 screenshot.**
+   - The sea lanes along the coast draw as a wall of parallel lines. Bundle sea-going flows that share a corridor into one lane, its width set by total flow, with goods colours as thin stripes or on hover.
+   - Some labels collide ("The Gile Sea" with "Ewamouth", "Everelford" with "Dew Forest"). Settlement names take priority, and feature names move or hide.
 
-No new mechanisms after that.
+   If these touch files the graphics session is working in, leave a note for it in `docs/rendering.md` instead of editing them.
+5. **Final screenshots.** At 1200, 1349, 1450 and 1600 on map 1, seed 1, and one of Kent at 1600.
+6. **Freeze.** Record the release golden hash in `docs/milestones.md` as "v5 release". Run `just test`, `just validate`, the wasm timing and the Kent regression one last time.
+
+No new mechanisms in the release. After it, v6 S0 begins as briefed in "v6 plan" below.
+
+## v6 plan: markets, consumers and stores (D70)
+
+Decided by the designer on 21 October 2026, on the owner's proposal `docs/proposals/markets.md`. That document holds the case, the evidence and the design; this section holds the decisions.
+
+**Why.** The proposal is right on its main charge. In the model, grain is pushed to large markets by gravity on W and never bought. A hungry place cannot buy, received grain is not passed on, food above `food_cap` is lost, there are no stores, and delivered goods do nothing for the buyer. Clark (1999), already in the references, finds the opposite for medieval England: local wheat prices followed the national price (elasticity 0.997), a manor's own yield barely moved its price, and up to 40% of a harvest was carried over after cheap years. These are faults against the record. The fix is published, and it is the dual of the gravity model the project already uses (Samuelson 1952; Takayama & Judge 1971; Wilson 1970; Erlander & Stewart 1990).
+
+**Decisions** (numbered as in the proposal's section 8):
+1. **Yes, beyond v5,** as v6, starting after the v5 release. The v5 work and the release go ahead unchanged, so a finished, frozen v5 exists before any of this starts.
+2. **Market-clearing prices are admitted,** in grain units, as an aggregate equilibrium between settlements. The never-planned list above now excludes wages, a labour market, floating money and agents instead of "a full price economy". The reason for the old rule was scope, and the staging below answers it.
+3. **Form: entropy-regularised spatial price equilibrium,** solved by a fixed count of damped Furness passes, warm-started each year. The lagged price index is declined, because it does not get grain to the hungry, which is the point.
+4. **W: option 2, as a market premium, is the first form.** `W_j^α` multiplies the demand-side factor, read as the convenience of a large market (fairs, credit, many buyers). Every check from v1 to v5 rests on the hierarchy that W produces, and option 2 keeps it. Option 1 (W as demand only) is run as a reported diagnostic at S2, not as the default. Option 3 is declined, because it fixes none of the grain faults.
+5. **Stages approved: S0 only, then stop and report.** S1 to S3 are planned, and each is approved only after the one before reports. S4 (goods in use) and S5 (coin, projects, mayors) are not scheduled; they will be decided after S3, on what S0 to S3 show.
+6. **The Clark checks are reported at S0 and gated at S2,** at the proposed ranges:
+   - local price response to the regional price within 0.8–1.2;
+   - response to local yield, with the regional price controlled for, within −0.15 to 0;
+   - the regional price explaining at least 60% of local price variation.
+7. **P7 (transport loss against Clark's carriage cost) is reported only.** It is looked at in S2, where grain carriage gets its transport price `τ` from Clark (about 0.2% of value per km by land, a tenth of that by water).
+
+**S0 brief (shadow prices).**
+- **Scope.** Solve the equilibrium each year beside the existing trade, for grain and the four goods, and record prices and would-be flows. Nothing feeds back.
+- **Switch.** `market_shadow` off by default, golden unchanged.
+- **Demand elasticities, starting values:** grain 0.75 (Clark), salt 0.2, iron 0.5, stone 1.0.
+- **Report:**
+  - time per year natively and in wasm, which must leave the 50 ms budget;
+  - determinism, natively and with `?selftest`;
+  - the three Clark regressions on the shadow grain prices, per map;
+  - the price gap on trading pairs against transport cost;
+  - one map of shadow prices in a normal year and in 1316.
+- **Stop** and report. If S0 alone breaks the time budget, v6 waits for a cheaper solver, and nothing else is changed to make room.
+
+**S0 result (D69, `docs/market/s0.md`) and the designer's reading.**
+- **The solver works.** 8 warm-started Furness passes with a price-level step, deterministic natively and in wasm.
+- **The cost is real:** 15 ms a year in wasm (29.9 → 44.9 ms). Most of that is grain, which every settlement both sells and buys.
+- **Clark:** `b_P` 0.98–1.15 and R² 0.66–0.98 are in range. `b_Y` is not identified, because the model has no local weather: a place's yield per cell barely moves except in the regional famine. Prices are nearly uniform across the region (1310 median 0.69, 1316 median 1.40). That fits Clark's integration finding, but the test is empty until local harvests vary.
+- **The year after the famine** converges poorly (residual 0.3–0.5). This must be fixed before grain trades by price (S2).
+
+**Decisions after S0.**
+1. **S1 approved** (goods by equilibrium, below).
+2. **W1, local harvests, is added before S2.** A yearly yield multiplier with spatial correlation, as a smooth noise field at about 15 km with a standard deviation of about 15%, drawn from the run's `Rng` and behind a switch. Medieval manor yields varied from year to year and place to place (Clark's 65 manors). Without that variation there is no local dearth for S2 to relieve and no `b_Y` to test. It also makes runs livelier: a bad harvest in one valley, a good one in the next. W1 is briefed after S1 reports.
+3. **The S2 gates stand,** with `b_Y` measured with W1 on. If `b_Y` is still unidentified then, the range is revisited.
+4. **The import elasticity of 1.0** (implementer's choice) is accepted.
+
+**S1 brief (goods by equilibrium).**
+- **Switch.** `market_goods`, off until S1 passes, then on by default with a new golden hash.
+- **Scope.** Salt, iron, stone and imports trade by the entropy equilibrium (the S0 form), replacing the shopping model of D41. Grain is the numeraire at price 1 everywhere in S1, and grain trade is unchanged. So the grain solve is not run in S1, and `market_shadow` stays available for reports.
+- **Demand** at price 1 is the current demand per head (or per market person for stone and imports). It responds to price with elasticities: salt 0.2, iron 0.5, stone 1.0, imports 1.0. **Supply** is up to the site's capacity, as now, with the supply price clearing it.
+- **Payment.** The buyer pays the delivered price `p_j × q` out of its marketed share `O_i`, capped at `O_i`. The producer receives the supply price `p_i × q` as an ordinary grain flow. The transport part `t × q` is spent on carriage and lost, as transport loss is now. Goods and payments load routes and earn handling income as now.
+- **Gate:**
+  - every v5 check;
+  - determinism;
+  - at most 45 ms a year in wasm, so that S2 keeps some room;
+  - outside trade still within 3–20%;
+  - no specialist is the largest place.
+- **Reported:**
+  - goods prices at sites and in towns;
+  - unmet demand by good;
+  - price gaps against transport on trading arcs;
+  - specialist sizes against v5;
+  - one goods-price map.
+- **Stop.** Report and stop.
+
+**S1 first gate (D71, `docs/market/s1.md`) and the designer's decision.** The gate failed on map 2 spacing (14/20). The cause is iron: v2's demand (0.02 per head, about 2,300 a year) was set before coppice (D51) cut iron output to about 150 a year. Under the shopping model the shortfall simply went unmet. Under prices, iron reaches 22–80 in towns, and the mines grow to 1,500–2,800 people.
+- **Decided: option 1.** `demand_iron` is re-scaled to the coppiced supply, so that the median town price of iron sits between 1 and 3. It is a value set before a later change, not a mechanism. Options 2 and 3 are declined (3 would be a new rule). Option 4 (re-tuning founding) is used only if spacing still fails with iron re-scaled.
+- **Readings confirmed.** Supply is `capacity × min(1, p_i)`. A good with no working site in reach is reported as unreached, not priced at the floor.
+- **Added to the report:** the median town price per good, which should be within 0.5–3 for each.
+- **Re-run the S1 gate once.** If it passes, make `market_goods` the default and report. If not, stop and report.
+
+**S1 second gate (cabdac6) and the designer's decision.** With `demand_iron` at 0.0013 (pooled median town price about 1.2), spacing and every other check pass. Map 2 has less iron and prices it at 5.6–6.9; no single value puts every map within 1–3, and 0.0013 is accepted. The new failure is sites producing, 14/17/14 of 20: at a fifteenth of the old iron demand, remote iron sites no longer pass the specialist founding test (D40), which counts demand in quantity.
+- **Decided (D72): option 1.** Under `market_goods`, the founding test counts the value of demand in reach: `Σ_k p_k q_k exp(−β_g c)`, using each buyer's price for the good from the year before. Where no working site reaches a buyer, its price counts as 1. This is the consistent reading of D40 once goods have prices. It is also the market signal the equilibrium exists to give: dear iron draws new mines. Options 2 and 3 are declined.
+- **Re-run the S1 gate once,** with the per-map iron price reported. If it passes, make `market_goods` the default and report. If not, stop and report.
+
+**S1 third gate (d31e04a) and the designer's decision (D73).** Every check passes on maps 2 and 3. On map 1, sites producing is 14/20: four remote eastern sites stay unworked while iron sells at 1.19 in towns. That is a clearing market, not a fault. When the working sites meet demand at about cost, the marginal ones stay idle: this is the extensive margin, Ricardo's no-rent land. The two-thirds quota measured v2's rule that every site with demand in reach gets a works, and the market rightly overrides it. The check is changed after seeing it fail, so the reason is given in full:
+- **Under `market_goods`, the gate becomes:** every good that has a site on the map has at least one working site at year 500 (75% of seeds per map). The share of sites producing is reported, not gated. The viewer already shows idle sites as unfilled symbols, which tells that story on the map.
+- **No other change.** `demand_iron` stays 0.0013 and D72 stays.
+- **If the gate passes,** make `market_goods` the default, record the golden hash, report, and go straight on to W1.
+
+**W1 brief (local harvests).**
+- **Switch.** `local_harvests`, on by default once it passes.
+- **Mechanism.** Every cell's yield each year is multiplied by `m = clamp(1 + σ z, 0.5, 1.5)`, with `σ` = 0.15. `z` is a smooth field: standard normal values are drawn from the run's `Rng` (Box–Muller with `libm`) on a coarse grid of nodes spaced `harvest_km` (15 km) apart, and interpolated bilinearly to cells. Each year is drawn fresh, with no carry-over (Clark's yield autocorrelation is 0.16). The multiplier sits on top of the famine factor.
+- **Gate:** every v5 check with `market_goods` and W1 on; determinism; at most 45 ms a year in wasm.
+- **Reported:**
+  - the coefficient of variation of each settlement's harvest;
+  - the three Clark regressions on shadow prices (`market_shadow` on, for the report), so that `b_Y` is now identified;
+  - the depth of local dearths: the worst place's yield multiplier per year.
+- **Stop** and report before S2.
+
+**W1 first gate (D74, `docs/market/w1.md`) and the designer's decision (D75).** `market_goods` is the default (28ddc53, golden `ec7a24a7caeac414`). With W1 on, every check passes except map 1's top-10 overlap against the same seed run Off (12/20, median 0.60). The comparison stopped being controlled: the Off run draws a different random stream, so it also gets 500 different years of weather. The fix is to make the comparison controlled again, not to change the threshold:
+1. **Weather is drawn up front.** With `local_harvests` on, the whole node field for the run's configured length is drawn from the run's one `Rng` at initialisation, before anything else draws. Events on or off, the same seed then has the same weather, and the hard rule of one `Rng` per run holds. A viewer run that goes past that length draws further years when it reaches them.
+2. **The standard deviation is set at the cells.** Scale the node values so that the interpolated multiplier has a standard deviation of `σ` = 0.15 at the cells, not 0.095.
+3. **Re-run the W1 gate once.** If it passes, make `local_harvests` the default, record the golden hash and report, and S2 will be briefed. If not, stop and report.
+
+Noted from the report: `b_Y` is now identified (−0.003 to −0.011, inside the S2 range), because the equilibrium spreads a local shortfall across the region at `market_tau` 0.002. Map 2 seed 2 is an outlier (`b_P` 1.35, R² 0.32), to watch at S2.
+
+**W1 second gate (2c066b6, D75) and the designer's decision (D76).** With the weather controlled and the standard deviation at 0.15, the gate fails more widely: top-10 overlap on all maps, spacing and failure rate on maps 1 and 2. The implementer's diagnosis is right, and the error is the designer's. Weather with a mean of zero is not neutral when losses are asymmetric. A bad year sheds people and kills young places; a good year gives only capped growth. Map 1 seed 1 has 14.8k people at year 200 against 47.8k without weather. Real villages carried bad years with stores and markets. Those buffers are exactly S2 (grain to the hungry) and S3 (stores), and they are not built yet. I put the shock before the mechanisms that absorb it.
+- **W1 is parked,** behind its switch, until S2 and S3 are in. It is then re-gated with the same σ.
+- **The order is now S2 → S3 → W1.** At S2 the Clark checks `b_P` and R² are gated and `b_Y` is reported. `b_Y` is gated at W1.
+- **The post-famine convergence fix belongs to S2.**
+
+**S2: design note first (approved).** Grain by equilibrium touches the core of the model: who pays for grain, with what, and how market people are fed. Before building, the implementer writes `docs/market/s2-design.md`, at most two pages, proposing:
+1. **Supply and demand of grain per settlement,** from S0's form: a place's harvest, its need, and the demand elasticity of 0.75.
+2. **The unit of value and the budget.** What a buyer pays with, in value units within the year, with no stocks across years until S5. Market people's income has to come from somewhere real: the handling and transshipment margin, goods sales, and payment for grain they sell on. No food or value is created. A region-wide famine must show as grain dear against that income.
+3. **How W enters** as the market premium (decision 4).
+4. **What replaces `food_cap`:** surplus is sold at a falling price, or lost if unsold; stores come in S3.
+5. **The famine-year convergence fix.**
+6. **An estimate of the cost per year in wasm,** against the 45 ms limit.
+
+Then stop. The designer reviews the note before any S2 code is written.
+
+**S2 design note reviewed (`docs/market/s2-design.md`, d1faf0c); decisions (D77).** The note is approved as written, except for decision 2.
+1. **Rents in value: approved.** `rent_share × p_i H_i`, paid by today's gravity weights on W, is the real income of market towns: lords, the church and their households lived in them on rents and tithes. It keeps the base of the hierarchy, and the payer loses exactly what the receiver gains.
+2. **Fees: paid by the buyer, outside the routing price.** Handling (0.046) and transshipment (0.24) were tuned as income terms (D27). The physical cost of breaking bulk is already in the cost grid (+3 per transshipment). Putting both into the routing price would count break of bulk twice and push grain off the water routes that make ports. So each flow's buyer pays `f_ij × q`, which is credited where it arises, and routing uses `p_i + t_ij`. This is a deliberate departure from a pure equilibrium, recorded as such.
+3. **`p_floor` 0.25 and `c_max` = `food_cap` (1.2): approved.** Unsold grain is lost and reported until S3.
+4. **The shadow fix first:** in S2's first commit, `market_shadow` writes its own field, so turning it on cannot change a run. The W1 Clark numbers were taken with the old coupling and are re-measured at W1.
+5. **Convergence** (re-level, then exact log-space solves, then the safeguard): approved. **Cost:** S2's limit is the hard budget, 50 ms a year in wasm, with 45 as the target; use the note's levers in order if over.
+
+**S2 build (approved).** Switch `market_grain`, off until S2 passes.
+- **Gate,** 20 seeds a map, Historical, with `market_goods` on and W1 off:
+  - every v5 check;
+  - Clark `b_P` within 0.8–1.2 and R² at least 0.6 (75% of seeds per map);
+  - determinism;
+  - at most 50 ms a year in wasm.
+- **Reported:**
+  - `b_Y`;
+  - grain unsold per year;
+  - the price gap against transport on grain arcs;
+  - the share of places whose demand is capped by their budget;
+  - the 1316 grain price in towns against villages;
+  - the solver's residual and passes per year, and the worst year;
+  - the W-as-demand-only diagnostic (option 1) on 3 seeds a map;
+  - the Kent regression.
+- **Tuning.** `rent_share`, `ε`, `p_floor` and the W premium's α are the implementer's to tune, with every change recorded.
+- **Stop** and report, whether it passes or fails.
+
+**S2 first build (7b00639, D78) and the designer's decision (D79).** The solver works: residual about 0.0002 in 8–11 passes, at +3 ms a year natively. But no towns form (map 1 seed 1: largest under 600 at every year shown, 51–55% of each harvest unsold). Every place grows its own food plus rent, so only the ports buy; the rent grain has no buyers; and K was tuned on gross inflow that counted burned grain. The D78 changes made while building are accepted: rent in kind with farmers eating first, ports buying up to `outside_grain` at a world price of 0.6, the level step, and goods paid in value.
+- **Decided: option C.** K becomes a real purchase. This is the published reading of K: in Wilson's retail model, `K W_j` is the cost of running facility j, paid from its revenue `D_j`. It also has historical footing. A medieval town's grain demand went well beyond bread, to malting for ale, fodder for horses and the households of lords and religious houses (Campbell, Galloway, Keene & Murphy 1993, *A Medieval Capital and its Grain Supply*).
+  - Each market buys grain for its establishment, so that its total yearly purchase for W is `K × W`, its market people's own food included. Do not add both, or the old K is counted twice.
+  - The purchase is priced like any demand (ε 0.75) and paid from rents, fees and goods sales. The satiation applies to people, not to the establishment.
+  - W then follows `ε(D_j − K W_j)` with `D_j` as real income divided by `p_j`, as in the note. A market whose income cannot buy its establishment shrinks.
+- **Market people do not farm** (`grain_market_people` on). The fields feed `pop − W`, as the v1.1 rule that newcomers join the market people always meant.
+- **Options A and B are declined.** A brings back burned grain growing W (P3), and B re-calibrates the whole hierarchy.
+- **Tuning.** One round over `rent_share`, `K`, `ε` (growth) and α is allowed, with every change recorded. Then run the full S2 gate as briefed, and stop and report either way.
+- **Added to the report:** the establishment's share of grain demand in towns over 2,000, against the people's own food.
+
+**S2 second build (bf77fcd) and the designer's decision (D80): S2 is stopped, by the proposal's own stop rule.** With K as a real purchase and one tuning round over 20 settings, no town over 2,000 forms on any map. The hierarchy checks fail 0/20, the Clark R² is 0.25–0.37, and `b_Y` has the wrong sign. The implementer's reading is right. v5's hierarchy is a positive feedback on inflow that cost the market nothing to receive. Once W must be bought from income, every village keeps a small market on its own rents, and nothing concentrates. Making that work means redesigning the growth form on which every check from v1 to v5 rests. That is the over-ambition this project exists to avoid. So:
+- **`market_grain` stays off.** Its code stays behind the switch as the record. S1 (goods by price) stays the default. Shadow grain prices remain for reports, and the Clark checks are reported in shadow mode only.
+- **The proposal's visible aims are kept by a smaller route:** grain reaching the hungry, nothing burned, and stores that carry good years into bad ones. The hierarchy feedback is untouched.
+
+**S2′ grain relief (approved; switch `grain_relief`).** This is the foundation's original intent, which the code never carried out: food reaches places in deficit.
+- **After the trade step,** each place has `A_i = food_prod + food_in − food_out` against need `N_i`. Its surplus is `S_i = max(0, A_i − c_max N_i)`, the grain now lost above `food_cap`. Its deficit is `d_i = max(0, N_i − A_i)`.
+- **Each place in deficit draws its deficit** from the surplus holders in proportion to `S_j exp(−β c_jk)` within `C_max`, as in the shopping model (D41). Orders above a holder's surplus are scaled down in one pass. Relief arrives less the usual transport loss, and unmet deficit stays.
+- **The surplus would otherwise be lost, so nobody pays and nothing is created.** Relief counts in the food ratio but not in `market_in`, so W and the hierarchy feedback are unchanged. It loads the routes, so grain is seen moving to a dearth, but earns no handling income.
+- **Gate:** every v5 check with `market_goods` on; determinism; under 50 ms a year in wasm.
+- **Reported:**
+  - relief volume per year;
+  - the share of deficit met, in normal years and in 1315–17;
+  - the famine dip against v5 with S1;
+  - the failure rate against v5 with S1;
+  - grain still lost above `c_max`.
+- **Tuning.** None beyond what a failing v5 check needs, recorded.
+- **Next:** S3 stores, briefed after S2′, then W1.
+
+**S2′ result (8875174) and S3 brief (D81).** Relief passes the gate with `shadow_drain` 0.015 → 0.025, for map 1 spacing. It meets 86–88% of deficit in normal years, but only 6–8% in 1315–17, because a region-wide shortfall leaves nobody above `food_cap`. The famine dip is unchanged (0.24). About 5,300–5,800 grain a year is still lost above `food_cap`. As expected, moving grain across a famine needs stores.
+- **`grain_relief` becomes the default** with the tuned drain (`data/real/experiments/relief.json`). Record the new golden hash.
+
+**S3 stores** (switch `grain_stores`):
+- **State.** Each settlement has a grain store `G_i`, carried from year to year.
+- **Order each year, after trade:**
+  1. a place in deficit draws first on its own store;
+  2. relief (S2′) then draws on neighbours' surplus above `c_max N` and on the stores of neighbours not themselves in deficit, in the same shopping-model allocation;
+  3. what is still above `c_max N` goes into the place's own store, up to `store_cap × N` (0.5, half a year's need), and the rest is lost as now;
+  4. stores lose `store_loss` (0.08) a year to spoilage, vermin and holding.
+- **Footing.** Clark (1999): carry-over reached about 40% of a harvest after cheap years, with storage costing up to 5% a year plus interest.
+- **Accounting.** Drawn store counts in the food ratio, not in `market_in`. It loads routes when it moves as relief.
+- **Expectation (pre-registered).** The 1315–17 famine dip falls from 0.24 to 0.18 or less. Regional stores stand at 20–50% of a year's need in the decade before 1315 and are mostly drawn down by 1317.
+- **View,** in new files:
+  - a small granary fill mark on settlements over 500;
+  - a regional store line under the population chart;
+  - the chronicle line "1316. The granaries of Harthorpe are empty."
+- **Gate:** every v5 check; determinism; under 50 ms a year in wasm.
+- **Reported:**
+  - regional stores as a share of need over time;
+  - the 1315–17 draw-down;
+  - the famine dip against S2′;
+  - grain still lost;
+  - the failure rate.
+- **Tuning.** `store_cap` and `store_loss` are the implementer's, within 0.25–1.0 and 0.03–0.15.
+- **Stop** and report. W1 comes next if S3 passes.
+
+**S3 result (b88f75f) and decisions (D82).** The gate passes at every setting. At the chosen `store_cap` 1.0 and `store_loss` 0.05 (Clark's figure for storage):
+- the famine dip is 0.17–0.18, so the pre-registered target (≤ 0.18) is met on every map;
+- stores before 1315 are 0.49–0.52 of need, with map 1 at 0.52, just over the expected 20–50% band. That is a near miss and is accepted;
+- the famine deficit met rises from 6–8% to 55–59%.
+- **`grain_stores` becomes the default** at 1.0 / 0.05. Record the golden hash.
+- **Finding:** stores fill early (0.94 of need at year 100), empty by 1317, and barely refill (0.01–0.02 by year 400). They are being filled by the slack in cultivation, not by good harvests, and without weather there are no good harvests. That is what W1 supplies, so W1 is the next step.
+
+**W1 re-gate (approved),** with relief and stores on, at `σ` 0.15 as D75 built it:
+- **Gate:** every v5 check; determinism; under 50 ms a year in wasm.
+- **Pre-registered:**
+  - total population at year 200 within 20% of the same seed without weather (14.8k against 47.8k before the buffers);
+  - stores refill between shocks: regional stores at least 0.2 of need at year 400.
+- **Reported:**
+  - Clark's three regressions in shadow mode, `b_Y` included;
+  - harvest coefficient of variation;
+  - the share of local deficit met by own store and by relief;
+  - the famine dip.
+- **Tuning.** If a v5 check fails, the implementer may tune `σ` down to 0.10 and the store values within their ranges, recording each change.
+- **Stop** and report. If W1 passes, it becomes the default, and v6 closes with a milestone. S4 and S5 are decided then.
+
+**W1 third gate (1928344) and the designer's decision (D83).** With relief and stores on, W1 still fails the top-10 check on every map. Population at year 200 is 0.30–0.34 of the run without weather (pre-registered: within 20%), and stores at year 400 are 0.06–0.08 (pre-registered: ≥ 0.2). σ 0.10 fails too. Clark in shadow mode is in range (`b_Y` −0.011 to −0.015). The implementer's diagnosis is right. Stores act only below need, but growth runs up to a food ratio of 1.2. A bad year slows growth without ever drawing on the store, and a good year fills a store that is never used. It is the same asymmetry as before, one level up.
+- **Decided: option A, as the last attempt for W1.** A place tops up its food from its own store to `food_cap × need`, its growth target, not just to need. Households drew on stores to keep their consumption level through poor years, not only to avert hunger, so this is consumption smoothing. It is the direct use of the store that D81 meant. The store then smooths growth as well as famine, and good years pay for bad ones. Relief still covers deficits below need only.
+- **Re-gate once at σ 0.15,** with the same gate and the same pre-registered expectations. The fallback to σ 0.10 is allowed as before.
+- **If W1 fails again, it is dropped.** `local_harvests` stays off for good, v6 closes without weather, and the weather code stays behind its switch as the record. Option B (a smoothed food ratio, changing D15) and option C (σ 0.05) are declined: B reworks growth, and C is too small to matter.
+- **Either way, report, then record the v6 milestone:** defaults, golden hash, validation, wasm timing, Kent, and screenshots in 1316 and 1450.
+
+**v6 closed (f12337e, golden `0e65d09ec147b5c7`, 30.3 ms a year in wasm).** The defaults are goods by price (S1), grain relief (S2′) and stores (S3). The famine dip is 0.17–0.18 against v5's 0.24–0.25. Kept off as the record: the S0 shadow (used for reports), S2 priced grain, W1 weather and store smoothing.
+
+**S4 and S5 (D84).**
+- **S5 (coin, projects, mayors) is dropped.** It needs settlements to hold and spend money from budgets. S2 showed that paying for what towns now receive free breaks the hierarchy the whole model rests on.
+- **S4 (goods in use) is not scheduled.** Iron raising yields and stone feeding bridges each add a positive feedback, and the W1 finding shows how the growth rule turns uneven effects into drift. It would be reconsidered only after the growth rule's asymmetry is dealt with.
+- **Weather, one attempt (approved by the owner, D85):** a single attempt at weather with the market pull on the 10-year average inflow (`avg_inflow`), which addresses the asymmetry W1 found. It would be validated without weather first, then gated with weather at σ 0.15, and dropped if it fails.
+
+**W2 brief (D85).**
+- **Change.** Switch `pull_smoothed`: the market pull uses the 10-year moving average of inflow (`avg_inflow`, already kept), not the year's inflow. A market's traders and lords do not leave over one bad harvest. Nothing else changes.
+- **Step 1, without weather.** Run full validation with `pull_smoothed` on. Report every check against v6 and the golden hash. Without weather the inflow is steady, so the result should be close to v6. If a check fails, stop and report.
+- **Step 2, with weather.** `local_harvests` at σ 0.15, with relief and stores on.
+  - Gate: every v6 check; determinism; under 50 ms a year in wasm.
+  - Pre-registered, as before: total population at year 200 within 20% of the same seed with smoothing on and no weather, and regional stores at least 0.2 of need at year 400.
+  - Reported: the top-10 overlap against the Off run, Clark in shadow mode, and the famine dip.
+- **Result.**
+  - If step 2 passes, `pull_smoothed` and `local_harvests` become the defaults, with a new golden hash.
+  - If it fails, weather is dropped for good, and `pull_smoothed` is kept only if step 1 showed it harmless.
+
+**W2 result (7d7173e) and decision (D86).**
+- **Step 1 passed** with no check worse than v6. Runs passing every check went from 14/17/15 to 17/19/19.
+- **Step 2's gate passed** on every map. Top-10 against Off is 20/20, and runs passing every check are 18/20/15.
+- **The main pre-registered condition was met:** population at year 200 is 0.95–0.96 of the run without weather, against 0.30–0.37 under W1. Smoothing the pull removed the drain.
+- **The second was missed:** stores at year 400 are 0.02–0.03, against an expected ≥ 0.2. Stores fill before 1315 (0.34–0.38) and never refill after the plague, because once the land is full little rises above `food_cap`, and relief takes it first. This is a limit of the store rule, not harm from weather, and it is recorded as a miss.
+- **Decided: `pull_smoothed` and `local_harvests` (σ 0.15) become the defaults,** with a new golden hash. The famine dip is 0.18–0.20, slightly up from v6's 0.17–0.18, because stores are lower. Clark in shadow mode is in range.
+- **A possible follow-up, not scheduled:** fill a place's own store before its surplus goes out as relief, so that stores refill between shocks.
+
+
+## v7 plan: marketplaces (owner's decision, 22 October 2026)
+
+**Why.** Divish has decided that the project does not stop at v6. Knowing that grain is pushed to towns for free, and is not bought and sold, breaks the fun of watching. The model has to be a trade economy underneath, not only on the surface. The design authority stays with the designer. This section is the plan.
+
+**What failed before and why** (D78–D80). Under S2, a market's size grew on its net income. Once towns had to pay for grain, the Rihll–Wilson feedback that concentrates people into a few towns disappeared: every village kept a small market on its own rents. The mistake was to tie market size to profit. In Rihll & Wilson, a market's size responds to the flow through it, its revenue, and that is the variable v5 used and the checks were built on.
+
+**The design: markets are the places where trade happens.** Medieval grain was sold at chartered markets, which took tolls (Britnell 1993; the Gazetteer of Markets and Fairs).
+1. **Sellers.** Each settlement's grain for sale is its rent (paid by selling grain at market) plus what its people do not eat. It is taken to markets chosen as now, by `W_j^α exp(−β c)`. That keeps the feedback that makes towns: big markets draw more sellers.
+2. **Buyers** buy at markets by price, using the S2 equilibrium machinery. The buyers are:
+   - the market's own people and establishment;
+   - places in deficit;
+   - other towns;
+   - the outside ports.
+
+   So grain physically goes where it is wanted, and nothing is pushed, burned or free.
+3. **Market size grows on turnover,** the value of trade passing through the market, as Rihll–Wilson's `D_j`. A market town's traders, brokers, inns and toll-takers scale with what passes through it.
+4. **Market people live on real income:** tolls on turnover, the rents of the lords who live there, handling fees and goods sales. They buy their food at market prices. A town whose income cannot feed its people sheds them.
+
+**Stages, each with a stop rule:**
+- **M0, the diagnostic. It changes nothing, and is approved now.** In ordinary default runs (3 seeds a map), compute what each market's turnover would be under seller routing (rent plus surplus, valued at the shadow grain price), and compare it with today's `market_in`: rank-size slope, top-10 overlap and Spearman rank correlation. Then compute, for each place over 500:
+  - its income under marketplace accounting (tolls at 2%, 5% and 10% of turnover; rents at `market_share`, received by `W^α` weights; fees; goods);
+  - its food bill at shadow prices;
+  - the toll rate at which it breaks even.
+
+  **Expectation (pre-registered):** turnover concentrates like `market_in` (Spearman ≥ 0.8), and most towns over 2,000 break even at a toll of 10% or less, rents included. If towns cannot feed themselves at any plausible toll, the design is wrong, and we learn that before writing it.
+- **M1, the design note,** at most two pages, written after M0. It covers flows and accounting, how K relates to turnover, tolls, the cost estimate, and how stores trade (buying cheap and selling dear, Clark's 12.5% a year).
+- **M2, the build,** behind `marketplaces`. Gate: every v6 check; Clark's `b_P`, `b_Y` and R² gated per seed; under 50 ms a year in wasm. One tuning round. If it fails, stop and report; the designer then decides.
+- **M3, stores in the market:** granaries buy low and sell high, which may fix the refill miss of D86.
+
+**M0 result (8c6aa27, `docs/market/m0.md`) and the M1 brief (D87).** Both pre-registered expectations are met:
+- turnover under seller routing ranks like `market_in` (Spearman 0.955–0.982; the rank-size slope agrees within 0.03; the top ten are the same in 15 of 18 run-years);
+- 91–93% of towns over 2,000 break even at a toll of 10% or less, and most need none.
+
+**The main finding is that rents carry the towns.** In towns over 2,000 the means are turnover 4,414, rents 4,058, fees 356, goods 51 and a food bill of 3,712. This is the medieval consumer city of Sombart and Weber: towns lived largely on the rents of the landlords and churchmen who lived in them (Britnell 1993, Dyer). Tolls are a small top-up. Fees matter at ports and transshipment towns.
+
+**M1, the design note (approved),** `docs/market/m1-design.md`, at most two pages. It should propose a two-level market, which follows from M0 and is cheaper than S2:
+1. **Village to market.** Each place takes its grain for sale, rent plus surplus, to the markets it chooses by `W^α exp(−β c)` as now. That fixes each market's turnover. A place in deficit buys at the market it would choose the same way.
+2. **Market to market.** Prices clear between markets only, by the entropy equilibrium (the S0, S1 and S2 solver) over market pairs within `C_max`. Grain moves between markets where the price gap pays for it. Only markets above a size threshold take part, which should cut the arcs well below S2's.
+3. **Who buys at a market:**
+   - its market people's food, from their income (rents received, tolls, fees, goods sales), within their budget;
+   - deficit villages;
+   - the ports.
+
+   No establishment purchase, because that is what collapsed S2 (D79). Rent income above the food bill buys goods and imports as now.
+4. **Growth.** W follows `ε(T_j − K W_j)`, with `T_j` the turnover in grain units. M0 shows `T_j` tracks `market_in`, so K should carry over. Market people who cannot pay for their food are shed.
+5. **Grain unsold at the floor:** where it goes before M3. It must not count toward W.
+6. **The toll rate:** a starting value, with M0's distribution as the guide.
+7. **A cost estimate** against 50 ms in wasm.
+8. **The Clark checks** as the M2 gate.
+
+Then stop for review.
+
+**M1 note reviewed (5420934, `docs/market/m1-design.md`); decisions (D88).** The note is approved as written. It is coherent end to end. The rent grain arriving at a market is the lords' income. The lords and their households, the market people, buy their food from it at the market price. Any excess clears to deficit villages, ports or other markets, so the v5 loop (grain reaches towns and feeds market people) now runs through prices and nothing is burned.
+1. **`market_min` 50: approved,** as a tuning parameter.
+2. **Deficit villages pay only from their own sales: approved.** Relief and the villages' own stores stay free, as the manor and charity. A region-wide famine will still bite the poorest villages hardest, which is the historical pattern.
+3. **Unsold grain lost in M2, market stores in M3: approved, with one clarification.** S3's village stores and S2′ relief stay on in M2, as in v6 W2. Only the new market-level stores wait for M3. Otherwise the famine dip would not be comparable.
+
+**M2 build (approved),** behind `marketplaces`:
+- **First an untuned run,** to check that K carries over (pre-registered: the hierarchy checks pass on at least two maps without tuning).
+- **Then one tuning round** over `toll` (0.01–0.10), `market_min`, `market_share` and K, with every change recorded.
+- **Gate,** as in the note:
+  - every v6 check with W2 on;
+  - Clark per seed (`b_P` 0.8–1.2, R² ≥ 0.6, `b_Y` −0.15 to 0);
+  - determinism;
+  - at most 50 ms a year in wasm.
+- **Reported:** as in the note, plus the share of towns over 2,000 whose food is fully paid.
+- **Stop** and report either way. If it passes, `marketplaces` becomes the default and the gravity grain push is retired.
+
+**M2 first build (20db863, D89) and the designer's decision (D90).** No towns form, untuned or tuned (largest place 1,371–2,475 against 14,537). The implementer's diagnosis is right. With W growing on grain sold, and grain at a market bought almost only by its own market people, turnover scales with W itself and the feedback dies. The error is the designer's. M0 measured grain arriving, and the brief then said only grain sold may count. I treated arriving grain as P3 in disguise without asking what it means economically.
+
+**What arriving grain means.** Grain brought to a market and not yet eaten is a supply of food there. When a market has more grain than its people eat, food is cheap and people come: that is the Malthusian draw of a town with plenty. The newcomers then eat the grain. This is how a market town grows on its trade in a real economy, and it is what the Rihll–Wilson `D_j` stands for. P3 was something else. v6 wasted about 70% of what arrived (K 3.39 per market person against 1–1.2 eaten) and still counted all of it, so the waste was permanent.
+
+**Decided: option A, with K re-read as consumption and waste made a gated check.**
+1. **W follows `ε(A_j − K W_j)`,** with `A_j` the grain arriving at market j (rent plus surplus, on W2's ten-year average). That is M0's quantity, which ranks like `market_in`.
+2. **K becomes the grain a market person and their share of the town's establishment consume,** within 1.2–2.0: food, ale, fodder and the lords' households. It is tuned together with `market_share` (the rent share), so that the equilibrium market size, `A_j / K`, stays close to v6. M0 says rents carry the towns, so a lower rent share with a lower K should keep the hierarchy.
+3. **Market people buy and eat what arrives,** at the market price, within their income, as built. Grain still unsold at the floor is lost this year and reported. It is the transient while W catches up, not a permanent sink.
+4. **A new gated check separates this from P3:** after year 200, grain unsold at markets is at most 10% of what arrives (v6 burned about 70%). If the hierarchy holds only with large waste, this design has failed, and we stop.
+
+**Re-run:** first untuned at K 1.5 with `market_share` scaled by 1.5/3.39. Pre-registered: the hierarchy checks pass on at least two maps, and unsold is at most 10%. Then one tuning round over K (1.2–2.0), `market_share`, toll and `market_min`, then the full M2 gate plus the waste check. Stop and report either way. Option B (stores first) is declined: it delays the same problem. Option C is declined: the owner has ruled that v6 is not the end.
+
+**Owner's directions for v7 (Divish, 22 October 2026; D91).**
+1. **Marketplaces go into the core, not behind a switch.** The marketplace replaces the gravity grain push in the trade system. The trade system keeps its `enabled` flag, as every system must. Before the replacement, tag the current default commit `v6` so that every earlier version stays reproducible from git. The old version files stop reproducing their hashes from the new code, and that is expected. The golden test moves to the new hash.
+2. **Don't give up easily.** v7 has no stop rule. When a gate fails, the implementer diagnoses, fixes within the design (M1 and D90), and re-runs, reporting at each real finding. Design questions come to the designer, who answers them and keeps going. The waste check (unsold ≤ 10%) and the v6 checks stay as the definition of success. Persistence means fixing the model, not loosening the tests.
+3. **The 50 ms budget is dropped.** Time per year is reported, not gated.
+
+**M2 second build (4052d01) and the designer's decision (D92).** It was built before D91 arrived, so it is still behind the switch. Untuned, the region collapses (map 1 at year 400 has 5k people, largest place 478). The implementer's diagnosis is right. With K at 1.2–2.0 every village's own sales grow its own W towards `A/K`, and within 30 years W is the whole population. Then nobody farms, the harvest has no owner, and the people starve.
+
+**Decided: option C, with B as a guard.**
+1. **Only arrivals from other places grow a market (C).** `A_j` counts the grain brought to j from other places, not a place's own sales at its own market. This is Christaller's centrality: a central place grows on the trade it draws from its hinterland, its surplus of importance (*Bedeutungsüberschuss*), not on its own local exchange. A village selling to itself is not a market town. Only places that draw grain from others grow W, which is what makes the hierarchy.
+2. **Labour guard (B).** W is at most the population beyond the people the place's fields need (`pop − field_need`). Someone has to farm the fields a place holds; market people are those the land does not need.
+3. **The farmers' sales revenue belongs to the farmers.** It is their budget for goods, imports and grain in a dearth. With the guard there are always farmers to own it, so option A is not needed.
+4. **Re-run in the core** (D91: no switch; tag `v6` first). First untuned at K 1.5 with `market_share` × 1.5/3.39, with the pre-registration unchanged. Then iterate as D91 says.
+
+**M2 passed (cc8f7ba, D93; golden `835e8695b67538f7`, 35.7 ms a year in wasm).** Hinterlands now runs on a trade economy. Grain is sold at markets and bought by price, towns live on rents and tolls, and nothing is pushed or burned.
+- **The untuned pre-registration failed** (0/20 over 2,000; unsold 23–29%), and that is recorded.
+- **After two fixes within the design and one tuning round,** the gate passes on every map:
+  - the fixes: the labour guard weighted by yield, and people eating first, then the establishment;
+  - the tuning: K 1.3, `market_share` 0.4, toll 0.10, `market_min` 100;
+  - the results: every v6 check passes; Clark per seed has `b_P` 1.02–1.04, `b_Y` −0.024 to −0.033 (Clark: −0.025) and R² 0.86–0.90; unsold is 1.4–2.1%, against v6's roughly 70% burned.
+- **Kent:** lowland AUC 0.58, the best so far, and the largest share 0.25.
+- **Watch items:**
+  - weather costs growth again (population at year 200 is 0.68–0.70 of the run without weather; W2 was 0.95);
+  - outside trade is 2.5–4.4%, at the low edge of its band;
+  - the establishment is always short of K;
+  - relief and village stores are almost idle.
+
+**M3 brief: stores at markets (D94).** Grain stores move to where the grain is, the markets, and trade on price. The published model is competitive storage (Williams & Wright 1991; Deaton & Laroque 1992): store when today's price is below the expected future price less the cost of holding.
+- **Rule.** Each market with `W ≥ market_min` holds a store. Each year, after prices clear:
+  - it buys into store when `p_j < p̄_j (1 − h)`;
+  - it sells out of store when `p_j > p̄_j`.
+
+  `p̄_j` is the market's 10-year average price, and `h` the holding cost: interest plus storage, 0.15 before year 250 and 0.10 after (Clark: 10–11% interest before 1350 and about 5% after, plus up to 5% storage). The amount bought or sold per year is proportional to the price gap, up to `store_cap` × the market's yearly sales. Purchases are paid from the market's income, sales go back to it, and store grain loses `store_loss` a year. Stored grain enters the market as supply when sold.
+- **Village stores (S3) and relief (S2′) stay** and are reported. Retiring them is decided after M3.
+- **Pre-registered:**
+  - the 1315–17 famine dip is at most 0.16 (M2: 0.19–0.20);
+  - the year-to-year autocorrelation of grain prices is at least 0.3 while harvests are drawn fresh each year (Clark: prices 0.48 against yields 0.16).
+- **Reported:**
+  - carry-over after cheap years against Clark's 40%;
+  - the weather cost (population at year 200 against no weather);
+  - price gaps against transport on market pairs (still to be recorded);
+  - outside trade;
+  - the store map and chronicle lines.
+- **Gate:** every check that M2 passes, with Clark per seed. Iterate as D91 says.
+
+**M3 findings so far (f8e1c29, `docs/market/m3.md`) and the designer's decision (D95).** Stores as briefed barely act: the rising price trend makes the 10-year average lag, and stores sell out before 1315. The implementer's `store_spike` rule (sell only into a price spike) holds them through the trend, and it is accepted as the store rule. It is competitive storage's "sell when today is dear against what is expected" in a trending world. But the famine dip is still 0.17–0.20, and famine deficit met is 0–3%, because a hungry village has no money to buy stored grain.
+
+**Decided: option A, village purses.** This is the model's first stock of value. It is not floating money: it is savings counted in grain-value units at the reference price.
+- **Who holds them.** Each settlement's farmers hold a purse `M_i`, in value units.
+- **What goes in.** Their sales revenue, `p (1 − toll)` × surplus sold. Specialist works' goods sales, as now.
+- **What it pays for.** Goods and imports, as now. Grain bought in a dearth, at the market price, from any seller, market stores included.
+- **Each year:** the purse loses `purse_loss` (0.10), for spending the model does not trace (cloth, dues, the church). It is capped at `purse_cap` (1.0) × a year's need at the reference price.
+- **Footing.** English peasants held and used coin from the thirteenth century (Britnell 1993; Dyer 1989, *Standards of Living*). In a dearth they spent savings and sold livestock before they starved.
+- **Not chosen.** Credit (B) is better attested still (Briggs 2009) but adds debt and default; it is kept as a later option. Charity (C) is kept as it is: relief stays.
+- **Pre-registered, unchanged:** famine dip ≤ 0.16, and price autocorrelation ≥ 0.3. **Added:** famine deficit met at least 30% in 1315–17.
+- **Reported:** purse levels by place type over time, and what purses buy.
+- **Iterate** as D91 says.
+
+**Owner's correction (Divish, 22 October 2026; D96): everybody holds money, not only villages.** D95 is widened.
+- **Who holds a purse.** Every economic actor:
+  - the **farmers** of each settlement (D95);
+  - the **market** of each settlement, meaning its lords, church and merchants. Their rents, tolls, fees and goods sales go in. Their food, establishment, goods, imports and the market store's purchases come out. Store sales go back in;
+  - the **works**, through their settlement's market purse.
+- **Every payment moves value from one purse to another,** and income no longer vanishes at the year's end.
+- **Where money comes from and goes.** Coin enters the region when the outside ports buy grain (England's silver came in through exports, chiefly wool). It leaves when imports are bought, and through `purse_loss`, spending the model does not trace. The region therefore has a money stock and a price level. This is what historians of the period describe: prices followed the silver supply (Mayhew 1995, "Modelling medieval monetisation"; Britnell 1993).
+- **"Never planned" is amended.** Money is now a stock in the model. Wages, a labour market and individual agents remain excluded.
+- **Short design note first** (`docs/market/m3-money.md`, one page), because monetary accounting is where a model like this breaks quietly. It covers:
+  1. the purses, and the order in which they pay and receive in a year;
+  2. the starting stock, which places begin with;
+  3. conservation: each year the sum of purses changes only by the ports' balance and `purse_loss`, as a unit test;
+  4. how budgets enter the price solver;
+  5. caps and loss rates per purse type.
+- **New check, gated:** the price level stays bounded. The regional median grain price stays within 0.4–2.5 at every 50-year mark, so there is no runaway inflation or deflation.
+- **Reported:** money stock over time, purses by type, and the port balance.
+
+D95's pre-registrations stand: famine dip ≤ 0.16, deficit met ≥ 30% in 1315–17, and price autocorrelation ≥ 0.3. The designer reviews the note, then the build goes into the core.
+
+**Money note reviewed (4b4a1d0, `docs/market/m3-money.md`); decisions (D97).** The note is approved: the two purses per place, the order of payment, the settlement of each arc, the one-year lag, the starting stock, the conservation unit test and the budgets in the solver. One change is needed, about where spending the model does not trace goes.
+- **The problem.** A 10% yearly loss from every purse is a leak to nowhere. In a region where port exports roughly balance imports, the money stock would drain to zero at 10% a year, and prices would fall to the floor. That is the note's own named risk, built in. In the real economy that spending stayed in the region: cloth, ale, dues, the church, building work and alms.
+- **Decided: untraced spending recirculates, and only a little leaks.**
+  - A farmers' purse's untraced spending, `purse_loss` (0.10), is paid to the M of the market it sells to: dues, cloth, ale and the church.
+  - A market purse's untraced spending, `mpurse_loss` (0.10), is paid back to the F of the places it bought grain from, in proportion: building work, service and alms. A share `luxury_out` (0.2) of it leaves the region as imported luxuries.
+  - Spending above a cap is treated the same way. A true leak, `coin_wear` (0.01 a year, for wear and hoards), is the only loss besides imports and luxuries.
+- **What then sets the price level.** The external balance does, through Hume's price–specie flow (1752). If the region's grain is dear against the ports' world price, the ports buy less and coin stops coming in. If coin is plentiful, more imports and luxuries are bought and coin leaves. The world price anchors the level, which is the published mechanism and also what Mayhew describes for England.
+- **The conservation identity** in `tests/money.rs` becomes: Σ purses changes only by port payments + planted coin − imports − luxuries − wear − removals with no partner.
+- **Added to the report:** the regional grain price against the world price over time, and coin in and out by channel.
+- **Build into the core** with this change, and iterate as D91 says. The checks are unchanged: the price level stays within 0.4–2.5, and D95's three pre-registrations stand.
+
+**Money, first build (f0566d6, D98) and the designer's decisions (D99).**
+- **Accepted.** Money works: conservation holds exactly for 150 years, unsold grain is 0%, and Clark passes in every seed. Price autocorrelation is 0.48–0.51, Clark's own 0.48, from storage and money alone. D98's three readings are accepted:
+  - ports trade with any market in their reach;
+  - ports buy more below the world price (`port_elast`);
+  - goods are paid from what food leaves.
+- **Misses:** the famine dip is 0.21–0.22 (target ≤ 0.16), and famine deficit met is 0.24–0.27 (target ≥ 0.30). The implementer's finding is right: money moves grain but adds none, so the dip is set by the grain that exists in 1315–17. In dearth, towns outbid villages, because rent grain sells dear and fills the lords' purses.
+
+Answers:
+1. **Farmers' purses: tunable within reason,** `purse_cap` 0.5–2.0 and `purse_loss` 0.05–0.15, since loss now recirculates (D97). This is the implementer's call, recorded.
+2. **What moves the dip: both of the implementer's options, each with historical footing.**
+   - **(a) The establishment gives way first.** The establishment's part of the market people's demand, `(K − 1) W` (malt for ale, fodder, households), gets its own elasticity, `ε_est` 1.5 against food's 0.75. A dearth then turns malt and fodder grain into bread. In dearths, authorities banned or restricted malting to save grain for bread, which is the same response by decree.
+   - **(b) Stores may hold more,** within Clark's evidence: `store_cap` and the holding cost `h` are tunable, provided carry-over after cheap years stays at or below about 40% of a harvest. Report carry-over.
+
+   Then re-run. The dip and deficit targets are design targets, not gates. If principled changes do not reach them, the misses are recorded and M3 goes on, and the targets are never chased by loosening anything else.
+3. **The early price marks: the check is revised, after seeing it fail, so the reason is given.** The values in years 100–150 (0.38–0.43) are not runaway prices. They are the export-parity price of a young region selling most of its grain to the ports, the world price less carriage, which is exactly where Hume's mechanism should put it. The check exists to catch monetary collapse or inflation, so its lower bound becomes **half the world price (0.3)**. A price below that would mean the specie flow had failed. The upper bound stays at 2.5.
+
+**M3 passed (5550243, D100; golden `ff58d1b63e4c56d2`, 45.2 ms a year in wasm).** Money, market stores and purses are in the core.
+- **The gate passes on every map:** Clark R² 0.71–0.73; the price level within its band in 20/20; unsold 0%.
+- **Targets met:** price autocorrelation 0.50–0.52 (Clark 0.48); famine deficit met 0.36–0.37; carry-over 0.16–0.19 of a harvest (within Clark's 40%).
+- **Target missed: the famine dip, 0.22.** None of D99's levers moved it, because they only move grain between people.
+
+**Reading against history.** England's composite yields fell by roughly 40%, 60% and 10% in 1315, 1316 and 1317. That is about 110% of a year's harvest in all, close to the model's three years at 40%. Mortality was perhaps 10–15% in northern Europe ([Great Famine of 1315–1317](https://en.wikipedia.org/wiki/Great_Famine_of_1315%E2%80%931317); [Writing Medieval](https://writingmedieval.substack.com/p/the-great-famine-and-murrains-in); [Antwerp repository, 2020](https://repository.uantwerpen.be/docman/irua/cce274/153929_2020_01_01.pdf)). So the model's famine kills too many for the grain it loses. The fault is not the market. It is the hunger response: D34 sheds people for any shortfall at all. People endured a moderate shortfall by eating less, eating substitutes, slaughtering stock and eating the seed corn, and death rose steeply only below that (Livi-Bacci 1991, *Population and Nutrition*; Ó Gráda 2009, *Famine: A Short History*). The same rigidity is the likely cause of weather's growth cost under markets (population at year 200 is 0.68–0.70 of the run without weather).
+
+**M4, the hunger response and the famine shape (approved, D101).**
+1. **Tolerance.** Above `hunger_tolerance` × need (0.85), a shortfall stops growth but sheds nobody. Below it, D34 sheds a third of the gap below the tolerance each year.
+2. **The famine follows the record:** yields at −40%, −60% and −10% in 1315, 1316 and 1317, in place of −40% three times.
+3. **Pre-registered:**
+   - the famine dip within 0.10–0.16;
+   - population at year 200 at least 0.85 of the same seed without weather.
+4. **Gate:** every check passes as at M3.
+5. **Tuning.** `hunger_tolerance` within 0.8–0.9 is the implementer's. Iterate as D91 says.
+
+**M4 first build (47c7f41, `docs/market/m4.md`) and the designer's decision (D102).**
+- **At tolerance 0.80,** the famine dip is 0.16–0.17 and the weather cost 0.84–0.87, both at the edge of their pre-registered targets.
+- **The gate fails on two checks:** map 1 spacing at 14/20, and map 3 roads at 13/20.
+- **The implementer's findings are right:**
+  - the dip is all shedding;
+  - the weather cost is lost growth (bad years stop growth, good years are capped), not deaths;
+  - tolerance keeps marginal places alive through bad years, so they crowd together.
+
+**Decided: separate a temporary shortfall from a chronic one.** People endured bad years, but chronic hunger drove them away. Demographic response worked over several years: marriage and births followed conditions with a lag (Wrigley & Schofield 1981, *The Population History of England*).
+1. **Growth and chronic shedding follow the 5-year average food ratio.** Natural increase uses the 5-year average. A place whose 5-year average is below 1 sheds a third of `(1 − average)` a year, as D34 did. So chronically short, marginal places still decline, and spacing should return.
+2. **Acute shedding uses the current year, below the tolerance only:** a third of `(tolerance − ratio)`. A famine kills only where it bites deep.
+3. Each year **the larger of the two** applies.
+4. **`hunger_tolerance` stays within 0.8–0.9.** Going lower would chase the target.
+5. **The pre-registered targets stand:** dip 0.10–0.16, and weather cost at least 0.85.
+6. **Re-run the full gate.** Spacing and roads must pass. Iterate as D91 says. The weather target is not revisited: the averaged growth response is the principled answer to finding 2, and if it still falls short, the miss is recorded.
+
+**M4 second build (9646f15) and the designer's decision (D103).** With D102, spacing and roads pass, but the dip worsens to 0.24. The implementer's diagnosis is right: the 5-year average of past ratios counts each famine year again, after its people have already been shed. Those ratios were measured against a population that no longer exists. The experiment (a famine year entering the average at the tolerance) fixes the dip but stops famine years from weighing on marginal places, and spacing fails again.
+
+**Decided: (d), average the food, not the ratio.** The chronic measure is food available over the last five years against the people there now, `mean₅(food) / need_now`.
+- After a famine has shed people, need falls and the measure recovers. The same shortfall is no longer counted twice.
+- A marginal place that is short year after year stays short against its current people. It keeps declining, and the famine still weighs on it through its food. So spacing should hold.
+- This is also the right reading of "chronic hunger": too little food for the people who are here.
+- Natural increase uses the same measure. Acute shedding stays as D102. Tolerance stays at 0.80.
+- **Re-run the full gate,** 20 seeds a map. Pre-registered targets as before.
+- **Weather (0.80–0.83 in every variant) is recorded as a miss** unless this change moves it. It is not chased further in M4.
+
+**M4 third build (8d62c19) and the designer's decision (D104).** Averaging food against current need fixes the double count, but it lags growth. Every growing place reads as short, so the region grows at half speed. The dip of 0.10 comes largely from a smaller region. Three builds of averaging have each traded one fault for another: the lag, the double count, or spacing.
+
+**Reading.** Hunger was being asked to do the job of market competition. Spacing between markets is meant to come from the urban shadow and its drain (Bosker & Buringh, D80). Under the old rigid rule, bad years culled marginal places and propped spacing up. Once people endure bad years, as they did, spacing has to come from its own mechanism.
+
+**Decided:**
+1. **Return to D101's first build.** Acute shedding below `hunger_tolerance` (0.80) on the current year's food ratio. Growth and the rest as at M3. No five-year averaging: remove D102 and D103's averaging code, and record the three variants and their results in `m4.md` as the record.
+2. **Restore spacing through the drain.** `shadow_drain` is the implementer's to tune (it was raised for the same reason in D80). If the road-stability check on map 3 still fails, `road_keep_load` may be tuned too. Both are recorded.
+3. **Pre-registered targets as before:** dip 0.10–0.16, which the first build reached at 0.16–0.17. Weather (0.84–0.87 in the first build) is recorded against its 0.85 target as it falls.
+4. **Then run the full gate,** move the defaults and the golden, and report. Iterate as D91 says. If the drain cannot restore spacing without breaking other checks, report and I will decide.
 
 ## Future versions
 
@@ -525,13 +1006,13 @@ The simulation lane runs left to right through its gates; the map generation tra
 
    Walls have no effect until something in the model uses defence. The 1.x view layers already exist, and the graphics work is separate.
 3. **v4 Shocks.** Specified below, in "v4 specification: shocks".
-4. **v5 The outside world.** Specified below, in "v5 specification: the outside world". It is the last simulation version. Joined regions, coarse routing, way-stations, pastoral highlands and per-region parameters are dropped, since they are the scale-up that sinks projects of this kind.
+4. **v5 The outside world.** Specified below, in "v5 specification: the outside world". It is followed by the release, then v6 (markets, D70). Joined regions, coarse routing, way-stations, pastoral highlands and per-region parameters are dropped, since they are the scale-up that sinks projects of this kind.
 
 **Map generation track.** v1 ships noise, thermal erosion, hydrology and yield. Later passes, in order of effect on realism: hydraulic erosion with floodplains and deltas as the best land; lakes and marshes; coastline detail; a rain-shadow climate with biomes from temperature and moisture; resources placed by geology; tectonic plates giving ranges a direction. Each is a new pass in the pipeline and changes nothing else.
 
 **Real terrain.** Importing a free 90 m DEM (SRTM) of a documented region, resampled to the chosen cell size, is the single most valuable step after v1. Run on medieval Kent or the Rhône valley and compare the settlements the model produces with the ones that existed. If the model puts a city where Canterbury or Lyon stands, the model is right rather than merely plausible. Generated maps stay the tool for development and tuning; real terrain is for validation and for the demonstration that convinces people.
 
-**Never planned, in any version:** individual agents and a full price economy. Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks.
+**Never planned, in any version:** individual agents, and wages and a labour market. (Money as a stock was admitted by the owner in D96.) Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks. Market-clearing prices in grain units, as an aggregate spatial equilibrium between settlements, were admitted by D70 (see v6 below). The settlement stays the unit.
 
 ## References
 

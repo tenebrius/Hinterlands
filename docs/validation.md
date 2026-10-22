@@ -17,7 +17,7 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 | Forest near cities | For each settlement over 5,000, the mean forest cover over land cells within 5 km (straight line) of its anchor; the largest of these. | < 0.30 |
 | Stability | The largest year-on-year change in total population, as a share of the earlier year, over years 101–500. | < 0.05 |
 | Contingency | Over 20 seeds on the same map (v1.2, D35): (a) for each pair of runs, the share of run A's ten largest settlements with one of run B's ten largest within 5 km (anchor to anchor); the mean over all pairs. Reported, not gated: (b) the share of runs whose largest settlement lies outside the modal cluster (the anchor with the most other runs' largest within 5 km); (c) the share of runs with a settlement over 5,000 on or next to the **main river corridor** or coastal within 15 km of it (D20); (d) the median distance of the largest settlement from the main mouth. Until v1.2, (b) was gated at ≥ 0.30. | (a) ≤ 0.80; (b)–(d) reported |
-| Performance | Mean time of one simulated year in the release wasm build in a browser, measured over a 500-year run. Native time is reported by `hinterlands bench` as a proxy. | < 50 ms |
+| Performance | Mean time of one simulated year in the release wasm build in a browser, measured over a 500-year run. Native time is reported by `hinterlands bench` as a proxy. Gated at < 50 ms until v7; reported only since D91 (owner). | reported |
 
 ## Pass rule
 

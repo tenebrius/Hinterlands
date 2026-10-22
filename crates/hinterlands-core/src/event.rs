@@ -56,6 +56,10 @@ impl Event {
                 if let Some(i) = state.index_of(id) {
                     state.settlements[i].market = market.min(*pop);
                     state.settlements[i].planted = true;
+                    // The lord's coin, from outside (D96).
+                    let coin = p.planted_coin * pop * p.food_per_person;
+                    state.settlements[i].mpurse = coin;
+                    state.money.planted_in += coin;
                 }
                 state.log.push(LogEntry {
                     year: state.year,
@@ -114,7 +118,9 @@ impl Event {
                     state.last_plague = state.year;
                 }
                 for &(id, y) in shares {
-                    let Some(i) = state.index_of(id) else { continue };
+                    let Some(i) = state.index_of(id) else {
+                        continue;
+                    };
                     let s = &mut state.settlements[i];
                     let before = s.pop;
                     s.pop -= before * y;

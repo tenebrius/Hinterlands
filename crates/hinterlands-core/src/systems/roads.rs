@@ -126,7 +126,6 @@ fn decay(state: &mut State, p: &Params, raised: &[bool], load: &[f32]) -> bool {
     changed
 }
 
-
 /// Bridges at busy crossings (D55). Returns whether one was built.
 fn bridges(state: &mut State, t: &Terrain, p: &Params, load: &[f32]) -> bool {
     let mut built = false;

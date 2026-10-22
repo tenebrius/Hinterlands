@@ -325,3 +325,183 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - largest city: Gravesend 13, Milton Regis 4, Faversham 3; its share is 0.33 (0.28).
 
   Scores are in `docs/real/kent-v4/scores.md`.
+
+## v5 — The outside world: outside ports, imports, better ships (D64–D67)
+- **On by default:**
+  - outside ports at the open-sea edges, one per side, at the busiest coast (D64);
+  - each port buys 700 grain a year and is the only seller of imports, 0.07 per market person, ρ 10 (D64);
+  - founding re-tuned for ports: `shadow_weight` 4.53, `found_threshold` 0.449, `noise` 0.324 (D66);
+  - sea cost falling 30% from 1300 to 1500 (D65).
+- **D25's outside world is retired.**
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Every v4 check holds; the outside-trade check is 0.052 / 0.053 / 0.052, 20/20 on every map. Runs passing every check: 14 / 17 / 17.
+  - Map 1 market spacing passed 15/20 at the D66 re-tune and holds with ships.
+- **Reported:**
+  - coastal share of people in places over 2,000, 1300 → 1600: 0.46 → 0.39 / 0.20 → 0.22 / 0.52 → 0.47 (without ships: 0.40 / 0.22 / 0.41);
+  - top ten of 1400 by 1600: mean rank change 4.0–4.3, with 8 kept.
+- **Determinism:**
+  - golden `4ce58fae34550933`;
+  - the release wasm build gives the same hash (`?selftest=500`, 26.2 ms/year);
+  - the version files reproduce every earlier hash, from v1 `afd6c175b193443b` to v4 `2c5e9c5c90ab1d43` and O1 `8ee85c10266b1dd2`.
+- **View:**
+  - a new layer, `layers/outside.rs`: wine-red import routes and ships at the outside ports;
+  - the 1450 chronicle line.
+
+  Screenshot: `docs/screenshots/v5-year450.png`.
+- **Kent** (20 seeds, `map-outside.json` with the Continent off Dover and the North Sea off the Thames mouth):
+  - **Watling Street cells still road at 1600: median 24%** (18–32%), against about 26% under v4 (3 seeds). The trade through Dover does not keep it alive: the ports' grain and imports ride sea paths from the nearest coast, not the road.
+  - **Largest city's site:** near Gravesend in 17 seeds, Milton Regis 2, Faversham 1; its share is 0.35. The real largest town, London, lies at the map's western edge and is not reproduced.
+  - **On-road share:** 29%; 41% for places of 1,000 or more.
+  - **Inland places over 500:** 10 per seed at 12.0 km (real 29 at 10.6).
+  - **Lowland AUC:** 0.52 / 0.55 / 0.50.
+
+## v5 release — frozen
+- **Golden `4ce58fae34550933`, frozen.** Native and release wasm (`?selftest=500`, 27.4 ms/year after the R8 merge; gate under 50).
+- **Final checks, all on the frozen model:**
+  - `just test` passes;
+  - `just validate` (Historical, 20 seeds a map) PASSED. Every check holds, and runs passing every check are 14 / 17 / 17. Outside trade is 5.2–5.3%.
+  - the Kent regression (20 seeds, `map-outside.json`) is unchanged from the v5 milestone: Watling Street 24%, the largest city near Gravesend in 17 seeds, on-road share 29%, inland places over 500 at 12.0 km (10 per seed), lowland AUC 0.52 / 0.55 / 0.50.
+- **What the release added, with no new mechanisms:**
+  - the README rewritten as one page on the whole model, with a source for each mechanism;
+  - `docs/parameters.md` regenerated from `Params` (it already matched);
+  - the "What you are watching" panel, open on first load;
+  - coastal sea lanes bundled into one lane per coast;
+  - settlement names given priority over feature names;
+  - the graphics session's R8 merged (D68), with notes for it in `docs/rendering.md`.
+- **Screenshots** (`docs/screenshots/release/`): map 1, seed 1 at 1200, 1349, 1450 and 1600, and Kent at 1600 (the CLI's cell render).
+
+## v6 S1 — Goods by the price equilibrium (D71–D73)
+- **On by default:** `market_goods`. Salt, iron, stone and imports trade by the entropy price equilibrium in grain units, and `demand_iron` is 0.0013 (D71). The specialist founding test counts demand by value at last year's buyer prices (D72).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Every check holds, with D73's gate for goods.
+  - every good worked: 20 / 19 / 18;
+  - sites producing (reported): medians 0.73 / 0.80 / 0.73;
+  - market spacing 17 / 20 / 18; outside trade 4.7–5.4%;
+  - runs passing every check: 16 / 18 / 15.
+- **Iron at year 450,** median town price: 1.19 / 3.26 / 1.16.
+- **Determinism:**
+  - golden `ec7a24a7caeac414`;
+  - the release wasm build gives the same hash (`?selftest=500`, 31.9 ms/year, under the 45 ms gate);
+  - `data/real/experiments/v5.json` gives v5's `4ce58fae34550933`, and the earlier version files give their hashes.
+- **Details:** `docs/market/s1.md`.
+
+## v6 S2′ — Grain relief (D80)
+- **On by default:** `grain_relief`. After trade, places in deficit draw, unpaid, on their partners' surplus above `food_cap × need`. `shadow_drain` goes from 0.0168 to 0.025, the one tuning change, for map 1 spacing.
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Spacing 18 / 20 / 19; runs passing every check 13 / 17 / 17.
+- **Reported:** relief of 1,500–2,000 a year; 86–88% of deficits met in normal years, 6–8% in 1315–17; famine dip unchanged at 0.24–0.25. Details: `docs/market/relief.md`.
+- **Determinism:**
+  - golden `f5b32f88ee3fc22f`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.9 ms/year);
+  - `data/real/experiments/v6-s1.json` gives S1's `ec7a24a7caeac414`, and every earlier version file now pins relief off and the old drain.
+
+## v6 S3 — Grain stores (D81)
+- **On by default:** `grain_stores`, with `store_cap` 1.0 and `store_loss` 0.05.
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Runs passing every check: 14 / 17 / 15.
+- **Reported:**
+  - famine dip 0.17 / 0.17 / 0.18 (S2′ 0.24–0.25);
+  - stores at 0.49–0.52 of need before 1315 (map 1's 0.52 accepted by the designer as a near miss), 93–99% drawn down by 1317;
+  - famine deficit met 55–59%.
+  - Details: `docs/market/stores.md`.
+- **Determinism:**
+  - golden `0e65d09ec147b5c7`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.8 ms/year);
+  - `data/real/experiments/relief.json` gives S2′'s `f5b32f88ee3fc22f`, and the earlier version files give theirs.
+
+## v6 — Markets, relief and stores (D69–D83): milestone
+- **On by default:**
+  - goods by the price equilibrium (S1, `market_goods`, D71–D73);
+  - grain relief (S2′, `grain_relief`, D80), with `shadow_drain` 0.025;
+  - grain stores (S3, `grain_stores`, D81), with `store_cap` 1.0 and `store_loss` 0.05.
+- **Kept off, as the record:**
+  - shadow prices (S0, `market_shadow`), for the Clark reports only;
+  - grain by equilibrium (S2, `market_grain`, D77–D79), stopped by the proposal's stop rule;
+  - local harvests (W1, `local_harvests`, `store_smooth`, D74–D76, D82, D83), dropped.
+- **`just test`:** passes. **Golden `0e65d09ec147b5c7`.** The release wasm build gives the same hash (`?selftest=500`, 30.3 ms/year; limit 50).
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Every check holds, with D73's goods gate.
+  - Runs passing every check: 14 / 17 / 15.
+- **Reported:**
+  - famine dip 0.17 / 0.17 / 0.18 (v5 0.24–0.25);
+  - plague drop 0.37, with the old hierarchy back (recovery 1.61–1.65);
+  - stores at 0.49–0.52 of need before 1315, 93–99% drawn down by 1317;
+  - relief: 87–90% of deficit met in normal years, 55–59% in 1315–17;
+  - outside trade 4.7–5.4%.
+- **Kent** (20 seeds, `map-outside.json`; scores in `docs/real/kent-v6/scores.md`), against v5:
+  - Watling Street cells still road at 1600: median 24% (20–31%), against 24%;
+  - largest city near Gravesend in 15 seeds, Milton Regis 3, Faversham 2 (v5 17 / 2 / 1); its share is 0.34 (0.35);
+  - on-road share: 29% (29%); 46% for places of 1,000 or more (41%);
+  - inland places over 500: 14 per seed at 10.5 km (10 at 12.0; real 29 at 10.6);
+  - lowland AUC: 0.51 / 0.54 / 0.49 (0.52 / 0.55 / 0.50).
+- **Screenshots** (`docs/screenshots/v6/`):
+  - map 1, seed 1, in 1316 (the famine, with the granaries chronicle line) and in 1450;
+  - a close view with granary bars in 1314;
+  - `docs/screenshots/s3-1318.png`.
+- **Version files:** `data/real/experiments/relief.json` (S2′, `f5b32f88ee3fc22f`), `v6-s1.json` (S1, `ec7a24a7caeac414`) and the earlier ones reproduce every earlier golden.
+
+## v6 W2 — Local harvests with the smoothed market pull (D85, D86)
+- **On by default:**
+  - `pull_smoothed`: growth's market pull answers the ten-year average inflow;
+  - `local_harvests`: a smooth 15 km yield field, σ 0.15, drawn up front from the run's `Rng` (D75).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Top-10 vs off is 20/20 on every map, and runs passing every check are 18 / 20 / 15.
+- **Pre-registered:**
+  - population at year 200 is 0.95–0.96 of the same seed without weather, 20/20 within 20%: **met**;
+  - regional stores at year 400 are 0.02–0.03 of need against ≥ 0.2: **missed**. The designer records this as a limit of the store rule (relief takes the surplus first), not harm from weather.
+- **Reported:**
+  - famine dip 0.18 / 0.19 / 0.20 (v6 0.17–0.18);
+  - stores 0.34–0.38 of need before 1315, 96–100% drawn down by 1317, and not refilled after the plague;
+  - deficit met in 1315–17: 34–39%;
+  - Clark (shadow): `b_P` 0.98–0.99, R² 0.98, `b_Y` −0.011 to −0.013.
+  - Details: `docs/market/w2.md`.
+- **Determinism:**
+  - golden `1faa5c46e3908124`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.5 ms/year);
+  - `data/real/experiments/v6.json` gives v6's `0e65d09ec147b5c7`, and every earlier version file reproduces its golden.
+
+## v6 frozen at commit `4052d01` (D91)
+- **v6 is the model of commit `4052d01`**, golden `1faa5c46e3908124`: S1 goods by price, S2′ relief, S3 stores, and W2 (local harvests with the smoothed pull).
+- **Reproducing an earlier version from now on:** check out `4052d01` and use its version files. From v7 the marketplace replaces the gravity grain push in the core, and the old version files no longer reproduce.
+- **The git tag `v6`** was made locally, but this environment's git proxy refuses tag pushes (HTTP 403). The tag can be pushed from a normal clone with `git tag -a v6 4052d01 && git push origin v6`.
+
+## v7 M2 — Marketplaces in the core (D88–D93)
+- **The model:** grain is sold at marketplaces in place of the gravity push. W grows on grain drawn from other places, market people buy within rents, toll and fees, and large markets price grain between them.
+- **Defaults:** K 1.3, `market_share` 0.4, `toll` 0.10, `market_min` 100.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - every v6 check;
+  - Clark per seed: `b_P` 1.02–1.04, `b_Y` −0.024 to −0.033 (medians), R² 0.86–0.90;
+  - unsold at markets 1.4–2.1%.
+  - Runs passing every check: 13 / 15 / 16.
+- **Golden `835e8695b67538f7`.** Release wasm gives the same hash at 35.7 ms/year (not gated, D91).
+- **Kent** (`docs/real/kent-v7/scores.md`):
+  - largest place near Gravesend in 12 seeds, with a share of 0.25;
+  - on-road share 29%, and 43% for places of 1,000 or more;
+  - inland places over 500: 8 per seed at 11.7 km.
+- **Reproducing v6 and earlier:** check out commit `4052d01`.
+
+## v7 M3 — Money in the core (D96–D100)
+- **The model:**
+  - every place holds a farmers' purse and a market purse;
+  - grain and goods are paid in coin, and loss and overflow recirculate along the D97 paths;
+  - only ports, planted towns, imports, luxuries, wear and removals move the stock (`tests/money.rs`);
+  - stores trade at large markets (D94);
+  - the market establishment gives way first in dearth (`elast_est` 1.5, D99).
+- **Defaults moved:**
+  - `market_stores` on;
+  - `purse_cap` 2.0, `purse_loss` 0.05 (D100);
+  - `mpurse_cap` 2.0, `mpurse_loss` 0.10, `luxury_out` 0.2, `coin_wear` 0.01, `purse_start` 0.5, `planted_coin` 0.5.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Every v6 and M2 check.
+  - Clark per map:
+    - `b_P` 1.04–1.07, `b_Y` −0.064 to −0.068, R² 0.71–0.73 (median);
+    - R² ≥ 0.6 in 18 / 20 / 20.
+  - Price level 0.3–2.5 at every 50-year mark: 20/20 on each map.
+  - Unsold at markets 0%.
+  - Runs passing every check: 10 / 13 / 11.
+- **Design targets** (D95, D99; not gates):
+
+  | Target | Result |
+  | --- | --- |
+  | Detrended price autocorrelation ≥ 0.3 | 0.50–0.52 (met) |
+  | Famine deficit met ≥ 30% | 0.36–0.37 (met) |
+  | Famine dip ≤ 0.16 | **0.22 (missed)** |
+
+  Carry-over after cheap years is 0.16–0.19 of a harvest, at most 0.27, inside Clark's 40%.
+- **Golden `ff58d1b63e4c56d2`.** Release wasm gives the same hash (`?selftest=500`) at 45.2 ms/year (not gated, D91).
+- **Details:** `docs/market/m3.md`, "Money, second build".
