@@ -1097,3 +1097,142 @@ pub fn cmd_logkinds(args: &Args) {
         println!("{k} {n}");
     }
 }
+
+/// D0 (D118, D120): demand from stocks beside the current demand, a
+/// diagnostic with no feedback (the model never reads it). Each decade from
+/// 1100 to 1600, in each good's existing units (grain-value units at price 1:
+/// one person-year of grain, `bu_per_person` bushels at `wheat_s_bu`):
+/// - salt: consumption per person (`salt_lb`, a calibration) at the 1438
+///   London price (`salt_lb_per_d`, secondary);
+/// - iron: plough irons and shoeing per arable cell (`ploughs_per_km2` ploughs
+///   of `plough_iron_d` a year, Langdon 1982 for shoeing; plough irons a
+///   calibration), household iron per person and tools per working site
+///   (calibrations);
+/// - stone: building stock per market person (W), repaired at `repair` a year
+///   plus new stock as W grows (the accelerator); the stock is calibrated so
+///   that repair alone equals today's stone demand;
+/// - cloth, in wool: `cloth_yd` yards per adult (Dyer 1989), `adult_share` of
+///   people, `wool_lb_per_yd` (4⅓ cloths to the sack of 364 lb).
+/// Lines: `d0 seed year` totals; `d0type` by place type; `d0iron`; `d0stone`.
+pub fn cmd_demand(args: &Args) {
+    use hinterlands_core::state::{port_of, Good, Kind};
+    let mut sim = make_sim(args);
+    let f = |k: &str, d: f32| args.str(k).map_or(d, |v| v.parse().unwrap());
+    let wheat_s_bu = f("wheat-s-bu", 0.60);
+    let bu_per_person = f("bu-per-person", 6.0);
+    let unit_d = wheat_s_bu * 12.0 * bu_per_person; // pence in one value unit
+    let salt_lb = f("salt-lb", 15.0);
+    let salt_lb_per_d = f("salt-lb-per-d", 3.1);
+    let ploughs_per_km2 = f("ploughs-per-km2", 2.0);
+    let plough_iron_d = f("plough-iron-d", 36.0);
+    let household_iron_d = f("household-iron-d", 1.0);
+    let site_iron_d = f("site-iron-d", 24.0);
+    let repair = f("repair", 0.02);
+    let cloth_yd = f("cloth-yd", 3.0);
+    let adult_share = f("adult-share", 0.6);
+    let wool_lb_per_yd = f("wool-lb-per-yd", 364.0 / 4.333 / 24.0);
+    let years = args.u64("years", 500) as u32;
+    let seed = sim.sim_seed;
+    let p = sim.params.clone();
+    let stock_per_w = p.demand_stone / repair.max(1e-6);
+    let mut w_prev: std::collections::BTreeMap<u32, f32> = Default::default();
+    let mut w_decade: std::collections::BTreeMap<u32, f32> = Default::default();
+    let mut stone_acc = [0f32; 4]; // growing places' stone, all stone, their W, all W
+    println!("d0 seed year pop fields | salt cur stock | iron cur stock | stone cur stock | imports cur | cloth_wool_lb wool_prod_lb");
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        let st = &sim.state;
+        let km2 = sim.terrain.grid.cell_km * sim.terrain.grid.cell_km;
+        let wool_lb_cell = km2 * 247.1 * p.sheep_per_acre * p.fleece_lb;
+        // Per place: (type, current salt, iron, stone, stock salt, iron, stone, wool lb).
+        let mut tot = [0f32; 9];
+        let mut by_type: std::collections::BTreeMap<&str, [f32; 6]> = Default::default();
+        let mut place_stone: Vec<f32> = Vec::with_capacity(st.settlements.len());
+        for s in &st.settlements {
+            let w = s.market.max(0.0);
+            let dw = (w - w_prev.get(&s.id).copied().unwrap_or(w)).max(0.0);
+            let cur = [
+                hinterlands_core::systems::trade::demand(s, &p, Good::Salt),
+                hinterlands_core::systems::trade::demand(s, &p, Good::Iron),
+                hinterlands_core::systems::trade::demand(s, &p, Good::Stone),
+            ];
+            let sites = st.sites.iter().filter(|x| x.holder == s.id && x.output > 0.0).count() as f32;
+            let stock = [
+                s.pop * salt_lb / salt_lb_per_d / unit_d,
+                (s.fields.len() as f32 * km2 * ploughs_per_km2 * plough_iron_d
+                    + s.pop * household_iron_d
+                    + sites * site_iron_d)
+                    / unit_d,
+                stock_per_w * (repair * w + dw),
+            ];
+            place_stone.push(stock[2]);
+            let wool = s.pop * adult_share * cloth_yd * wool_lb_per_yd;
+            for k in 0..3 {
+                tot[2 * k] += cur[k];
+                tot[2 * k + 1] += stock[k];
+            }
+            tot[6] += p.import_demand * w;
+            tot[7] += wool;
+            tot[8] += s.fields.len() as f32;
+            let port = s.reach.partners.iter().any(|q| port_of(q.id).is_some() && q.cost < 5.0);
+            let ty = match s.kind {
+                Kind::Mine | Kind::Saltern | Kind::Quarry => "works",
+                _ if port && w >= p.market_min => "port",
+                _ if w >= 500.0 => "town500+",
+                _ if w >= p.market_min => "town100-500",
+                _ => "village",
+            };
+            let e = by_type.entry(ty).or_default();
+            for k in 0..3 {
+                e[2 * k] += cur[k];
+                e[2 * k + 1] += stock[k];
+            }
+        }
+        // Stone over the decade: the stone of places whose W grew since the
+        // decade began, against their share of W.
+        for (s, &stone) in st.settlements.iter().zip(&place_stone) {
+            let w = s.market.max(0.0);
+            let grew = w > w_decade.get(&s.id).copied().unwrap_or(w);
+            if grew {
+                stone_acc[0] += stone;
+                stone_acc[2] += w;
+            }
+            stone_acc[1] += stone;
+            stone_acc[3] += w;
+        }
+        for s in &st.settlements {
+            w_prev.insert(s.id, s.market.max(0.0));
+        }
+        if y % 10 == 0 {
+            let wool_prod = st.settlements.iter().map(|s| s.pasture.len()).sum::<usize>() as f32 * wool_lb_cell;
+            println!(
+                "d0 {seed} {y} {:.0} {:.0} | salt {:.1} {:.1} | iron {:.1} {:.1} | stone {:.1} {:.1} | imports {:.1} | {:.0} {:.0}",
+                st.total_pop(),
+                tot[8],
+                tot[0],
+                tot[1],
+                tot[2],
+                tot[3],
+                tot[4],
+                tot[5],
+                tot[6],
+                tot[7],
+                wool_prod
+            );
+            for (ty, e) in &by_type {
+                println!(
+                    "d0type {seed} {y} {ty} salt {:.1} {:.1} iron {:.1} {:.1} stone {:.1} {:.1}",
+                    e[0], e[1], e[2], e[3], e[4], e[5]
+                );
+            }
+            println!(
+                "d0stone {seed} {y} growing_share_of_stone {:.3} growing_share_of_w {:.3}",
+                stone_acc[0] / stone_acc[1].max(1e-6),
+                stone_acc[2] / stone_acc[3].max(1e-6)
+            );
+            stone_acc = [0f32; 4];
+            w_decade = st.settlements.iter().map(|s| (s.id, s.market.max(0.0))).collect();
+        }
+    }
+}
