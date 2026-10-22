@@ -88,13 +88,14 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v7 M3 PASSED (5550243, D100):** money, stores and purses in the core; golden `ff58d1b63e4c56d2`; autocorrelation, deficit and carry-over targets met; famine dip 0.22 missed. Against history (yields −40/−60/−10%, mortality about 10–15%), the model's famine is too lethal; the cause is D34 shedding for any shortfall. M4 approved (D101): hunger tolerance 0.85 and the historical famine shape; pre-registered dip 0.10–0.16 and weather cost ≥ 0.85.
 - **M4 first build (47c7f41):** tolerance 0.80 gets dip 0.16–0.17 and weather 0.84–0.87, but spacing (map 1) and roads (map 3) fail, because marginal places survive. Decided D102: growth and chronic shedding on the 5-year average food ratio (Wrigley & Schofield), acute shedding below tolerance on the current year, the larger applies; tolerance stays within 0.8–0.9.
 - **M4 second build (9646f15):** spacing and roads pass, but the dip worsens to 0.24, because the averaged ratios count the famine twice. Decided D103: chronic measure = mean₅(food) / need_now (food against the people there now); weather 0.80–0.83 recorded as a miss unless this moves it.
+- **M4 third build (8d62c19):** averaging food over current need lags growth (region at half speed; dip 0.10 only because the region is smaller). Decided D104: drop the five-year averaging; return to tolerance 0.80 on the current year; restore spacing through the shadow drain (spacing belongs to market competition, not to hunger culling), with road_keep_load tunable if needed.
 - **v6 markets decided (D70, number reserved by me):** Divish's proposal (`docs/proposals/markets.md`, through a third session, `session_01MrMcFJCCYku1zTBbBkDVfp`) accepted in staged form after the v5 release: entropy-regularised spatial price equilibrium in grain units; W kept as a market premium; Clark checks reported at S0 and gated at S2; S0 (shadow prices, no feedback) only, then stop. S4–S5 (goods in use, coin and mayors) are not scheduled. "Never planned" now names wages, labour markets, floating money and agents.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
 
 ## What the Kent test taught, and the rules that came out of it
 
-Nine of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
+Ten of my specification choices have been wrong, all caught by the real-terrain test. The pattern is worth remembering because it will recur.
 
 1. **Attraction was the wrong quantity.** I had derived market pull from "people beyond what the fields feed", so a place could only become a market by running out of land. The published model has market size as its own state. Rule: when simplifying a published model, keep its state variables; simplify parameters, not structure.
 2. **Growth had only one currency.** Food was the only thing that fed growth, so a gateway earned nothing from the trade it handled, and London could not form. Handling income fixed it. Rule: a break-of-bulk mechanism needs an income term, not just a cost term.
@@ -110,6 +111,8 @@ Nine of my specification choices have been wrong, all caught by the real-terrain
 8. **I scheduled local weather before the buffers that absorb it,** and then before checking the growth rule itself. Zero-mean harvest noise, with losses asymmetric (shedding in bad years, capped growth in good ones), cut map 1's population at year 200 to a third and failed three checks. Four gates later the deeper cause was the growth rule: capped gains and uncapped losses turn any variance into a drain. Rules: add a source of variance only after the mechanisms that absorb it exist, and first test every response it passes through for asymmetry.
 
 9. **I forbade the right quantity because it looked like an old fault.** M2 counted only grain sold, because grain arriving resembled P3. But arriving grain is food supply, and food supply is what makes a town grow. P3's fault was permanent waste, not counting arrivals. Rule: before ruling a quantity out, say what it means economically, and test the fault itself (here: waste ≤ 10%) instead of banning the quantity.
+
+10. **I asked hunger to do competition's job.** Three M4 builds tried to keep spacing with ever cleverer hunger averages. Spacing was being propped up by famine culling all along. Rule: when a change breaks a check, find the mechanism that is supposed to produce that check's result, and fix it there.
 
 Judgement rules that now stand:
 
@@ -152,4 +155,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — M4: chronic hunger as average food over current need (D103).
+Last updated: 2026-10-22 — M4: back to tolerance on the current year; spacing through the drain (D104).

@@ -932,6 +932,16 @@ Answers:
 - **Re-run the full gate,** 20 seeds a map. Pre-registered targets as before.
 - **Weather (0.80–0.83 in every variant) is recorded as a miss** unless this change moves it. It is not chased further in M4.
 
+**M4 third build (8d62c19) and the designer's decision (D104).** Averaging food against current need fixes the double count, but it lags growth. Every growing place reads as short, so the region grows at half speed. The dip of 0.10 comes largely from a smaller region. Three builds of averaging have each traded one fault for another: the lag, the double count, or spacing.
+
+**Reading.** Hunger was being asked to do the job of market competition. Spacing between markets is meant to come from the urban shadow and its drain (Bosker & Buringh, D80). Under the old rigid rule, bad years culled marginal places and propped spacing up. Once people endure bad years, as they did, spacing has to come from its own mechanism.
+
+**Decided:**
+1. **Return to D101's first build.** Acute shedding below `hunger_tolerance` (0.80) on the current year's food ratio. Growth and the rest as at M3. No five-year averaging: remove D102 and D103's averaging code, and record the three variants and their results in `m4.md` as the record.
+2. **Restore spacing through the drain.** `shadow_drain` is the implementer's to tune (it was raised for the same reason in D80). If the road-stability check on map 3 still fails, `road_keep_load` may be tuned too. Both are recorded.
+3. **Pre-registered targets as before:** dip 0.10–0.16, which the first build reached at 0.16–0.17. Weather (0.84–0.87 in the first build) is recorded against its 0.85 target as it falls.
+4. **Then run the full gate,** move the defaults and the golden, and report. Iterate as D91 says. If the drain cannot restore spacing without breaking other checks, report and I will decide.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
