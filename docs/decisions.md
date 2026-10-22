@@ -708,7 +708,7 @@ Kind: model mechanism (D97 build).
   In 1315–17 the region has 40% less grain. The levers above only move that grain between people, and none adds any.
 Kind: tuning and recorded miss (designer's decision D99).
 
-## D105 — v7 M4: the drain and road decay tuned (D104)
+## D106 — v7 M4: the drain and road decay tuned (D104)
 - **The model** is D101's first build: acute shedding below `hunger_tolerance` 0.80. The D102/D103 averaging is removed.
 - **`shadow_drain` 0.025 → 0.05.** Spacing failed only on the tight side. 0.05 is the smallest value tried that passes spacing on every map (0.035 did not).
 - **`road_keep_load` 800 → 600.** Roads failed on every map at drain 0.05, and 1200 made both roads and spacing worse.

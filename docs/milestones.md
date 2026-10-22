@@ -506,7 +506,7 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
 - **Golden `ff58d1b63e4c56d2`.** Release wasm gives the same hash (`?selftest=500`) at 45.2 ms/year (not gated, D91).
 - **Details:** `docs/market/m3.md`, "Money, second build".
 
-## v7 M4 — Hunger tolerance and the 1315–17 famine (D101–D105)
+## v7 M4 — Hunger tolerance and the 1315–17 famine (D101–D104, D106)
 - **The model:**
   - a year's shortfall above `hunger_tolerance` (0.80) stops growth and sheds nobody; below it, a third of the gap below the tolerance sheds;
   - the famine takes −40%, −60% and −10% in 1315, 1316 and 1317.
