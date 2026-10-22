@@ -922,6 +922,16 @@ Answers:
 5. **The pre-registered targets stand:** dip 0.10–0.16, and weather cost at least 0.85.
 6. **Re-run the full gate.** Spacing and roads must pass. Iterate as D91 says. The weather target is not revisited: the averaged growth response is the principled answer to finding 2, and if it still falls short, the miss is recorded.
 
+**M4 second build (9646f15) and the designer's decision (D103).** With D102, spacing and roads pass, but the dip worsens to 0.24. The implementer's diagnosis is right: the 5-year average of past ratios counts each famine year again, after its people have already been shed. Those ratios were measured against a population that no longer exists. The experiment (a famine year entering the average at the tolerance) fixes the dip but stops famine years from weighing on marginal places, and spacing fails again.
+
+**Decided: (d), average the food, not the ratio.** The chronic measure is food available over the last five years against the people there now, `mean₅(food) / need_now`.
+- After a famine has shed people, need falls and the measure recovers. The same shortfall is no longer counted twice.
+- A marginal place that is short year after year stays short against its current people. It keeps declining, and the famine still weighs on it through its food. So spacing should hold.
+- This is also the right reading of "chronic hunger": too little food for the people who are here.
+- Natural increase uses the same measure. Acute shedding stays as D102. Tolerance stays at 0.80.
+- **Re-run the full gate,** 20 seeds a map. Pre-registered targets as before.
+- **Weather (0.80–0.83 in every variant) is recorded as a miss** unless this change moves it. It is not chased further in M4.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
