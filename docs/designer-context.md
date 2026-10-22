@@ -82,6 +82,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **v7 in the core (d8c85dc, interim):** gravity grain push retired; golden in progress d370f1235a22cc2c. Market people buy K = 1.5 per head and eat 1 of it (the rest is the establishment). Best so far (K 1.5, market_share 0.4, toll 0.10, market_min 100), map 1 seed 1 at year 500: largest 6,763, 5 over 2,000, 3 over 5,000, slope −0.91, unsold 3%; population 77k against v6's 112k. The `v6` tag could not be pushed (proxy 403): v6 = commit 4052d01; Divish to push the tag from a normal clone.
 - **v7 M2 PASSED (cc8f7ba, D93):** the model is a trade economy (grain sold at markets by price, towns on rents and tolls, unsold 1.4–2.1%). Clark `b_Y` −0.024 to −0.033 against his −0.025. The untuned pre-registration failed (recorded). Watch: weather costs growth (0.68–0.70), outside trade at its low edge. M3 market stores briefed (D94; competitive storage, Deaton & Laroque): pre-registered dip ≤ 0.16 and price autocorrelation ≥ 0.3.
 - **v7 M3 so far (f8e1c29):** stores barely act (trend), store_spike accepted; villages have no money, so stored grain can't reach them (famine deficit met 0–3%). Decided D95: village purses (farmers keep sales revenue, value units, 10% a year loss, cap 1 × a year's need), the first value stock; credit kept for later. Divish had asked whether villages have money.
+- **D96 (Divish):** everybody holds money, not only villages: farmers' and markets' purses (lords, church, merchants; works included); coin enters through port exports and leaves through imports and untraced spending, so the region has a money stock and a price level (Mayhew 1995). Floating money is no longer "never planned". A one-page money design note first (conservation unit test; price-level check 0.4–2.5).
 - **v6 markets decided (D70, number reserved by me):** Divish's proposal (`docs/proposals/markets.md`, through a third session, `session_01MrMcFJCCYku1zTBbBkDVfp`) accepted in staged form after the v5 release: entropy-regularised spatial price equilibrium in grain units; W kept as a market premium; Clark checks reported at S0 and gated at S2; S0 (shadow prices, no feedback) only, then stop. S4–S5 (goods in use, coin and mayors) are not scheduled. "Never planned" now names wages, labour markets, floating money and agents.
 - **Roadmap after v2 decided** (`docs/foundation.md`, "Plan after v2"): v2.1 Kent resources as data → v3 (shadow in km first, then traffic roads, bridges at busy crossings, mills) → v4 shocks (plague, famine years, river shift, lords planting towns; no borders or tolls) → v5 decided later; outside world folded into v5. Divish left these calls to me.
 - `docs/foundation.md` matches the code as of D32: tuned defaults stated as rounded values with `docs/parameters.md` authoritative; food is consumed at the market it reaches (no redistribution to senders); crossings are free at fords only.
@@ -113,7 +114,7 @@ Judgement rules that now stand:
 - **Judge placement where the inputs have signal; judge count and spacing where they do not.** Score the inputs directly against the ground truth before blaming the model.
 - **Second-nature inputs (roads, initial towns) are data in `Terrain`, not model changes.** They go in through the importer.
 - **Keep the three-crate boundary.** Pure `core` with no I/O; `Snapshot` is the only thing the viewer and CLI read; systems write only their own outputs; one `ViewState`, one `Msg` enum in the UI.
-- **Never planned:** individual agents, wages and labour markets, floating money, hosted CI, pull requests. (Market-clearing prices in grain units were admitted by D70.)
+- **Never planned:** individual agents, wages and labour markets, hosted CI, pull requests. (Market prices admitted by D70; money as a stock by Divish, D96.)
 
 ## How to respond to an implementer report
 
@@ -146,4 +147,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — v7 M3: village purses (D95).
+Last updated: 2026-10-22 — v7 M3: everybody holds money (D96); money design note requested.
