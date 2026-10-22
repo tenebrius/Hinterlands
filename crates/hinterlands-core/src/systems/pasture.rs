@@ -559,8 +559,37 @@ fn wool_market(
         let b = if s.price[0] > 0.0 { s.price[0] } else { 1.0 };
         crate::systems::marketplace::market_demand(p, s.market.max(0.0).min(s.pop), b) * b
     };
-    for &(k, b, t) in &arcs {
-        let q = libm::expf((theta * (buy[b] - sup[k] - t)).min(60.0));
+    // The flows; a mill takes no more than its capacity (D130): what is over
+    // goes, seller by seller, to that seller's port at the port's price.
+    let mut flow: Vec<f32> = arcs
+        .iter()
+        .map(|&(k, b, t)| libm::expf((theta * (buy[b] - sup[k] - t)).min(60.0)))
+        .collect();
+    let mut port_arc = vec![usize::MAX; sellers.len()];
+    for (a, &(k, b, _)) in arcs.iter().enumerate() {
+        if b == port {
+            port_arc[k] = a;
+        }
+    }
+    let mut inflow = vec![0f32; 2 * m];
+    for (a, &(k, b, _)) in arcs.iter().enumerate() {
+        if b >= m && b < port && port_arc[k] != usize::MAX && flow[a] > 0.0 {
+            inflow[b] += flow[a];
+        }
+    }
+    for (a, &(k, b, _)) in arcs.iter().enumerate() {
+        if b < m || b >= port || port_arc[k] == usize::MAX || !(flow[a] > 0.0) {
+            continue;
+        }
+        if inflow[b] > d0[b] {
+            let over = flow[a] * (1.0 - d0[b] / inflow[b]);
+            flow[a] -= over;
+            flow[port_arc[k]] += over;
+        }
+    }
+    for (a, &(k, b, t)) in arcs.iter().enumerate() {
+        let _ = t;
+        let q = flow[a];
         if !(q > 0.0) {
             continue;
         }

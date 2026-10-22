@@ -1495,7 +1495,7 @@ pub fn cmd_cloth(args: &Args) {
     let every = args.u64("every", 10) as u32;
     let seed = sim.sim_seed;
     let map = args.u64("map-seed", 1);
-    println!("cloth map seed year pop clip_lb to_mills_lb to_ports_lb home_use_lb home_need_lb cloth_share_out mid_w_share wool_in cloth_in duties_out imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town");
+    println!("cloth map seed year pop clip_lb to_mills_lb to_ports_lb home_use_lb home_need_lb cloth_share_out mid_w_share wool_in cloth_in duties_out imports_out port_in cloth_towns cloth_towns_over2k cloth_town_median_pop largest_cloth_town mill_cap_lb");
     while sim.state.year < years {
         sim.step(1);
         let y = sim.state.year;
@@ -1504,6 +1504,13 @@ pub fn cmd_cloth(args: &Args) {
         }
         let st = &sim.state;
         let c = st.cloth_stats;
+        // Mill capacity (D130): mill settlements with W, at cloth_lb_per_w a head of W.
+        let mill_cap: f32 = st
+            .settlements
+            .iter()
+            .filter(|s| s.mill && s.market > 0.0)
+            .map(|s| sim.params.cloth_lb_per_w * s.market)
+            .sum();
         let made: f32 = st.settlements.iter().map(|s| s.cloth_made).sum();
         let mid: f32 = st
             .settlements
@@ -1521,7 +1528,7 @@ pub fn cmd_cloth(args: &Args) {
         let l = st.money;
         let out = c[1] + c[2];
         println!(
-            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0}",
+            "cloth {map} {seed} {y} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1} {:.1} {:.1} {:.1} {} {} {:.0} {:.0} {:.0}",
             st.total_pop(),
             c[0],
             c[1],
@@ -1538,7 +1545,8 @@ pub fn cmd_cloth(args: &Args) {
             towns.len(),
             towns.iter().filter(|&&p| p > 2000.0).count(),
             towns.get(towns.len() / 2).copied().unwrap_or(f32::NAN),
-            towns.last().copied().unwrap_or(f32::NAN)
+            towns.last().copied().unwrap_or(f32::NAN),
+            mill_cap
         );
     }
 }
