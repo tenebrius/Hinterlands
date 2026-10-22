@@ -1084,6 +1084,17 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 5. **Screenshots** in `docs/screenshots/v7/`: 1300, 1316, 1349, 1450 and 1600.
 6. **Freeze:** `just test`, validate, wasm timing and Kent. Record "v7 release" with its golden in `milestones.md`.
 
+**After the v7 release (D116, approved by the designer; the owner said to go ahead).** In order, each reported before the next:
+1. **Kent geology.** Kent's yields miss the Downs' thin chalk soils and Romney Marsh's wet ground, so Kent has almost no pasture (L1).
+   - Build a geology layer for Kent from the British Geological Survey's open 1:625,000 map (bedrock and superficial deposits, Open Government Licence), through the importer, as soil and roads were.
+   - Chalk downland lowers arable yield, since rendzina soils were thin and sheep-and-corn country. Marine and alluvial deposits (Romney Marsh, the Thames and Medway marshes) lower it too, since they were wet ground grazed before drainage.
+   - The multipliers are the implementer's, with a source where one exists.
+   - Pre-registered: pasture's share of used land on the Downs and the Marsh is above its share on the Weald and the lowland in 1450.
+   - Reported: Kent's town figures against v7, and whether wool moves the largest place.
+2. **Robustness re-tune.** Runs passing every check are 8/13/8: every check passes at 75%, but rarely all at once. Search the existing tunables (`shadow_drain`, K, `market_share`, toll, `market_min`, `road_keep_load`) for the setting with the most runs passing every check, keeping every gated check at 75% or more per map. No new mechanisms. Record the setting and the new golden.
+3. **Then cloth, as a design note first (not before 1 and 2).** Wool spun and woven into cloth, with fulling at the water mills already in the model (D56). Cloth exports take over from raw wool in the fifteenth century (Carus-Wilson; the Weald of Kent was itself a cloth country). It is the natural next mechanism, and it is a processing step of Weber's kind. The note comes to the designer before any code.
+4. **Noted, not scheduled:** growth after 1480 closer to Tudor rates. The owner may move it up.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
