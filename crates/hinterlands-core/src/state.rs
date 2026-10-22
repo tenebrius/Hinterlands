@@ -227,6 +227,14 @@ pub struct Settlement {
     /// Grain in store, carried from year to year (S3, D81).
     #[serde(default)]
     pub store: f32,
+    /// A large market's store (M3, D94), its ten-year average grain price,
+    /// and last year's net takings from store sales (grain units).
+    #[serde(default)]
+    pub mstore: f32,
+    #[serde(default)]
+    pub avg_price: f32,
+    #[serde(default)]
+    pub store_income: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -274,6 +282,9 @@ impl Settlement {
             shadow_price: [0.0; 5],
             grain_sup: 0.0,
             store: 0.0,
+            mstore: 0.0,
+            avg_price: 0.0,
+            store_income: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -430,6 +441,10 @@ pub struct State {
     /// store drawn (S3).
     #[serde(default)]
     pub relief_stats: [f32; 5],
+    /// Grain flows between large markets this year (v7): from, to, flow,
+    /// price gap, transport price.
+    #[serde(default)]
+    pub market_pairs: Vec<(u32, u32, f32, f32, f32)>,
     /// The shadow solve's grain arcs, as `market_arcs` (D77).
     #[serde(default)]
     pub shadow_arcs: Vec<(u32, u32, f32, f32, f32)>,
@@ -597,6 +612,7 @@ impl State {
             market_residual: [0.0; 5],
             market_arcs: Vec::new(),
             shadow_arcs: Vec::new(),
+            market_pairs: Vec::new(),
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),

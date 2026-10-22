@@ -244,6 +244,15 @@ define_params! {
         store_smooth: bool = false, [0, 1], "A place tops its food up from its own store to food_cap x need, its growth target, not just to need (W1, D83)";
         store_loss: f32 = 0.05, [0, 0.5], "Share of a store lost each year to spoilage, vermin and holding (S3)";
         market_min: f32 = 100.0, [1, 1000], "Least market size W for a market to trade with other markets at a price (v7)";
+        market_stores: bool = false, [0, 1], "Large markets hold grain stores, buying below their ten-year average price less a holding margin and selling above it (v7 M3, D94)";
+        store_gain: f32 = 2.0, [0, 20], "Store purchases or sales per unit of relative price gap, as a share of the market's yearly turnover (M3)";
+        store_margin_early: f32 = 0.15, [0, 0.5], "Holding margin (interest plus storage) before store_margin_year (Clark)";
+        store_margin_late: f32 = 0.10, [0, 0.5], "Holding margin from store_margin_year on (Clark)";
+        store_avg_years: f32 = 10.0, [1, 50], "Years over which a market's reference grain price is averaged for its store (D94)";
+        relief_market_stores: bool = false, [0, 1], "Relief may draw on market stores as well as village stores (experiment, D94)";
+        store_spike: bool = false, [0, 1], "Stores sell only when the price also exceeds last year's by the holding margin: into a spike, not a rising trend (D94)";
+        store_sell_band: f32 = 0.0, [0, 3], "Stores sell above the average price plus this many holding margins (0: above the average, D94)";
+        store_margin_year: u32 = 250, [0, 2000], "Year the holding margin falls (historical; 1350)";
         toll: f32 = 0.1, [0, 0.2], "Toll on the turnover of a market, paid to its market people (v7)";
         grain_relief: bool = true, [0, 1], "After trade, places in deficit draw on surplus above food_cap that would otherwise be lost, unpaid (v6 S2', D80)";
         market_grain: bool = false, [0, 1], "Grain trades by the price equilibrium, paid from budgets of sales, rents, fees and goods (v6 S2, D78)";

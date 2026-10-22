@@ -63,6 +63,13 @@ pub struct RunResult {
     /// 100 to the end: `b_P`, `b_Y`, R² of the regional price; NaN when grain
     /// is the S2 record.
     pub clark: (f32, f32, f32),
+    /// v7 M3 (D94): lag-1 autocorrelation of the detrended regional grain
+    /// price (years 100 on); market stores after cheap years as a share of
+    /// the mean harvest (mean, max); median price gap over transport on
+    /// market pairs in the last year.
+    pub price_ac: f32,
+    pub carry: (f32, f32),
+    pub gap_ratio: f32,
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -395,6 +402,8 @@ pub fn run_one(
     let mut pop_200 = f32::NAN;
     let mut waste_acc = (0f32, 0f32);
     let mut clark_rows: Vec<(u32, u32, f32, f32, f32)> = Vec::new();
+    // Regional price, market stores and harvest per year from year 100.
+    let mut series: Vec<(f32, f32, f32)> = Vec::new();
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -425,6 +434,9 @@ pub fn run_one(
             let wsum: f32 = rows.iter().map(|r| r.3).sum();
             if wsum > 0.0 {
                 let regional = rows.iter().map(|r| r.1 * r.3).sum::<f32>() / wsum;
+                let held: f32 = sim.state.settlements.iter().map(|s| s.mstore).sum();
+                let harvest: f32 = sim.state.settlements.iter().map(|s| s.food_prod).sum();
+                series.push((regional, held, harvest));
                 for (id, pr, yl, _) in rows {
                     clark_rows.push((id, y, pr.ln(), regional.ln(), yl.ln()));
                 }
@@ -565,7 +577,19 @@ pub fn run_one(
     } else {
         clark(&clark_rows)
     };
+    let (price_ac, carry) = price_series(&series);
+    let gaps: Vec<f32> = sim
+        .state
+        .market_pairs
+        .iter()
+        .filter(|a| a.4 > 0.0)
+        .map(|a| a.3 / a.4)
+        .collect();
+    let gap_ratio = median_of(gaps);
     RunResult {
+        price_ac,
+        carry,
+        gap_ratio,
         clark,
         waste: if !params.market_grain {
             waste_acc.0 / waste_acc.1.max(1.0)
@@ -1089,6 +1113,17 @@ pub fn cmd_validate(args: &Args) {
                 ws.len()
             );
         }
+        if rs.iter().any(|r| r.price_ac.is_finite()) {
+            println!(
+                "{:<20} {:>12} grain price autocorrelation (detrended) {:.2}; market stores after cheap years: mean {:.2}, max {:.2} of a mean harvest; pair price gap / transport {:.2}",
+                "M3 stores",
+                "(reported)",
+                med(rs.iter().map(|r| r.price_ac).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.carry.0).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.carry.1).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.gap_ratio).filter(|x| x.is_finite()).collect())
+            );
+        }
         if rs.iter().any(|r| r.stores.is_some()) {
             let at = |k: usize| {
                 med(rs
@@ -1219,4 +1254,54 @@ fn clark(rows: &[(u32, u32, f32, f32, f32)]) -> (f32, f32, f32) {
         f64::NAN
     };
     (bp as f32, by_ as f32, r2 as f32)
+}
+
+/// Lag-1 autocorrelation of the log regional price less its centred 21-year
+/// moving average, and the market stores at the end of cheap years (price
+/// below 0.8 of that trend) as a share of the mean harvest: (mean, max).
+fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32)) {
+    let n = series.len();
+    if n < 30 {
+        return (f32::NAN, (f32::NAN, f32::NAN));
+    }
+    let lp: Vec<f64> = series.iter().map(|s| (s.0.max(1e-6) as f64).ln()).collect();
+    let mut dev = Vec::new();
+    let mut trend = Vec::new();
+    for t in 10..n - 10 {
+        let m = lp[t - 10..=t + 10].iter().sum::<f64>() / 21.0;
+        dev.push(lp[t] - m);
+        trend.push((t, m.exp()));
+    }
+    let mean = dev.iter().sum::<f64>() / dev.len() as f64;
+    let (mut num, mut den) = (0f64, 0f64);
+    for k in 0..dev.len() {
+        den += (dev[k] - mean).powi(2);
+        if k > 0 {
+            num += (dev[k] - mean) * (dev[k - 1] - mean);
+        }
+    }
+    let ac = if den > 0.0 { num / den } else { f64::NAN };
+    let mean_h = series.iter().map(|s| s.2 as f64).sum::<f64>() / n as f64;
+    let after: Vec<f64> = trend
+        .iter()
+        .filter(|(t, tr)| (series[*t].0 as f64) < 0.8 * tr)
+        .map(|(t, _)| series[*t].1 as f64 / mean_h.max(1.0))
+        .collect();
+    let carry = if after.is_empty() {
+        (0.0, 0.0)
+    } else {
+        (
+            (after.iter().sum::<f64>() / after.len() as f64) as f32,
+            after.iter().cloned().fold(0.0, f64::max) as f32,
+        )
+    };
+    (ac as f32, carry)
+}
+
+fn median_of(mut v: Vec<f32>) -> f32 {
+    if v.is_empty() {
+        return f32::NAN;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    v[v.len() / 2]
 }

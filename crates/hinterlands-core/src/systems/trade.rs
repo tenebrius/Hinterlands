@@ -288,7 +288,14 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
     // it is not itself in deficit.
     let avail: Vec<f32> = (0..m)
         .map(|i| {
-            let st = state.settlements[i].store;
+            // With `relief_market_stores` a market's store is open to relief too.
+            let s = &state.settlements[i];
+            let st = s.store
+                + if p.relief_market_stores {
+                    s.mstore
+                } else {
+                    0.0
+                };
             if stores && held[i] >= need[i] && st > 0.0 {
                 surplus[i] + st
             } else {
@@ -370,7 +377,10 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
             // Relief given beyond the surplus came out of the store, not out of
             // this year's food.
             let from_store = (sent_by[i] - surplus[i]).max(0.0);
-            s.store -= from_store;
+            // Village store first, then the market's (D94).
+            let own = from_store.min(s.store.max(0.0));
+            s.store -= own;
+            s.mstore = (s.mstore - (from_store - own)).max(0.0);
             s.food_out -= from_store;
             // What is still above the satiation fills the store; the rest is lost.
             let left = (surplus[i] - sent_by[i]).max(0.0);

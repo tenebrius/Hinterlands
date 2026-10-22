@@ -158,7 +158,10 @@ pub fn trade(
         .map(|s| p.k_maint * s.market.max(0.0).min(s.pop) * fpp)
         .collect();
     let budget: Vec<f32> = (0..m)
-        .map(|j| rent_in[j] + p.toll * turnover[j] + state.settlements[j].fee_earned)
+        .map(|j| {
+            let s = &state.settlements[j];
+            rent_in[j] + p.toll * turnover[j] + s.fee_earned + s.store_income
+        })
         .collect();
     let want = |j: usize, b: f32| -> f32 {
         (need_w[j] * libm::powf(b.max(1e-3), -eps).min(cap)).min(budget[j].max(0.0))
@@ -257,11 +260,70 @@ pub fn trade(
         })
         .collect();
     let mut sup: Vec<f32> = buy[..nb].iter().map(|&b| b.max(p.p_floor)).collect();
+    // Market stores (M3, D94; Williams & Wright 1991): a large market's store
+    // sells when the price is above its ten-year average and buys when it is
+    // below the average less the holding margin, in proportion to the gap, at
+    // most `store_cap` × its turnover, within what it holds or has room for,
+    // and buying within its people's budget left after food.
+    let margin = if state.year < p.store_margin_year {
+        p.store_margin_early
+    } else {
+        p.store_margin_late
+    };
+    let pbar: Vec<f32> = nodes_settle
+        .iter()
+        .map(|&j| {
+            let a = state.settlements[j].avg_price;
+            if a > 0.0 {
+                a
+            } else {
+                level
+            }
+        })
+        .collect();
+    let held: Vec<f32> = nodes_settle
+        .iter()
+        .map(|&j| state.settlements[j].mstore.max(0.0))
+        .collect();
+    // Last year's price at each large market: with `store_spike`, stores sell
+    // only into a jump above it, not into a rising trend.
+    let last: Vec<f32> = nodes_settle
+        .iter()
+        .map(|&j| state.settlements[j].price[0])
+        .collect();
+    let store_sell = |bi: usize, b: f32| -> f32 {
+        let mut ceiling = pbar[bi] * (1.0 + p.store_sell_band * margin);
+        if p.store_spike && last[bi] > 0.0 {
+            ceiling = ceiling.max(last[bi] * (1.0 + margin));
+        }
+        if !p.market_stores || b <= ceiling {
+            return 0.0;
+        }
+        let t = turnover[nodes_settle[bi]];
+        (p.store_gain * (b - ceiling) / pbar[bi] * t)
+            .min(p.store_cap * t)
+            .min(held[bi])
+    };
+    let store_buy = |bi: usize, b: f32| -> f32 {
+        let floor_price = pbar[bi] * (1.0 - margin);
+        if !p.market_stores || b >= floor_price {
+            return 0.0;
+        }
+        let j = nodes_settle[bi];
+        let t = turnover[j];
+        let left = (budget[j] - want(j, b)).max(0.0);
+        (p.store_gain * (floor_price - b) / pbar[bi] * t)
+            .min((p.store_cap * t - held[bi]).max(0.0))
+            .min(left)
+    };
     // Each node's supply (turnover plus its small markets' exports) and
     // demand (its people plus its small markets' imports), at its price.
     let position = |bi: usize, b: f32| -> (f32, f32) {
         let j = nodes_settle[bi];
-        let (mut s, mut d) = (turnover[j], want(j, b));
+        let (mut s, mut d) = (
+            turnover[j] + store_sell(bi, b),
+            want(j, b) + store_buy(bi, b),
+        );
         for &c in &children[bi] {
             let t = parent[c].map_or(0.0, |x| x.1);
             let (net, _) = small_net(turnover[c], b, t, p.p_floor, &|q| want(c, q));
@@ -373,6 +435,8 @@ pub fn trade(
     let mut sold_here = vec![0f32; m];
     let mut capped = vec![false; m];
     let mut unsold = 0f32;
+    let mut store_delta = vec![0f32; m];
+    let mut store_take = vec![0f32; m];
     // Of which, at places with no large market in reach.
     let mut unsold_local = 0f32;
     for (bi, &j) in nodes_settle.iter().enumerate() {
@@ -390,6 +454,14 @@ pub fn trade(
         let d_all = demand(bi, b).max(1e-9);
         let got = inflow[bi];
         eaten_w[j] = got * mine / d_all;
+        // The store's trade: what it bought arrives in store, and what it
+        // offered sells as the rest of the market's supply does.
+        let bought = got * store_buy(bi, b) / d_all;
+        let offered = store_sell(bi, b);
+        let sold_store = offered * frac;
+        unsold -= offered - sold_store;
+        store_delta[j] = bought - sold_store;
+        store_take[j] = sold_store - bought;
         sold_here[j] = turnover[j] * frac;
         capped[j] = need_w[j] * libm::powf(b, -eps).min(cap) > budget[j] + 1e-3;
         for &c in &children[bi] {
@@ -440,8 +512,18 @@ pub fn trade(
         capped[j] = need_w[j] * libm::powf(pc, -eps).min(cap) > budget[j] + 1e-3;
     }
     let mut to_ports = 0f32;
-    for (a, &(from, to, _, k)) in arcs.iter().enumerate() {
+    let mut pairs = Vec::new();
+    for (a, &(from, to, t, k)) in arcs.iter().enumerate() {
         let q = flow[a];
+        if from != to && to < nb && q >= 1.0 {
+            pairs.push((
+                state.settlements[nodes_settle[from]].id,
+                state.settlements[nodes_settle[to]].id,
+                q,
+                buy[to] - sup[from],
+                t,
+            ));
+        }
         if to >= nb {
             to_ports += q;
         }
@@ -472,10 +554,26 @@ pub fn trade(
         market_in[j] += drawn[j];
         s.price[0] = price[j];
         s.capped = capped[j];
+        // Stores: this year's trade, then the year's loss; the takings are
+        // next year's income; the average price follows (M3, D94).
+        if big[j] {
+            s.mstore = ((s.mstore + store_delta[j]) * (1.0 - p.store_loss)).max(0.0);
+            s.store_income = store_take[j].max(0.0);
+        } else {
+            s.store_income = 0.0;
+        }
+        if price[j] > 0.0 {
+            s.avg_price = if s.avg_price > 0.0 {
+                s.avg_price + (price[j] - s.avg_price) / p.store_avg_years.max(1.0)
+            } else {
+                price[j]
+            };
+        }
         capped_n += capped[j] as u32;
     }
     state.port_grain = buy[nb..].to_vec();
     state.outside_trade.0 = to_ports;
+    state.market_pairs = pairs;
     state.grain_stats = crate::state::GrainStats {
         residual: if nb > 0 { residual } else { 0.0 },
         passes,

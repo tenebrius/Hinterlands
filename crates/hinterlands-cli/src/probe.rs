@@ -559,7 +559,7 @@ pub fn cmd_towns(args: &Args) {
         ss.sort_by(|a, b| b.pop.total_cmp(&a.pop));
         for s in ss.iter().take(top) {
             println!(
-                "town {seed} {} {} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.0} {:.3} {} harvest {:.0} store {:.0} need {:.0}",
+                "town {seed} {} {} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3} {:.0} {:.3} {} harvest {:.0} store {:.0} need {:.0} mstore {:.0} avgp {:.3}",
                 sim.state.year,
                 s.id,
                 s.pop,
@@ -573,7 +573,9 @@ pub fn cmd_towns(args: &Args) {
                 s.capped as u8,
                 s.food_prod,
                 s.store,
-                s.need(&sim.params)
+                s.need(&sim.params),
+                s.mstore,
+                s.avg_price
             );
         }
     }
