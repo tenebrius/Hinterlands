@@ -775,3 +775,19 @@ Kind: model mechanism, held off (designer's decision D124).
 - **The wool-share test (D126.4):** the making cost implied by Munro's Flemish shares is 1.4–2.7 d a lb, mostly below 2.62–3.77.
 - **Details:** `docs/demand/d2.md`.
 Kind: model mechanism, held off (designer's decision D126).
+
+## D129 — D2 corrected: attribution run and gate; failed, stopped (D128)
+- **Built per D128:**
+  - home cloth from wool bought at home, made by households;
+  - export cloth the only chain;
+  - wool's outlets split by the S1 entropy form.
+- **Implementer's readings:**
+  - a mill demands its capacity up to its bid and falls with `elast_mill` 20 above it;
+  - the wool market solves with four times the goods' passes, sellers last.
+- **The attribution run** (no mills, no home cloth) fails over 2,000 on maps 1 and 3 and outside trade on map 2. Map 2's recovery is 40/40.
+- **The corrected D2 gate fails:**
+  - outside trade on map 1 (29/40);
+  - over 2,000 (23/40), spacing (25/40) and stability (28/40) on map 3.
+  - Map 2 passes every check.
+- **Not made the default.** Details: `docs/demand/d2c.md`.
+Kind: model mechanism, held off (designer's decision D128).
