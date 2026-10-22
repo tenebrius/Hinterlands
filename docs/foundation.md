@@ -1010,6 +1010,19 @@ Decided for L1:
 
 Iterate as D91 says, and report.
 
+**L1 second build (8659b32) and decisions (D109).** Every L1 gate passes:
+- pasture lies outward and on poor land, 20/20;
+- pasture rises from 1340 to 1450 in 59 of 60 runs;
+- every other v7 check holds, with Clark R² 0.93–0.96;
+- wool brings 55–62% of coin before 1348.
+
+Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The implementer's home-sale fix (a place with no large market in reach sells at home) is accepted.
+- **Plague years.** A secondary source citing Hatcher confirms 1348–49, 1361, 1369, 1375 and 1390–93 ([Iowa State thesis](https://dr.lib.iastate.edu/handle/20.500.12876/70795)). The later years (1400–1479) are unverified and stay recorded as approximate. Hatcher's own summary is that population may have fallen by between a half and two-thirds in the century after 1348 ([publisher's description](https://businesshistoryexplorer.businessarchivescouncil.org.uk/publications/55967)). The model regains its plague loss in about 80 years, so its later fifteenth century is too full. That is noted for after L1, as a check on population in 1450 against 1340.
+- **Outside trade: (a) first.** Apply Clark's sourced fall in wool against wheat after 1350, about −25%, as a straight-line fall in the ports' wool price from 1350 to 1400. It is historical data and belongs in the model whatever the band says. Then report outside trade.
+  - If it is still above 20%, the band is revised, and the reason has to stand on its own. The band was set in v5 for grain and imports only. With wool as the main export, England's overseas trade was a larger share of its marketed output. I will decide the new band on the numbers.
+- **W with wool is about 0:** wool's coin goes to villages and the port-side carriers. Wool does not grow W, and nothing changes.
+- **Market stores are still idle:** this is scheduled next after L1.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
