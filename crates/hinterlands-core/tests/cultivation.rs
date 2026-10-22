@@ -9,6 +9,8 @@ fn food_only() -> Params {
         founding_enabled: false,
         failure_enabled: false,
         roads_enabled: false,
+        // Constant yields: the steady state is the point (W2 weather off).
+        local_harvests: false,
         ..Params::default()
     }
 }
