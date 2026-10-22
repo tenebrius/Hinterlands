@@ -1127,6 +1127,59 @@ Decided by the designer on 22 October 2026, on the owner's proposal `docs/propos
 - At D1, S1's iron calibration (D71) is redone, since iron demand will follow arable land.
 - D2's gate includes cloth towns on mill streams, the share of wool going to cloth rising after 1400, and every v7 check, the hierarchy included.
 
+## Development resumes (owner, 22 October 2026; D119)
+
+Divish has lifted the stop (D117). The rules, the channel and the gate are unchanged, and performance is still reported only (D91). There is no stop rule: each stage is reported, and the designer decides the next step.
+
+**Order of work:**
+1. **R: the robustness re-tune (D116.2).**
+2. **The demand work, D0 to D3 (D118).** Each stage is reported before the next.
+3. **Noted, not scheduled:** growth after 1480 at Tudor rates.
+
+### R: the robustness re-tune (pre-registered)
+
+**Why.** Every gated check passes at 75% per map, but only 8 / 13 / 8 runs pass every check at once. A model that passes its checks only one at a time is fragile, and the demand stages will be judged against it.
+
+**Levers.** Only the existing tunables: `shadow_drain` 0.045, `k_maint` 1.3, `market_share` 0.35, `toll` 0.10, `market_min` 100 and `road_keep_load` 600. No new mechanism or parameter, and nothing in the calendar or the checks changes.
+
+**Objective.** Raise the smallest of the three maps' counts of runs passing every check (maximin), with every gated check at 15/20 or better on every map. Ties go to the higher total across maps, then to the setting nearest the current one.
+
+**Search, on Historical, 3 maps × seeds 1–20:**
+1. **Diagnosis first.** At the current setting, list for each map the checks that failed in the runs that did not pass everything, and how often each one failed. That shows which checks are binding.
+2. **Screen, one lever at a time:**
+
+   | Lever | Values |
+   | --- | --- |
+   | `shadow_drain` | 0.035, 0.04, 0.05, 0.055 |
+   | `k_maint` | 1.2, 1.25, 1.35, 1.4 |
+   | `market_share` | 0.30, 0.325, 0.375, 0.40 |
+   | `toll` | 0.05, 0.075, 0.125, 0.15 |
+   | `market_min` | 60, 80, 120, 150 |
+   | `road_keep_load` | 450, 525, 700, 800 |
+
+3. **Joint grid.** Take the two or three levers that raised the minimum most, and run them on a joint grid around their best values. The implementer chooses the grid's size. The implementer may extend a lever's range if its best value sits at the edge of the screen.
+4. **Confirmation on fresh seeds.** Run the chosen setting and the current one on seeds 21–40 on every map. A setting picked out of many on seeds 1–20 will look better on those seeds than it is. Adopt it only if it also beats the current setting on the fresh seeds by the same objective. Otherwise keep the current setting and record the result.
+
+   If `validate` cannot take a first seed, add one to the CLI (a CLI change only).
+
+**Pre-registered:** at least 12 runs passing every check on every map on seeds 1–20, and fewer on seeds 21–40.
+
+**Report:**
+- the diagnosis;
+- the screen and the grid, as one table with each map's count and the most-failed check;
+- the confirmation;
+- at the adopted setting, reported and not gated: the famine dip, store carry-over, the Clark figures, Hatcher's 1450 ratio, and Kent (`just real`) against the v7 close;
+- the new golden.
+
+### Then D0 to D3 (D118)
+
+- **D0, the diagnostic, comes first, with no feedback into the model.** It also brings the sources for every value that D1 and D2 will set (D105). Values with no source are named as calibrations.
+- **Pre-registered for D0, reported only:**
+  - iron demand from stocks falls after 1348, with the arable land;
+  - stone demand is concentrated in the towns that are growing.
+- **Before the D2 code, a short cloth note comes to the designer.** It covers wool per cloth, a cloth town's capacity, the ports' cloth price and its source, and how cloth enters the purses.
+- **Each stage has its `enabled` flag, as the hard rules require.** It stays off, with the golden unchanged, until its gate passes. Once the gate passes, the stage becomes the default in the core and the golden moves, as the marketplaces did (D91).
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
