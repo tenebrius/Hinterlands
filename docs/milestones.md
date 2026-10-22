@@ -557,3 +557,10 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - Carry-over after cheap years 0.10–0.15 (max 0.35).
 - **Golden `7d534fccaae58528`.** Release wasm gives the same hash at 50.4 ms/year.
 - **Details:** `docs/wool/l2-l4.md`.
+
+## D114 — The endemic era and the murrain after Slavin
+- **The model:** `endemic_mortality` 0.015 a year in 1349–1480 (Historical). Murrain wool ×0.85 in 1315–22 and ×0.9 in 1323–32.
+- **Pre-registered:** 1450 at 0.40–0.65 of 1340: 60/60 runs (medians 0.54–0.56). Recovery by 500 passes (1.43–1.46).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Runs passing every check: 8 / 13 / 8.
+- **Golden `b4f78a0e4adf502b`;** wasm gives the same hash at 45.4 ms/year.
+- **Details:** `docs/wool/hatcher.md`.
