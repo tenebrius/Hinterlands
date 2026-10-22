@@ -831,6 +831,19 @@ Then stop for review.
   - the store map and chronicle lines.
 - **Gate:** every check that M2 passes, with Clark per seed. Iterate as D91 says.
 
+**M3 findings so far (f8e1c29, `docs/market/m3.md`) and the designer's decision (D95).** Stores as briefed barely act: the rising price trend makes the 10-year average lag, and stores sell out before 1315. The implementer's `store_spike` rule (sell only into a price spike) holds them through the trend, and it is accepted as the store rule. It is competitive storage's "sell when today is dear against what is expected" in a trending world. But the famine dip is still 0.17–0.20, and famine deficit met is 0–3%, because a hungry village has no money to buy stored grain.
+
+**Decided: option A, village purses.** This is the model's first stock of value. It is not floating money: it is savings counted in grain-value units at the reference price.
+- **Who holds them.** Each settlement's farmers hold a purse `M_i`, in value units.
+- **What goes in.** Their sales revenue, `p (1 − toll)` × surplus sold. Specialist works' goods sales, as now.
+- **What it pays for.** Goods and imports, as now. Grain bought in a dearth, at the market price, from any seller, market stores included.
+- **Each year:** the purse loses `purse_loss` (0.10), for spending the model does not trace (cloth, dues, the church). It is capped at `purse_cap` (1.0) × a year's need at the reference price.
+- **Footing.** English peasants held and used coin from the thirteenth century (Britnell 1993; Dyer 1989, *Standards of Living*). In a dearth they spent savings and sold livestock before they starved.
+- **Not chosen.** Credit (B) is better attested still (Briggs 2009) but adds debt and default; it is kept as a later option. Charity (C) is kept as it is: relief stays.
+- **Pre-registered, unchanged:** famine dip ≤ 0.16, and price autocorrelation ≥ 0.3. **Added:** famine deficit met at least 30% in 1315–17.
+- **Reported:** purse levels by place type over time, and what purses buy.
+- **Iterate** as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
