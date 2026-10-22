@@ -736,6 +736,29 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **M2, the build,** behind `marketplaces`. Gate: every v6 check; Clark's `b_P`, `b_Y` and R² gated per seed; under 50 ms a year in wasm. One tuning round. If it fails, stop and report; the designer then decides.
 - **M3, stores in the market:** granaries buy low and sell high, which may fix the refill miss of D86.
 
+**M0 result (8c6aa27, `docs/market/m0.md`) and the M1 brief (D87).** Both pre-registered expectations are met:
+- turnover under seller routing ranks like `market_in` (Spearman 0.955–0.982; the rank-size slope agrees within 0.03; the top ten are the same in 15 of 18 run-years);
+- 91–93% of towns over 2,000 break even at a toll of 10% or less, and most need none.
+
+**The main finding is that rents carry the towns.** In towns over 2,000 the means are turnover 4,414, rents 4,058, fees 356, goods 51 and a food bill of 3,712. This is the medieval consumer city of Sombart and Weber: towns lived largely on the rents of the landlords and churchmen who lived in them (Britnell 1993, Dyer). Tolls are a small top-up. Fees matter at ports and transshipment towns.
+
+**M1, the design note (approved),** `docs/market/m1-design.md`, at most two pages. It should propose a two-level market, which follows from M0 and is cheaper than S2:
+1. **Village to market.** Each place takes its grain for sale, rent plus surplus, to the markets it chooses by `W^α exp(−β c)` as now. That fixes each market's turnover. A place in deficit buys at the market it would choose the same way.
+2. **Market to market.** Prices clear between markets only, by the entropy equilibrium (the S0, S1 and S2 solver) over market pairs within `C_max`. Grain moves between markets where the price gap pays for it. Only markets above a size threshold take part, which should cut the arcs well below S2's.
+3. **Who buys at a market:**
+   - its market people's food, from their income (rents received, tolls, fees, goods sales), within their budget;
+   - deficit villages;
+   - the ports.
+
+   No establishment purchase, because that is what collapsed S2 (D79). Rent income above the food bill buys goods and imports as now.
+4. **Growth.** W follows `ε(T_j − K W_j)`, with `T_j` the turnover in grain units. M0 shows `T_j` tracks `market_in`, so K should carry over. Market people who cannot pay for their food are shed.
+5. **Grain unsold at the floor:** where it goes before M3. It must not count toward W.
+6. **The toll rate:** a starting value, with M0's distribution as the guide.
+7. **A cost estimate** against 50 ms in wasm.
+8. **The Clark checks** as the M2 gate.
+
+Then stop for review.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
