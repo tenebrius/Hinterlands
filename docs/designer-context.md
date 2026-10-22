@@ -126,6 +126,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Fix: mill capacity binds and grows with W. Calibrate the 1350s start (≤0.10) only; the path is the test (±0.15 of the record at 1400, 1450 and 1500).
   - Outside trade not revised (its denominator lacks the internal economy; decide later between share and exports per head if it binds again).
   - Map 3 diagnosis requested: population, pasture, the top 15, spacing side, stability.
+- **Capacity-bound D2 (d786d8b) failed, D132:**
+  - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
+  - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
+  - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
 - **v7 RELEASED (1a94a88):** README rewritten for the trade economy; parameters regenerated; watching panel with seven phases; prices, purses and stores in the inspector, plus a grain-price layer (red in 1316); screenshots in `docs/screenshots/v7/`; golden `65aee272c30de1f9`, 45.9 ms/year wasm. Kent: largest near Gravesend 14/20, inland spacing 13.2 km (real 10.6). Kent geology next.
@@ -160,6 +164,8 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 12. **I predicted from the textbook mechanism without asking which prices the model leaves free.** D121 expected Hume's falling price level. But the region takes its prices from outside (wool, grain at port parity, iron and salt at the port), so it adjusts through coin and quantities: the monetary approach (McCloskey & Zecher 1976). The same slip, a cap on price read as a cap on size, may explain the map 1 specialists. Rule: when pre-registering, say which quantity the mechanism fixes and which it leaves free.
 
 13. **I let a chain into the home.** D123 accepted home cloth made at mill towns and bought by everyone, against the owner's own rule (D118.2: a chain only where a separate trade in another place sits between). Everyday cloth was spun and woven at home and in the village, so the build moved a quarter of everyone's food value to a hundred small places on streams, and spacing, rank-size and recovery broke. This is rule 7 again: for each flow, ask who actually traded with whom, and check each new flow against the rules already decided.
+
+14. **I taxed a price that had already been taxed.** D123 applied the wool subsidy and custom to the port's wool price, but that price is Lloyd's and Clark's English price, paid to growers after the duties. Wool's value was halved, the clip was pushed onto households, coin drained, and map 3 lost a third of its people. I also read the gap it made against Munro as a missing mechanism. Rule: before applying a levy, cost or margin to a price series, ask on which side of it the series was observed.
 
 Judgement rules that now stand:
 
@@ -202,4 +208,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — corrected D2 failed narrowly; capacity-bound cloth industry and map 3 diagnosis sent (D130).
+Last updated: 2026-10-22 — capacity-bound D2 failed; spec error 14 (duties double-counted); D132 sent: no duties, Munro making cost 2.7 d, home elasticity 0.3.

@@ -1472,6 +1472,47 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 - **Raw wool is still exported in every decade.**
 - **Places over 2,000 that make cloth** rise after 1400.
 
+### Capacity-bound D2 result (d786d8b): a second specification error of mine, the duties counted twice (D132)
+
+**What the report found.** The cloth share now follows the customs record's shape: 0.48–0.51 around 1400, 0.51–0.54 around 1450 and 0.58–0.60 around 1500. The implementer rightly refuses to read that as met, because it rests on almost no wool.
+- After 1342 the ports pay only 0.53 of the wool price. The mills are capped, so households at unit elasticity take 3–4 times their need.
+- Wool leaving the region falls from about 90k lb to about 2k lb a year. The coin stock falls from 44k to 16–20k, and the price level to about 0.5.
+- **Map 3's diagnosis:**
+  - D1b's loss of towns over 2,000 is a matter of spread: the same people, but the artefact iron towns are gone.
+  - The further loss in this build is fewer people: 61k in 1600 against 87–90k, through the coin drain. Ranks 5–15 are 35–45% smaller, and the top four hold.
+
+**The cause is mine: the export duties are counted twice.**
+- The model's wool price at the port is Lloyd's English price (£5.02 a sack in 1294) with Clark's fall after 1350 (L0, D110). Those are prices paid in England, to growers, observed after the duties.
+- From 1342 the subsidy is already inside them. Its burden fell largely on the growers, which is part of why Clark's wool price falls.
+- D123 then took the subsidy and custom off that price again, and sent them out of the region as coin. That halved wool's value, and the coin drain followed.
+- Munro's cloth values are English customs valuations, so they too are observed on the English side.
+
+**Corrected:**
+1. **No duties are applied in the model.**
+   - Wool sells at the port at the observed English price, cloth at Munro's valuation, and `duties_out` is removed.
+   - The wedge the duties made is in the data: the wool price falls against cloth's from 1350 (Clark).
+2. **The making cost comes from Munro, no longer from the bracket: 2.7 d a pound of wool content.** This is Ypres in 1500, a broadcloth of Cotswold wool, with wool at 52% of total cost. Leuven's 62.5% would give 2.1 d, and the range is recorded.
+   - With domestic prices, cloth loses to raw wool while wool is at 3.3 d (5.7 − c < 3.3 needs c > 2.4). It wins once Clark's fall takes wool to about 2.5 d (c < 3.2).
+   - Munro's 2.7 d lies inside. **On the corrected prices, the record, Munro's costs and the timing of the shift agree.** So the cloth share is a real test again: nothing in it is fitted.
+   - D126's reading that "something the model lacks held cloth back before 1340" came from the double count, and is withdrawn.
+3. **Home wool's elasticity is 0.3, a calibration.** Its reason stands alone: clothing is a necessity that saturates. No household takes three or four times its need because wool is cheap. Consumption rising with income is D3's job, not price's. D126's unit elasticity was chosen when home cloth was a traded good from the mills, and that is gone.
+4. **Mill capacity:** from a labour source if one is found. Otherwise it takes the largest value of `cloth_lb_per_w` for which cloth is at most 0.10 of the wool leaving in 1350–59. If prices alone hold the start under 0.10 at every value tried, report it, and use the largest value tried.
+5. **Kept:** port reach, the fallow flock, the entropy split, the capacity rule, and the switches.
+
+**The over-2,000 band** is not decided yet. If, after this build, map 3's population is back near D1b's and over 2,000 still fails, then the failure is D1b's spread effect, and I will decide the band on sources. For that, report:
+- each map's share of people in places over 2,000, in 1340 and 1600;
+- the population of each map in 1600, against D1 and D1b.
+
+**Gate:** D1b with the corrected D2, 40 seeds, every check. If it fails, stop and report each failing check beside its D1b-alone value.
+
+**Pre-registered, reported only.** Each names its mechanism (rule 5). The implementer confirms that no duty remains in the code.
+- **Wool leaving the region** (raw and in cloth) in 1400–1500 is at least half its 1300 level, because the port price is the observed price.
+- **The coin stock after 1400** is within 25% of D1b's, through the same channel.
+- **Map 3's population in 1600** is within 10% of D1b's, because the coin is restored.
+- **Home wool use** is at most 1.5 times need in every decade, because of the elasticity of 0.3.
+- **The cloth share of wool leaving** is 0.2–0.5 in 1390–1410, 0.35–0.65 in 1440–60 and 0.55–0.85 in 1490–1510. This rests on sourced prices and making cost, with only capacity calibrated, at the start.
+- **Raw wool** is still exported in every decade, at least a quarter of its 1300 volume through 1450.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
