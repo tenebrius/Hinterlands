@@ -221,6 +221,33 @@ These were measured, or looked up, during the planning:
   - chronicle markers on the map (grass, murrain);
   - a smooth price surface, as an option to the price discs.
 
+### Natural, not repetitive
+Repetition shows when the eye finds the same pattern twice at the same scale. The rules:
+
+1. **Vary detail by cause, not just by noise.** The snapshot already carries the causes:
+   - **Woods:** the tree mix follows the ground: alder and willow by wet streams (flux), beech on dry upland, oak on heavier land. Crowns are larger in old wood and smaller in coppice.
+   - **Fields:** strips run with the slope where the land needs draining, and their direction changes from one block of strips (furlong) to the next. Ridges are higher on heavy land.
+   - **Fields by age, from `farm_first`:** land farmed early is open-field strips; land cleared late from woodland (assarts) is small irregular hedged closes.
+   - **Hedges:** older hedges are thicker with more trees (Hooper's rule: about one shrub species per century).
+   - **Villages:** the layout follows the site: a street village along a road, a green village at a crossroads, a scattered cluster on poor upland.
+2. **Build things the way they grew, rather than stamping patterns.**
+   - **Towns:** narrow plots run back from the street, laid out from the market place outward; they fill in more tightly near the centre, and houses face the street. Each town differs because its roads do.
+   - **Roads:** they follow the terrain and widen where carts spread around mud.
+3. **Vary at three scales at once:** each feature on its own (each tree's size, shade and shape); its group (a stand of trees, a furlong sown with one crop); and its district (soil colour, wetness, height).
+4. **No grids and no straight lines.**
+   - Points are scattered evenly but irregularly (blue noise or Poisson-disc), never on a hidden lattice.
+   - Each furlong gets its own angle.
+   - Hedges and plot edges get a slight wobble at low frequency; strips keep the reversed S.
+   - The hash is an integer hash, so no regular pattern bleeds through from it.
+5. **Small imperfections, kept stable over time.**
+   - Each strip has its own tone; some are harvested while others still stand; grass is worn near gates and paths; roofs shade unevenly.
+   - All of it is seeded from things that persist (cell, owner, `farm_first`), so a wood keeps its trees from year to year and detail changes only when the model says something changed.
+6. **Check against the real thing.**
+   - Side by side with real references at every zoom: early Ordnance Survey and enclosure maps, aerial photos of surviving ridge and furrow, Laxton's open fields.
+   - An automated check: measure how strongly a screenshot repeats itself at regular intervals (the peaks of its spectrum, or its autocorrelation), and fail a stage that brings in a visible rhythm.
+
+These rules add roughly 10–15% to the overhaul, and they apply in every stage.
+
 ### Stages
 1. **Scale framework, plus roads and rivers at true width.** Judged on one village and its surroundings at full zoom.
 2. **Fields and woods at real scale,** with the pasture texture.
