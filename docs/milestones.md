@@ -454,3 +454,8 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - golden `1faa5c46e3908124`;
   - the release wasm build gives the same hash (`?selftest=500`, 30.5 ms/year);
   - `data/real/experiments/v6.json` gives v6's `0e65d09ec147b5c7`, and every earlier version file reproduces its golden.
+
+## v6 frozen at commit `4052d01` (D91)
+- **v6 is the model of commit `4052d01`**, golden `1faa5c46e3908124`: S1 goods by price, S2′ relief, S3 stores, and W2 (local harvests with the smoothed pull).
+- **Reproducing an earlier version from now on:** check out `4052d01` and use its version files. From v7 the marketplace replaces the gravity grain push in the core, and the old version files no longer reproduce.
+- **The git tag `v6`** was made locally, but this environment's git proxy refuses tag pushes (HTTP 403). The tag can be pushed from a normal clone with `git tag -a v6 4052d01 && git push origin v6`.
