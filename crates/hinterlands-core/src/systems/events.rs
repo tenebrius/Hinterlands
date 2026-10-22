@@ -23,6 +23,13 @@ pub const LATER_PLAGUES: [u32; 10] = [1375, 1390, 1400, 1407, 1413, 1434, 1439, 
 
 pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     let y = state.year;
+    // The endemic era (D114; Hatcher 1977): between the national outbreaks,
+    // plague and other disease took a steady toll, 1349-1480.
+    if p.events_mode == 1 && p.endemic_mortality > 0.0 && (p.endemic_from..=p.endemic_to).contains(&y) {
+        for s in state.settlements.iter_mut() {
+            s.pop *= 1.0 - p.endemic_mortality;
+        }
+    }
     let (famine, plague) = match p.events_mode {
         1 => {
             let plague = if y == p.plague_year {

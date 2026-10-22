@@ -234,10 +234,10 @@ define_params! {
         wool_fall_to: u32 = 300, [0, 2000], "Year it reaches its lower level (1400; D109)";
         murrain: bool = true, [0, 1], "The sheep murrain of 1315-22 in the Historical calendar (L2, D112)";
         murrain_year: u32 = 215, [0, 2000], "First murrain year (1315)";
-        murrain_loss: f32 = 0.3, [0, 1], "Share of wool lost in the murrain's first years (1315-17; approximate, after Campbell 2000 and Slavin)";
-        murrain_years: u32 = 3, [0, 20], "Years at the first loss";
-        murrain_late_loss: f32 = 0.15, [0, 1], "Share of wool lost in the years after (1318-22; approximate)";
-        murrain_late_years: u32 = 5, [0, 20], "Years at the later loss";
+        murrain_loss: f32 = 0.15, [0, 1], "Share of wool lost in the murrain years (1315-22; approximate, after Slavin 2020; D114)";
+        murrain_years: u32 = 8, [0, 20], "Years at the first loss";
+        murrain_late_loss: f32 = 0.1, [0, 1], "Share of wool lost to scab in the years after (1323-32; approximate, after Slavin 2020; D114)";
+        murrain_late_years: u32 = 10, [0, 20], "Years at the later loss";
         grass_log_cells: u32 = 3, [1, 100], "Old fields a place must put to grass in a year to make the chronicle (L4)";
         grass_log_gap: u32 = 50, [1, 500], "Least years between a place's grass lines in the chronicle (L4)";
         grass_log_forest: f32 = 0.1, [0, 1], "Forest cover below which a cell counts as an old field (L4)";
@@ -316,6 +316,9 @@ define_params! {
         plague_later: bool = true, [0, 1], "Hatcher's later national outbreaks, 1375-1479, in the Historical calendar (D108)";
         plague_later_first: f32 = 0.10, [0, 0.5], "Mortality of the first later outbreak (1375; D108)";
         plague_later_last: f32 = 0.06, [0, 0.5], "Mortality of the last later outbreak (1479; D108)";
+        endemic_mortality: f32 = 0.015, [0, 0.2], "Yearly share of each place's people lost to endemic disease between outbreaks (Hatcher 1977; D114)";
+        endemic_from: u32 = 249, [0, 2000], "First year of the endemic era (1349)";
+        endemic_to: u32 = 380, [0, 2000], "Last year of the endemic era (1480)";
         plague_recur_share: f32 = 0.3333333, [0, 1], "Mortality of a recurrence as a share of the first";
         plague_mortality: f32 = 0.4, [0, 0.95], "Mean share of each settlement's people a plague kills";
         plague_spread: f32 = 0.1, [0, 0.5], "Half-width of the uniform spread of plague mortality between settlements";
