@@ -906,6 +906,22 @@ Answers:
 4. **Gate:** every check passes as at M3.
 5. **Tuning.** `hunger_tolerance` within 0.8–0.9 is the implementer's. Iterate as D91 says.
 
+**M4 first build (47c7f41, `docs/market/m4.md`) and the designer's decision (D102).**
+- **At tolerance 0.80,** the famine dip is 0.16–0.17 and the weather cost 0.84–0.87, both at the edge of their pre-registered targets.
+- **The gate fails on two checks:** map 1 spacing at 14/20, and map 3 roads at 13/20.
+- **The implementer's findings are right:**
+  - the dip is all shedding;
+  - the weather cost is lost growth (bad years stop growth, good years are capped), not deaths;
+  - tolerance keeps marginal places alive through bad years, so they crowd together.
+
+**Decided: separate a temporary shortfall from a chronic one.** People endured bad years, but chronic hunger drove them away. Demographic response worked over several years: marriage and births followed conditions with a lag (Wrigley & Schofield 1981, *The Population History of England*).
+1. **Growth and chronic shedding follow the 5-year average food ratio.** Natural increase uses the 5-year average. A place whose 5-year average is below 1 sheds a third of `(1 − average)` a year, as D34 did. So chronically short, marginal places still decline, and spacing should return.
+2. **Acute shedding uses the current year, below the tolerance only:** a third of `(tolerance − ratio)`. A famine kills only where it bites deep.
+3. Each year **the larger of the two** applies.
+4. **`hunger_tolerance` stays within 0.8–0.9.** Going lower would chase the target.
+5. **The pre-registered targets stand:** dip 0.10–0.16, and weather cost at least 0.85.
+6. **Re-run the full gate.** Spacing and roads must pass. Iterate as D91 says. The weather target is not revisited: the averaged growth response is the principled answer to finding 2, and if it still falls short, the miss is recorded.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
