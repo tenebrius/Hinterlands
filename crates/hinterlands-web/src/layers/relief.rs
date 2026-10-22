@@ -83,10 +83,9 @@ const SHAPES: usize = 8;
 const SHAPE_CELL: usize = 9;
 const SHAPE_SQ: usize = 10;
 const SHAPE_IDX: usize = 11;
-const PLACES: usize = 12;
-const SAMPLERS: [&str; 13] = [
+const SAMPLERS: [&str; 12] = [
     "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx", "u_ground", "u_shapes",
-    "u_scell", "u_ssq", "u_sidx", "u_places",
+    "u_scell", "u_ssq", "u_sidx",
 ];
 /// Shapes the shader reads per index square (as `SHAPE_MAX` in the shader).
 const MAX_SHAPES: usize = 160;
@@ -494,7 +493,6 @@ impl Layer for ReliefLayer {
                 gpu.queue(SHAPE_CELL, size, shapes.cell);
                 gpu.queue(SHAPE_SQ, shapes.sq_size, shapes.sq);
                 gpu.queue(SHAPE_IDX, shapes.idx_size, shapes.idx);
-                gpu.queue(PLACES, shapes.places_size, shapes.places);
                 self.shape_sub = shapes.sub;
                 self.ways_year = Some((v.terrain_version, v.snapshot.year));
             }

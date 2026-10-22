@@ -245,10 +245,10 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         vec3 avg = (FIELDS[base] + FIELDS[base + 1] + FIELDS[base + 2]) / 3.0;
         c = mix(c, avg, field * 0.75 * (1.0 - mosaic));
     }
-    // Within a place's boundary (R11) the parcels are its own closes; the
-    // fields begin at its edge.
-    float inside = u_town_show.x > 0.5 && mosaic > 0.0 ? town_inside(pm) : -1e9;
-    if (mosaic > 0.0 && (fm > 0.15 || cv.a > 0.02 || inside > -200.0)) {
+    // Within a place's edge (R11) the land is its own closes; the fields
+    // begin at its edge.
+    float inside = u_town_show.x > 0.5 && mosaic > 0.0 ? town_land(pm) : -1e9;
+    if (mosaic > 0.0 && (fm > 0.15 || cv.a > 0.02 || inside > -40.0)) {
         c = farmland(c, p, pm, mosaic, upland);
     }
 
@@ -265,7 +265,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     // Woods give way to a place's plots and gardens (R11), their edge broken
     // as a wood's edge is.
     if (u_town_show.x > 0.5 && mpx() < 15.0) {
-        float ins = town_inside(pm) + (vnoise(pm / 25.0, 29) - 0.5) * 30.0;
+        float ins = town_land(pm) + (vnoise(pm / 25.0, 29) - 0.5) * 30.0;
         wood *= 1.0 - smoothstep(-5.0, 5.0, ins);
     }
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));

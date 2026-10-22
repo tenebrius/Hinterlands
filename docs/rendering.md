@@ -319,32 +319,46 @@ Each place is laid out the way it grew, from its roads, by a planner on the CPU 
   - **Line:** a city's wall goes round about half its first layout of plots, with room for a lane inside. The plots are then laid again clear of it, so the rest form suburbs along the roads beyond.
   - **Wall:** a crenellated wall walk, round towers about every 50–65 m, and a wet ditch outside.
   - **Openings:** a gatehouse where each road passes, and a postern (a gap without a gatehouse) where a lane does.
-- **The town's boundary, and the fields.**
-  - **Boundary:** each place has one, round its plots, yards, greens and market in 64 directions, with a 12 m margin for its back hedges and lanes.
-  - **Fields** (R10's parcels) stop at the boundary. Inside it, the parcels are the place's own closes, about 45 m across and hedged with younger trimmed hedges: paddocks, orchards in rough rows, and kitchen gardens.
-  - **Woods** stop at the boundary too, with a broken edge.
+- **The town's edge, and the fields** (revised after the owner's review; see below).
+  - **Edge:** each place's edge comes from its own plots. The squares of the 62.5 m town index that hold any of its ground (plots, courts, yards, greens, the market) count as town land. The value falls away to nothing about three squares out. The edge is the 0.5 line of that field, smoothed, which lies some 80 m beyond the last plots and wanders at 140 m and 35 m.
+  - **Fields** (R10's parcels) stop at the edge, decided per pixel, so no field runs under a house. Inside it the land is the place's own closes, about 60 m across: paddocks of grass (most), orchards in rough rows, kitchen gardens, and, only on the fringe away from the houses, closes under crops. About a third of their sides are open, and the rest have younger trimmed hedges.
+  - **Edge hedge:** the edge itself is hedged, with a gate now and then.
+  - **Woods** stop at the edge too, with a broken line.
+  - **Lanes** are cut back to the last point inside each place's radial boundary (64 directions round its plots, kept for this and for the area figures).
   - **The old R5 drawing** (footprint wash, 333 m street blocks, walls on the cell outline) is retired. Built cells count as farmland in the far-out field tint, and their woods drop to a quarter.
 - **Far out,** a place is drawn as the share of the ground its plots cover, in the colour of roofs, fading out as the houses come in (from 15 m per pixel).
 - **Ruins** (deserted places): far out, R5's grey patch; close in, the earthworks of the crofts under grass, with their banks and house platforms.
 - **Quays** on the sea follow the new plots. Riverbanks are stone quays in towns, as in R9. In a town the river is embanked and does not meander.
 - **Symbols.** The settlement marker, the church, square and warehouse glyphs and the price discs fade with the other map symbols past 64 points per cell. The mill stays until stage 4.
+- **Revision after the owner's review (22 October).** The owner's points:
+  - fields showed under the buildings, through gaps in the old radial boundary;
+  - Dewermouth looked like a wheel with long spokes;
+  - large cities could be denser, with other kinds of housing.
+
+  The changes:
+  - **The edge** is now the town-land field described above, replacing the radial boundary, and the green wash over the fields is gone.
+  - **Tenements and courts.** In the core of cities over about 4,000 people (full at 15,000), a plot holds up to four households. The front house is a storey taller and deeper, let as tenements. From three households the yard becomes a court: trodden ground, a row of small cottages down one side, an alley beside them. This is how large medieval towns grew denser, by building over their plots rather than spreading.
+  - **Compact cities.** Cities of 5,000 or more grow four generations of lanes, about 70 m apart. The room the tenements save is subtracted from the plots the planner looks for.
+  - **Dewermouth** now reaches about 1.3 km from its centre, against 2.0 km before. It still houses only about two-thirds of its households, and keeps two longer arms along its north and north-east roads.
 - **Sizes against the curve.** Settled area inside each boundary against Cesaretti et al.'s curve (plus crofts for villages), map 1 seed 1, places over 1,000 people:
 
   | Year | Place | People | Houses / households | Area | Expected |
   |---|---|---|---|---|---|
-  | 200 | Asherfield (walled) | 4,507 | 1,002 / 1,002 | 53 ha | 56 ha |
+  | 200 | Asherfield (walled) | 4,507 | 1,002 / 1,002 | 56 ha | 56 ha |
   | 200 | (id 24, walled) | 2,271 | 505 / 505 | 34 ha | 34 ha |
   | 200 | (id 30) | 1,732 | 385 / 385 | 27 ha | 28 ha |
-  | 450 | Liningbourne (walled) | 5,885 | 1,308 / 1,308 | 65 ha | 68 ha |
+  | 450 | Liningbourne (walled) | 5,885 | 1,308 / 1,308 | 66 ha | 68 ha |
   | 450 | Verefield (walled) | 2,479 | 551 / 551 | 41 ha | 36 ha |
   | 450 | Ordcote | 1,884 | 419 / 419 | 25 ha | 30 ha |
-  | 450 | Dewermouth (walled port) | 15,041 | 2,825 / 3,342 | 171 ha | 134 ha |
+  | 450 | Dewermouth (walled port) | 15,041 | 2,243 / 3,342 | 92 ha | 134 ha |
   | 450 | Aldford (port) | 1,293 | 201 / 287 | 20 ha | 29 ha |
   | 450 | Mereelwick (river, no road) | 1,035 | 132 / 230 | 14 ha | 42 ha |
 
   Most places house every household, within about a sixth of the expected area.
 
-  **Known shortfall.** Places cramped between river, sea and their few streets fall short of houses. Dewermouth houses 85%, Aldford 70%, Mereelwick 57%. The planner's summary is logged at info level for checking.
+  (Houses: households housed since the revision, so tenements count each household.)
+
+  **Known shortfall.** Places cramped between river, sea and their few streets fall short of houses. Dewermouth houses 67%, Aldford 70%, Mereelwick 58%. The planner's summary is logged at info level for checking.
 - **Repetition check** (`tools/rhythm.py`, R10 against R11, same views):
 
   | View | R10 | R11 |
@@ -518,6 +532,24 @@ These rules add roughly 10–15% to the overhaul, and they apply in every stage.
 **Risks:**
 - per-pixel cost at full zoom on weak hardware, met by levels of detail and the cache;
 - invented detail looking repetitive.
+
+### Queued after stage 4: towns that are not repetitive within themselves
+Asked for by the owner on 22 October, to follow once stage 4 is done.
+- **Kinds of building.** Vary the shapes and sizes of buildings within a town, not just their roofs and tones:
+  - L-shaped and courtyard houses, and hall houses set back behind a yard;
+  - long ranges, inns with yards, merchants' houses with warehouses behind;
+  - cottages and rows;
+  - wider frontages where plots have been thrown together.
+- **Districts.** Let a town have quarters of different character:
+  - the market and its streets: tall, narrow and fully built frontages;
+  - the waterfront: quays, warehouses and cranes;
+  - craft streets: workshops, yards, tanneries by the water downstream;
+  - the precincts of churches and friaries;
+  - poorer edges: cottages and gardens;
+  - suburbs along the roads beyond the gates.
+
+  Which district is where follows the town's roads, water and centre, so each town differs because its site does.
+- **Dewermouth's remaining arms and shortfall** are the first test of it.
 
 ### Earlier ideas, not scheduled
 1. Style presets (`?style=atlas`, `?style=topo`).

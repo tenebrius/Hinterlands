@@ -9,16 +9,20 @@
 // farmed in this session / 100 (-1 if never), b the original forest cover.
 uniform sampler2D u_ground;
 
+// Value noise on two turned grids, so the lattice of either does not show as
+// blocks aligned with the map.
+float mottle(vec2 p, int k) {
+    vec2 a = mat2(0.8253, 0.5646, -0.5646, 0.8253) * p;
+    vec2 b = mat2(-0.3233, 0.9463, -0.9463, -0.3233) * p * 1.618;
+    return 0.6 * vnoise(a, k) + 0.4 * vnoise(b + 17.3, k + 1);
+}
+
 // Towns (R11): per map cell, where its block of index squares starts in
-// u_ssq, or -1; per square, its first entry in u_sidx, how many, and the share
-// of it built over; squares per cell along a side.
+// u_ssq, or -1; per square, its first entry in u_sidx, how many, the share of
+// it built over, and 1 if it is town land; squares per cell along a side.
 uniform sampler2D u_scell;
 uniform sampler2D u_ssq;
 uniform float u_ssub;
-// Places: per place, a texel (centre x, y in metres), then 16 texels holding
-// its boundary's radius in 64 directions. The cell texture's second and
-// third values name up to two places whose boundary may reach the cell.
-uniform sampler2D u_places;
 
 // Texel k of a data texture laid out in rows of 2048.
 vec4 row_texel(sampler2D s, int k) {
@@ -40,36 +44,9 @@ int shape_square(ivec2 sq, out int start) {
     return int(first) + loc.y * sub + loc.x;
 }
 
-// How far inside a place's boundary pm lies, metres (negative outside; -1e9
-// far from any place). Fields stop at the boundary; inside it the land is the
-// place's own closes, gardens and orchards.
-float town_inside(vec2 pm) {
-    ivec2 cell = clamp(ivec2(floor(pm / u_cell_m)), ivec2(0), ivec2(u_grid) - 1);
-    vec4 cv = texelFetch(u_scell, cell, 0);
-    float best = -1e9;
-    for (int k = 0; k < 2; k++) {
-        float pi = k == 0 ? cv.g : cv.b;
-        if (pi < 0.0) {
-            continue;
-        }
-        int base = int(pi + 0.5) * 17;
-        vec2 c = row_texel(u_places, base).xy;
-        vec2 d = pm - c;
-        float a = atan(d.y, d.x) / 6.2831853;
-        float f = fract(a + 1.0) * 64.0;
-        int i0 = int(floor(f)) % 64;
-        int i1 = (i0 + 1) % 64;
-        float t = fract(f);
-        float r0 = row_texel(u_places, base + 1 + i0 / 4)[i0 % 4];
-        float r1 = row_texel(u_places, base + 1 + i1 / 4)[i1 % 4];
-        float r = mix(r0, r1, smoothstep(0.0, 1.0, t));
-        best = max(best, r - length(d));
-    }
-    return best;
-}
-
-// The share of the ground built over near pm, from the squares, smoothly.
-float built_share(vec2 pm) {
+// A square's value near pm, smoothly between squares: channel 2 the share
+// built over, channel 3 town land.
+float square_smooth(vec2 pm, int ch) {
     vec2 q = pm / u_cell_m * u_ssub - 0.5;
     ivec2 b = ivec2(floor(q));
     vec2 f = smoothstep(0.0, 1.0, q - vec2(b));
@@ -77,9 +54,23 @@ float built_share(vec2 pm) {
     for (int k = 0; k < 4; k++) {
         int s;
         int e = shape_square(b + ivec2(k & 1, k >> 1), s);
-        v[k] = e < 0 ? 0.0 : row_texel(u_ssq, e).b;
+        v[k] = e < 0 ? 0.0 : row_texel(u_ssq, e)[ch];
     }
     return mix(mix(v[0], v[1], f.x), mix(v[2], v[3], f.x), f.y);
+}
+
+// The share of the ground built over near pm.
+float built_share(vec2 pm) {
+    return square_smooth(pm, 2);
+}
+
+// Town land near pm: above 0 inside a place's edge, below outside, roughly in
+// metres (the field falls by 1 over 2.6 squares). The edge lies some 80 m out
+// from the last plots, wandering at two scales.
+float town_land(vec2 pm) {
+    float v = square_smooth(pm, 3) - 0.5
+        + (mottle(pm / 140.0, 741) - 0.5) * 0.3 + (mottle(pm / 35.0, 742) - 0.5) * 0.12;
+    return v * 162.0;
 }
 
 // Towards the light (north-west, 45 degrees up), in map space with y down.
@@ -295,10 +286,7 @@ Plot plot_of(ivec2 id, vec2 sm) {
     P.heavy = smoothstep(0.3, 0.8, ld.b) * (1.0 - smoothstep(0.02, 0.08, steep));
     P.use = OPEN;
     float u = hash(id, 411);
-    if (u_town_show.x > 0.5 && town_inside(sm) > 0.0) {
-        P.use = TOWN_CLOSE;
-        P.hedged = true;
-    } else if (fm > 0.5) {
+    if (fm > 0.5) {
         // Land cleared late from woodland (assarts) lies in small hedged closes;
         // the old land is open field.
         float assart = smoothstep(0.3, 0.55, gr.b) * smoothstep(1.2, 2.5, gr.g);
@@ -349,14 +337,6 @@ vec3 grass_color() {
         g = vec3(0.58, 0.59, 0.47);
     }
     return g;
-}
-
-// Value noise on two turned grids, so the lattice of either does not show as
-// blocks aligned with the map.
-float mottle(vec2 p, int k) {
-    vec2 a = mat2(0.8253, 0.5646, -0.5646, 0.8253) * p;
-    vec2 b = mat2(-0.3233, 0.9463, -0.9463, -0.3233) * p * 1.618;
-    return 0.6 * vnoise(a, k) + 0.4 * vnoise(b + 17.3, k + 1);
 }
 
 // Turf: the grass colour mottled at three scales.
@@ -735,11 +715,18 @@ vec3 hedge(vec3 c, vec2 pm, Parcels Q, float age, float mosaic) {
 vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
     Parcels Q = parcels(pm, PARCEL, 401);
     Plot A = plot_of(Q.a, Q.sa);
+    // Within a place's edge the land is its own closes, whatever parcel the
+    // point falls in; the edge itself is hedged.
+    float tl = u_town_show.x > 0.5 ? town_land(pm) : -1e9;
+    if (tl > 0.0) {
+        A.use = TOWN_CLOSE;
+        A.hedged = true;
+    }
     bool town_close = A.use == TOWN_CLOSE;
     bool inner = A.use == CLOSE_GRASS || A.use == CLOSE_CROP || town_close;
     Parcels S;
     if (inner) {
-        S = parcels(pm, town_close ? 45.0 : 70.0, 451);
+        S = parcels(pm, town_close ? 60.0 : 70.0, 451);
         // Each small close is grass or under the plough, by its own lot; the
         // town's own are paddocks, orchards and gardens.
         if (!town_close) {
@@ -776,9 +763,17 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
         col = turf(grass_color() * vec3(1.05, 1.0, 0.95), pm);
         on = u_show.z;
     } else if (A.use == TOWN_CLOSE) {
+        // A town's closes: paddocks of grass (most), orchards, kitchen gardens,
+        // and on its fringe closes under crops, little fields of its own.
         float k = hash(S.a, 459);
-        col = turf(grass_color() * vec3(0.95, 1.04, 0.93), pm);
-        if (k < 0.3 && fine(2.0) > 0.0) {
+        col = turf(grass_color() * mix(vec3(1.02, 1.02, 0.96), vec3(0.93, 1.03, 0.9), hash(S.a, 465)), pm);
+        // Crops only on the fringe, away from the houses.
+        if (k >= 0.62 && built_share(S.sa) < 0.02) {
+            vec2 dir = vec2(cos(A.angle), sin(A.angle));
+            vec2 nrm = vec2(-dir.y, dir.x);
+            float t = fract(dot(pm - S.sa, nrm) / 9.0);
+            col = crop_color(int(hash(S.a, 467) * 3.0)) * mix(1.0, ridge_light(t, 0.5, nrm), fine(4.5));
+        } else if (k < 0.18 && fine(2.0) > 0.0) {
             // An orchard: fruit trees in rough rows across the close.
             vec2 dir = vec2(cos(A.angle), sin(A.angle));
             vec2 rel = pm - S.sa;
@@ -792,7 +787,7 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
                 vec3 lc = leaf(u_field_season == 3 ? 0 : 1, hash(b, 464)) * (0.8 + 0.3 * clamp(1.0 - d / r, 0.0, 1.0));
                 col = mix(col, lc, band(d, -r, r) * fine(2.0));
             }
-        } else if (k < 0.5) {
+        } else if (k < 0.3) {
             // A kitchen garden in beds.
             vec2 dir = vec2(cos(A.angle), sin(A.angle));
             float t = dot(pm - S.sa, dir);
@@ -827,8 +822,11 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
         Plot B = plot_of(Q.b, Q.sb);
         bool fa = A.use != OPEN;
         bool fb = B.use != OPEN;
+        if (town_land(Q.sb) > 0.0) {
+            B.use = TOWN_CLOSE;
+        }
         bool closes = A.use >= CLOSE_GRASS && A.use <= CLOSE_CROP || B.use >= CLOSE_GRASS && B.use <= CLOSE_CROP
-            || A.use == TOWN_CLOSE || B.use == TOWN_CLOSE;
+            || (A.use == TOWN_CLOSE && B.use == TOWN_CLOSE);
         bool outline = fa != fb && (fa ? A.hedged : B.hedged);
         bool holdings = fa && fb && A.hedged && B.hedged && A.owner >= 0.0 && B.owner >= 0.0
             && abs(A.owner - B.owner) > 1e-4;
@@ -841,8 +839,22 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
     }
     // Closes are small: each parcel of them is cut again into fields of about
     // 70 m, hedged all round.
-    if (u_show.w > 0.5 && inner && S.edge < Q.edge && S.edge < 40.0) {
+    // A town's closes are hedged, walled or fenced; about a third of their
+    // sides lie open.
+    ivec2 sp = S.a.x + S.a.y < S.b.x + S.b.y ? S.a * 13 + S.b : S.b * 13 + S.a;
+    bool open_side = town_close && hash(sp, 469) < 0.35;
+    if (u_show.w > 0.5 && inner && !open_side && S.edge < Q.edge && S.edge < 40.0) {
         c = hedge(c, pm, S, town_close ? 50.0 : A.age, mosaic);
+    }
+    // The town's edge: a hedge where its closes meet the fields, with its
+    // shadow on the side away from the light, broken now and then by a gate.
+    if (u_show.w > 0.5 && abs(tl) < 6.0) {
+        float g = length(vec2(dFdx(tl), dFdy(tl))) / max(mpx(), 1e-3);
+        float d = abs(tl) / max(g, 0.3);
+        float w = 1.2 + 0.6 * vnoise(pm / 6.0, 743);
+        float gate = step(0.06, fract(dot(pm, vec2(0.0071, 0.0053)) + 0.3 * vnoise(pm / 90.0, 745)));
+        vec3 hcol = HEDGE * (0.8 + 0.45 * vnoise(pm / 1.1, 747) * soft(1.1));
+        c = mix(c, hcol, band(d, -1.0, w) * gate * mosaic);
     }
     return c;
 }

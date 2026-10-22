@@ -19,6 +19,7 @@ const int K_GREEN = 2;
 const int K_CHURCHYARD = 3;
 const int K_PRECINCT = 4;
 const int K_DITCH = 5;
+const int K_COURT = 6;
 const int K_HOUSE = 10;
 const int K_BARN = 11;
 const int K_CHURCH = 12;
@@ -97,7 +98,7 @@ Town town_scan(vec2 pm) {
         if (kind < 10) {
             if (kind != K_DITCH && sd < nearest) {
                 nearest = sd;
-                if (kind == K_PLOT) {
+                if (kind == K_PLOT || kind == K_COURT) {
                     T.rank = extra;
                 }
             }
@@ -193,6 +194,11 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         // Each plot is fenced or hedged: wattle and walls in towns, hedges in villages.
         vec3 fence = mix(HEDGE * 0.9, vec3(0.42, 0.36, 0.28), town);
         g = mix(g, fence, band(edge, -1.0, mix(0.8, 0.35, town)) * fine(0.8));
+    } else if (T.gk == K_COURT) {
+        // A court: trodden and patched ground, a drain down the alley, a
+        // wall round it.
+        g = mix(earth, vec3(0.60, 0.57, 0.51), 0.4) * (0.9 + 0.2 * vnoise(pm / 0.9, 751) * soft(0.9));
+        g = mix(g, vec3(0.42, 0.38, 0.32), band(edge, -1.0, 0.4) * fine(0.8));
     } else if (T.gk == K_MARKET) {
         g = vec3(0.64, 0.60, 0.53) * (0.9 + 0.18 * vnoise(pm / 0.7, 703) * soft(0.7));
         g = mix(g, vec3(0.50, 0.46, 0.40), (1.0 - smoothstep(0.0, 6.0, edge)) * 0.25);

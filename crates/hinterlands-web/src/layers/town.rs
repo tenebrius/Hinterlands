@@ -23,6 +23,9 @@ pub const GREEN: f32 = 2.0;
 pub const CHURCHYARD: f32 = 3.0;
 pub const PRECINCT: f32 = 4.0;
 pub const DITCH: f32 = 5.0;
+/// A plot built over as a court: tenements at the front, a row of cottages
+/// down one side, an alley beside them.
+pub const COURT: f32 = 6.0;
 pub const BUILDING: f32 = 10.0;
 pub const HOUSE: f32 = 10.0;
 pub const BARN: f32 = 11.0;
@@ -61,7 +64,6 @@ pub struct Street {
 /// One place's plan, for the record and for other layers.
 pub struct Place {
     pub id: u32,
-    pub centre: Vec2,
     pub households: u32,
     pub houses: u32,
     /// Metres from the centre to the farthest plot.
@@ -111,7 +113,10 @@ pub const BOUND: usize = 64;
 /// reach out in single spikes.
 fn boundary(centre: Vec2, shapes: &[Shape]) -> [f32; BOUND] {
     let mut r = [0.0f32; BOUND];
-    for s in shapes.iter().filter(|s| s.kind < DITCH) {
+    for s in shapes
+        .iter()
+        .filter(|s| s.kind < BUILDING && s.kind != DITCH)
+    {
         for c in s.corners().into_iter().chain(std::iter::once(s.c)) {
             let d = c - centre;
             let a = d.y.atan2(d.x) / std::f32::consts::TAU;
@@ -515,9 +520,13 @@ fn lay_out(
     let start_streets = plan.streets.len();
     let households = (pop / 4.5).round().max(1.0) as u32;
     let (front0, depth0) = plot_size(pop);
-    let r_est = (households as f32 * front0 * depth0 * 1.5 / std::f32::consts::PI).sqrt();
-    // The largest cities spread further along their roads, as suburbs.
-    let reach_max = ((2.4 + 0.8 * smoothstep(5000.0, 15000.0, pop)) * r_est).max(160.0);
+    // Plots needed: fewer than households where the core holds tenements.
+    let plots_needed = households as f32 / (1.0 + 0.5 * smoothstep(4000.0, 15000.0, pop));
+    let r_est = (plots_needed * front0 * depth0 * 1.5 / std::f32::consts::PI).sqrt();
+    // How far plots may run from the centre along the roads. A large city's
+    // core is dense (tenements and courts) and its lanes many, so it stays
+    // compact; suburbs along the roads stay short.
+    let reach_max = (2.4 * r_est).max(160.0);
     let cell_m = t.grid.cell_km * 1000.0;
     let (cx, cy) = ((anchor.x / cell_m) as i32, (anchor.y / cell_m) as i32);
     let ci = t.grid.idx(
@@ -689,9 +698,9 @@ fn lay_out(
         } else if pop < 5000.0 {
             2
         } else {
-            3
+            4
         } + if few { 2 } else { 0 };
-        let spacing = 130.0 - 50.0 * smoothstep(500.0, 5000.0, pop);
+        let spacing = 130.0 - 60.0 * smoothstep(500.0, 8000.0, pop);
         let reach = r_est * if few { 1.7 } else { 1.25 };
         let hw = 1.6 + 1.0 * smoothstep(800.0, 5000.0, pop);
         let mut from = 0usize;
@@ -890,7 +899,7 @@ fn lay_out(
         // A first layout finds the core; the wall goes round about half the
         // houses, then the plots are laid again clear of it.
         let mark = space.shapes.len();
-        let placed = place_plots(
+        place_plots(
             seed,
             pop,
             rank,
@@ -906,8 +915,14 @@ fn lay_out(
         );
         let core: Vec<Shape> = space.shapes[mark..]
             .iter()
-            .filter(|s| s.kind == PLOT)
-            .take((placed as f32 * 0.5) as usize)
+            .filter(|s| s.kind == PLOT || s.kind == COURT)
+            .take(
+                space.shapes[mark..]
+                    .iter()
+                    .filter(|s| s.kind == PLOT || s.kind == COURT)
+                    .count()
+                    / 2,
+            )
             .copied()
             .collect();
         let line = wall_line(centre, &core);
@@ -936,7 +951,7 @@ fn lay_out(
     );
     let mut reach = 0.0f32;
     for s in &space.shapes[first_shape..] {
-        if s.kind == PLOT {
+        if s.kind == PLOT || s.kind == COURT {
             reach = reach.max((s.c - centre).length() + s.h.x.max(s.h.y));
         }
     }
@@ -966,7 +981,6 @@ fn lay_out(
     plan.streets.retain(|st| st.pts.len() >= 2);
     Place {
         id,
-        centre,
         households,
         houses: placed,
         reach,
@@ -1297,9 +1311,26 @@ fn place_plots(
             ok = Some((plot, depth));
             break;
         }
-        let Some((plot, depth)) = ok else { continue };
+        let Some((mut plot, depth)) = ok else {
+            continue;
+        };
+        // In the core of a large town a plot holds several households: the
+        // front house is let as tenements and its yard built up as a court of
+        // cottages down one side, with an alley beside them.
+        let dense = town
+            * smoothstep(4000.0, 15000.0, pop)
+            * (1.0 - smoothstep(0.1 * reach_max, 0.4 * reach_max, d_c));
+        let mut hh = (1.0 + dense * 3.0 * (0.6 + 0.8 * h01(key, 79))).round() as u32;
+        if depth < 22.0 {
+            hh = hh.min(2);
+        }
+        let hh = hh.clamp(1, 4).min(households - placed);
+        let court = hh >= 3;
+        if court {
+            plot.kind = COURT;
+        }
         space.add_shape(plot);
-        placed += 1;
+        placed += hh;
         // The house at the street front: in towns the whole frontage, two or
         // three storeys; in villages a longhouse along the street or end on,
         // set back a little.
@@ -1312,10 +1343,12 @@ fn place_plots(
         };
         let front_edge = p + nrm * (st.hw + setback);
         let (hl, hd, height, end_on) = if town > 0.5 {
+            // Tenements are deeper and a storey taller.
+            let tall = if hh >= 2 { 1.0 } else { 0.0 };
             (
                 sl.front * 0.5 - 0.2,
-                4.0 + 2.0 * h01(key, 63),
-                8.0 + 3.0 * h01(key, 64),
+                4.0 + 2.0 * h01(key, 63) + 2.0 * tall,
+                8.0 + 3.0 * h01(key, 64) + 3.0 * tall,
                 false,
             )
         } else {
@@ -1355,6 +1388,38 @@ fn place_plots(
             height,
         };
         space.shapes.push(house);
+        let within = |b: &Shape| {
+            b.corners().iter().all(|&q| {
+                let l = q - plot.c;
+                l.dot(dir(plot.angle)).abs() < plot.h.x
+                    && l.dot(perp(dir(plot.angle))).abs() < plot.h.y
+            })
+        };
+        if court {
+            // The court: cottages one behind another down one side.
+            let side = if h01(key, 80) < 0.5 { 1.0 } else { -1.0 };
+            let across = (sl.front - 2.2).clamp(2.2, 3.4);
+            let start = 2.0 * hd + 2.5;
+            for j in 0..(hh - 1) {
+                let len = 4.0 + 1.5 * h01(key + j as usize, 81);
+                let c = front_edge
+                    + nrm * (start + j as f32 * 6.0 + len * 0.5)
+                    + tan * side * (sl.front * 0.5 - across * 0.5 - 0.3);
+                let cot = Shape {
+                    c,
+                    h: Vec2::new(len * 0.5, across * 0.5),
+                    angle: angle + std::f32::consts::FRAC_PI_2,
+                    kind: HOUSE,
+                    tone: h01(key + j as usize, 82),
+                    extra: roof,
+                    height: 5.0 + 2.0 * h01(key + j as usize, 83),
+                };
+                if within(&cot) {
+                    space.shapes.push(cot);
+                }
+            }
+            continue;
+        }
         // A barn behind in villages, a back range down the plot in towns.
         if h01(key, 69) < 0.5 && depth > 30.0 {
             let b = if town > 0.5 {
@@ -1389,11 +1454,7 @@ fn place_plots(
                     height: 6.0,
                 }
             };
-            if b.corners().iter().all(|&q| {
-                let l = q - plot.c;
-                l.dot(dir(plot.angle)).abs() < plot.h.x
-                    && l.dot(perp(dir(plot.angle))).abs() < plot.h.y
-            }) {
+            if within(&b) {
                 space.shapes.push(b);
             }
         }
@@ -1558,7 +1619,8 @@ fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
 
 /// The shapes as textures: the shapes, two texels each; per map cell, where its
 /// squares start in the square table (-1 if it has none); per square, its
-/// entries in the index list and how much of it is built over; the index.
+/// entries in the index list, how much of it is built over, and whether it is
+/// town land; the index.
 pub struct ShapeData {
     pub shp: Vec<f32>,
     pub shp_size: (i32, i32),
@@ -1570,20 +1632,13 @@ pub struct ShapeData {
     /// Squares per cell along a side.
     pub sub: f32,
     pub most: usize,
-    /// Places: per place, a texel (centre x, y) then BOUND / 4 texels of
-    /// boundary radii, in metres.
-    pub places: Vec<f32>,
-    pub places_size: (i32, i32),
 }
-
-/// Texels per place in the places texture.
-pub const PLACE_TEXELS: usize = 1 + BOUND / 4;
 
 const ROW: usize = super::ways::ROW;
 /// Squares of about this many metres index the shapes.
 const SQUARE_M: f32 = 62.5;
 
-pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
+pub fn layout(t: &Terrain, shapes: &[Shape]) -> ShapeData {
     let g = t.grid;
     let cell_m = g.cell_km * 1000.0;
     let sub = (cell_m / SQUARE_M).round().max(1.0) as i32;
@@ -1595,7 +1650,7 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
         let (lo, hi) = s.bounds();
         // Reach: the shadow, and for plots the streets beside them (so the
         // shader knows it is in town).
-        let m = Vec2::splat(if s.kind == PLOT {
+        let m = Vec2::splat(if s.kind == PLOT || s.kind == COURT {
             10.0
         } else {
             2.0 + 0.8 * s.height
@@ -1629,6 +1684,27 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
             }
         }
     }
+    // The town's land: squares with any of a place's ground in them, and the
+    // squares round those (about 60 m out). The shader takes the 0.5 line of
+    // this, smoothed, as the edge of the town: fields stop there, and within it
+    // the land is the place's own closes, so no field runs under a house.
+    // Stored as a distance field (1 on the place's squares, falling to 0 three
+    // squares out), so its 0.5 line rounds off instead of following squares.
+    let mut land: BTreeMap<(i32, i32), f32> = BTreeMap::new();
+    for (&(x, y), &c) in &cover {
+        if c > 0.03 {
+            for dy in -3i32..=3 {
+                for dx in -3i32..=3 {
+                    let d = ((dx * dx + dy * dy) as f32).sqrt();
+                    let v = (1.0 - d / 2.6).max(0.0);
+                    if v > 0.0 {
+                        let e = land.entry((x + dx, y + dy)).or_insert(0.0);
+                        *e = e.max(v);
+                    }
+                }
+            }
+        }
+    }
     // Cells with any square listed get a block of sub x sub squares.
     let mut cell = vec![-1.0f32; t.n() * 4];
     let mut sq: Vec<f32> = Vec::new();
@@ -1637,6 +1713,7 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
     let cells: std::collections::BTreeSet<(i32, i32)> = lists
         .keys()
         .chain(cover.keys())
+        .chain(land.keys())
         .map(|&(x, y)| (x.div_euclid(sub), y.div_euclid(sub)))
         .filter(|&(cx, cy)| cx >= 0 && cy >= 0 && cx < g.w as i32 && cy < g.h as i32)
         .collect();
@@ -1648,7 +1725,8 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
                 let key = (cx * sub + x, cy * sub + y);
                 let list = lists.get(&key).map(|v| v.as_slice()).unwrap_or(&[]);
                 let cov = cover.get(&key).copied().unwrap_or(0.0).min(1.0);
-                sq.extend_from_slice(&[idx.len() as f32, list.len() as f32, cov, 0.0]);
+                let town = land.get(&key).copied().unwrap_or(0.0);
+                sq.extend_from_slice(&[idx.len() as f32, list.len() as f32, cov, town]);
                 idx.extend(list.iter().map(|&i| i as f32));
                 most = most.max(list.len());
             }
@@ -1673,38 +1751,6 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
         v.resize(rows * ROW * 4, 0.0);
         (ROW as i32, rows as i32)
     };
-    // Each cell names up to two places whose boundary may reach it (in the
-    // cell texture's second and third values; -1 for none), nearest first.
-    let mut places_tex: Vec<f32> = Vec::with_capacity(places.len() * PLACE_TEXELS * 4);
-    for p in places {
-        places_tex.extend_from_slice(&[p.centre.x, p.centre.y, 0.0, 0.0]);
-        places_tex.extend_from_slice(&p.bound);
-    }
-    let mut near: BTreeMap<usize, Vec<(f32, usize)>> = BTreeMap::new();
-    for (pi, p) in places.iter().enumerate() {
-        let reach = p.bound.iter().copied().fold(0.0f32, f32::max);
-        let lo = ((p.centre - Vec2::splat(reach)) / cell_m).floor();
-        let hi = ((p.centre + Vec2::splat(reach)) / cell_m).floor();
-        for y in (lo.y as i32).max(0)..=(hi.y as i32).min(g.h as i32 - 1) {
-            for x in (lo.x as i32).max(0)..=(hi.x as i32).min(g.w as i32 - 1) {
-                let cc = Vec2::new((x as f32 + 0.5) * cell_m, (y as f32 + 0.5) * cell_m);
-                near.entry(g.idx(x, y))
-                    .or_default()
-                    .push(((cc - p.centre).length() - reach, pi));
-            }
-        }
-    }
-    for i in 0..t.n() {
-        cell[i * 4 + 1] = -1.0;
-        cell[i * 4 + 2] = -1.0;
-    }
-    for (i, mut v) in near {
-        v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
-        for (k, &(_, pi)) in v.iter().take(2).enumerate() {
-            cell[i * 4 + 1 + k] = pi as f32;
-        }
-    }
-    let places_size = pad(&mut places_tex);
     let shp_size = pad(&mut shp);
     let sq_size = pad(&mut sq);
     let idx_size = pad(&mut idx);
@@ -1718,7 +1764,5 @@ pub fn layout(t: &Terrain, shapes: &[Shape], places: &[Place]) -> ShapeData {
         idx_size,
         sub: sub as f32,
         most,
-        places: places_tex,
-        places_size,
     }
 }
