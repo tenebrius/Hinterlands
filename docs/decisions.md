@@ -678,3 +678,16 @@ Kind: model mechanism behind a switch; stopped.
 - **Golden** `835e8695b67538f7`; wasm 35.7 ms/year, not gated. Earlier versions are reproducible from commit `4052d01` (v6), not from the version files.
 - **Details:** `docs/market/m2.md`, "Third build".
 Kind: model mechanism (owner's direction D91, designer's decisions D90, D92).
+
+## D98 — v7 M3 money, first build: three readings made in building (D97)
+- **Ports trade with any market in reach of them, whatever its size.** Without this no coin enters before a market reaches `market_min`. Coin drains through imports and wear, and the region has no coin by year 75; with no budget no market grows to `market_min`.
+- **Ports buy more below the world price,** at the same elasticity as above it (`port_elast`). D78 capped their demand at `outside_grain`, so cheap grain brought in less coin: the reverse of price-specie flow. With the cap the price level is 0.30 and unsold grain 20–35% of arrivals.
+- **Goods are paid from what the market people's food leaves** (D93: people eat first). The food reserve is K × W at last year's price. Farmers pay their head share of salt and iron, and the market pays the rest; neither pays the other's share. Paid first from the whole purse, imports took half the inflow of coin, 180 of about 290 markets were short for food, and the price stayed at the ports' level (0.40–0.45, Clark R² 0.18).
+- **Settlement as built:**
+  - sellers are owed their market's price on what it sold, scaled down pro rata if buyers paid less;
+  - the carriage gap goes to buyers' markets in proportion to what they paid;
+  - the farmers' year-end spending goes to the markets they sell to, in proportion to their sales there;
+  - the markets' spending goes to the farmers whose surplus they took, less `luxury_out`;
+  - a place that neither sells nor buys surplus keeps both within its own purses.
+- **Results and open points:** `docs/market/m3.md`, "Money, first build".
+Kind: model mechanism (D97 build).
