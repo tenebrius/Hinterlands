@@ -1095,6 +1095,11 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 3. **Then cloth, as a design note first (not before 1 and 2).** Wool spun and woven into cloth, with fulling at the water mills already in the model (D56). Cloth exports take over from raw wool in the fifteenth century (Carus-Wilson; the Weald of Kent was itself a cloth country). It is the natural next mechanism, and it is a processing step of Weber's kind. The note comes to the designer before any code.
 4. **Noted, not scheduled:** growth after 1480 closer to Tudor rates. The owner may move it up.
 
+**Development stops (owner, 22 October 2026; D117).** Divish has decided that development stops after the work in progress.
+- **Kent geology (D116.1)** is finished, recorded and frozen as the last change. Its result is reported, whether or not the pre-registered pasture expectation is met. If the geology layer breaks a gated check, it stays off, and Kent remains at the v7 release.
+- **Not done:** the robustness re-tune, the cloth design note and the post-1480 growth refinement. They stay on record here as the next steps, should development resume.
+- **The final state:** the v7 release (golden `65aee272c30de1f9`), plus Kent geology if it passes. `docs/milestones.md` gets a closing entry naming the final golden hash and the open items.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
