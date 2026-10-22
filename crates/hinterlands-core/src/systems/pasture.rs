@@ -453,7 +453,9 @@ fn wool_market(
             continue;
         }
         let s = &state.settlements[x.i];
-        arcs.push((k, x.i, 0.0));
+        if d0[x.i] > 0.0 {
+            arcs.push((k, x.i, 0.0));
+        }
         if d0[m + x.i] > 0.0 {
             arcs.push((k, m + x.i, 0.0));
         }

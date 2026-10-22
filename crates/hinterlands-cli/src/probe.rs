@@ -1550,3 +1550,93 @@ pub fn cmd_cloth(args: &Args) {
         );
     }
 }
+
+/// Map diagnosis (D130): population in 1340, 1450 and 1600; pasture's share
+/// of used land in 1450 and 1600; the sizes of the top 15 places in 1600 and
+/// the count over 2,000; market spacing (median km) and its side of 8-15; and
+/// stability as validate reads it, the largest yearly change outside the
+/// shock years, with its year and sign.
+pub fn cmd_diag(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let params = sim.params.clone();
+    let shocks = params.events_mode == 1;
+    let mut pop = [0f32; 3];
+    let mut pasture = [0f32; 2];
+    let mut prev = 0f32;
+    let (mut max_change, mut max_year, mut max_sign) = (0f32, 0u32, 0f32);
+    let share = |st: &hinterlands_core::state::State| -> f32 {
+        let past: usize = st.settlements.iter().map(|s| s.pasture.len()).sum();
+        let fields: usize = st.settlements.iter().map(|s| s.fields.len()).sum();
+        past as f32 / (past + fields).max(1) as f32
+    };
+    while sim.state.year < 500 {
+        sim.step(1);
+        let y = sim.state.year;
+        let tot = sim.state.total_pop();
+        match y {
+            240 => pop[0] = tot,
+            350 => {
+                pop[1] = tot;
+                pasture[0] = share(&sim.state);
+            }
+            500 => {
+                pop[2] = tot;
+                pasture[1] = share(&sim.state);
+            }
+            _ => {}
+        }
+        let shocked = shocks && {
+            let fy = params.famine_year;
+            let in_famine = y >= fy && y <= fy + params.famine_years + 1;
+            let in_plague = [
+                params.plague_year,
+                params.plague_recur_1,
+                params.plague_recur_2,
+            ]
+            .iter()
+            .any(|&py| y >= py && y <= py + params.plague_years + 1);
+            let planting = params.plant_interval > 0
+                && y > 1
+                && y > params.plant_from
+                && (y - 1) % params.plant_interval == 0;
+            in_famine || in_plague || planting
+        };
+        if y > 100 && prev > 0.0 && !shocked {
+            let c = (tot - prev).abs() / prev;
+            if c > max_change {
+                max_change = c;
+                max_year = y;
+                max_sign = (tot - prev).signum();
+            }
+        }
+        prev = tot;
+    }
+    let snap = sim.snapshot();
+    let m = hinterlands_core::metrics::compute(&snap, &sim.terrain);
+    let mut sizes: Vec<f32> = sim.state.settlements.iter().map(|s| s.pop).collect();
+    sizes.sort_by(|a, b| b.total_cmp(a));
+    let top: Vec<String> = sizes.iter().take(15).map(|p| format!("{p:.0}")).collect();
+    let side = if m.spacing_median_km > 15.0 {
+        "wide"
+    } else if m.spacing_median_km < 8.0 {
+        "tight"
+    } else {
+        "ok"
+    };
+    println!(
+        "diag {map} {seed} pop1340 {:.0} pop1450 {:.0} pop1600 {:.0} pasture1450 {:.3} pasture1600 {:.3} over2k {} spacing {:.2} {side} stability {:.4} year {} sign {:+.0} top15 {}",
+        pop[0],
+        pop[1],
+        pop[2],
+        pasture[0],
+        pasture[1],
+        sizes.iter().filter(|&&p| p > 2000.0).count(),
+        m.spacing_median_km,
+        max_change,
+        max_year,
+        max_sign,
+        top.join(",")
+    );
+}

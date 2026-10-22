@@ -473,6 +473,7 @@ fn main() {
         "outside" => probe::cmd_outside(&args),
         "stores" => probe::cmd_stores(&args),
         "cloth" => probe::cmd_cloth(&args),
+        "diag" => probe::cmd_diag(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),
         "bench" => cmd_bench(&args),
