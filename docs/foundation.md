@@ -707,6 +707,35 @@ Then stop. The designer reviews the note before any S2 code is written.
 - **A possible follow-up, not scheduled:** fill a place's own store before its surplus goes out as relief, so that stores refill between shocks.
 
 
+## v7 plan: marketplaces (owner's decision, 22 October 2026)
+
+**Why.** Divish has decided that the project does not stop at v6. Knowing that grain is pushed to towns for free, and is not bought and sold, breaks the fun of watching. The model has to be a trade economy underneath, not only on the surface. The design authority stays with the designer. This section is the plan.
+
+**What failed before and why** (D78–D80). Under S2, a market's size grew on its net income. Once towns had to pay for grain, the Rihll–Wilson feedback that concentrates people into a few towns disappeared: every village kept a small market on its own rents. The mistake was to tie market size to profit. In Rihll & Wilson, a market's size responds to the flow through it, its revenue, and that is the variable v5 used and the checks were built on.
+
+**The design: markets are the places where trade happens.** Medieval grain was sold at chartered markets, which took tolls (Britnell 1993; the Gazetteer of Markets and Fairs).
+1. **Sellers.** Each settlement's grain for sale is its rent (paid by selling grain at market) plus what its people do not eat. It is taken to markets chosen as now, by `W_j^α exp(−β c)`. That keeps the feedback that makes towns: big markets draw more sellers.
+2. **Buyers** buy at markets by price, using the S2 equilibrium machinery. The buyers are:
+   - the market's own people and establishment;
+   - places in deficit;
+   - other towns;
+   - the outside ports.
+
+   So grain physically goes where it is wanted, and nothing is pushed, burned or free.
+3. **Market size grows on turnover,** the value of trade passing through the market, as Rihll–Wilson's `D_j`. A market town's traders, brokers, inns and toll-takers scale with what passes through it.
+4. **Market people live on real income:** tolls on turnover, the rents of the lords who live there, handling fees and goods sales. They buy their food at market prices. A town whose income cannot feed its people sheds them.
+
+**Stages, each with a stop rule:**
+- **M0, the diagnostic. It changes nothing, and is approved now.** In ordinary default runs (3 seeds a map), compute what each market's turnover would be under seller routing (rent plus surplus, valued at the shadow grain price), and compare it with today's `market_in`: rank-size slope, top-10 overlap and Spearman rank correlation. Then compute, for each place over 500:
+  - its income under marketplace accounting (tolls at 2%, 5% and 10% of turnover; rents at `market_share`, received by `W^α` weights; fees; goods);
+  - its food bill at shadow prices;
+  - the toll rate at which it breaks even.
+
+  **Expectation (pre-registered):** turnover concentrates like `market_in` (Spearman ≥ 0.8), and most towns over 2,000 break even at a toll of 10% or less, rents included. If towns cannot feed themselves at any plausible toll, the design is wrong, and we learn that before writing it.
+- **M1, the design note,** at most two pages, written after M0. It covers flows and accounting, how K relates to turnover, tolls, the cost estimate, and how stores trade (buying cheap and selling dear, Clark's 12.5% a year).
+- **M2, the build,** behind `marketplaces`. Gate: every v6 check; Clark's `b_P`, `b_Y` and R² gated per seed; under 50 ms a year in wasm. One tuning round. If it fails, stop and report; the designer then decides.
+- **M3, stores in the market:** granaries buy low and sell high, which may fix the refill miss of D86.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
