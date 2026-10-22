@@ -31,6 +31,22 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
             t.bridge = road_bridges(&t);
         }
     }
+    if let Some(geo) = &mp.geology_file {
+        let s = std::fs::read_to_string(geo).map_err(|e| format!("{geo}: {e}"))?;
+        let g = read_grid(&s)?;
+        if g.len() != t.n() {
+            return Err(format!("geology grid has {} cells, the map {}", g.len(), t.n()));
+        }
+        for i in 0..t.n() {
+            let k = g[i].round() as i32;
+            let m = match k {
+                1 => mp.geology_chalk,
+                2 => mp.geology_marsh,
+                _ => 1.0,
+            };
+            t.food_yield[i] *= m;
+        }
+    }
     if let Some(f) = &mp.outside_file {
         let s = std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?;
         t.outside_ports = read_outside(&t, &s)?;
