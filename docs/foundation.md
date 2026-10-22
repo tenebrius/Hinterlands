@@ -1047,6 +1047,21 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 - **Then a population check against Hatcher (D109), approved to follow.** Report population in 1450 against 1340 on the generated maps, against Hatcher's half to two-thirds fall. If the model is far off, I will decide on the plague recurrences' strength on the numbers.
 - **L3 (Option B) stays parked.** Its condition, that towns keep their grain, was not met at L0.
 
+**L2 and L4 passed (3c19458, D113; golden `7d534fccaae58528`, 50.4 ms a year in wasm).**
+- **The murrain** cut wool coin by about 30% in 1315–17. `shadow_drain` 0.05 → 0.045 restored map 3's "over 2,000".
+- **The view:** pasture, sheep and wool routes come from the model, and the chronicle records the turn to grass and the murrain.
+- **Runs passing every check:** 12/13/8. Carry-over 0.10–0.15.
+- **Slavin (2020)** finds the sheep losses came from recurrent scab, depressing wool until the early 1330s, while the 1319–22 murrain was mainly cattle. So the record favours a longer, milder dip than the one built: ×0.85 in 1315–22 and ×0.9 in 1323–32, recorded as approximate after Slavin. It goes into the next build.
+
+**The Hatcher check fails badly.** Population in 1450 is 1.15–1.19 × 1340 in the model, against Hatcher's 0.33–0.50. The model regains the Black Death by 1400, because survivors on abundant land grow at up to 2.7% a year. `r_grow` is set high so that a region fills from ten hamlets within a watchable run, far above a medieval natural increase of under 1%. Hatcher's own conclusion is that mortality, not fertility, held population down after 1348: plague returned, and other disease was endemic between outbreaks.
+
+**Decided (D114): an endemic era of mortality, 1349–1480, in the Historical calendar.**
+- **Rule.** Every settlement loses `endemic_mortality` a year on top of the outbreaks. This is the mortality between outbreaks that Hatcher describes. The implementer tunes it so that the target below is met, and records the value.
+- **Pre-registered:** population in 1450 between 0.40 and 0.65 of 1340, across the maps.
+- **v4's recovery check** (at least 0.9 of the pre-plague peak by year 500) is reported first. England in 1600 had probably not regained its 1300 level. If the check fails, I will revise it to the historical range on the numbers, with the reason stated.
+- **Expect knock-on effects:** fewer people in the 1400s means fewer towns over 2,000 and more pasture. All checks run as usual, and any fix is by the usual levers.
+- **Iterate** as D91 says.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
