@@ -844,6 +844,25 @@ Then stop for review.
 - **Reported:** purse levels by place type over time, and what purses buy.
 - **Iterate** as D91 says.
 
+**Owner's correction (Divish, 22 October 2026; D96): everybody holds money, not only villages.** D95 is widened.
+- **Who holds a purse.** Every economic actor:
+  - the **farmers** of each settlement (D95);
+  - the **market** of each settlement, meaning its lords, church and merchants. Their rents, tolls, fees and goods sales go in. Their food, establishment, goods, imports and the market store's purchases come out. Store sales go back in;
+  - the **works**, through their settlement's market purse.
+- **Every payment moves value from one purse to another,** and income no longer vanishes at the year's end.
+- **Where money comes from and goes.** Coin enters the region when the outside ports buy grain (England's silver came in through exports, chiefly wool). It leaves when imports are bought, and through `purse_loss`, spending the model does not trace. The region therefore has a money stock and a price level. This is what historians of the period describe: prices followed the silver supply (Mayhew 1995, "Modelling medieval monetisation"; Britnell 1993).
+- **"Never planned" is amended.** Money is now a stock in the model. Wages, a labour market and individual agents remain excluded.
+- **Short design note first** (`docs/market/m3-money.md`, one page), because monetary accounting is where a model like this breaks quietly. It covers:
+  1. the purses, and the order in which they pay and receive in a year;
+  2. the starting stock, which places begin with;
+  3. conservation: each year the sum of purses changes only by the ports' balance and `purse_loss`, as a unit test;
+  4. how budgets enter the price solver;
+  5. caps and loss rates per purse type.
+- **New check, gated:** the price level stays bounded. The regional median grain price stays within 0.4–2.5 at every 50-year mark, so there is no runaway inflation or deflation.
+- **Reported:** money stock over time, purses by type, and the port balance.
+
+D95's pre-registrations stand: famine dip ≤ 0.16, deficit met ≥ 30% in 1315–17, and price autocorrelation ≥ 0.3. The designer reviews the note, then the build goes into the core.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
@@ -914,7 +933,7 @@ The simulation lane runs left to right through its gates; the map generation tra
 
 **Real terrain.** Importing a free 90 m DEM (SRTM) of a documented region, resampled to the chosen cell size, is the single most valuable step after v1. Run on medieval Kent or the Rhône valley and compare the settlements the model produces with the ones that existed. If the model puts a city where Canterbury or Lyon stands, the model is right rather than merely plausible. Generated maps stay the tool for development and tuning; real terrain is for validation and for the demonstration that convinces people.
 
-**Never planned, in any version:** individual agents, wages and a labour market, and money as a floating currency. Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks. Market-clearing prices in grain units, as an aggregate spatial equilibrium between settlements, were admitted by D70 (see v6 below). The settlement stays the unit.
+**Never planned, in any version:** individual agents, and wages and a labour market. (Money as a stock was admitted by the owner in D96.) Nothing on the behaviours list needs them, and each is the usual way a project of this kind sinks. Market-clearing prices in grain units, as an aggregate spatial equilibrium between settlements, were admitted by D70 (see v6 below). The settlement stays the unit.
 
 ## References
 
