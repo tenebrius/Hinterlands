@@ -1100,6 +1100,14 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 - **Not done:** the robustness re-tune, the cloth design note and the post-1480 growth refinement. They stay on record here as the next steps, should development resume.
 - **The final state:** the v7 release (golden `65aee272c30de1f9`), plus Kent geology if it passes. `docs/milestones.md` gets a closing entry naming the final golden hash and the open items.
 
+**Kent geology result (73bfde3), accepted, the last change.**
+- **Data:** BGS 1:625,000 bedrock and superficial geology (OGL), with chalk ×0.6 and marsh and alluvium ×0.35 on arable yield, both recorded as approximate calibrations.
+- **The pre-registered expectation is met:** pasture in 1450 is 0.53 of used land on the North Downs and 0.60 on Romney Marsh, against 0.10 in the Weald.
+- **Kent's small-town placement improves** to the best it has been: AUC for places under 1,000 rises from 0.50 to 0.57, and inland recall from 25% to 34%.
+- **The generated maps are untouched** and the golden is unchanged. `map-geology.json` becomes Kent's standard setting for `just real`.
+
+Development ends here.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
