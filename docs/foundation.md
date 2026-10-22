@@ -1002,6 +1002,14 @@ Decided for L1:
    - Kent: Downs and Marsh against the Weald.
 7. **In the core, no switch** (D91). Iterate as D91 says.
 
+**L1 first build (ba2f1fe, `docs/wool/l1.md`) and decisions (D108).** Wool's share of coin is about half before 1348, as expected. But pasture sits on rich land, because only rich-land places can spare shepherds under A's labour rule. Pasture falls from 1340 to 1450, because the region regains its plague losses in about 50 years. And outside trade drops, because wool's coin lifts grain above the world price. The implementer's experiment, grazing free land not worth ploughing, puts pasture outward and on poor land as von Thünen says, with wool bringing about 84% of coin before 1348 and prices of 1.2–1.45, within the band.
+- **(a) Labour: the experiment's rule.** Free land not worth ploughing at its distance goes to grass, and its shepherds (`pasture_labour` a cell) count with the farmers in the labour guard (D92), so they come out of the place's own people. Wool at 84% of coin is not a fault: wool, not grain, was England's great export. 21–30% of used land under grass is plausible for c. 1300 and is reported.
+- **(b) Conversion: fix the cause, not the year.** England stayed depopulated until about 1500 because plague kept returning. The Historical calendar has only 1348, 1361 and 1369. Add the later English outbreaks, after Hatcher (1977, *Plague, Population and the English Economy 1348–1530*): 1375, 1390, 1400, 1407, 1413, 1434, 1439, 1464, 1471 and 1479, at falling mortality from about 0.10 to 0.06. These are approximate and to be checked against Hatcher before they are final. The gate year stays 1450. If v4's recovery check (≥ 0.9 of the pre-plague peak by year 500) then fails, report it. England in 1600 had probably not regained its 1300 level, so that check may be what is historically wrong, and I will decide it on the numbers.
+- **(c) Wool counts as outside trade.** It is trade with the outside. Report the new share, and whether it fits the 3–20% band.
+- **Spacing on maps 2 and 3:** the drain is again the implementer's to tune if needed (D104).
+
+Iterate as D91 says, and report.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
