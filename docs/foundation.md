@@ -698,6 +698,14 @@ Then stop. The designer reviews the note before any S2 code is written.
   - If step 2 passes, `pull_smoothed` and `local_harvests` become the defaults, with a new golden hash.
   - If it fails, weather is dropped for good, and `pull_smoothed` is kept only if step 1 showed it harmless.
 
+**W2 result (7d7173e) and decision (D86).**
+- **Step 1 passed** with no check worse than v6. Runs passing every check went from 14/17/15 to 17/19/19.
+- **Step 2's gate passed** on every map. Top-10 against Off is 20/20, and runs passing every check are 18/20/15.
+- **The main pre-registered condition was met:** population at year 200 is 0.95–0.96 of the run without weather, against 0.30–0.37 under W1. Smoothing the pull removed the drain.
+- **The second was missed:** stores at year 400 are 0.02–0.03, against an expected ≥ 0.2. Stores fill before 1315 (0.34–0.38) and never refill after the plague, because once the land is full little rises above `food_cap`, and relief takes it first. This is a limit of the store rule, not harm from weather, and it is recorded as a miss.
+- **Decided: `pull_smoothed` and `local_harvests` (σ 0.15) become the defaults,** with a new golden hash. The famine dip is 0.18–0.20, slightly up from v6's 0.17–0.18, because stores are lower. Clark in shadow mode is in range.
+- **A possible follow-up, not scheduled:** fill a place's own store before its surplus goes out as relief, so that stores refill between shocks.
+
 
 ## Future versions
 
