@@ -578,3 +578,84 @@ pub fn cmd_towns(args: &Args) {
         }
     }
 }
+
+/// v7 M0 (marketplaces diagnostic; no feedback). Runs with the shadow market
+/// on (inert, D77) and at each `--at` year computes, per settlement:
+/// - turnover under seller routing: each place sells its rent
+///   (`market_share × harvest`) plus what its people do not eat
+///   (`(1 − market_share) × harvest − need`, if positive), routed to markets by
+///   `W^α exp(−β c)` with its own market by `home_weight`, valued at the
+///   market's shadow grain price;
+/// - rents received, the same rents valued at the payer's shadow price and
+///   routed by the same weights;
+/// - fees (`handling_margin × through + transship_margin × transship`) and
+///   goods sales, valued at its own price;
+/// - its food bill: what its people need beyond its own fields after rent, at
+///   its own shadow price.
+///
+/// Prints `mkt seed year id pop market_in turnover rents fees goods bill` per
+/// settlement.
+pub fn cmd_marketplaces(args: &Args) {
+    let mut sim = make_sim(args);
+    sim.params.market_shadow = true;
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("300,450")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let last = at.iter().copied().max().unwrap_or(0);
+    while sim.state.year < last {
+        sim.step(1);
+        let y = sim.state.year;
+        if !at.contains(&y) {
+            continue;
+        }
+        let (st, p) = (&sim.state, &sim.params);
+        let m = st.settlements.len();
+        let attract: Vec<f32> = st
+            .settlements
+            .iter()
+            .map(|s| s.market.max(p.market_floor).powf(p.alpha))
+            .collect();
+        let price: Vec<f32> = st
+            .settlements
+            .iter()
+            .map(|s| if s.shadow_price[0] > 0.0 { s.shadow_price[0] } else { 1.0 })
+            .collect();
+        let mut turnover = vec![0f32; m];
+        let mut rents = vec![0f32; m];
+        for (i, s) in st.settlements.iter().enumerate() {
+            let h = s.food_prod;
+            let rent = p.market_share * h;
+            let surplus = ((1.0 - p.market_share) * h - s.need(p)).max(0.0);
+            let sale = rent + surplus;
+            let mut ws: Vec<(usize, f32)> = vec![(i, attract[i] * p.home_weight)];
+            for q in &s.reach.partners {
+                if let Some(j) = st.index_of(q.id) {
+                    ws.push((j, attract[j] * (-p.beta * q.cost).exp()));
+                }
+            }
+            let total: f32 = ws.iter().map(|w| w.1).sum();
+            if total <= 0.0 {
+                continue;
+            }
+            for (j, w) in ws {
+                let share = w / total;
+                turnover[j] += sale * share * price[j];
+                rents[j] += rent * share * price[i];
+            }
+        }
+        for (i, s) in st.settlements.iter().enumerate() {
+            let fees = (p.handling_margin * s.through + p.transship_margin * s.transship) * price[i];
+            let goods = s.goods_in;
+            let bill = (s.need(p) - (1.0 - p.market_share) * s.food_prod).max(0.0) * price[i];
+            println!(
+                "mkt {map} {seed} {y} {} {:.0} {:.1} {:.1} {:.1} {:.1} {:.1} {:.1}",
+                s.id, s.pop, s.market_in, turnover[i], rents[i], fees, goods, bill
+            );
+        }
+    }
+}

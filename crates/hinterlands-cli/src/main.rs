@@ -464,6 +464,7 @@ fn main() {
         "desertion" => probe::cmd_desertion(&args),
         "prices" => probe::cmd_prices(&args),
         "towns" => probe::cmd_towns(&args),
+        "marketplaces" => probe::cmd_marketplaces(&args),
         "bench" => cmd_bench(&args),
         "hash" => cmd_hash(&args),
         "params" => cmd_params(),
