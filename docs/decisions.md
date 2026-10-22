@@ -754,3 +754,24 @@ Kind: model mechanism and default (designer's decision D121).
 - **Not made the default.** D2 is built behind `cloth` (off) and not gated.
 - **Details:** `docs/demand/d1b.md`.
 Kind: model mechanism, held off (designer's decision D124).
+
+## D127 — D1b + D2 gated together: failed, stopped (D126)
+- **Built per D126:**
+  - `cloth` (fallow flock, wool and export cloth by port reach, mills in two tiers, home cloth in goods trade, export cloth, duties as coin out);
+  - outside trade at 3–50%, with exports a head reported.
+- **The gate on 40 seeds, both switches on, failed:**
+  - rank-size on map 1 (20/40);
+  - market spacing on maps 2 and 3 (15 and 20/40, too wide);
+  - top-10 vs off on map 3 (21/40);
+  - over 2,000 (27/40), recovery (25/40), stability (29/40) and roads (29/40) on map 2;
+  - pasture 1450>1340 on map 1 (27/40).
+- **Runs passing every check:** 6 / 5 / 4.
+- **Neither switch is made the default.**
+- **Implementer's readings in building:**
+  - the two-tier mill bid;
+  - the scarcity signal for unsupplied home cloth;
+  - home cloth paid by head from both purses, like salt and iron;
+  - export cloth's margin counted to the mill's market inflow.
+- **The wool-share test (D126.4):** the making cost implied by Munro's Flemish shares is 1.4–2.7 d a lb, mostly below 2.62–3.77.
+- **Details:** `docs/demand/d2.md`.
+Kind: model mechanism, held off (designer's decision D126).
