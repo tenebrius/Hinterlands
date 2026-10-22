@@ -298,7 +298,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                     .sum::<f32>()
                     * p.people_per_prime_cell
                     * (1.0 - p.market_share)
-                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3));
+                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3))
+                    // Shepherds are counted with the farmers (L1, D105).
+                    + p.pasture_labour
+                        * t.grid.cell_km
+                        * t.grid.cell_km
+                        * s.pasture.len() as f32;
                 let room = (s.pop - field_need).max(p.market_floor);
                 s.market = (s.market + market_delta[i])
                     .min(s.pop)

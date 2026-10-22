@@ -606,6 +606,7 @@ pub fn goods_trade(
             payment: false,
             import: b.g == 4,
             relief: false,
+            wool: false,
         });
         // Payment is in coin and travels no path (D78, D96): salt and iron
         // from the farmers' and the market's purses by head, stone and

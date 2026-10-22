@@ -228,6 +228,14 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
+        wool_price_sack: f32 = 5.0, [0, 30], "World price of wool, pounds sterling a sack of 364 lb (Lloyd 1294 mean, D107)";
+        sheep_per_acre: f32 = 1.5, [0, 5], "Sheep a pasture acre carries (Howell; L0)";
+        fleece_lb: f32 = 1.5, [0, 5], "Wool a fleece, lb (200-260 fleeces to the sack; L0)";
+        wheat_s_bu: f32 = 0.6, [0.1, 5], "Wheat price, shillings a bushel, 1300s (Clark 2004)";
+        bu_per_person: f32 = 6.0, [1, 20], "Bushels of wheat in a person-year of grain (Campbell's 1,500 grain kcal a day; L0)";
+        rho_wool: f32 = 50.0, [0.1, 200], "Value density of wool relative to grain (Clark's prices; D107)";
+        pasture_labour: f32 = 5.0, [0, 100], "People a km2 of pasture needs: a shepherd's household (calibration, D107)";
+        arable_labour: f32 = 40.0, [0, 200], "People a km2 of arable needs, for the labour left to herd (calibration from L0's 39-45, L1)";
         hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio above which a shortfall stops growth but sheds nobody (D101, D104)";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }

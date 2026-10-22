@@ -51,6 +51,7 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     reach::refresh_due(state, t, p);
     systems::harvest::run(state, t, p, rng);
     systems::cultivation::run(state, t, p, rng);
+    systems::pasture::run(state, t, p, rng);
     systems::production::run(state, t, p, rng);
     systems::trade::run(state, t, p, rng);
     systems::market::run(state, t, p, rng);

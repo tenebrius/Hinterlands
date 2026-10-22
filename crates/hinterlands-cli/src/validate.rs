@@ -85,6 +85,16 @@ pub struct RunResult {
     pub money_marks: [f32; 5],
     pub farm_share: [f32; 5],
     pub coin: [f32; 6],
+    /// L1 (D107): pasture share of used land at 1340 and 1450; at 1450, the
+    /// pasture share beyond and within the median travel cost to a large
+    /// market, and on land below and above the median yield; wool's share of
+    /// coin entering before and after 1348; median over large markets of
+    /// wool coin over grain drawn at 1500 ("W with wool").
+    pub pasture: [f32; 2],
+    pub pasture_cost: (f32, f32),
+    pub pasture_yield: (f32, f32),
+    pub wool_coin: (f32, f32),
+    pub w_wool: f32,
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -364,6 +374,22 @@ pub const CHECKS: &[Check] = &[
                 .all(|p| p.is_nan() || (0.3..=2.5).contains(p))
         },
     },
+    // L1 gates (D105, D107).
+    Check {
+        name: "pasture outward",
+        target: "far>near",
+        ok: |r| r.pasture_cost.0.is_nan() || r.pasture_cost.0 > r.pasture_cost.1,
+    },
+    Check {
+        name: "pasture on poor land",
+        target: "poor>rich",
+        ok: |r| r.pasture_yield.0.is_nan() || r.pasture_yield.0 > r.pasture_yield.1,
+    },
+    Check {
+        name: "pasture 1450>1340",
+        target: "1450>1340",
+        ok: |r| r.pasture[1].is_nan() || r.pasture[1] > r.pasture[0],
+    },
     // v7 gate (D90; passes trivially without marketplaces).
     Check {
         name: "unsold at markets",
@@ -432,6 +458,11 @@ pub fn run_one(
     let mut money_marks = [f32::NAN; 5];
     let mut farm_share = [f32::NAN; 5];
     let mut coin = [0f32; 6];
+    let mut pasture = [f32::NAN; 2];
+    let (mut pasture_cost, mut pasture_yield) = ((f32::NAN, f32::NAN), (f32::NAN, f32::NAN));
+    // Wool coin and all coin entering, before and after 1348.
+    let mut wool_acc = [0f32; 4];
+    let mut w_wool = f32::NAN;
     let mut clark_rows: Vec<(u32, u32, f32, f32, f32)> = Vec::new();
     // Regional price, market stores and harvest per year from year 100.
     let mut series: Vec<(f32, f32, f32)> = Vec::new();
@@ -481,6 +512,65 @@ pub fn run_one(
                 .enumerate()
             {
                 coin[k] += v;
+            }
+            {
+                let k = if y < 249 { 0 } else { 2 };
+                if y <= 400 {
+                    wool_acc[k] += l.wool_in;
+                    wool_acc[k + 1] += l.wool_in + l.port_in + l.planted_in;
+                }
+            }
+            if y == 240 || y == 350 {
+                let used = sim.state.owner.iter().filter(|&&o| o != hinterlands_core::state::NONE).count();
+                let grazed = sim.state.grazed.iter().filter(|&&g| g != hinterlands_core::state::NONE).count();
+                let share = grazed as f32 / (used + grazed).max(1) as f32;
+                pasture[if y == 240 { 0 } else { 1 }] = share;
+                if y == 350 {
+                    let st = &sim.state;
+                    let big: Vec<_> = st.settlements.iter().filter(|s| s.market >= params.market_min).collect();
+                    let mut cells: Vec<(f32, f32, bool)> = Vec::new();
+                    for c in 0..st.owner.len() {
+                        let past = st.grazed.get(c).is_some_and(|&g| g != hinterlands_core::state::NONE);
+                        if st.owner[c] == hinterlands_core::state::NONE && !past {
+                            continue;
+                        }
+                        let cost = big
+                            .iter()
+                            .map(|s| s.reach.cost_to_cell(c))
+                            .fold(f32::INFINITY, f32::min);
+                        cells.push((cost, sim.terrain.food_yield[c], past));
+                    }
+                    let split = |key: &dyn Fn(&(f32, f32, bool)) -> f32| -> (f32, f32) {
+                        let mut v: Vec<f32> = cells.iter().map(|x| key(x)).collect();
+                        v.sort_by(|a, b| a.total_cmp(b));
+                        let mid = v.get(v.len() / 2).copied().unwrap_or(0.0);
+                        let (mut hi, mut hin, mut lo, mut lon) = (0f32, 0f32, 0f32, 0f32);
+                        for x in &cells {
+                            if key(x) >= mid {
+                                hi += x.2 as u32 as f32;
+                                hin += 1.0;
+                            } else {
+                                lo += x.2 as u32 as f32;
+                                lon += 1.0;
+                            }
+                        }
+                        (hi / hin.max(1.0), lo / lon.max(1.0))
+                    };
+                    pasture_cost = split(&|x| x.0);
+                    let (rich, poor) = split(&|x| x.1);
+                    pasture_yield = (poor, rich);
+                }
+            }
+            if y == 400 {
+                let mut r: Vec<f32> = sim
+                    .state
+                    .settlements
+                    .iter()
+                    .filter(|s| s.market >= params.market_min && s.market_in > 0.0)
+                    .map(|s| s.wool_in / s.price[0].max(1e-3) / s.market_in)
+                    .collect();
+                r.sort_by(|a, b| a.total_cmp(b));
+                w_wool = r.get(r.len() / 2).copied().unwrap_or(f32::NAN);
             }
             if y % 50 == 0 && (50..=500).contains(&y) {
                 let mut ps: Vec<(f32, f32)> = sim
@@ -697,6 +787,11 @@ pub fn run_one(
         (purse_acc[3] + purse_acc[4]) / purse_acc[2].max(1.0),
     );
     RunResult {
+        pasture,
+        pasture_cost,
+        pasture_yield,
+        wool_coin: (wool_acc[0] / wool_acc[1].max(1e-6), wool_acc[2] / wool_acc[3].max(1e-6)),
+        w_wool,
         price_marks,
         money_marks,
         farm_share,
@@ -998,6 +1093,9 @@ pub fn cmd_validate(args: &Args) {
                     "road length 300-500" => r.road_change,
                     "outside trade" => r.outside_share,
                     "unsold at markets" => r.waste,
+                    "pasture outward" => r.pasture_cost.0 - r.pasture_cost.1,
+                    "pasture on poor land" => r.pasture_yield.0 - r.pasture_yield.1,
+                    "pasture 1450>1340" => r.pasture[1] - r.pasture[0],
                     "price level" => r
                         .price_marks
                         .iter()
@@ -1295,6 +1393,25 @@ pub fn cmd_validate(args: &Args) {
                 a(&|r| r.coin[3]),
                 a(&|r| r.coin[4]),
                 a(&|r| r.coin[5])
+            );
+        }
+        if rs.iter().any(|r| r.pasture[1].is_finite()) {
+            let a = |f: &dyn Fn(&RunResult) -> f32| {
+                med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
+            };
+            println!(
+                "{:<20} {:>12} pasture share of used land 1340 {:.3}, 1450 {:.3}; at 1450 beyond/within median cost {:.3}/{:.3}, below/above median yield {:.3}/{:.3}; wool's share of coin entering before 1348 {:.2}, after {:.2}; W with wool (wool coin / grain drawn, large markets, 1500) {:.2}",
+                "L1 wool",
+                "(reported)",
+                a(&|r| r.pasture[0]),
+                a(&|r| r.pasture[1]),
+                a(&|r| r.pasture_cost.0),
+                a(&|r| r.pasture_cost.1),
+                a(&|r| r.pasture_yield.0),
+                a(&|r| r.pasture_yield.1),
+                a(&|r| r.wool_coin.0),
+                a(&|r| r.wool_coin.1),
+                a(&|r| r.w_wool)
             );
         }
         if rs.iter().any(|r| r.price_ac.is_finite()) {

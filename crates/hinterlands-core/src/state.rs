@@ -52,6 +52,9 @@ pub struct GrainStats {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoneyLedger {
     pub port_in: f32,
+    /// What the ports paid for wool (L1, D107).
+    #[serde(default)]
+    pub wool_in: f32,
     pub planted_in: f32,
     pub imports_out: f32,
     pub luxury_out: f32,
@@ -261,6 +264,13 @@ pub struct Settlement {
     /// The market's purse: its lords, church and merchants (D96).
     #[serde(default)]
     pub mpurse: f32,
+    /// Cells grazed for wool, in the order taken (L1, D107).
+    #[serde(default)]
+    pub pasture: Vec<u32>,
+    /// Coin this place's market purse took from wool this year: the lords'
+    /// share, tolls and carriage (L1, reported as "W with wool").
+    #[serde(default)]
+    pub wool_in: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -313,6 +323,8 @@ impl Settlement {
             store_income: 0.0,
             purse: 0.0,
             mpurse: 0.0,
+            pasture: Vec::new(),
+            wool_in: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -355,6 +367,9 @@ pub struct Flow {
     /// on the receiver's path; `from` is the receiver.
     #[serde(default)]
     pub relief: bool,
+    /// Wool to an outside port (L1, D107), carried on the seller's path.
+    #[serde(default)]
+    pub wool: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -467,6 +482,12 @@ pub struct State {
     /// This year's coin in and out (D97).
     #[serde(default)]
     pub money: MoneyLedger,
+    /// Grazing settlement id of a pasture cell, or `NONE` (L1, D107).
+    #[serde(default)]
+    pub grazed: Vec<u32>,
+    /// This year's wool shipments: (seller id, partner index, value).
+    #[serde(default)]
+    pub wool_ship: Vec<(u32, u32, f32)>,
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -648,6 +669,8 @@ impl State {
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
             money: MoneyLedger::default(),
+            grazed: vec![NONE; n],
+            wool_ship: Vec::new(),
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
