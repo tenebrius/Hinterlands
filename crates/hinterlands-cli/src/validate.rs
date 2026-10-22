@@ -56,6 +56,9 @@ pub struct RunResult {
     /// Total population at year 200, and (W1, filled in by `cmd_validate`)
     /// its ratio to the same seed without local harvests.
     pub pop_200: f32,
+    /// v7 (D90): grain unsold at markets as a share of grain arriving, after
+    /// year 200; NaN without marketplaces.
+    pub waste: f32,
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -309,6 +312,12 @@ pub const CHECKS: &[Check] = &[
         target: "3-20%",
         ok: |r| r.outside_share.is_nan() || (0.03..=0.20).contains(&r.outside_share),
     },
+    // v7 gate (D90; passes trivially without marketplaces).
+    Check {
+        name: "unsold at markets",
+        target: "<=10%",
+        ok: |r| r.waste.is_nan() || r.waste <= 0.10,
+    },
     // v3 gate (D54; passes trivially with traffic roads off).
     Check {
         name: "road length 300-500",
@@ -364,6 +373,7 @@ pub fn run_one(
     // Regional stores over need at the end of each year (index = year).
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
+    let mut waste_acc = (0f32, 0f32);
     let mut top_300: Vec<u32> = Vec::new();
     let mut planted_alive = (0u32, 0u32);
     let mut silt_after = f32::NAN;
@@ -381,6 +391,10 @@ pub fn run_one(
         sim.step(1);
         if sim.state.year == 200 {
             pop_200 = sim.state.total_pop();
+        }
+        if params.marketplaces && sim.state.year > 200 {
+            waste_acc.0 += sim.state.grain_stats.unsold;
+            waste_acc.1 += sim.state.grain_stats.arrived;
         }
         if params.grain_stores {
             let need: f32 = sim.state.settlements.iter().map(|s| s.need(params)).sum();
@@ -509,6 +523,11 @@ pub fn run_one(
         ]
     });
     RunResult {
+        waste: if params.marketplaces {
+            waste_acc.0 / waste_acc.1.max(1.0)
+        } else {
+            f32::NAN
+        },
         pop_200,
         weather_ratio: f32::NAN,
         stores,
@@ -794,6 +813,7 @@ pub fn cmd_validate(args: &Args) {
                     }
                     "road length 300-500" => r.road_change,
                     "outside trade" => r.outside_share,
+                    "unsold at markets" => r.waste,
                     "plague drop" => r.shock.as_ref().map_or(f32::NAN, |s| s.plague_drop),
                     "recovery by 500" => r.shock.as_ref().map_or(f32::NAN, |s| s.recovery),
                     "poor land deserted" => r

@@ -652,3 +652,10 @@ Kind: model mechanism behind switches (owner-approved).
 - **Cause.** W's feedback rested on gross arrivals. Sold grain scales with the market's own people, so the pull loses its positive feedback.
 - **Options** are in `docs/market/m2.md`.
 Kind: model mechanism behind a switch; stopped.
+
+## D90 — M2 second build: W on grain arriving (designer's decision). Failed; stopped
+- **Rule.** Under `marketplaces`, `market_in` is the grain arriving at the market. K is re-read as consumption per market person (1.2–2.0). New gated check: unsold at markets ≤ 10% of arrivals after year 200.
+- **Result.** The untuned setting (K 1.5, `market_share` 0.215) collapses the region: 5,039 people at year 500 on map 1 seed 1. Tuning over K, `market_share` and toll (18 settings) gives population at 400 of 1,285–18,254 and no place over 2,000. No gate was run.
+- **Cause.** Every village's own sales arrive at its own market, so W reaches the whole population everywhere. The farmers vanish, and market people cannot buy the harvest on rent, toll and fees alone.
+- **Options** are in `docs/market/m2.md`.
+Kind: model mechanism behind a switch; stopped.

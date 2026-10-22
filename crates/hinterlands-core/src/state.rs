@@ -25,6 +25,9 @@ pub struct GrainStats {
     /// The establishment's share of the grain bought by places over 2,000
     /// (D79).
     pub estab_share: f32,
+    /// Grain arriving at markets this year (v7, D90).
+    #[serde(default)]
+    pub arrived: f32,
 }
 
 /// The outside port a partner id names, if it is one.

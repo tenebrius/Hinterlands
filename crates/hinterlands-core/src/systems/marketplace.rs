@@ -21,8 +21,8 @@
 //! ports, up to `outside_grain` at up to the world price. Places in deficit
 //! have no surplus to sell, so they rely on relief and stores (S2′, S3). Grain
 //! that does not clear at the floor is lost and does not count as turnover.
-//! Goods are paid as in S1. Writes food_in, food_out, market_in (grain sold
-//! at the market), flows, settlements' `price[0]` and `capped`,
+//! Goods are paid as in S1. W grows on the grain arriving at its market
+//! (D90). Writes food_in, food_out, market_in (grain arriving at the market), flows, settlements' `price[0]` and `capped`,
 //! `grain_stats` and `outside_trade.0`.
 
 use crate::params::Params;
@@ -453,7 +453,9 @@ pub fn trade(
     let mut capped_n = 0u32;
     for (j, s) in state.settlements.iter_mut().enumerate() {
         food_in[j] += eaten_w[j];
-        market_in[j] += sold_here[j];
+        // W grows on the grain arriving at its market (D90): food supply
+        // that draws the people who then eat it.
+        market_in[j] += turnover[j];
         s.price[0] = price[j];
         s.capped = capped[j];
         capped_n += capped[j] as u32;
@@ -467,6 +469,7 @@ pub fn trade(
         harvest: state.settlements.iter().map(|s| s.food_prod).sum(),
         capped: capped_n,
         estab_share: f32::NAN,
+        arrived: total_t,
     };
 }
 
