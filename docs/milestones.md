@@ -543,3 +543,17 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - W with wool is about 0;
   - Kent has almost no pasture: its yield layers lack chalk and marsh soils, a data gap noted for later.
 - **Golden `1ebe5979ca2bf8fe`.** Release wasm gives the same hash (`?selftest=500`) at 47.7 ms/year (not gated, D91).
+
+## L2 and L4 — The murrain and the view (D112, D113)
+- **L2:** wool ×0.7 in 1315–17 and ×0.85 in 1318–22, figures approximate. `shadow_drain` 0.045.
+- **L4:**
+  - pasture and sheep drawn from the model;
+  - wool routes in fleece cream;
+  - chronicle lines for grass and murrain;
+  - screenshots in `docs/wool/img`.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Over 2,000 17 / 18 / 18, spacing 19 / 20 / 19, roads 17 / 18 / 17.
+  - Runs passing every check: 12 / 13 / 8.
+  - Carry-over after cheap years 0.10–0.15 (max 0.35).
+- **Golden `7d534fccaae58528`.** Release wasm gives the same hash at 50.4 ms/year.
+- **Details:** `docs/wool/l2-l4.md`.

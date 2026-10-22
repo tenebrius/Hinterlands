@@ -723,3 +723,9 @@ Kind: tuning (designer's decision D104).
 - **Market stores carry grain over again** (0.13–0.14 of a mean harvest).
 - **Details:** `docs/wool/l1.md`, "Final build".
 Kind: tuning (designer's decision D110).
+
+## D113 — L2: `shadow_drain` 0.05 → 0.045
+- **Why:** the murrain tipped map 3's "over 2,000" to 14/20. All six failing seeds had 4 towns, one short of the band.
+- **Tried on map 3, per seed** (over 2,000 / spacing): `k_maint` 1.4 (17 / 20), `market_share` 0.32 (19 / 17), `shadow_drain` 0.045 (18 / 19).
+- **Chosen:** the drain, as the smallest change that holds spacing. The gate passes (`docs/wool/l2-l4.md`).
+Kind: tuning (within D110's levers).

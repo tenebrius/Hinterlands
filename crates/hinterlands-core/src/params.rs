@@ -191,7 +191,7 @@ define_params! {
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
-        shadow_drain: f32 = 0.05, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
+        shadow_drain: f32 = 0.045, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
         drain_radius_km: f32 = 8.0, [0, 40], "Distance, km, within which a much larger neighbour drains a place (with shadow_km, D53)";
         shadow_size_ratio: f32 = 3.0, [1, 20], "A neighbour drains only if this many times larger";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
