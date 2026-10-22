@@ -84,8 +84,10 @@ impl Layer for WoolLayer {
                 .map(|&p| d.camera.to_screen(d.rect, p))
                 .collect();
             let w = (0.4 + f.amount.sqrt() * 0.08).min(3.5) * (z / 6.0).clamp(0.6, 2.0);
-            d.painter
-                .add(Shape::line(line.clone(), Stroke::new(w + 1.2, WOOL_EDGE.gamma_multiply(0.5))));
+            d.painter.add(Shape::line(
+                line.clone(),
+                Stroke::new(w + 1.2, WOOL_EDGE.gamma_multiply(0.5)),
+            ));
             d.painter.add(Shape::line(line, Stroke::new(w, WOOL)));
         }
     }

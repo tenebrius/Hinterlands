@@ -685,8 +685,13 @@ pub fn cmd_money(args: &Args) {
         let st = &sim.state;
         let l = st.money;
         let after = st.money_stock();
-        let resid =
-            after - before - (l.port_in + l.wool_in + l.planted_in - l.imports_out - l.luxury_out - l.wear - l.removed);
+        let resid = after
+            - before
+            - (l.port_in + l.wool_in + l.planted_in
+                - l.imports_out
+                - l.luxury_out
+                - l.wear
+                - l.removed);
         if y % every != 0 {
             continue;
         }
@@ -793,7 +798,11 @@ pub fn cmd_wool(args: &Args) {
         let fpp = p.food_per_person;
         let ppc = p.people_per_prime_cell;
         let arable_labour = if arable_labour_arg == "model" {
-            let farmers: f32 = st.settlements.iter().map(|s| (s.pop - s.market.max(0.0)).max(0.0)).sum();
+            let farmers: f32 = st
+                .settlements
+                .iter()
+                .map(|s| (s.pop - s.market.max(0.0)).max(0.0))
+                .sum();
             let fields: usize = st.settlements.iter().map(|s| s.fields.len()).sum();
             farmers / fields.max(1) as f32
         } else {
@@ -821,7 +830,10 @@ pub fn cmd_wool(args: &Args) {
             .map(|s| s.price[0])
             .collect();
         prices_all.sort_by(|a, b| a.total_cmp(b));
-        let p_reg = prices_all.get(prices_all.len() / 2).copied().unwrap_or(p.port_world_price);
+        let p_reg = prices_all
+            .get(prices_all.len() / 2)
+            .copied()
+            .unwrap_or(p.port_world_price);
         // Candidate cells: claimed (B) and free land within any field reach (A).
         let mut in_reach = vec![false; n];
         for s in &st.settlements {
@@ -864,7 +876,11 @@ pub fn cmd_wool(args: &Args) {
                 }
             }
             let yield_ = t.food_yield[c];
-            let cm = if c_mkt.is_finite() { c_mkt } else { 1.0 / p.market_tau };
+            let cm = if c_mkt.is_finite() {
+                c_mkt
+            } else {
+                1.0 / p.market_tau
+            };
             let r_arable = yield_ * ppc * fpp * pl * (1.0 - p.market_tau * cm).max(0.0)
                 - arable_labour * fpp * pl;
             cells.push((
@@ -887,7 +903,12 @@ pub fn cmd_wool(args: &Args) {
             .collect();
         costs.sort_by(|a, b| a.total_cmp(b));
         let edges: Vec<f32> = (1..5)
-            .map(|k| costs.get(costs.len() * k / 5).copied().unwrap_or(f32::INFINITY))
+            .map(|k| {
+                costs
+                    .get(costs.len() * k / 5)
+                    .copied()
+                    .unwrap_or(f32::INFINITY)
+            })
             .collect();
         let band_c = |v: f32| -> usize {
             if !v.is_finite() {
@@ -929,14 +950,22 @@ pub fn cmd_wool(args: &Args) {
         );
         let tau_w = p.market_tau / rho_wool.max(1e-6);
         let pasture = |x: &Cell, w: f32| -> f32 {
-            let cp = if x.c_port.is_finite() { x.c_port } else { 1.0 / tau_w };
+            let cp = if x.c_port.is_finite() {
+                x.c_port
+            } else {
+                1.0 / tau_w
+            };
             w * (1.0 - tau_w * cp).max(0.0) - pasture_labour * fpp * x.p
         };
         // Break-even sack prices (pounds), per cell.
         let mut be_a: Vec<f32> = Vec::new();
         let mut be_b: Vec<f32> = Vec::new();
         for (_, x) in &cells {
-            let cp = if x.c_port.is_finite() { x.c_port } else { 1.0 / tau_w };
+            let cp = if x.c_port.is_finite() {
+                x.c_port
+            } else {
+                1.0 / tau_w
+            };
             let net = (1.0 - tau_w * cp).max(1e-6) * coin_per_pound;
             let lab = pasture_labour * fpp * x.p;
             if x.claimed {
@@ -947,7 +976,11 @@ pub fn cmd_wool(args: &Args) {
         }
         be_a.sort_by(|a, b| a.total_cmp(b));
         be_b.sort_by(|a, b| a.total_cmp(b));
-        let q = |v: &Vec<f32>, f: f32| v.get(((v.len() as f32 * f) as usize).min(v.len().saturating_sub(1))).copied().unwrap_or(f32::NAN);
+        let q = |v: &Vec<f32>, f: f32| {
+            v.get(((v.len() as f32 * f) as usize).min(v.len().saturating_sub(1)))
+                .copied()
+                .unwrap_or(f32::NAN)
+        };
         println!(
             "wool_be {seed} {y} A min {:.2} med {:.2} | B min {:.2} p10 {:.2} p25 {:.2} med {:.2} (pounds a sack)",
             q(&be_a, 0.0),
@@ -1073,12 +1106,19 @@ pub fn cmd_landuse(args: &Args) {
         let (x, y) = t.grid.xy(c);
         let used = if st.owner[c] != hinterlands_core::state::NONE {
             1
-        } else if st.grazed.get(c).is_some_and(|&g| g != hinterlands_core::state::NONE) {
+        } else if st
+            .grazed
+            .get(c)
+            .is_some_and(|&g| g != hinterlands_core::state::NONE)
+        {
             2
         } else {
             0
         };
-        println!("{x} {y} {:.1} {:.3} {used}", t.elevation[c], t.food_yield[c]);
+        println!(
+            "{x} {y} {:.1} {:.3} {used}",
+            t.elevation[c], t.food_yield[c]
+        );
     }
 }
 
@@ -1159,7 +1199,11 @@ pub fn cmd_demand(args: &Args) {
                 hinterlands_core::systems::trade::demand(s, &p, Good::Iron),
                 hinterlands_core::systems::trade::demand(s, &p, Good::Stone),
             ];
-            let sites = st.sites.iter().filter(|x| x.holder == s.id && x.output > 0.0).count() as f32;
+            let sites = st
+                .sites
+                .iter()
+                .filter(|x| x.holder == s.id && x.output > 0.0)
+                .count() as f32;
             let stock = [
                 s.pop * salt_lb / salt_lb_per_d / unit_d,
                 (s.fields.len() as f32 * km2 * ploughs_per_km2 * plough_iron_d
@@ -1177,7 +1221,11 @@ pub fn cmd_demand(args: &Args) {
             tot[6] += p.import_demand * w;
             tot[7] += wool;
             tot[8] += s.fields.len() as f32;
-            let port = s.reach.partners.iter().any(|q| port_of(q.id).is_some() && q.cost < 5.0);
+            let port = s
+                .reach
+                .partners
+                .iter()
+                .any(|q| port_of(q.id).is_some() && q.cost < 5.0);
             let ty = match s.kind {
                 Kind::Mine | Kind::Saltern | Kind::Quarry => "works",
                 _ if port && w >= p.market_min => "port",
@@ -1207,7 +1255,18 @@ pub fn cmd_demand(args: &Args) {
             w_prev.insert(s.id, s.market.max(0.0));
         }
         if y % 10 == 0 {
-            let wool_prod = st.settlements.iter().map(|s| s.pasture.len()).sum::<usize>() as f32 * wool_lb_cell;
+            // With `cloth`, the fallow flock on every place's fields (D2, D123).
+            let fallow = if p.cloth {
+                p.fallow_share * p.sheep_per_fallow_acre / p.sheep_per_acre.max(1e-6)
+            } else {
+                0.0
+            };
+            let wool_prod = st
+                .settlements
+                .iter()
+                .map(|s| s.pasture.len() as f32 + fallow * s.fields.len() as f32)
+                .sum::<f32>()
+                * wool_lb_cell;
             println!(
                 "d0 {seed} {y} {:.0} {:.0} | salt {:.1} {:.1} | iron {:.1} {:.1} | stone {:.1} {:.1} | imports {:.1} | {:.0} {:.0}",
                 st.total_pop(),
@@ -1234,7 +1293,11 @@ pub fn cmd_demand(args: &Args) {
                 stone_acc[2] / stone_acc[3].max(1e-6)
             );
             stone_acc = [0f32; 4];
-            w_decade = st.settlements.iter().map(|s| (s.id, s.market.max(0.0))).collect();
+            w_decade = st
+                .settlements
+                .iter()
+                .map(|s| (s.id, s.market.max(0.0)))
+                .collect();
         }
     }
 }
@@ -1257,9 +1320,26 @@ pub fn cmd_ironprice(args: &Args) {
         }
         let mut price = Vec::new();
         let mut parity = Vec::new();
+        let mut cut = Vec::new();
+        let mut cut_pop = 0.0f32;
+        let mut mines_cut = 0.0f32;
+        let mut mines_all = 0.0f32;
         for s in &sim.state.settlements {
+            let no_port = !s.reach.partners.iter().any(|q| port_of(q.id).is_some());
+            if s.kind == hinterlands_core::state::Kind::Mine {
+                mines_all += s.pop;
+                if no_port {
+                    mines_cut += s.pop;
+                }
+            }
+            if no_port {
+                cut_pop += s.pop;
+            }
             if s.market < sim.params.market_min || s.price[2] <= 0.0 {
                 continue;
+            }
+            if no_port {
+                cut.push(s.price[2]);
             }
             price.push(s.price[2]);
             let c = s
@@ -1277,11 +1357,97 @@ pub fn cmd_ironprice(args: &Args) {
             v.sort_by(|a, b| a.total_cmp(b));
             v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
         };
+        let pop: f32 = sim.state.settlements.iter().map(|s| s.pop).sum();
         println!(
-            "ironprice {seed} {y} towns {} median_price {:.3} median_parity {:.3}",
+            "ironprice {seed} {y} towns {} median_price {:.3} median_parity {:.3} no_port_towns {} no_port_median {:.3} no_port_pop_share {:.3} mine_pop_no_port {:.0} mine_pop {:.0}",
             price.len(),
             med(price),
-            med(parity)
+            med(parity),
+            cut.len(),
+            med(cut),
+            cut_pop / pop.max(1.0),
+            mines_cut,
+            mines_all
         );
     }
+}
+
+/// Specialist settlements by good (D123 trace 1): at each year in `--at`, one
+/// line per non-agrarian settlement with its kind, people, market, and its
+/// sites' sales by good.
+pub fn cmd_specialists(args: &Args) {
+    let mut sim = make_sim(args);
+    let at: Vec<u32> = args
+        .str("at")
+        .unwrap_or("500")
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
+    let years = *at.iter().max().unwrap_or(&500);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    while sim.state.year < years {
+        sim.step(1);
+        let y = sim.state.year;
+        if !at.contains(&y) {
+            continue;
+        }
+        let st = &sim.state;
+        for s in st
+            .settlements
+            .iter()
+            .filter(|s| s.kind != hinterlands_core::state::Kind::Agrarian)
+        {
+            let mut sold = [0.0f32; 3];
+            let mut n = [0u32; 3];
+            for site in st.sites.iter().filter(|q| q.holder == s.id) {
+                sold[site.good as usize] += site.sold;
+                n[site.good as usize] += 1;
+            }
+            println!(
+                "specialist {map} {seed} {y} {:?} pop {:.0} market {:.0} founded {} avg_goods_in {:.1} avg_inflow {:.1} sites salt {} iron {} stone {} sold salt {:.1} iron {:.1} stone {:.1}",
+                s.kind, s.pop, s.market, s.founded, s.avg_goods_in, s.avg_inflow, n[0], n[1], n[2], sold[0], sold[1], sold[2]
+            );
+            if args.str("arcs").is_some() {
+                println!(
+                    "  supply_price {:?} price {:?} goods_in {:.1} purse {:.1} mpurse {:.1}",
+                    s.supply_price, s.price, s.goods_in, s.purse, s.mpurse
+                );
+                for a in st.market_arcs.iter().filter(|a| a.0 == s.id) {
+                    let b = st.get(a.1);
+                    println!(
+                        "  arc to {} q {:.2} gap {:.3} t {:.3} buyer_price {:?}",
+                        a.1,
+                        a.2,
+                        a.3,
+                        a.4,
+                        b.map(|b| b.price)
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The outside-trade share's parts at the end of the run (D123 trace 4): grain
+/// to the ports, imports (luxuries plus salt and iron from the ports), wool,
+/// against the region's market inflow.
+pub fn cmd_outside(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    while sim.state.year < years {
+        sim.step(1);
+    }
+    let st = &sim.state;
+    let p = &sim.params;
+    let (g, i) = st.outside_trade;
+    let w = st.money.wool_in / p.port_world_price.max(1e-6);
+    let inflow: f32 = st.settlements.iter().map(|s| s.market_in).sum();
+    let share = (g + i + w) / (inflow + w).max(1.0);
+    println!(
+        "outside {map} {seed} share {:.3} grain_to_ports {:.1} imports {:.1} salt_from_ports_q {:.1} iron_from_ports_q {:.1} wool {:.1} inflow {:.1} pop {:.0}",
+        share, g, i, st.port_supply[0], st.port_supply[2], w, inflow, st.total_pop()
+    );
 }

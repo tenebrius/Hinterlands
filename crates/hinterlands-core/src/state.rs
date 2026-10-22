@@ -516,6 +516,9 @@ pub struct State {
     /// This year's wool shipments: (seller id, partner index, value).
     #[serde(default)]
     pub wool_ship: Vec<(u32, u32, f32)>,
+    /// Coin the fallow flock's wool fetched at the ports this year (D2, D123).
+    #[serde(default)]
+    pub fallow_wool: f32,
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -700,6 +703,7 @@ impl State {
             money: MoneyLedger::default(),
             grazed: vec![NONE; n],
             wool_ship: Vec::new(),
+            fallow_wool: 0.0,
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

@@ -509,9 +509,16 @@ pub fn run_one(
         if !params.market_grain {
             let y = sim.state.year;
             let l = sim.state.money;
-            for (k, v) in [l.port_in, l.planted_in, l.imports_out, l.luxury_out, l.wear, l.removed]
-                .into_iter()
-                .enumerate()
+            for (k, v) in [
+                l.port_in,
+                l.planted_in,
+                l.imports_out,
+                l.luxury_out,
+                l.wear,
+                l.removed,
+            ]
+            .into_iter()
+            .enumerate()
             {
                 coin[k] += v;
             }
@@ -523,16 +530,33 @@ pub fn run_one(
                 }
             }
             if y == 240 || y == 350 {
-                let used = sim.state.owner.iter().filter(|&&o| o != hinterlands_core::state::NONE).count();
-                let grazed = sim.state.grazed.iter().filter(|&&g| g != hinterlands_core::state::NONE).count();
+                let used = sim
+                    .state
+                    .owner
+                    .iter()
+                    .filter(|&&o| o != hinterlands_core::state::NONE)
+                    .count();
+                let grazed = sim
+                    .state
+                    .grazed
+                    .iter()
+                    .filter(|&&g| g != hinterlands_core::state::NONE)
+                    .count();
                 let share = grazed as f32 / (used + grazed).max(1) as f32;
                 pasture[if y == 240 { 0 } else { 1 }] = share;
                 if y == 350 {
                     let st = &sim.state;
-                    let big: Vec<_> = st.settlements.iter().filter(|s| s.market >= params.market_min).collect();
+                    let big: Vec<_> = st
+                        .settlements
+                        .iter()
+                        .filter(|s| s.market >= params.market_min)
+                        .collect();
                     let mut cells: Vec<(f32, f32, bool)> = Vec::new();
                     for c in 0..st.owner.len() {
-                        let past = st.grazed.get(c).is_some_and(|&g| g != hinterlands_core::state::NONE);
+                        let past = st
+                            .grazed
+                            .get(c)
+                            .is_some_and(|&g| g != hinterlands_core::state::NONE);
                         if st.owner[c] == hinterlands_core::state::NONE && !past {
                             continue;
                         }
@@ -792,7 +816,10 @@ pub fn run_one(
         pasture,
         pasture_cost,
         pasture_yield,
-        wool_coin: (wool_acc[0] / wool_acc[1].max(1e-6), wool_acc[2] / wool_acc[3].max(1e-6)),
+        wool_coin: (
+            wool_acc[0] / wool_acc[1].max(1e-6),
+            wool_acc[2] / wool_acc[3].max(1e-6),
+        ),
         w_wool,
         price_marks,
         money_marks,
@@ -1378,7 +1405,10 @@ pub fn cmd_validate(args: &Args) {
                 a(&|r| r.purse_level[1][3])
             );
         }
-        if rs.iter().any(|r| r.price_marks.iter().any(|p| p.is_finite())) {
+        if rs
+            .iter()
+            .any(|r| r.price_marks.iter().any(|p| p.is_finite()))
+        {
             let a = |f: &dyn Fn(&RunResult) -> f32| {
                 med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
             };

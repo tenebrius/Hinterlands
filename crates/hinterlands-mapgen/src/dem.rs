@@ -35,7 +35,11 @@ pub fn import_dem(path: &str, cell_km: f32, mp: &MapParams) -> Result<Terrain, S
         let s = std::fs::read_to_string(geo).map_err(|e| format!("{geo}: {e}"))?;
         let g = read_grid(&s)?;
         if g.len() != t.n() {
-            return Err(format!("geology grid has {} cells, the map {}", g.len(), t.n()));
+            return Err(format!(
+                "geology grid has {} cells, the map {}",
+                g.len(),
+                t.n()
+            ));
         }
         for i in 0..t.n() {
             let k = g[i].round() as i32;

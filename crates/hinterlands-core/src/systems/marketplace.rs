@@ -179,16 +179,19 @@ pub fn trade(
     // Market people buy within their market's purse, and farmers short of
     // grain within theirs (D95, D97): the coin held at the start of the
     // grain trade. This year's takings are next year's budget.
-    let budget: Vec<f32> = state.settlements.iter().map(|s| s.mpurse.max(0.0)).collect();
+    let budget: Vec<f32> = state
+        .settlements
+        .iter()
+        .map(|s| s.mpurse.max(0.0))
+        .collect();
     let purse: Vec<f32> = state.settlements.iter().map(|s| s.purse.max(0.0)).collect();
     let people: Vec<f32> = state
         .settlements
         .iter()
         .map(|s| s.market.max(0.0).min(s.pop))
         .collect();
-    let food_w = |j: usize, b: f32| -> f32 {
-        market_demand(p, people[j], b).min(budget[j] / b.max(1e-3))
-    };
+    let food_w =
+        |j: usize, b: f32| -> f32 { market_demand(p, people[j], b).min(budget[j] / b.max(1e-3)) };
     let dearth = |j: usize, b: f32| -> f32 { deficit[j].min(purse[j] / b.max(1e-3)) };
     let want = |j: usize, b: f32| -> f32 { food_w(j, b) + dearth(j, b) };
 
@@ -596,7 +599,11 @@ pub fn trade(
         dearth_got_all += dearth_got[j];
         let b = price[j];
         paid_f[j] = (dearth_got[j] * b).min(purse[j]);
-        let store_cost = if big[j] { (-store_take[j]).max(0.0) * b } else { 0.0 };
+        let store_cost = if big[j] {
+            (-store_take[j]).max(0.0) * b
+        } else {
+            0.0
+        };
         paid_m[j] = ((eaten_w[j] - dearth_got[j]) * b + store_cost).min(budget[j]);
     }
     let port_in: f32 = (nb..nodes).map(|n| inflow[n] * buy[n]).sum();
@@ -621,7 +628,11 @@ pub fn trade(
     }
     let owed: f32 = owed_m.iter().sum::<f32>() + owed_f.iter().sum::<f32>();
     // Sellers are paid in full if buyers paid that much, else pro rata.
-    let scale = if owed > pool { pool / owed.max(1e-9) } else { 1.0 };
+    let scale = if owed > pool {
+        pool / owed.max(1e-9)
+    } else {
+        1.0
+    };
     let gap = pool - owed * scale;
     let paid_all: f32 = paid_m.iter().sum::<f32>() + paid_f.iter().sum::<f32>();
     let mut tolls = 0f32;
@@ -704,7 +715,8 @@ pub fn trade(
         let f = s.purse.max(0.0);
         out_f[j] = f * p.purse_loss + (f * (1.0 - p.purse_loss) - p.purse_cap * need_f).max(0.0);
         let mm = s.mpurse.max(0.0);
-        out_m[j] = mm * p.mpurse_loss + (mm * (1.0 - p.mpurse_loss) - p.mpurse_cap * need_w[j]).max(0.0);
+        out_m[j] =
+            mm * p.mpurse_loss + (mm * (1.0 - p.mpurse_loss) - p.mpurse_cap * need_w[j]).max(0.0);
     }
     let mut luxury = 0f32;
     for j in 0..m {

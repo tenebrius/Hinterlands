@@ -469,6 +469,8 @@ fn main() {
         "logkinds" => probe::cmd_logkinds(&args),
         "demand" => probe::cmd_demand(&args),
         "ironprice" => probe::cmd_ironprice(&args),
+        "specialists" => probe::cmd_specialists(&args),
+        "outside" => probe::cmd_outside(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),
         "bench" => cmd_bench(&args),

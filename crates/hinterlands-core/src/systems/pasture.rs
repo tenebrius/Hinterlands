@@ -21,6 +21,10 @@
 //! The wool rides the seller's paths to the port (`wool_ship`, loaded in
 //! trade). Wool does not grow W (D105, decision 3).
 //!
+//! With `cloth` (D2 step 1, D123) the fallow flock adds `fallow_share ×
+//! sheep_per_fallow_acre` sheep an acre of each place's fields, sold the same
+//! way; that wool is the farmers' own (no rent), less the toll.
+//!
 //! Writes `grazed`, settlements' `pasture` and `wool_in`, the purses,
 //! `money.wool_in` and `wool_ship`.
 
@@ -35,6 +39,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         state.grazed = vec![NONE; n];
     }
     state.wool_ship.clear();
+    state.fallow_wool = 0.0;
     let m = state.settlements.len();
     for s in state.settlements.iter_mut() {
         s.wool_in = 0.0;
@@ -47,7 +52,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
     for c in 0..n {
         let g = state.grazed[c];
-        if g != NONE && (state.owner[c] != NONE || !alive.get(g as usize).copied().unwrap_or(false)) {
+        if g != NONE && (state.owner[c] != NONE || !alive.get(g as usize).copied().unwrap_or(false))
+        {
             state.grazed[c] = NONE;
         }
     }
@@ -99,7 +105,10 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         idx_of[s.id as usize] = i;
     }
     let settlement = |id: u32| -> Option<usize> {
-        idx_of.get(id as usize).copied().filter(|&i| i != usize::MAX)
+        idx_of
+            .get(id as usize)
+            .copied()
+            .filter(|&i| i != usize::MAX)
     };
     // Each place's cheapest route to a port: (cost, partner index, the
     // partner's own partner index to the port or NONE when direct).
@@ -143,7 +152,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             s.reach
                 .partners
                 .iter()
-                .filter(|q| settlement(q.id).is_some_and(|j| state.settlements[j].market >= p.market_min))
+                .filter(|q| {
+                    settlement(q.id).is_some_and(|j| state.settlements[j].market >= p.market_min)
+                })
                 .map(|q| q.cost)
                 .fold(f32::INFINITY, f32::min)
         })
@@ -160,15 +171,24 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 s.id,
                 (s.pop - s.market.max(0.0)).max(0.0),
                 s.fields.len() as f32,
-                if s.price[0] > 0.0 { s.price[0] } else { p.port_world_price },
+                if s.price[0] > 0.0 {
+                    s.price[0]
+                } else {
+                    p.port_world_price
+                },
             )
         };
         let _ = (farmers, fields);
         // With no large market in reach the place sells at home.
-        let c_mkt = if to_market[i].is_finite() { to_market[i] } else { 0.0 };
+        let c_mkt = if to_market[i].is_finite() {
+            to_market[i]
+        } else {
+            0.0
+        };
         // Arable rent order: yield net of carriage to market.
         let key = |s: &crate::state::Settlement, c: u32| -> f32 {
-            t.food_yield[c as usize] * (1.0 - p.market_tau * (c_mkt + s.reach.cost_to_cell(c as usize))).max(0.0)
+            t.food_yield[c as usize]
+                * (1.0 - p.market_tau * (c_mkt + s.reach.cost_to_cell(c as usize))).max(0.0)
         };
         let shepherds = p.pasture_labour * km2 * p.food_per_person * price;
         // Land not worth ploughing at its distance: its net arable output
@@ -190,9 +210,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                         && state.grazed[ci] == NONE
                         && not_worth(s, c)
                         && {
-                        let cp = route_cost + s.reach.cost_to_cell(ci);
-                        wool_coin * (1.0 - tau_w * cp).max(0.0) > shepherds
-                    }
+                            let cp = route_cost + s.reach.cost_to_cell(ci);
+                            wool_coin * (1.0 - tau_w * cp).max(0.0) > shepherds
+                        }
                 })
                 .map(|c| (key(s, c), c))
                 .collect();
@@ -228,17 +248,33 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         // The year's clip, sold at the port.
         let s = &state.settlements[i];
         let cells = s.pasture.len();
-        if cells == 0 {
+        // The fallow flock (D2 step 1, D123): sheep on the fallow and commons
+        // of the place's fields, its wool sold by the farmers with the
+        // pasture's.
+        let fallow_coin = if p.cloth {
+            wool_coin * p.fallow_share * p.sheep_per_fallow_acre / p.sheep_per_acre.max(1e-6)
+        } else {
+            0.0
+        };
+        let field_cells = if fallow_coin > 0.0 { s.fields.len() } else { 0 };
+        if cells == 0 && field_cells == 0 {
             continue;
         }
-        let gross = wool_coin * cells as f32;
-        let farm_gate: f32 = s
-            .pasture
-            .iter()
-            .map(|&c| wool_coin * (1.0 - tau_w * (route_cost + s.reach.cost_to_cell(c as usize))).max(0.0))
-            .sum();
+        let gate = |coin: f32, c: u32| -> f32 {
+            coin * (1.0 - tau_w * (route_cost + s.reach.cost_to_cell(c as usize))).max(0.0)
+        };
+        let gross_fallow = fallow_coin * field_cells as f32;
+        let gate_fallow: f32 = if field_cells > 0 {
+            s.fields.iter().map(|&c| gate(fallow_coin, c)).sum()
+        } else {
+            0.0
+        };
+        let gross = wool_coin * cells as f32 + gross_fallow;
+        let gate_pasture: f32 = s.pasture.iter().map(|&c| gate(wool_coin, c)).sum();
+        let farm_gate = gate_pasture + gate_fallow;
         let carriage = gross - farm_gate;
-        let lords = p.market_share * farm_gate;
+        // Pasture pays rent; the fallow flock's wool is the farmers' own.
+        let lords = p.market_share * gate_pasture;
         let farmers_share = farm_gate - lords;
         let toll = p.toll * farmers_share;
         // The port-side place: the seller itself, or its partner on the route.
@@ -257,6 +293,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         state.settlements[port_side].mpurse += carriage;
         state.settlements[port_side].wool_in += carriage;
         state.money.wool_in += gross;
+        state.fallow_wool += gross_fallow;
         wool_total += gross;
         // Shipped value in grain units at the world price, for road loads.
         let value = gross / p.port_world_price.max(1e-6);

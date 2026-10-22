@@ -72,6 +72,24 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Grain by the equilibrium (S2, D78): goods go by the S1 equilibrium,
     // paid in value, and the ports buy grain inside the grain market.
     let s2 = p.market_grain;
+    // With `goods_after_grain` (D123) the grain market, and its stores, go
+    // first, and the goods are bought from what the purses have left.
+    let grain_first = p.goods_after_grain && !s2;
+    if grain_first {
+        if !p.goods_enabled {
+            state.outside_trade = (0.0, 0.0);
+        }
+        crate::systems::marketplace::trade(
+            state,
+            p,
+            &idx_of,
+            &attract,
+            &mut food_in,
+            &mut food_out,
+            &mut market_in,
+            &mut flows,
+        );
+    }
     let paid = if p.goods_enabled && (p.market_goods || s2) {
         crate::systems::market::goods_trade(
             state,
@@ -112,7 +130,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             &mut market_in,
             &mut flows,
         );
-    } else {
+    } else if !grain_first {
         if !p.goods_enabled {
             state.outside_trade = (0.0, 0.0);
         }
@@ -130,7 +148,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
 
     // Wool to the ports (L1), on the sellers' paths.
     for &(from, k, amount) in &state.wool_ship {
-        let Some(i) = idx_of.get(from as usize).copied().filter(|&i| i != u32::MAX) else {
+        let Some(i) = idx_of
+            .get(from as usize)
+            .copied()
+            .filter(|&i| i != u32::MAX)
+        else {
             continue;
         };
         let s = &state.settlements[i as usize];
@@ -460,7 +482,11 @@ pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
             Good::Stone => {
                 // Repair of the stock, plus new stock as W grows (the accelerator).
                 let w = s.market.max(0.0);
-                let grew = if s.w_last > 0.0 { (w - s.w_last).max(0.0) } else { 0.0 };
+                let grew = if s.w_last > 0.0 {
+                    (w - s.w_last).max(0.0)
+                } else {
+                    0.0
+                };
                 p.demand_stone / p.stone_repair.max(1e-6) * (p.stone_repair * w + grew)
             }
         };
