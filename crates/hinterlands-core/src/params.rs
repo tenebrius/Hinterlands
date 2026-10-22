@@ -240,7 +240,7 @@ define_params! {
         market_goods: bool = true, [0, 1], "Salt, iron, stone and imports trade by the price equilibrium instead of the shopping model (v6 S1, D71)";
         grain_stores: bool = true, [0, 1], "Each place keeps a grain store, filled from surplus above food_cap and drawn in deficit, own first, then by neighbours (v6 S3, D81)";
         store_cap: f32 = 1.0, [0, 2], "Largest store, as a share of a year's need (S3)";
-        pull_smoothed: bool = false, [0, 1], "The market pull in growth answers the ten-year average inflow instead of the year's (W2, D85)";
+        pull_smoothed: bool = true, [0, 1], "The market pull in growth answers the ten-year average inflow instead of the year's (W2, D85)";
         store_smooth: bool = false, [0, 1], "A place tops its food up from its own store to food_cap x need, its growth target, not just to need (W1, D83)";
         store_loss: f32 = 0.05, [0, 0.5], "Share of a store lost each year to spoilage, vermin and holding (S3)";
         grain_relief: bool = true, [0, 1], "After trade, places in deficit draw on surplus above food_cap that would otherwise be lost, unpaid (v6 S2', D80)";
@@ -293,7 +293,7 @@ define_params! {
         plague_interval: f32 = 150.0, [1, 2000], "Mean years between plagues (random mode)";
     }
     "Harvests" => {
-        local_harvests: bool = false, [0, 1], "Each cell's yield varies year to year with a smooth local field (v6 W1)";
+        local_harvests: bool = true, [0, 1], "Each cell's yield varies year to year with a smooth local field (v6 W1)";
         harvest_sd: f32 = 0.15, [0, 0.5], "Standard deviation of the yearly yield multiplier at the field's nodes";
         harvest_km: f32 = 15.0, [1, 200], "Spacing of the field's nodes, km";
         harvest_min: f32 = 0.5, [0, 1], "Least yearly yield multiplier";

@@ -435,3 +435,22 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - a close view with granary bars in 1314;
   - `docs/screenshots/s3-1318.png`.
 - **Version files:** `data/real/experiments/relief.json` (S2′, `f5b32f88ee3fc22f`), `v6-s1.json` (S1, `ec7a24a7caeac414`) and the earlier ones reproduce every earlier golden.
+
+## v6 W2 — Local harvests with the smoothed market pull (D85, D86)
+- **On by default:**
+  - `pull_smoothed`: growth's market pull answers the ten-year average inflow;
+  - `local_harvests`: a smooth 15 km yield field, σ 0.15, drawn up front from the run's `Rng` (D75).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Top-10 vs off is 20/20 on every map, and runs passing every check are 18 / 20 / 15.
+- **Pre-registered:**
+  - population at year 200 is 0.95–0.96 of the same seed without weather, 20/20 within 20%: **met**;
+  - regional stores at year 400 are 0.02–0.03 of need against ≥ 0.2: **missed**. The designer records this as a limit of the store rule (relief takes the surplus first), not harm from weather.
+- **Reported:**
+  - famine dip 0.18 / 0.19 / 0.20 (v6 0.17–0.18);
+  - stores 0.34–0.38 of need before 1315, 96–100% drawn down by 1317, and not refilled after the plague;
+  - deficit met in 1315–17: 34–39%;
+  - Clark (shadow): `b_P` 0.98–0.99, R² 0.98, `b_Y` −0.011 to −0.013.
+  - Details: `docs/market/w2.md`.
+- **Determinism:**
+  - golden `1faa5c46e3908124`;
+  - the release wasm build gives the same hash (`?selftest=500`, 30.5 ms/year);
+  - `data/real/experiments/v6.json` gives v6's `0e65d09ec147b5c7`, and every earlier version file reproduces its golden.

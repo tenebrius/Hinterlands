@@ -34,5 +34,7 @@
   "market_goods": false,
   "demand_iron": 0.02,
   "grain_relief": false,
-  "grain_stores": false
+  "grain_stores": false,
+  "pull_smoothed": false,
+  "local_harvests": false
 }

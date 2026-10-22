@@ -1,5 +1,7 @@
 {
   "grain_relief": false,
   "shadow_drain": 0.0168,
-  "grain_stores": false
+  "grain_stores": false,
+  "pull_smoothed": false,
+  "local_harvests": false
 }
