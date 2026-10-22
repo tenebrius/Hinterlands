@@ -10,6 +10,7 @@ pub mod growth;
 pub mod harvest;
 pub mod market;
 pub mod marketplace;
+pub mod pasture;
 pub mod production;
 pub mod roads;
 pub mod trade;

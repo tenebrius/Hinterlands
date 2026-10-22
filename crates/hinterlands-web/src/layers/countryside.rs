@@ -274,9 +274,8 @@ impl Layer for CountrysideLayer {
                     }
                     let f = snap.forest[i] as f32 / 255.0;
                     let r = cell_rect(d, i);
-                    let near_fields =
-                        (0..8).any(|k| g.neighbor(i, k).is_some_and(|j| snap.owner[j] != NONE));
-                    if near_fields && f < 0.35 {
+                    let _ = f;
+                    if v.pasture[i] {
                         // The shader draws the pasture itself; only the sheep are added here.
                         let tinted = !super::relief::active(v);
                         let winter = v.season_index(d.time) == 3;

@@ -42,19 +42,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if !p.growth_enabled {
             continue;
         }
-        // Demographic response follows conditions with a lag (D102; Wrigley &
-        // Schofield 1981): growth and chronic hunger answer the mean food of
-        // the last `hunger_years` years against the people there now (D103),
-        // so a shortfall already shed is not counted again.
-        let n = p.hunger_years.max(1) as usize;
-        if s.recent_food.len() >= n {
-            s.recent_food.drain(..s.recent_food.len() + 1 - n);
-        }
-        s.recent_food.push(food);
-        let avg = s.recent_food.iter().sum::<f32>() / s.recent_food.len() as f32 / need;
         // Natural term: r_grow at a full surplus, zero when exactly fed, and a
         // shortfall loss spread over `loss_years`.
-        let capped = avg.min(p.food_cap);
+        let capped = ratio.min(p.food_cap);
         let gain = if capped > 1.0 {
             p.r_grow * (capped - 1.0) / (p.food_cap - 1.0).max(1e-6)
         } else {
@@ -62,13 +52,15 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         };
         if p.shed_unfed {
             // D34: an underfed place sheds a third of the people its food does
-            // not feed each year; the leavers are lost. Chronic hunger sheds on
-            // the average ratio; acute hunger only on the year's gap below
-            // `hunger_tolerance`, since people endure a moderate bad year
-            // (D101, D102; Livi-Bacci 1991). The larger applies.
-            let chronic = (1.0 - avg).max(0.0) * s.pop / 3.0;
-            let acute = (p.hunger_tolerance.min(1.0) - ratio).max(0.0) * s.pop / 3.0;
-            let loss = chronic.max(acute);
+            // not feed each year; the leavers are lost. People endure a
+            // moderate shortfall: only the gap below `hunger_tolerance` sheds
+            // (D101; Livi-Bacci 1991).
+            let tol = p.hunger_tolerance.min(1.0);
+            let loss = if ratio < tol {
+                (tol - ratio) * s.pop / 3.0
+            } else {
+                0.0
+            };
             s.smoothed_loss = loss;
             natural[i] = gain * s.pop - loss;
         } else {
@@ -306,7 +298,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                     .sum::<f32>()
                     * p.people_per_prime_cell
                     * (1.0 - p.market_share)
-                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3));
+                    / (p.cult_margin.max(1e-3) * p.food_per_person.max(1e-3))
+                    // Shepherds are counted with the farmers (L1, D105).
+                    + p.pasture_labour
+                        * t.grid.cell_km
+                        * t.grid.cell_km
+                        * s.pasture.len() as f32;
                 let room = (s.pop - field_need).max(p.market_floor);
                 s.market = (s.market + market_delta[i])
                     .min(s.pop)

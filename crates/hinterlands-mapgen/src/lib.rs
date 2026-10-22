@@ -73,6 +73,16 @@ pub struct MapParams {
     /// An ESRI ASCII 0/1 grid of roads present at the start (e.g. Roman roads
     /// from `tools/real/fetch_roads.py`), read by the DEM importer (D32).
     pub roads_file: Option<String>,
+    /// An ESRI ASCII grid of geology classes on the map's grid (0 other,
+    /// 1 chalk, 2 marine or alluvial; `tools/real/fetch_geology.py`, BGS
+    /// 1:625k), read by the DEM importer (D116). Arable yield is multiplied by
+    /// `geology_chalk` on chalk and `geology_marsh` on marsh and alluvium.
+    #[serde(default)]
+    pub geology_file: Option<String>,
+    #[serde(default = "default_chalk")]
+    pub geology_chalk: f32,
+    #[serde(default = "default_marsh")]
+    pub geology_marsh: f32,
     /// Bridges wherever the initial roads cross a river or stream (D33).
     pub road_bridges: bool,
     /// A CSV of resource sites (`name,x_km,y_km,good`, good one of iron, salt,
@@ -113,6 +123,9 @@ impl Default for MapParams {
             tpi_radius_km: 3.0,
             tpi_scale_m: 25.0,
             roads_file: None,
+            geology_file: None,
+            geology_chalk: default_chalk(),
+            geology_marsh: default_marsh(),
             road_bridges: false,
             resources_file: None,
             outside_file: None,
@@ -445,6 +458,18 @@ fn flow_directions(t: &mut Terrain) {
             }
         }
     }
+}
+
+/// Thin chalk soils (rendzina) under sheep-and-corn husbandry: about two
+/// thirds of lowland grain yields (Campbell 2000), approximate (D116).
+fn default_chalk() -> f32 {
+    0.6
+}
+
+/// Undrained marsh and alluvium: grazed rather than ploughed before drainage
+/// (D116), approximate.
+fn default_marsh() -> f32 {
+    0.35
 }
 
 /// Yield, natural forest, point resources and harbours.

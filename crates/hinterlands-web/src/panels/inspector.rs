@@ -50,6 +50,33 @@ impl Panel for Inspector {
                 ui.label("Fields");
                 ui.label(format!("{} cells", s.fields));
                 ui.end_row();
+                // Prices, purses and stores (v7): grain value units, one
+                // person's grain for a year at price 1.
+                if s.grain_price > 0.0 {
+                    ui.label("Grain price");
+                    ui.label(format!("{:.2}", s.grain_price));
+                    ui.end_row();
+                }
+                if s.market > 0.0 {
+                    ui.label("Market people");
+                    ui.label(format!("{:.0}", s.market));
+                    ui.end_row();
+                }
+                if s.purse > 0.0 || s.mpurse > 0.0 {
+                    ui.label("Purses: farmers / market");
+                    ui.label(format!("{:.0} / {:.0}", s.purse, s.mpurse));
+                    ui.end_row();
+                }
+                if s.mstore > 0.0 {
+                    ui.label("Market store");
+                    ui.label(format!("{:.0} ({:.2} of a year's need)", s.mstore, s.mstore / s.need.max(1.0)));
+                    ui.end_row();
+                }
+                if s.pasture > 0 {
+                    ui.label("Pasture");
+                    ui.label(format!("{} cells grazed for wool", s.pasture));
+                    ui.end_row();
+                }
                 let trend = if s.pop_50_ago > 0.0 {
                     (s.pop / s.pop_50_ago - 1.0) * 100.0
                 } else {

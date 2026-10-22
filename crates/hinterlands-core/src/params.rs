@@ -148,7 +148,7 @@ define_params! {
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
         home_weight: f32 = 1.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
-        market_share: f32 = 0.4, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
+        market_share: f32 = 0.35, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
     }
     "Goods" => {
         goods_enabled: bool = true, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";
@@ -191,7 +191,7 @@ define_params! {
         fed_ratio: f32 = 0.9, [0.5, 1], "Food ratio at or above which a settlement counts as fed";
         max_growth: f32 = 0.05, [0.005, 0.2], "Cap on yearly growth as a share of population";
         migration_cap: f32 = 0.06, [0, 0.2], "Most a settlement can lose to town migration in a year, as a share";
-        shadow_drain: f32 = 0.025, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
+        shadow_drain: f32 = 0.045, [0, 0.1], "Yearly share lost to each larger neighbour in the shadow, per 1,000 of its people";
         drain_radius_km: f32 = 8.0, [0, 40], "Distance, km, within which a much larger neighbour drains a place (with shadow_km, D53)";
         shadow_size_ratio: f32 = 3.0, [1, 20], "A neighbour drains only if this many times larger";
         loss_years: f32 = 3.0, [1, 10], "Years over which a food-driven loss is spread";
@@ -228,8 +228,27 @@ define_params! {
         fail_pop: f32 = 20.0, [0, 200], "Population below which a settlement counts as failing";
         fail_low_years: u32 = 12, [1, 100], "Years below the failing population before removal";
         fail_unfed_years: u32 = 17, [1, 100], "Years unfed before removal";
-        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio below which the year's shortfall sheds people at once (acute hunger, D101, D102)";
-        hunger_years: u32 = 5, [1, 20], "Years over which the food ratio is averaged for growth and chronic shedding (D102; Wrigley & Schofield 1981)";
+        wool_price_sack: f32 = 5.0, [0, 30], "World price of wool, pounds sterling a sack of 364 lb (Lloyd 1294 mean, D107)";
+        wool_fall: f32 = 0.25, [0, 1], "Fall in the wool price against wheat after the plague (Clark 2004: about a quarter; D109)";
+        wool_fall_from: u32 = 250, [0, 2000], "Year the wool price starts to fall (1350; D109)";
+        wool_fall_to: u32 = 300, [0, 2000], "Year it reaches its lower level (1400; D109)";
+        murrain: bool = true, [0, 1], "The sheep murrain of 1315-22 in the Historical calendar (L2, D112)";
+        murrain_year: u32 = 215, [0, 2000], "First murrain year (1315)";
+        murrain_loss: f32 = 0.15, [0, 1], "Share of wool lost in the murrain years (1315-22; approximate, after Slavin 2020; D114)";
+        murrain_years: u32 = 8, [0, 20], "Years at the first loss";
+        murrain_late_loss: f32 = 0.1, [0, 1], "Share of wool lost to scab in the years after (1323-32; approximate, after Slavin 2020; D114)";
+        murrain_late_years: u32 = 10, [0, 20], "Years at the later loss";
+        grass_log_cells: u32 = 3, [1, 100], "Old fields a place must put to grass in a year to make the chronicle (L4)";
+        grass_log_gap: u32 = 50, [1, 500], "Least years between a place's grass lines in the chronicle (L4)";
+        grass_log_forest: f32 = 0.1, [0, 1], "Forest cover below which a cell counts as an old field (L4)";
+        sheep_per_acre: f32 = 1.5, [0, 5], "Sheep a pasture acre carries (Howell; L0)";
+        fleece_lb: f32 = 1.5, [0, 5], "Wool a fleece, lb (200-260 fleeces to the sack; L0)";
+        wheat_s_bu: f32 = 0.6, [0.1, 5], "Wheat price, shillings a bushel, 1300s (Clark 2004)";
+        bu_per_person: f32 = 6.0, [1, 20], "Bushels of wheat in a person-year of grain (Campbell's 1,500 grain kcal a day; L0)";
+        rho_wool: f32 = 50.0, [0.1, 200], "Value density of wool relative to grain (Clark's prices; D107)";
+        pasture_labour: f32 = 5.0, [0, 100], "People a km2 of pasture needs: a shepherd's household (calibration, D107)";
+        arable_labour: f32 = 40.0, [0, 200], "People a km2 of arable needs, for the labour left to herd (calibration from L0's 39-45, L1)";
+        hunger_tolerance: f32 = 0.8, [0.5, 1], "Food ratio above which a shortfall stops growth but sheds nobody (D101, D104)";
         shed_unfed: bool = true, [0, 1], "Underfed places shed a third of their food gap a year instead of being removed when unfed (D34)";
     }
     "Outside" => {
@@ -294,6 +313,12 @@ define_params! {
         plague_year: u32 = 248, [0, 2000], "Year of the Black Death (historical; 1348)";
         plague_recur_1: u32 = 261, [0, 2000], "First recurrence (historical; 1361)";
         plague_recur_2: u32 = 269, [0, 2000], "Second recurrence (historical; 1369)";
+        plague_later: bool = true, [0, 1], "Hatcher's later national outbreaks, 1375-1479, in the Historical calendar (D108)";
+        plague_later_first: f32 = 0.10, [0, 0.5], "Mortality of the first later outbreak (1375; D108)";
+        plague_later_last: f32 = 0.06, [0, 0.5], "Mortality of the last later outbreak (1479; D108)";
+        endemic_mortality: f32 = 0.015, [0, 0.2], "Yearly share of each place's people lost to endemic disease between outbreaks (Hatcher 1977; D114)";
+        endemic_from: u32 = 249, [0, 2000], "First year of the endemic era (1349)";
+        endemic_to: u32 = 380, [0, 2000], "Last year of the endemic era (1480)";
         plague_recur_share: f32 = 0.3333333, [0, 1], "Mortality of a recurrence as a share of the first";
         plague_mortality: f32 = 0.4, [0, 0.95], "Mean share of each settlement's people a plague kills";
         plague_spread: f32 = 0.1, [0, 0.5], "Half-width of the uniform spread of plague mortality between settlements";
@@ -338,7 +363,7 @@ define_params! {
         road_interval: u32 = 10, [1, 50], "Years between road building steps";
         road_pairs: u32 = 20, [0, 100], "Trading pairs given a road per step (without traffic_roads)";
         traffic_roads: bool = true, [0, 1], "Roads follow traffic: road cells carry a condition that fades where traffic falls (D54)";
-        road_keep_load: f32 = 800.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
+        road_keep_load: f32 = 600.0, [0, 10000], "Trade value a year crossing a road cell below which it decays";
         road_decay: f32 = 0.05, [0, 1], "Condition a little-used road cell loses each road step";
         traffic_bridges: bool = true, [0, 1], "A busy road crossing of a river or stream becomes a bridge (D55)";
         bridge_load: f32 = 1600.0, [0, 100000], "Trade value a year over a road crossing that counts towards a bridge";

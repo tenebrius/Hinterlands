@@ -171,3 +171,17 @@ Made by the implementer in the release pass, after R8 had been merged and handed
 - **Left for the graphics session.**
   - Feature names still do not avoid each other across classes. "Dew Forest", moved off "Everelford", now crosses "River Wilking" at year 450 on map 1. A shared placer across the feature classes would fix it.
   - Where routes leave the coastal lane for a port, a few separate strands remain.
+
+## v7 release view (implementer)
+Added in the v7 release pass, in new files where possible:
+- **`layers/wool.rs`:**
+  - pasture and sheep now come from the model's grazed land (`Snapshot.pasture`), and the relief shader's pasture channel reads the same mask;
+  - wool routes to the ports draw in fleece cream.
+- **`layers/prices.rs`:** a disc per place, coloured from cheap (blue) through the world price (pale) to dear (red).
+- **Inspector:** grain price, market people, both purses, market store and pasture.
+
+**For the graphics session, if wanted:**
+1. **A smooth price surface** (an interpolated wash between places) instead of discs. Prices move together, so it would mostly show the level by year and the dearer inland edges.
+2. **Purses as glyphs:** coin stacks at market places sized by the market purse, to show where coin pools (the ports and the wool towns).
+3. **Pasture texture:** at the overview zoom pasture reads only as pale patches. Sheep are drawn from zoom 10. A downland texture (short grass, folds, dew ponds) would make the turn to grass visible from afar.
+4. **Chronicle markers** on the map for "put down to grass" and the murrain, as for plague and silting.

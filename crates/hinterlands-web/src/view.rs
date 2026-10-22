@@ -108,6 +108,8 @@ pub struct ViewState {
     /// First and last year each cell was cultivated in this session (NEVER if not).
     pub farm_first: Vec<u16>,
     pub farm_last: Vec<u16>,
+    /// Pasture this year: the model's grazed land (L1, L4).
+    pub pasture: Vec<bool>,
     /// Fixed season, or None to follow the clock.
     pub season_fixed: Option<u8>,
     /// Progress through the current year while playing, 0..1 (set by the app).
@@ -146,6 +148,7 @@ impl ViewState {
             status: String::new(),
             farm_first: vec![NEVER; cells],
             farm_last: vec![NEVER; cells],
+            pasture: vec![false; cells],
             season_fixed: None,
             year_phase: 0.0,
             granary: Default::default(),
@@ -183,6 +186,7 @@ impl ViewState {
                 self.farm_last[i] = year;
             }
         }
+        self.pasture = crate::layers::wool::pasture_mask(&self.snapshot, &self.terrain);
         let s = &self.snapshot;
         self.history.push(YearStats {
             year: s.year,

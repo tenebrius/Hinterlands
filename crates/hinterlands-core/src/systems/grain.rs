@@ -490,6 +490,7 @@ pub fn trade(
                 payment: false,
                 import: false,
                 relief: false,
+                wool: false,
             });
         }
     }

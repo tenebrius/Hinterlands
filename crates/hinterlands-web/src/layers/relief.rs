@@ -165,7 +165,6 @@ fn town_data(v: &ViewState) -> Vec<f32> {
 /// hedged (farmed for 50 years), flood meadow.
 fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
     let t = &v.terrain;
-    let g = t.grid;
     let snap = &v.snapshot;
     let year = snap.year;
     let horizontal = strip_orientation(v);
@@ -176,11 +175,7 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
         let owned = snap.owner[i] != NONE;
         let forest = snap.forest[i] as f32 / 255.0;
         let farmed = owned && !built;
-        let pasture = t.is_land(i)
-            && !owned
-            && !built
-            && forest < 0.35
-            && (0..8).any(|k| g.neighbor(i, k).is_some_and(|j| snap.owner[j] != NONE));
+        let pasture = v.pasture[i] && !owned && !built;
         let ghost = if !owned && !built && t.is_land(i) && v.farm_last[i] != NEVER {
             let age = year.saturating_sub(v.farm_last[i] as u32);
             if age == 0 || age > GHOST_YEARS {

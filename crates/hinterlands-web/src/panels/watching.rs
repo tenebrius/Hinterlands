@@ -6,36 +6,41 @@ use super::Panel;
 use crate::view::{Msg, ViewState};
 
 /// A phase: first run year, title, and a few plain sentences.
-const PHASES: [(u32, &str, &str); 6] = [
+const PHASES: [(u32, &str, &str); 7] = [
     (
         0,
-        "Villages fill the farmland (1100–1200)",
+        "The land fills (1100–1200)",
         "Ten hamlets clear the best land nearest them and grow. New ones are founded where free farmland, water and a market within reach meet, and many small ones fail.",
     ),
     (
         100,
-        "Markets and towns pull ahead",
-        "Grain is sold to the markets that draw it most. Towns grow on that trade and on the traffic passing through them. Roads form along the busiest routes and fade where trade falls away; busy crossings get bridges.",
+        "Markets and the grain trade",
+        "Rents and surplus grain go to market and sell at a price. Market towns grow on the grain they draw from their hinterlands; their prices follow the region's, dearer where harvests are poor. Roads form along the busiest routes and busy crossings get bridges.",
     ),
     (
         150,
-        "Works and goods",
-        "Salt pans, iron workings and quarries are worked by the place that holds them. Their goods are bought by whoever can reach them, and some works become small specialist towns. Lords plant new towns on the roads from 1250.",
+        "Wool and coin",
+        "Land not worth ploughing goes to sheep, outward and on poor soil. Wool goes down to the ports (cream routes) and coin comes back up; farmers and lords keep purses, and the region's prices settle where its coin and its grain meet. Market stores buy in cheap years.",
     ),
     (
         215,
-        "Famine and pestilence (1315–1349)",
-        "The harvests fail for three years from 1315. In 1348 the pestilence takes about two in five people, and it returns in 1361 and 1369. Watch the map darken and the poorer villages empty.",
+        "Famine and murrain (1315–22)",
+        "The harvests fail from 1315, worst in 1316. Grain prices leap, purses empty, and the stores are drawn down. Scab and murrain thin the flocks into the 1320s.",
     ),
     (
-        270,
-        "Recovery and the planted towns",
-        "Survivors leave poor land for the good land the dead have left. The old hierarchy mostly returns. One harbour silts up and loses its trade; some planted towns thrive and others fail.",
+        248,
+        "Pestilence and the long depopulation (1348–1480)",
+        "The pestilence of 1348 takes about two in five people. It returns again and again, and disease never quite leaves: a century later the region holds about half its people of 1340.",
     ),
     (
-        350,
-        "Ships and the coast (1450 onward)",
-        "Larger ships make sea travel cheaper. Ships at the map edge stand for the world beyond, which buys grain and sends imports (the wine-red routes) along the coast and up the rivers.",
+        280,
+        "The turn to grass",
+        "With fewer hands, released fields go down to grass, on the poorest and farthest land first. Wool brings in nearly all the region's coin; poor-land villages empty, and the chronicle records their fields put down to grass.",
+    ),
+    (
+        380,
+        "Ships and the coast (1480 onward)",
+        "The plague years end and the region grows again. Larger ships make sea travel cheaper; ships at the map edge stand for the world beyond, which buys wool and grain and sends imports (the wine-red routes) along the coast and up the rivers.",
     ),
 ];
 
@@ -55,7 +60,7 @@ impl Panel for Watching {
         let year = v.snapshot.year;
         let now = PHASES.iter().rposition(|p| year >= p.0).unwrap_or(0);
         ui.small(
-            "A region settles from a few hamlets, 1100 to 1600. Each phase below follows from the one before; nothing is scripted except the famine, the plague, the harbour that silts and the better ships.",
+            "A region settles from a few hamlets, 1100 to 1600. Each phase below follows from the one before; nothing is scripted except the calendar of harvest failures, plague, murrain and better ships, and the wool price set abroad.",
         );
         for (i, (_, title, text)) in PHASES.iter().enumerate() {
             let head = egui::RichText::new(*title).small();

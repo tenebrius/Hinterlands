@@ -46,6 +46,26 @@ pub struct SettlementView {
     /// Grain in store (S3, D81); left out of the bytes when zero.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub store: f32,
+    /// This year's grain price at the place's market (v7); left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub grain_price: f32,
+    /// Market people (W, v1.1) and the market's store (M3); left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub market: f32,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub mstore: f32,
+    /// The farmers' and the market's purses (D96); left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub purse: f32,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub mpurse: f32,
+    /// Cells grazed for wool (L1); left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub pasture: u32,
+}
+
+fn is_zero_u32(x: &u32) -> bool {
+    *x == 0
 }
 
 fn is_false(b: &bool) -> bool {
@@ -96,6 +116,9 @@ pub struct FlowView {
     /// Grain relief (S2′, D80); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub relief: bool,
+    /// Wool to an outside port (L1); left out of the bytes when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub wool: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -128,6 +151,9 @@ pub struct Snapshot {
     /// Outside port cells (v5, D64); left out when there are none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ports: Vec<u32>,
+    /// Pasture cells (L1), ascending; left out when there are none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pasture: Vec<u32>,
 }
 
 impl Snapshot {
@@ -159,6 +185,12 @@ impl Snapshot {
                 planted: s.planted,
                 price: p.market_shadow.then_some(s.shadow_price),
                 store: s.store + s.mstore,
+                grain_price: s.price[0],
+                market: s.market,
+                mstore: s.mstore,
+                purse: s.purse,
+                mpurse: s.mpurse,
+                pasture: s.pasture.len() as u32,
             })
             .collect();
         let flows = state
@@ -177,6 +209,7 @@ impl Snapshot {
                     payment: f.payment,
                     import: f.import,
                     relief: f.relief,
+                    wool: f.wool,
                 })
             })
             .collect();
@@ -223,6 +256,10 @@ impl Snapshot {
                 .collect(),
             bridges: (0..state.bridge.len())
                 .filter(|&i| state.bridge[i])
+                .map(|i| i as u32)
+                .collect(),
+            pasture: (0..state.grazed.len())
+                .filter(|&i| state.grazed[i] != crate::state::NONE)
                 .map(|i| i as u32)
                 .collect(),
         }

@@ -128,6 +128,31 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         );
     }
 
+    // Wool to the ports (L1), on the sellers' paths.
+    for &(from, k, amount) in &state.wool_ship {
+        let Some(i) = idx_of.get(from as usize).copied().filter(|&i| i != u32::MAX) else {
+            continue;
+        };
+        let s = &state.settlements[i as usize];
+        let Some(q) = s.reach.partners.get(k as usize) else {
+            continue;
+        };
+        if amount >= p.grain_flow_min {
+            flows.push(crate::state::Flow {
+                from,
+                to: q.id,
+                amount,
+                food: 0.0,
+                partner_idx: k,
+                good: None,
+                payment: false,
+                import: false,
+                relief: false,
+                wool: true,
+            });
+        }
+    }
+
     // Assign flows to paths: load per cell, and the directions routes use there.
     let grid = t.grid;
     let mut dirs = vec![0u16; t.n()];
@@ -369,6 +394,7 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
             payment: false,
             import: false,
             relief: true,
+            wool: false,
         });
     }
     let mut lost = 0f32;
@@ -582,6 +608,7 @@ fn goods(
             payment: false,
             import: false,
             relief: false,
+            wool: false,
         });
         let pay = worth * scale[i];
         if pay <= 0.0 {
@@ -604,6 +631,7 @@ fn goods(
             payment: true,
             import: false,
             relief: false,
+            wool: false,
         });
     }
     for (site, s) in state.sites.iter_mut().zip(sold) {

@@ -15,7 +15,7 @@ fn coin_is_conserved() {
         sim.step(1);
         let l = sim.state.money;
         let after = sim.state.money_stock();
-        let expect = before + l.port_in + l.planted_in - l.imports_out - l.luxury_out - l.wear - l.removed;
+        let expect = before + l.port_in + l.wool_in + l.planted_in - l.imports_out - l.luxury_out - l.wear - l.removed;
         assert!(
             (after - expect).abs() <= 1e-4 * after.max(1.0),
             "year {}: stock {after} against {expect}",

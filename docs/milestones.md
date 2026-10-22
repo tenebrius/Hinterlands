@@ -505,3 +505,113 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   Carry-over after cheap years is 0.16–0.19 of a harvest, at most 0.27, inside Clark's 40%.
 - **Golden `ff58d1b63e4c56d2`.** Release wasm gives the same hash (`?selftest=500`) at 45.2 ms/year (not gated, D91).
 - **Details:** `docs/market/m3.md`, "Money, second build".
+
+## v7 M4 — Hunger tolerance and the 1315–17 famine (D101–D104, D106)
+- **The model:**
+  - a year's shortfall above `hunger_tolerance` (0.80) stops growth and sheds nobody; below it, a third of the gap below the tolerance sheds;
+  - the famine takes −40%, −60% and −10% in 1315, 1316 and 1317.
+- **Defaults moved:** `hunger_tolerance` 0.80, `famine_loss_2` 0.6, `famine_loss_3` 0.1, `shadow_drain` 0.05, `road_keep_load` 600.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Spacing 17 / 20 / 19 of 20, roads 15 / 17 / 16 of 20.
+  - Clark R² 0.77–0.80 (median).
+  - Price level 20/20 on every map.
+  - Runs passing every check: 8 / 16 / 12.
+- **Pre-registered:**
+  - famine dip 0.17 / 0.17 / 0.18 against 0.10–0.16: **missed**;
+  - population at 200 against no weather 0.85 / 0.85 / 0.90 against ≥ 0.85: met.
+- **Golden `e788381d55fa67d2`.** Release wasm gives the same hash (`?selftest=500`) at 40.8 ms/year (not gated, D91).
+- **Details:** `docs/market/m4.md`.
+
+## L1 — Wool on spare land (D105, D107–D111)
+- **The model:**
+  - free land not worth ploughing at its distance goes to grass, with its shepherds counted in the labour guard;
+  - wool is sold to the outside ports at £5 a sack, falling 25% from 1350 to 1400 (Clark), and rides the roads;
+  - Hatcher's later plagues (1375–1479) are in the Historical calendar;
+  - wool counts as outside trade (band 3–30%, D110).
+- **Defaults moved:** `market_share` 0.35, and the wool and plague parameters (`docs/wool/l0.md`, `docs/wool/l1.md`).
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Pasture outward, on poor land, and 1450 > 1340: 20/20 on every map.
+  - Over 2,000: 19 / 18 / 17. Spacing 20/20. Roads 17 / 18 / 15.
+  - Outside trade 0.21–0.27.
+  - Clark R² 0.93–0.96; price level 20/20.
+  - Runs passing every check: 15 / 15 / 7.
+- **Reported:**
+  - wool brings 56–64% of coin entering before 1348 and 94–95% after;
+  - pasture is 13–18% of used land in 1340 and 22–23% in 1450;
+  - famine dip 0.18–0.19, weather 0.87–0.89;
+  - the plague loss is regained in about 79 years;
+  - W with wool is about 0;
+  - Kent has almost no pasture: its yield layers lack chalk and marsh soils, a data gap noted for later.
+- **Golden `1ebe5979ca2bf8fe`.** Release wasm gives the same hash (`?selftest=500`) at 47.7 ms/year (not gated, D91).
+
+## L2 and L4 — The murrain and the view (D112, D113)
+- **L2:** wool ×0.7 in 1315–17 and ×0.85 in 1318–22, figures approximate. `shadow_drain` 0.045.
+- **L4:**
+  - pasture and sheep drawn from the model;
+  - wool routes in fleece cream;
+  - chronicle lines for grass and murrain;
+  - screenshots in `docs/wool/img`.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Over 2,000 17 / 18 / 18, spacing 19 / 20 / 19, roads 17 / 18 / 17.
+  - Runs passing every check: 12 / 13 / 8.
+  - Carry-over after cheap years 0.10–0.15 (max 0.35).
+- **Golden `7d534fccaae58528`.** Release wasm gives the same hash at 50.4 ms/year.
+- **Details:** `docs/wool/l2-l4.md`.
+
+## D114 — The endemic era and the murrain after Slavin
+- **The model:** `endemic_mortality` 0.015 a year in 1349–1480 (Historical). Murrain wool ×0.85 in 1315–22 and ×0.9 in 1323–32.
+- **Pre-registered:** 1450 at 0.40–0.65 of 1340: 60/60 runs (medians 0.54–0.56). Recovery by 500 passes (1.43–1.46).
+- **`just validate` (Historical, 20 seeds a map): PASSED.** Runs passing every check: 8 / 13 / 8.
+- **Golden `b4f78a0e4adf502b`;** wasm gives the same hash at 45.4 ms/year.
+- **Details:** `docs/wool/hatcher.md`.
+
+## v7 release (D115)
+- **The model:**
+  - grain sold at marketplaces at clearing prices (M2);
+  - money in two purses per place, conserved exactly (M3);
+  - market stores and village purses;
+  - the hunger tolerance and the record's famine (M4);
+  - wool on land not worth ploughing, sold to the ports (L1);
+  - the murrain after Slavin (L2);
+  - Hatcher's later plagues and the endemic era (D108, D114);
+  - the wool view (L4).
+- **The view:**
+  - prices, purses and stores in the inspector;
+  - a "Grain prices" layer;
+  - "What you are watching" rewritten for seven phases;
+  - screenshots in `docs/screenshots/v7/` (1300, 1316, 1349, 1450, 1600).
+- **Docs:** `README.md` rewritten on the model as it is, with sources; `docs/parameters.md` regenerated.
+- **`just test`:** passes, including the conservation of coin.
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Runs passing every check: 8 / 13 / 8.
+  - Hatcher: 1450 at 0.54–0.56 of 1340.
+  - Wool brings about 60% of coin entering before 1348 and over 90% after.
+  - Famine dip 0.19 (pre-registered ≤ 0.16, missed). Weather 0.87–0.88.
+- **Kent (`just real`, 20 seeds):**
+  - the largest place is near Gravesend in 14 seeds and Milton Regis in 4, with a share of 0.30;
+  - real towns found within 5 km: river 59%, coast 48%, inland 27%;
+  - inland places over 500 are 13.2 km apart (real 10.6 km);
+  - almost no pasture (the soil layers lack chalk and marsh; geology is next, D116).
+- **Golden `65aee272c30de1f9`.** Release wasm gives the same hash (`?selftest=500`) at 45.9 ms/year.
+- **Reproducing v7:** check out this commit.
+
+## Close (D117)
+Development stops here, by the owner's decision (D117).
+- **Final golden `65aee272c30de1f9`** (map 1, seed 1, 500 years). Release wasm gives the same hash.
+- **Final checks:**
+  - `just test` passes, including determinism, the golden and the conservation of coin.
+  - `just validate` (Historical, 3 maps × 20 seeds) passed; runs passing every check: 8 / 13 / 8.
+- **Kent geology (D116, the last change):**
+  - BGS 1:625k chalk and marsh layer, with yield ×0.6 on chalk and ×0.35 on marsh and alluvium;
+  - `data/real/kent/map-geology.json` is now Kent's standard setting for `just real`;
+  - pre-registered pasture on the Downs and Marsh above the Weald and lowland: met (chalk 0.40, marsh 0.53, other 0.00 of used land in 1450);
+  - Kent AUC for towns under 1,000 is 0.57, the best yet;
+  - details in `docs/real/kent-geology.md`.
+- **Open items, not done:**
+  1. **The robustness re-tune** (D116.2): search the existing tunables for more runs passing every check. A one-at-a-time screen was started and stopped unfinished; it left no results.
+  2. **The cloth design note** (D116.3): spinning, weaving, fulling at the mills, cloth overtaking raw wool in the 1400s, and the Weald as cloth country.
+  3. **Post-1480 growth:** after the endemic era the model regrows at up to `r_grow` (0.027 a year), so 1600 stands above England's level (1.43–1.46 of the pre-plague peak by year 500).
+- **Also noted, not gated:**
+  - the famine dip (0.19 against a target of 0.10–0.16);
+  - store carry-over peaking at 0.44–0.45 of a harvest;
+  - the murrain figures (approximate, after Slavin).

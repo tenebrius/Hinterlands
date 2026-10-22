@@ -105,6 +105,8 @@ impl Panel for Chronicle {
                     | LogKind::Silted
                     | LogKind::Planted
                     | LogKind::Ships
+                    | LogKind::Murrain { .. }
+                    | LogKind::Grass { .. }
             );
             let shown = match e.kind {
                 _ if event => self.events,
@@ -161,6 +163,12 @@ impl Panel for Chronicle {
                 LogKind::Silted => format!("{}. The harbour at {} silted.", e.year, e.name),
                 LogKind::Planted => format!("{}. Lord's town planted at {}.", e.year, e.name),
                 LogKind::Ships => format!("{}. Larger ships now sail the coast.", e.year),
+                LogKind::Grass { .. } => {
+                    format!("{}. The fields of {} are put down to grass.", e.year, e.name)
+                }
+                LogKind::Murrain { .. } => {
+                    format!("{}. Murrain among the sheep of {}.", e.year, e.name)
+                }
                 LogKind::Failed { cause, moved_to } => {
                     let why = match cause {
                         FailCause::Depopulated => "dwindled away",

@@ -30,6 +30,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let State {
         settlements,
         owner,
+        grazed,
         forest,
         sites,
         harvest,
@@ -116,7 +117,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         if !t.is_land(i) {
             continue;
         }
-        if owner[i] != NONE {
+        // Grazing keeps the land open, as fields do (L1).
+        if owner[i] != NONE || grazed.get(i).is_some_and(|&g| g != NONE) {
             forest[i] = (forest[i] - p.clear_rate).max(0.0);
         } else {
             forest[i] = (forest[i] + p.regrow_rate).min(t.forest0[i]);

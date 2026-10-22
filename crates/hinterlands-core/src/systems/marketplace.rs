@@ -163,6 +163,7 @@ pub fn trade(
                     payment: false,
                     import: false,
                     relief: false,
+                    wool: false,
                 });
             }
         }
@@ -527,6 +528,7 @@ pub fn trade(
                     payment: false,
                     import: false,
                     relief: false,
+                    wool: false,
                 });
             }
         }
@@ -574,6 +576,7 @@ pub fn trade(
             payment: false,
             import: false,
             relief: false,
+            wool: false,
         });
     }
     // 4. Grain settles in coin (D96, D97). Buyers pay their price for what

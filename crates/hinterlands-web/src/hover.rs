@@ -100,8 +100,13 @@ pub fn card(ui: &mut egui::Ui, v: &ViewState, cell: usize) {
                 .neighbor(cell, k)
                 .is_some_and(|j| snap.owner[j] != NONE)
         });
-        if on("grazing") && by_fields && forest < 0.35 {
-            lines.push("Pasture: grazed by the sheep of the village next to it.".into());
+        let _ = by_fields;
+        if on("grazing") && v.pasture[cell] {
+            lines.push(if crate::layers::wool::modelled(v) {
+                "Pasture: grazed for wool, land not worth the plough.".into()
+            } else {
+                "Pasture: grazed by the sheep of the village next to it.".into()
+            });
         } else if on("grazing") && forest > 0.15 && forest < t.forest0[cell] - 0.08 {
             lines.push("Managed woodland, coppiced for firewood.".into());
         }

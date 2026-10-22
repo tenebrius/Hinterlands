@@ -942,6 +942,172 @@ Answers:
 3. **Pre-registered targets as before:** dip 0.10–0.16, which the first build reached at 0.16–0.17. Weather (0.84–0.87 in the first build) is recorded against its 0.85 target as it falls.
 4. **Then run the full gate,** move the defaults and the golden, and report. Iterate as D91 says. If the drain cannot restore spacing without breaking other checks, report and I will decide.
 
+**M4 passed (36fa76a, D106; golden `e788381d55fa67d2`, 40.8 ms a year in wasm).** Acute shedding below 0.80 is in the core. Spacing was restored through the drain (`shadow_drain` 0.025 → 0.05), with `road_keep_load` 600. Validation passes. Runs passing every check are 8/16/12; map 1 is thin and to be watched.
+- **Weather met:** 0.85–0.90 of the run without weather.
+- **Famine dip missed:** 0.17–0.18 against ≤ 0.16, close to history's 10–15%.
+- **Also moved:**
+  - famine deficit met falls to 0.24–0.26, because only shortfalls below the tolerance count now;
+  - **market stores no longer carry grain** (carry-over 0.00), because prices rarely fall below the buy threshold;
+  - price autocorrelation is 0.39–0.40, still at least 0.3.
+
+  Idle stores are a regression to revisit: the buy rule `p < p̄(1 − h)` is too strict once weather and tolerance smooth prices. It is noted and not scheduled before the wool stages. L0 is approved to start.
+
+## Wool and land use plan (D105)
+
+Decided by the designer on 22 October 2026, on the owner's proposal `docs/proposals/wool.md`. The proposal holds the case, the evidence and the design; this section holds the decisions.
+
+**Why.** It is right on both counts. In v7 the region's coin comes in only through grain sold to the ports, where England's came chiefly through wool. And land use answers to need, never to price, although the brief has used von Thünen's geometry since v1 without his economics. Both now have the machinery to be fixed: goods by price (S1), purses and coin (D96–D99), and the labour guard (D92).
+
+**The owner's positions (section 9) are all accepted:**
+1. it starts after M4 passes;
+2. Option A (pasture on land arable does not use) first, and Option B (von Thünen by rent) only if A passes and L0 shows that the towns keep their grain;
+3. wool does not grow W at first, and L1 reports W with wool;
+4. wool income is split by the existing rent share;
+5. the L1 gates as proposed: every v7 check including the price band, pasture outward and on poor land, and the pasture share in 1450 above 1340;
+6. the murrain waits for L2;
+7. cloth is named, not scheduled;
+8. wool travels by the S1 machinery, and shepherds count in the labour guard.
+
+**One addition: parameters must be sourced before L1.** No wool parameter is set until L0 has reported, with a source for each. `wool_per_cell` comes from stocking rates and fleece weights, `port_wool_price` from the price of a sack against wheat (Campbell 2000; Lloyd 1973), and `pasture_labour` from shepherds per flock. Where a figure cannot be found, the L0 report says so, and the value is set where the land-use check holds, as the proposal intends, and recorded as a calibration, not a fact.
+
+**L0 brief (approved, to run after M4 passes).** A diagnostic with no feedback, golden unchanged, 3 seeds a map plus Kent:
+- for every claimed and free land cell, the arable and pasture rents at this year's prices, at three trial wool prices;
+- where pasture would go under A and under B;
+- pasture share by travel cost to the nearest market and by yield band;
+- the wool price at which pasture first pays;
+- the would-be coin from wool against today's coin from grain, before and after 1348;
+- under B, the grain the towns would lose.
+
+Report with the sourced parameter table, then stop.
+
+**L0 result (bf28f36, `docs/wool/l0.md`) and the L1 decisions (D107).**
+- **The parameters are sourced:** sack 364 lb, stocking about 1.5 sheep an acre, fleece 1.4–1.8 lb, wheat about 0.60 s a bushel, and Lloyd's 1294 mean of £5.02 a sack (best abbey wools £8.80).
+- **Under A, the limit on pasture is labour, not price,** and pasture doubles after 1348 (36 → 67 cells; Kent 28 → 75).
+- **A as written puts pasture inward,** because it took free cells nearest first.
+- **B has von Thünen's shape but takes 45–103% of the towns' grain,** so B's condition is not met.
+- **Clark's relative prices** (wool down about 25% against wheat after 1350) say the turn to grass came from labour, not price, which supports A.
+
+Decided for L1:
+1. **Option A, with free cells taken in order of lowest arable rent.** The poorest and farthest land goes to grass first, which is von Thünen's ordering applied to spare land.
+2. **`rho_wool` = 50,** as sourced (wool about 50× wheat by weight). The proposal's 5 was a guess.
+3. **Wool price £5 a sack** (Lloyd's 1294 mean) as the default for a generic English region. £9–10 (Clark, better wools) is reported alongside.
+4. **`pasture_labour` 5 people a cell, recorded as a calibration.** It is consistent with one shepherd's household per flock of a few hundred sheep on a 1 km² cell (about 370 sheep at 1.5 an acre), but not sourced in absolute.
+5. **L1 gate** as D105:
+   - every v7 check, including the price band;
+   - pasture outward and on poor land;
+   - pasture share in 1450 above 1340.
+6. **Reported:**
+   - wool's share of coin, which L0 puts at 39–45% before 1348 against the expected half, and 57–62% after;
+   - W with wool;
+   - Kent: Downs and Marsh against the Weald.
+7. **In the core, no switch** (D91). Iterate as D91 says.
+
+**L1 first build (ba2f1fe, `docs/wool/l1.md`) and decisions (D108).** Wool's share of coin is about half before 1348, as expected. But pasture sits on rich land, because only rich-land places can spare shepherds under A's labour rule. Pasture falls from 1340 to 1450, because the region regains its plague losses in about 50 years. And outside trade drops, because wool's coin lifts grain above the world price. The implementer's experiment, grazing free land not worth ploughing, puts pasture outward and on poor land as von Thünen says, with wool bringing about 84% of coin before 1348 and prices of 1.2–1.45, within the band.
+- **(a) Labour: the experiment's rule.** Free land not worth ploughing at its distance goes to grass, and its shepherds (`pasture_labour` a cell) count with the farmers in the labour guard (D92), so they come out of the place's own people. Wool at 84% of coin is not a fault: wool, not grain, was England's great export. 21–30% of used land under grass is plausible for c. 1300 and is reported.
+- **(b) Conversion: fix the cause, not the year.** England stayed depopulated until about 1500 because plague kept returning. The Historical calendar has only 1348, 1361 and 1369. Add the later English outbreaks, after Hatcher (1977, *Plague, Population and the English Economy 1348–1530*): 1375, 1390, 1400, 1407, 1413, 1434, 1439, 1464, 1471 and 1479, at falling mortality from about 0.10 to 0.06. These are approximate and to be checked against Hatcher before they are final. The gate year stays 1450. If v4's recovery check (≥ 0.9 of the pre-plague peak by year 500) then fails, report it. England in 1600 had probably not regained its 1300 level, so that check may be what is historically wrong, and I will decide it on the numbers.
+- **(c) Wool counts as outside trade.** It is trade with the outside. Report the new share, and whether it fits the 3–20% band.
+- **Spacing on maps 2 and 3:** the drain is again the implementer's to tune if needed (D104).
+
+Iterate as D91 says, and report.
+
+**L1 second build (8659b32) and decisions (D109).** Every L1 gate passes:
+- pasture lies outward and on poor land, 20/20;
+- pasture rises from 1340 to 1450 in 59 of 60 runs;
+- every other v7 check holds, with Clark R² 0.93–0.96;
+- wool brings 55–62% of coin before 1348.
+
+Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The implementer's home-sale fix (a place with no large market in reach sells at home) is accepted.
+- **Plague years.** A secondary source citing Hatcher confirms 1348–49, 1361, 1369, 1375 and 1390–93 ([Iowa State thesis](https://dr.lib.iastate.edu/handle/20.500.12876/70795)). The later years (1400–1479) are unverified and stay recorded as approximate. Hatcher's own summary is that population may have fallen by between a half and two-thirds in the century after 1348 ([publisher's description](https://businesshistoryexplorer.businessarchivescouncil.org.uk/publications/55967)). The model regains its plague loss in about 80 years, so its later fifteenth century is too full. That is noted for after L1, as a check on population in 1450 against 1340.
+- **Outside trade: (a) first.** Apply Clark's sourced fall in wool against wheat after 1350, about −25%, as a straight-line fall in the ports' wool price from 1350 to 1400. It is historical data and belongs in the model whatever the band says. Then report outside trade.
+  - If it is still above 20%, the band is revised, and the reason has to stand on its own. The band was set in v5 for grain and imports only. With wool as the main export, England's overseas trade was a larger share of its marketed output. I will decide the new band on the numbers.
+- **W with wool is about 0:** wool's coin goes to villages and the port-side carriers. Wool does not grow W, and nothing changes.
+- **Market stores are still idle:** this is scheduled next after L1.
+
+**L1 third build (a2c6f26) and decisions (D110).** With Clark's fall in the wool price, outside trade at 1600 is 0.18 / 0.20 / 0.23 (passing 14, 11 and 5 of 20). Every L1 gate passes. Map 1's "over 2,000" is 14/20, one seed short.
+1. **The outside-trade band becomes 3–30%. It is revised after seeing it fail, so the reason stands on its own.** The 3–20% band was set in v5, without a source, for a definition that held grain and imports only. Its job was to catch two failures: a region with no outside trade, and a region that exports everything. The definition now includes wool, England's chief export, which after 1350 brings in more than 90% of the region's coin. A band that a wool-exporting England had to fit cannot have the ceiling of a grain-only one. 30% still catches an export colony.
+2. **Map 1's "over 2,000" at 14/20 is a failed check and must be fixed, not waived.** Diagnose what changed on map 1: pasture near towns, prices, or the drain. Fix it within the design, tuning `shadow_drain`, K or `market_share` if needed, and record it.
+3. **Robustness is noted.** Runs passing every check are 6/6/2. Every check passes at 75%, but rarely all at once. After the market-store fix, a consolidation re-tune will aim to raise this, as a reported quality figure, not a gate.
+4. **Kent's missing pasture is a data gap, not a model fault.** No Kent cell yields below about 0.27, because the yield layers miss the Downs' thin chalk and the Marsh's wet ground. A geology-based soil layer (chalk and alluvium) for Kent is noted for later.
+5. **When the gate passes:** move the defaults and the golden, and record L1. Next comes the market-store fix.
+
+**L1 passed (f1ad38c, D111; golden `1ebe5979ca2bf8fe`, 47.7 ms a year in wasm).** Wool and pasture are in the core.
+- **Map 1 was fixed by lowering the rent share,** `market_share` 0.40 → 0.35. Wool's coin had been concentrating growth in one city.
+- **Robustness rose.** Runs passing every check went from 6/6/2 to 15/15/7.
+- **Wool is the region's export:** 56–64% of coin before 1348, and 94–95% after.
+- **Pasture rises** from 0.13–0.18 of used land in 1340 to 0.22–0.23 in 1450.
+- **Market stores carry grain again** (0.13–0.14 of a harvest, max 0.36), because a lower rent leaves farmers more to sell in cheap years. **The scheduled store fix is cancelled.** Carry-over is reported at each milestone instead.
+
+**Next round, approved (D112): L2 murrain and L4 view together,** since they are small and independent.
+- **L2, the sheep murrain.** Wool output from pasture is multiplied by 0.7 in 1315–17 and by 0.85 in 1318–22, in the Historical calendar. These values are approximate, after Campbell (2000) and Slavin on the livestock pestilences of 1315–25. Check them against the sources if possible, and record them as approximate if not. Gate: every check. Report: the wool and coin dip, and the price level in those years.
+- **L4, the view,** in new files as before:
+  - the viewer's pasture and sheep come from the model's land use, as bridges and mills did;
+  - wool gets a route colour;
+  - the chronicle gets lines such as "1420. The fields of Ashby are put down to grass." and "1316. Murrain among the sheep of the Downs.";
+  - screenshots at 1340 and 1450 showing the turn to grass.
+- **Then a population check against Hatcher (D109), approved to follow.** Report population in 1450 against 1340 on the generated maps, against Hatcher's half to two-thirds fall. If the model is far off, I will decide on the plague recurrences' strength on the numbers.
+- **L3 (Option B) stays parked.** Its condition, that towns keep their grain, was not met at L0.
+
+**L2 and L4 passed (3c19458, D113; golden `7d534fccaae58528`, 50.4 ms a year in wasm).**
+- **The murrain** cut wool coin by about 30% in 1315–17. `shadow_drain` 0.05 → 0.045 restored map 3's "over 2,000".
+- **The view:** pasture, sheep and wool routes come from the model, and the chronicle records the turn to grass and the murrain.
+- **Runs passing every check:** 12/13/8. Carry-over 0.10–0.15.
+- **Slavin (2020)** finds the sheep losses came from recurrent scab, depressing wool until the early 1330s, while the 1319–22 murrain was mainly cattle. So the record favours a longer, milder dip than the one built: ×0.85 in 1315–22 and ×0.9 in 1323–32, recorded as approximate after Slavin. It goes into the next build.
+
+**The Hatcher check fails badly.** Population in 1450 is 1.15–1.19 × 1340 in the model, against Hatcher's 0.33–0.50. The model regains the Black Death by 1400, because survivors on abundant land grow at up to 2.7% a year. `r_grow` is set high so that a region fills from ten hamlets within a watchable run, far above a medieval natural increase of under 1%. Hatcher's own conclusion is that mortality, not fertility, held population down after 1348: plague returned, and other disease was endemic between outbreaks.
+
+**Decided (D114): an endemic era of mortality, 1349–1480, in the Historical calendar.**
+- **Rule.** Every settlement loses `endemic_mortality` a year on top of the outbreaks. This is the mortality between outbreaks that Hatcher describes. The implementer tunes it so that the target below is met, and records the value.
+- **Pre-registered:** population in 1450 between 0.40 and 0.65 of 1340, across the maps.
+- **v4's recovery check** (at least 0.9 of the pre-plague peak by year 500) is reported first. England in 1600 had probably not regained its 1300 level. If the check fails, I will revise it to the historical range on the numbers, with the reason stated.
+- **Expect knock-on effects:** fewer people in the 1400s means fewer towns over 2,000 and more pasture. All checks run as usual, and any fix is by the usual levers.
+- **Iterate** as D91 says.
+
+**D114 passed (a92c5bb; golden `b4f78a0e4adf502b`, 45.4 ms a year in wasm).**
+- **`endemic_mortality` 0.015.** Population in 1450 is 0.45–0.64 of 1340 (medians 0.54–0.56), so the pre-registration is met in 60 of 60 runs. The plague loss is regained in 185–198 years.
+- **The full gate passes with no levers needed.** Pasture by 1450 is 0.25–0.28 of used land.
+- **Noted, not gated:**
+  - population by 1600 is 1.43–1.46 × the pre-plague peak, above England's (it had probably not regained 1300 by 1600). After 1480 the model grows at its fast `r_grow`. A post-1480 growth closer to Tudor rates is a later refinement;
+  - carry-over peaks at 0.44–0.45 on two maps, just above Clark's 40%.
+
+**Next (D115): the v7 release pass.** No new mechanisms. Much has changed since the v5 release, and the README, the panels and the screenshots describe a model that no longer exists.
+1. **README:** one page on the model as it now is (marketplaces and prices, money and purses, stores, wool and pasture, the historical calendar), each mechanism with its source.
+2. **`docs/parameters.md`** regenerated from `Params`.
+3. **"What you are watching"** rewritten for the new phases:
+   - the land fills;
+   - markets and the grain trade;
+   - wool and coin;
+   - famine and murrain (1315–22);
+   - the pestilence and the long depopulation (1348–1480);
+   - the turn to grass;
+   - ships and the coast.
+4. **View checks.** Prices, purses and stores should be visible somewhere: in the inspector at least, and as a price map overlay if it is cheap. Leave a note in `docs/rendering.md` for the graphics session on anything larger.
+5. **Screenshots** in `docs/screenshots/v7/`: 1300, 1316, 1349, 1450 and 1600.
+6. **Freeze:** `just test`, validate, wasm timing and Kent. Record "v7 release" with its golden in `milestones.md`.
+
+**After the v7 release (D116, approved by the designer; the owner said to go ahead).** In order, each reported before the next:
+1. **Kent geology.** Kent's yields miss the Downs' thin chalk soils and Romney Marsh's wet ground, so Kent has almost no pasture (L1).
+   - Build a geology layer for Kent from the British Geological Survey's open 1:625,000 map (bedrock and superficial deposits, Open Government Licence), through the importer, as soil and roads were.
+   - Chalk downland lowers arable yield, since rendzina soils were thin and sheep-and-corn country. Marine and alluvial deposits (Romney Marsh, the Thames and Medway marshes) lower it too, since they were wet ground grazed before drainage.
+   - The multipliers are the implementer's, with a source where one exists.
+   - Pre-registered: pasture's share of used land on the Downs and the Marsh is above its share on the Weald and the lowland in 1450.
+   - Reported: Kent's town figures against v7, and whether wool moves the largest place.
+2. **Robustness re-tune.** Runs passing every check are 8/13/8: every check passes at 75%, but rarely all at once. Search the existing tunables (`shadow_drain`, K, `market_share`, toll, `market_min`, `road_keep_load`) for the setting with the most runs passing every check, keeping every gated check at 75% or more per map. No new mechanisms. Record the setting and the new golden.
+3. **Then cloth, as a design note first (not before 1 and 2).** Wool spun and woven into cloth, with fulling at the water mills already in the model (D56). Cloth exports take over from raw wool in the fifteenth century (Carus-Wilson; the Weald of Kent was itself a cloth country). It is the natural next mechanism, and it is a processing step of Weber's kind. The note comes to the designer before any code.
+4. **Noted, not scheduled:** growth after 1480 closer to Tudor rates. The owner may move it up.
+
+**Development stops (owner, 22 October 2026; D117).** Divish has decided that development stops after the work in progress.
+- **Kent geology (D116.1)** is finished, recorded and frozen as the last change. Its result is reported, whether or not the pre-registered pasture expectation is met. If the geology layer breaks a gated check, it stays off, and Kent remains at the v7 release.
+- **Not done:** the robustness re-tune, the cloth design note and the post-1480 growth refinement. They stay on record here as the next steps, should development resume.
+- **The final state:** the v7 release (golden `65aee272c30de1f9`), plus Kent geology if it passes. `docs/milestones.md` gets a closing entry naming the final golden hash and the open items.
+
+**Kent geology result (73bfde3), accepted, the last change.**
+- **Data:** BGS 1:625,000 bedrock and superficial geology (OGL), with chalk ×0.6 and marsh and alluvium ×0.35 on arable yield, both recorded as approximate calibrations.
+- **The pre-registered expectation is met:** pasture in 1450 is 0.53 of used land on the North Downs and 0.60 on Romney Marsh, against 0.10 in the Weald.
+- **Kent's small-town placement improves** to the best it has been: AUC for places under 1,000 rises from 0.50 to 0.57, and inland recall from 25% to 34%.
+- **The generated maps are untouched** and the golden is unchanged. `map-geology.json` becomes Kent's standard setting for `just real`.
+
+Development ends here.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

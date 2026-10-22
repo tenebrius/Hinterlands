@@ -707,3 +707,25 @@ Kind: model mechanism (D97 build).
 
   In 1315–17 the region has 40% less grain. The levers above only move that grain between people, and none adds any.
 Kind: tuning and recorded miss (designer's decision D99).
+
+## D106 — v7 M4: the drain and road decay tuned (D104)
+- **The model** is D101's first build: acute shedding below `hunger_tolerance` 0.80. The D102/D103 averaging is removed.
+- **`shadow_drain` 0.025 → 0.05.** Spacing failed only on the tight side. 0.05 is the smallest value tried that passes spacing on every map (0.035 did not).
+- **`road_keep_load` 800 → 600.** Roads failed on every map at drain 0.05, and 1200 made both roads and spacing worse.
+- **The gate passes.** The famine dip (0.17–0.18) misses its pre-registered 0.10–0.16. Weather (0.85–0.90) meets its target.
+- **Details:** `docs/market/m4.md`, "Final build".
+Kind: tuning (designer's decision D104).
+
+## D111 — L1 wool: `market_share` 0.40 → 0.35 (D110)
+- **Why:** map 1 failed "over 2,000" (14/20). Its failing seeds had 3–4 towns over 2,000 beside a largest place of 21–26k.
+- **Tried on map 1** (20 seeds; "over 2,000" / spacing): `shadow_drain` 0.04 (17 / 17), 0.06 (13 / 19), `k_maint` 1.4 (18 / 20), `market_share` 0.45 (17 / 19), **0.35 (19 / 20)**.
+- **The gate passes at 0.35,** and runs passing every check rise to 15 / 15 / 7.
+- **Market stores carry grain over again** (0.13–0.14 of a mean harvest).
+- **Details:** `docs/wool/l1.md`, "Final build".
+Kind: tuning (designer's decision D110).
+
+## D113 — L2: `shadow_drain` 0.05 → 0.045
+- **Why:** the murrain tipped map 3's "over 2,000" to 14/20. All six failing seeds had 4 towns, one short of the band.
+- **Tried on map 3, per seed** (over 2,000 / spacing): `k_maint` 1.4 (17 / 20), `market_share` 0.32 (19 / 17), `shadow_drain` 0.045 (18 / 19).
+- **Chosen:** the drain, as the smallest change that holds spacing. The gate passes (`docs/wool/l2-l4.md`).
+Kind: tuning (within D110's levers).
