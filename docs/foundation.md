@@ -1030,6 +1030,23 @@ Only outside trade fails at 1600, at 0.23–0.27 against its 3–20% band. The i
 4. **Kent's missing pasture is a data gap, not a model fault.** No Kent cell yields below about 0.27, because the yield layers miss the Downs' thin chalk and the Marsh's wet ground. A geology-based soil layer (chalk and alluvium) for Kent is noted for later.
 5. **When the gate passes:** move the defaults and the golden, and record L1. Next comes the market-store fix.
 
+**L1 passed (f1ad38c, D111; golden `1ebe5979ca2bf8fe`, 47.7 ms a year in wasm).** Wool and pasture are in the core.
+- **Map 1 was fixed by lowering the rent share,** `market_share` 0.40 → 0.35. Wool's coin had been concentrating growth in one city.
+- **Robustness rose.** Runs passing every check went from 6/6/2 to 15/15/7.
+- **Wool is the region's export:** 56–64% of coin before 1348, and 94–95% after.
+- **Pasture rises** from 0.13–0.18 of used land in 1340 to 0.22–0.23 in 1450.
+- **Market stores carry grain again** (0.13–0.14 of a harvest, max 0.36), because a lower rent leaves farmers more to sell in cheap years. **The scheduled store fix is cancelled.** Carry-over is reported at each milestone instead.
+
+**Next round, approved (D112): L2 murrain and L4 view together,** since they are small and independent.
+- **L2, the sheep murrain.** Wool output from pasture is multiplied by 0.7 in 1315–17 and by 0.85 in 1318–22, in the Historical calendar. These values are approximate, after Campbell (2000) and Slavin on the livestock pestilences of 1315–25. Check them against the sources if possible, and record them as approximate if not. Gate: every check. Report: the wool and coin dip, and the price level in those years.
+- **L4, the view,** in new files as before:
+  - the viewer's pasture and sheep come from the model's land use, as bridges and mills did;
+  - wool gets a route colour;
+  - the chronicle gets lines such as "1420. The fields of Ashby are put down to grass." and "1316. Murrain among the sheep of the Downs.";
+  - screenshots at 1340 and 1450 showing the turn to grass.
+- **Then a population check against Hatcher (D109), approved to follow.** Report population in 1450 against 1340 on the generated maps, against Hatcher's half to two-thirds fall. If the model is far off, I will decide on the plague recurrences' strength on the numbers.
+- **L3 (Option B) stays parked.** Its condition, that towns keep their grain, was not met at L0.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
