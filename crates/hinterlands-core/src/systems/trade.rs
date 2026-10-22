@@ -99,7 +99,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     };
     // The outside world (v5, D64): imports bought and grain sold to the ports,
     // out of what is left of each marketed share.
-    let (paid, to_ports) = if s2 {
+    let (paid, to_ports) = if s2 || p.marketplaces {
         (paid, vec![0f32; m])
     } else if p.outside_ports && !state.outside.is_empty() {
         outside(state, p, paid, &mut market_in, &mut food_out, &mut flows)
@@ -124,7 +124,20 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         );
     }
 
-    for i in (0..m).filter(|_| !s2) {
+    if p.marketplaces && !s2 {
+        crate::systems::marketplace::trade(
+            state,
+            p,
+            &idx_of,
+            &attract,
+            &mut food_in,
+            &mut food_out,
+            &mut market_in,
+            &mut flows,
+        );
+    }
+
+    for i in (0..m).filter(|_| !s2 && !p.marketplaces) {
         let s = &state.settlements[i];
         // What is left of the marketed share after paying for goods and
         // imports and selling to the ports.
@@ -269,7 +282,10 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .filter_map(|d| grid.neighbor(a, d))
                 .map(|j| transship[j])
                 .sum::<f32>();
-        // Fees this year, for next year's budgets (S2, D78).
+        // Fees this year, for next year's budgets (S2, D78; v7, D88).
+        if p.marketplaces && !fees {
+            s.fee_earned = p.handling_margin * s.through + p.transship_margin * s.transship;
+        }
         if fees {
             s.fee_earned = p.handling_margin * s.through + p.transship_margin * s.transship;
             s.fee_rate = fee_paid[i] / food_in[i].max(1.0);

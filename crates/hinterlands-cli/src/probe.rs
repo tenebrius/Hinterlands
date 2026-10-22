@@ -623,7 +623,13 @@ pub fn cmd_marketplaces(args: &Args) {
         let price: Vec<f32> = st
             .settlements
             .iter()
-            .map(|s| if s.shadow_price[0] > 0.0 { s.shadow_price[0] } else { 1.0 })
+            .map(|s| {
+                if s.shadow_price[0] > 0.0 {
+                    s.shadow_price[0]
+                } else {
+                    1.0
+                }
+            })
             .collect();
         let mut turnover = vec![0f32; m];
         let mut rents = vec![0f32; m];
@@ -649,7 +655,8 @@ pub fn cmd_marketplaces(args: &Args) {
             }
         }
         for (i, s) in st.settlements.iter().enumerate() {
-            let fees = (p.handling_margin * s.through + p.transship_margin * s.transship) * price[i];
+            let fees =
+                (p.handling_margin * s.through + p.transship_margin * s.transship) * price[i];
             let goods = s.goods_in;
             let bill = (s.need(p) - (1.0 - p.market_share) * s.food_prod).max(0.0) * price[i];
             println!(

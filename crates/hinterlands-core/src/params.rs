@@ -243,6 +243,9 @@ define_params! {
         pull_smoothed: bool = true, [0, 1], "The market pull in growth answers the ten-year average inflow instead of the year's (W2, D85)";
         store_smooth: bool = false, [0, 1], "A place tops its food up from its own store to food_cap x need, its growth target, not just to need (W1, D83)";
         store_loss: f32 = 0.05, [0, 0.5], "Share of a store lost each year to spoilage, vermin and holding (S3)";
+        marketplaces: bool = false, [0, 1], "Grain is sold at markets (rent plus surplus, routed by W^alpha exp(-beta c)) and priced between large markets; market people buy their food (v7 M2, D88)";
+        market_min: f32 = 50.0, [1, 1000], "Least market size W for a market to trade with other markets at a price (v7)";
+        toll: f32 = 0.03, [0, 0.2], "Toll on the turnover of a market, paid to its market people (v7)";
         grain_relief: bool = true, [0, 1], "After trade, places in deficit draw on surplus above food_cap that would otherwise be lost, unpaid (v6 S2', D80)";
         market_grain: bool = false, [0, 1], "Grain trades by the price equilibrium, paid from budgets of sales, rents, fees and goods (v6 S2, D78)";
         grain_premium: bool = true, [0, 1], "Under market_grain, market size W^alpha is a premium on the buyer side (decision 4; off is option 1, W as demand only)";

@@ -644,3 +644,11 @@ Kind: model mechanism behind a switch; dropped.
   - Clark in range (`b_Y` −0.011 to −0.013); famine dip 0.18–0.20.
 - **State.** Both switches stay off until the designer rules on the missed store condition. Details are in `docs/market/w2.md`.
 Kind: model mechanism behind switches (owner-approved).
+
+## D89 — v7 M2: marketplaces first build (designer's brief D88). Failed; stopped
+- **Built as M1 describes,** behind `marketplaces` (off), with `market_min` 50 and `toll` 0.03. Village sales are routed as before, large markets clear by the entropy solver, market people buy within budgets of rents, toll and fees, and W grows on grain sold.
+- **Untuned run: FAILED** on every map. There is no place over 2,000 in any run, and the rank-size slope is about −0.3. The pre-registered "hierarchy on 2 maps" is not met.
+- **Tuning round** (K 0.6–3.39, `market_share` 0.3/0.49, toll 0.03/0.10, `market_min` 20/50): the largest place at year 400 is at most 2,475. No setting forms the hierarchy, so the gate was not run.
+- **Cause.** W's feedback rested on gross arrivals. Sold grain scales with the market's own people, so the pull loses its positive feedback.
+- **Options** are in `docs/market/m2.md`.
+Kind: model mechanism behind a switch; stopped.
