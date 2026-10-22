@@ -863,6 +863,17 @@ Then stop for review.
 
 D95's pre-registrations stand: famine dip ≤ 0.16, deficit met ≥ 30% in 1315–17, and price autocorrelation ≥ 0.3. The designer reviews the note, then the build goes into the core.
 
+**Money note reviewed (4b4a1d0, `docs/market/m3-money.md`); decisions (D97).** The note is approved: the two purses per place, the order of payment, the settlement of each arc, the one-year lag, the starting stock, the conservation unit test and the budgets in the solver. One change is needed, about where spending the model does not trace goes.
+- **The problem.** A 10% yearly loss from every purse is a leak to nowhere. In a region where port exports roughly balance imports, the money stock would drain to zero at 10% a year, and prices would fall to the floor. That is the note's own named risk, built in. In the real economy that spending stayed in the region: cloth, ale, dues, the church, building work and alms.
+- **Decided: untraced spending recirculates, and only a little leaks.**
+  - A farmers' purse's untraced spending, `purse_loss` (0.10), is paid to the M of the market it sells to: dues, cloth, ale and the church.
+  - A market purse's untraced spending, `mpurse_loss` (0.10), is paid back to the F of the places it bought grain from, in proportion: building work, service and alms. A share `luxury_out` (0.2) of it leaves the region as imported luxuries.
+  - Spending above a cap is treated the same way. A true leak, `coin_wear` (0.01 a year, for wear and hoards), is the only loss besides imports and luxuries.
+- **What then sets the price level.** The external balance does, through Hume's price–specie flow (1752). If the region's grain is dear against the ports' world price, the ports buy less and coin stops coming in. If coin is plentiful, more imports and luxuries are bought and coin leaves. The world price anchors the level, which is the published mechanism and also what Mayhew describes for England.
+- **The conservation identity** in `tests/money.rs` becomes: Σ purses changes only by port payments + planted coin − imports − luxuries − wear − removals with no partner.
+- **Added to the report:** the regional grain price against the world price over time, and coin in and out by channel.
+- **Build into the core** with this change, and iterate as D91 says. The checks are unchanged: the price level stays within 0.4–2.5, and D95's three pre-registrations stand.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
