@@ -1222,6 +1222,49 @@ Divish has lifted the stop (D117). The rules, the channel and the gate are uncha
   - growing places' share of stone demand is above their share of W.
 - **D1** follows on the designer's decision after D0's report.
 
+### D0 result (39b3dbb): accepted; D1 with outside supply of iron and salt (D121)
+
+**Accepted.** Both pre-registrations are met. Iron falls 38% from 1300–1340 to 1400–1440 with the arable land (−39%). Growing places take more than their W share of stone in 352 of 369 decades. D120 is applied: the gate runs 40 seeds, with `NO_WORSE` set for road length on map 1.
+
+**The levels are the finding.**
+- **Iron.** On a stock basis iron is about 0.05 value units a person, 2 d a year: plough irons and shoeing at Langdon's costs.
+  - Today's 0.0013 was never a demand. D71 cut it to whatever the coppiced mines could supply, because the region had no other supply, and at v2's level the price reached 22–80 and the mines grew to 1,500–2,800 people.
+  - The missing piece was not a lower demand but a second supplier. England imported much of its iron, chiefly from Spain (Childs 1981, "England's iron trade in the fifteenth century", *EcHR* 34), and much of its salt as bay salt from Bourgneuf (Bridbury 1955).
+- **Salt** is about 5.6 times today's, on a per-head figure that has no source yet.
+
+**D1, decided.**
+1. **The outside ports sell iron and salt, as they already sell imports (D71),** without limit at the port, at price 1, with carriage inland as for every good.
+   - Price 1 is the recorded English price D0's units were converted at, so it already reflects a market that imported.
+   - Payment is coin leaving the region, as for imports (D96).
+   - Built first, at today's demand, and reported: the hash, and the share of iron and salt that comes from the ports. This follows rule 8: the mechanism that absorbs the larger demand exists before the demand rises.
+2. **Then the stock-based demand** for iron, salt and stone, as D0 computed it, replacing the per-head values. Elasticities are unchanged.
+   - Salt per head is taken from Bridbury or another source before it is set (D105), or it is named as a calibration.
+   - The iron calibration (D71) is retired, since the port's price now bounds iron's.
+3. **One switch, `demand_stocks`,** off until the gate passes, then the default.
+
+**Gate:** every check on 40 seeds (D120).
+
+**Pre-registered, reported only:**
+- **Mines stay small.** Median specialist size is under 500 on every map, because the port's price caps iron's (D72 had 132 / 44 / 91). This depends on step 1; the implementer confirms it is in the code before the run (rule 5).
+- **The median town price of iron** is between 1 and the port price plus carriage.
+- **Coin.** Imports of iron and salt take more coin out. The price level falls, and grain and wool exports rise, by Hume's mechanism.
+- **Outside trade** stays inside 3–30%. If it breaks the ceiling, the report says by how much and through which good, and the band is not revised before I have seen it.
+
+**Reported:**
+- the share of iron and salt from the ports, by decade;
+- iron demand against arable land after 1348;
+- stone demand in growing and shrinking towns;
+- the D0 tables at the new levels;
+- runs passing every check.
+
+**The cloth note may come with D1's report** (no D2 code before it is decided). It settles:
+- cloth per head before and after 1348, since Dyer's three yards is a 1500 figure, after the rise in living standards;
+- wool per yard for the kinds of cloth (broadcloth against kersey and russet);
+- wool per cell, against England's clip;
+- whether the ports sell wool or cloth when the region lacks wool.
+
+D0 found the region's own cloth needs 3–5 times the wool it grows at Dyer's figure.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
