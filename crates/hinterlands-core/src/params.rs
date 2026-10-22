@@ -148,7 +148,7 @@ define_params! {
         hub_min_flow: f32 = 5.0, [0, 200], "Least flow on a route for it to count towards a hub";
         home_weight: f32 = 1.0, [0, 2], "Weight of a settlement's own market in its trade (Rihll-Wilson self-term)";
         urban_seed: f32 = 10.0, [0, 500], "Market pull of a settlement with no non-farming population";
-        market_share: f32 = 0.4, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
+        market_share: f32 = 0.35, [0, 0.6], "Share of each harvest sent to market (rents, tithes, sales)";
     }
     "Goods" => {
         goods_enabled: bool = true, [0, 1], "Goods besides grain: resource sites, goods trade and specialists (v2, D38-D40)";

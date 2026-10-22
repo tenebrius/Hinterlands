@@ -521,3 +521,25 @@ The legend lists only layers drawn at the current zoom. New URL options: `?on=`,
   - population at 200 against no weather 0.85 / 0.85 / 0.90 against ≥ 0.85: met.
 - **Golden `e788381d55fa67d2`.** Release wasm gives the same hash (`?selftest=500`) at 40.8 ms/year (not gated, D91).
 - **Details:** `docs/market/m4.md`.
+
+## L1 — Wool on spare land (D105, D107–D111)
+- **The model:**
+  - free land not worth ploughing at its distance goes to grass, with its shepherds counted in the labour guard;
+  - wool is sold to the outside ports at £5 a sack, falling 25% from 1350 to 1400 (Clark), and rides the roads;
+  - Hatcher's later plagues (1375–1479) are in the Historical calendar;
+  - wool counts as outside trade (band 3–30%, D110).
+- **Defaults moved:** `market_share` 0.35, and the wool and plague parameters (`docs/wool/l0.md`, `docs/wool/l1.md`).
+- **`just validate` (Historical, 20 seeds a map): PASSED.**
+  - Pasture outward, on poor land, and 1450 > 1340: 20/20 on every map.
+  - Over 2,000: 19 / 18 / 17. Spacing 20/20. Roads 17 / 18 / 15.
+  - Outside trade 0.21–0.27.
+  - Clark R² 0.93–0.96; price level 20/20.
+  - Runs passing every check: 15 / 15 / 7.
+- **Reported:**
+  - wool brings 56–64% of coin entering before 1348 and 94–95% after;
+  - pasture is 13–18% of used land in 1340 and 22–23% in 1450;
+  - famine dip 0.18–0.19, weather 0.87–0.89;
+  - the plague loss is regained in about 79 years;
+  - W with wool is about 0;
+  - Kent has almost no pasture: its yield layers lack chalk and marsh soils, a data gap noted for later.
+- **Golden `1ebe5979ca2bf8fe`.** Release wasm gives the same hash (`?selftest=500`) at 47.7 ms/year (not gated, D91).

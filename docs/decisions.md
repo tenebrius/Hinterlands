@@ -715,3 +715,11 @@ Kind: tuning and recorded miss (designer's decision D99).
 - **The gate passes.** The famine dip (0.17–0.18) misses its pre-registered 0.10–0.16. Weather (0.85–0.90) meets its target.
 - **Details:** `docs/market/m4.md`, "Final build".
 Kind: tuning (designer's decision D104).
+
+## D111 — L1 wool: `market_share` 0.40 → 0.35 (D110)
+- **Why:** map 1 failed "over 2,000" (14/20). Its failing seeds had 3–4 towns over 2,000 beside a largest place of 21–26k.
+- **Tried on map 1** (20 seeds; "over 2,000" / spacing): `shadow_drain` 0.04 (17 / 17), 0.06 (13 / 19), `k_maint` 1.4 (18 / 20), `market_share` 0.45 (17 / 19), **0.35 (19 / 20)**.
+- **The gate passes at 0.35,** and runs passing every check rise to 15 / 15 / 7.
+- **Market stores carry grain over again** (0.13–0.14 of a mean harvest).
+- **Details:** `docs/wool/l1.md`, "Final build".
+Kind: tuning (designer's decision D110).
