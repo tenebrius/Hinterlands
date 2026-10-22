@@ -1451,3 +1451,33 @@ pub fn cmd_outside(args: &Args) {
         share, g, i, st.port_supply[0], st.port_supply[2], w, inflow, st.total_pop()
     );
 }
+
+/// Market stores by year (D123 trace 3): the regional grain price (weighted
+/// by people, as validate's), the market stores held and the harvest.
+pub fn cmd_stores(args: &Args) {
+    let mut sim = make_sim(args);
+    let years = args.u64("years", 500) as u32;
+    let seed = sim.sim_seed;
+    while sim.state.year < years {
+        sim.step(1);
+        let st = &sim.state;
+        let rows: Vec<(f32, f32)> = st
+            .settlements
+            .iter()
+            .filter(|s| s.price[0] > 0.0 && !s.fields.is_empty() && s.food_prod > 0.0)
+            .map(|s| (s.price[0], s.pop))
+            .collect();
+        let wsum: f32 = rows.iter().map(|r| r.1).sum();
+        if wsum <= 0.0 {
+            continue;
+        }
+        let regional = rows.iter().map(|r| r.0 * r.1).sum::<f32>() / wsum;
+        let held: f32 = st.settlements.iter().map(|s| s.mstore).sum();
+        let harvest: f32 = st.settlements.iter().map(|s| s.food_prod).sum();
+        let mpurse: f32 = st.settlements.iter().map(|s| s.mpurse).sum();
+        println!(
+            "stores {seed} {} price {regional:.4} held {held:.1} harvest {harvest:.1} mpurse {mpurse:.0}",
+            st.year
+        );
+    }
+}

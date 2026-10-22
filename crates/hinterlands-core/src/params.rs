@@ -160,7 +160,6 @@ define_params! {
         rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
         port_goods: bool = false, [0, 1], "The outside ports sell salt and iron, as they sell imports (D1 step 1, D121)";
         demand_stocks: bool = true, [0, 1], "Demand for salt, iron and stone from stocks, and ports selling salt and iron (D1, D121)";
-        goods_after_grain: bool = false, [0, 1], "Goods are bought after the grain market, so market stores buy before salt, iron, stone and imports take the purse (D123 trace 3)";
         salt_lb: f32 = 15.0, [0, 100], "Salt a person uses a year, lb (calibration: no source found, D121)";
         salt_lb_per_d: f32 = 3.1, [0.1, 100], "Pounds of salt a penny buys (London 1438, secondary)";
         ploughs_per_km2: f32 = 2.0, [0, 10], "Ploughs per km2 of arable (a ploughland of about 100 acres; approximate)";

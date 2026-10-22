@@ -72,24 +72,6 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Grain by the equilibrium (S2, D78): goods go by the S1 equilibrium,
     // paid in value, and the ports buy grain inside the grain market.
     let s2 = p.market_grain;
-    // With `goods_after_grain` (D123) the grain market, and its stores, go
-    // first, and the goods are bought from what the purses have left.
-    let grain_first = p.goods_after_grain && !s2;
-    if grain_first {
-        if !p.goods_enabled {
-            state.outside_trade = (0.0, 0.0);
-        }
-        crate::systems::marketplace::trade(
-            state,
-            p,
-            &idx_of,
-            &attract,
-            &mut food_in,
-            &mut food_out,
-            &mut market_in,
-            &mut flows,
-        );
-    }
     let paid = if p.goods_enabled && (p.market_goods || s2) {
         crate::systems::market::goods_trade(
             state,
@@ -130,7 +112,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             &mut market_in,
             &mut flows,
         );
-    } else if !grain_first {
+    } else {
         if !p.goods_enabled {
             state.outside_trade = (0.0, 0.0);
         }

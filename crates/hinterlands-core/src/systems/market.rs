@@ -587,13 +587,9 @@ pub fn goods_trade(
                 // The market people's food comes first (D93): goods get what
                 // is left of the market's purse after last year's food bill.
                 let b = if s.price[0] > 0.0 { s.price[0] } else { 1.0 };
-                // After the grain market the food is already bought (D123).
-                let food = if p.goods_after_grain {
-                    0.0
-                } else {
+                let food =
                     crate::systems::marketplace::market_demand(p, s.market.max(0.0).min(s.pop), b)
-                        * b
-                };
+                        * b;
                 s.purse.max(0.0) + (s.mpurse - food).max(0.0)
             };
             if bill[i] > budget {
@@ -641,12 +637,9 @@ pub fn goods_trade(
             // The market pays from what its people's food leaves (D93); the
             // farmers pay their share of salt and iron.
             let bp = if bs.price[0] > 0.0 { bs.price[0] } else { 1.0 };
-            let food = if p.goods_after_grain {
-                0.0
-            } else {
+            let food =
                 crate::systems::marketplace::market_demand(p, bs.market.max(0.0).min(bs.pop), bp)
-                    * bp
-            };
+                    * bp;
             let from_m = (pay * share_m).min((bs.mpurse - food).max(0.0));
             let from_f = (pay * (1.0 - share_m)).min(bs.purse.max(0.0));
             let pay = from_m + from_f;
