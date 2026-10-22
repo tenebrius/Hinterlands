@@ -37,6 +37,12 @@ pub struct GrainStats {
     /// The toll's share of the large markets' food budgets (v7).
     #[serde(default)]
     pub toll_share: f32,
+    /// Farmers' grain shortfall below need, and what their purses bought
+    /// (D95).
+    #[serde(default)]
+    pub dearth_need: f32,
+    #[serde(default)]
+    pub dearth_bought: f32,
 }
 
 /// The outside port a partner id names, if it is one.
@@ -235,6 +241,9 @@ pub struct Settlement {
     pub avg_price: f32,
     #[serde(default)]
     pub store_income: f32,
+    /// The farmers' purse, in grain-value units (D95).
+    #[serde(default)]
+    pub purse: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -285,6 +294,7 @@ impl Settlement {
             mstore: 0.0,
             avg_price: 0.0,
             store_income: 0.0,
+            purse: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,

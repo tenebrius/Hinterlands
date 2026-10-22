@@ -250,7 +250,10 @@ define_params! {
         store_margin_late: f32 = 0.10, [0, 0.5], "Holding margin from store_margin_year on (Clark)";
         store_avg_years: f32 = 10.0, [1, 50], "Years over which a market's reference grain price is averaged for its store (D94)";
         relief_market_stores: bool = false, [0, 1], "Relief may draw on market stores as well as village stores (experiment, D94)";
-        store_spike: bool = false, [0, 1], "Stores sell only when the price also exceeds last year's by the holding margin: into a spike, not a rising trend (D94)";
+        purses: bool = false, [0, 1], "Farmers keep their surplus sales as a purse in grain-value units and buy grain with it in a dearth (D95)";
+        purse_loss: f32 = 0.1, [0, 0.5], "Share of a purse lost each year";
+        purse_cap: f32 = 1.0, [0, 5], "Largest purse, in years of the place's need at price 1";
+        store_spike: bool = true, [0, 1], "Stores sell only when the price also exceeds last year's by the holding margin: into a spike, not a rising trend (D94)";
         store_sell_band: f32 = 0.0, [0, 3], "Stores sell above the average price plus this many holding margins (0: above the average, D94)";
         store_margin_year: u32 = 250, [0, 2000], "Year the holding margin falls (historical; 1350)";
         toll: f32 = 0.1, [0, 0.2], "Toll on the turnover of a market, paid to its market people (v7)";

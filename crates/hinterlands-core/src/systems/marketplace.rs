@@ -98,9 +98,15 @@ pub fn trade(
     // Grain arriving from other places: a central place's draw (D92).
     let mut drawn = vec![0f32; m];
     let mut rent_in = vec![0f32; m];
+    // The farmers' surplus as it arrives at each market, for their purse:
+    // (seller, market, grain).
+    let mut surplus_arr: Vec<(usize, usize, f32)> = Vec::new();
+    // What the farmers lack below their need, for the purse to buy (D95).
+    let mut deficit = vec![0f32; m];
     for (i, s) in state.settlements.iter().enumerate() {
         let h = s.food_prod.max(0.0);
         let farm_need = (s.pop - s.market.max(0.0)).max(0.0) * fpp;
+        deficit[i] = (farm_need - ((1.0 - p.market_share) * h).min(cap * farm_need)).max(0.0);
         let rent = p.market_share * h;
         own[i] = ((1.0 - p.market_share) * h).min(cap * farm_need);
         let sale = h - own[i];
@@ -132,6 +138,9 @@ pub fn trade(
                 drawn[j] += arrived;
             }
             rent_in[j] += arrived * rent_frac;
+            if p.purses && rent_frac < 1.0 {
+                surplus_arr.push((i, j, arrived * (1.0 - rent_frac)));
+            }
             if k != NONE && sent >= p.grain_flow_min {
                 flows.push(Flow {
                     from: s.id,
@@ -163,8 +172,17 @@ pub fn trade(
             rent_in[j] + p.toll * turnover[j] + s.fee_earned + s.store_income
         })
         .collect();
+    // Farmers short of grain buy it with their purse (D95).
+    let purse: Vec<f32> = state.settlements.iter().map(|s| s.purse.max(0.0)).collect();
+    let dearth = |j: usize, b: f32| -> f32 {
+        if p.purses {
+            deficit[j].min(purse[j] / b.max(1e-3))
+        } else {
+            0.0
+        }
+    };
     let want = |j: usize, b: f32| -> f32 {
-        (need_w[j] * libm::powf(b.max(1e-3), -eps).min(cap)).min(budget[j].max(0.0))
+        (need_w[j] * libm::powf(b.max(1e-3), -eps).min(cap)).min(budget[j].max(0.0)) + dearth(j, b)
     };
 
     // 2. Large markets, and each small market's nearest large one in reach.
@@ -543,12 +561,36 @@ pub fn trade(
             relief: false,
         });
     }
+    // Purses (D95): the farmers' surplus sold, at the market's price less the
+    // toll, as much of it as the market sold; and what they bought in dearth.
+    let mut revenue = vec![0f32; m];
+    for &(i, j, q) in &surplus_arr {
+        let frac = if turnover[j] > 0.0 {
+            (sold_here[j] / turnover[j]).min(1.0)
+        } else {
+            0.0
+        };
+        revenue[i] += q * frac * price[j] * (1.0 - p.toll);
+    }
+    let (mut dearth_need, mut dearth_got_all) = (0f32, 0f32);
     let mut capped_n = 0u32;
     for (j, s) in state.settlements.iter_mut().enumerate() {
+        // What it took splits between the farmers' dearth purchase and its
+        // market people in proportion to their demand.
+        let all = want(j, price[j]).max(1e-9);
+        let dearth_got = eaten_w[j] * dearth(j, price[j]) / all;
+        let market_got = eaten_w[j] - dearth_got;
+        dearth_need += deficit[j];
+        dearth_got_all += dearth_got;
+        if p.purses {
+            let spent = dearth_got * price[j];
+            s.purse = ((s.purse - spent).max(0.0) + revenue[j]) * (1.0 - p.purse_loss);
+            s.purse = s.purse.min(p.purse_cap * s.need(p));
+        }
         // The people eat first, up to their growth target; the rest is the
         // establishment's use (D90).
         let people = s.market.max(0.0).min(s.pop) * fpp;
-        food_in[j] += eaten_w[j].min(cap * people);
+        food_in[j] += dearth_got + market_got.min(cap * people);
         // W grows on the grain brought to its market from other places
         // (D90, D92): a central place's draw from its hinterland.
         market_in[j] += drawn[j];
@@ -584,6 +626,8 @@ pub fn trade(
         arrived: total_t,
         unsold_local,
         markets: nb as u32,
+        dearth_need,
+        dearth_bought: dearth_got_all,
         toll_share: {
             let tolls: f32 = nodes_settle.iter().map(|&j| p.toll * turnover[j]).sum();
             let all: f32 = nodes_settle.iter().map(|&j| budget[j].max(0.0)).sum();

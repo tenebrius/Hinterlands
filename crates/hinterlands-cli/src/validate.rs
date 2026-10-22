@@ -70,6 +70,11 @@ pub struct RunResult {
     pub price_ac: f32,
     pub carry: (f32, f32),
     pub gap_ratio: f32,
+    /// D95: share of the farmers' shortfall met by their purses (normal
+    /// years, 1315–17), and with relief added in 1315–17; mean purse over need
+    /// at years 200, 214, 217 and 400 for places under 500 and over 2,000.
+    pub purse_met: (f32, f32, f32),
+    pub purse_level: [[f32; 4]; 2],
     pub weather_ratio: f32,
     /// v5 (D65): share of the people in places over 2,000 who live in coastal
     /// ones, at years 200 and 500 (1300 and 1600); and, for the top ten at
@@ -397,6 +402,8 @@ pub fn run_one(
     // Relief: deficit and arrived outside the famine, then in it, then all
     // arrived and all lost.
     let mut relief_acc = [0f32; 8];
+    let mut purse_acc = [0f32; 5];
+    let mut purse_level = [[f32::NAN; 4]; 2];
     // Regional stores over need at the end of each year (index = year).
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
@@ -450,6 +457,43 @@ pub fn run_one(
             let need: f32 = sim.state.settlements.iter().map(|s| s.need(params)).sum();
             let held: f32 = sim.state.settlements.iter().map(|s| s.store).sum();
             store_share.push(held / need.max(1.0));
+        }
+        if params.purses {
+            let gs = sim.state.grain_stats;
+            let y = sim.state.year - 1;
+            let famine =
+                (params.famine_year..params.famine_year + params.famine_years).contains(&y);
+            let k = if famine { 2 } else { 0 };
+            purse_acc[k] += gs.dearth_need;
+            purse_acc[k + 1] += gs.dearth_bought;
+            if famine {
+                purse_acc[4] += sim.state.relief_stats[2] + sim.state.relief_stats[4];
+            }
+            if let Some(slot) = [200u32, 214, 217, 400]
+                .iter()
+                .position(|&a| a == sim.state.year)
+            {
+                for (c, small) in [true, false].iter().enumerate() {
+                    let ps: Vec<f32> = sim
+                        .state
+                        .settlements
+                        .iter()
+                        .filter(|s| {
+                            if *small {
+                                s.pop < 500.0
+                            } else {
+                                s.pop > 2000.0
+                            }
+                        })
+                        .map(|s| s.purse / s.need(params).max(1.0))
+                        .collect();
+                    purse_level[c][slot] = if ps.is_empty() {
+                        f32::NAN
+                    } else {
+                        ps.iter().sum::<f32>() / ps.len() as f32
+                    };
+                }
+            }
         }
         if params.grain_relief {
             let [d, _, a, l, own] = sim.state.relief_stats;
@@ -586,7 +630,14 @@ pub fn run_one(
         .map(|a| a.3 / a.4)
         .collect();
     let gap_ratio = median_of(gaps);
+    let purse_met = (
+        purse_acc[1] / purse_acc[0].max(1.0),
+        purse_acc[3] / purse_acc[2].max(1.0),
+        (purse_acc[3] + purse_acc[4]) / purse_acc[2].max(1.0),
+    );
     RunResult {
+        purse_met,
+        purse_level,
         price_ac,
         carry,
         gap_ratio,
@@ -1111,6 +1162,27 @@ pub fn cmd_validate(args: &Args) {
                 med(ws.clone()),
                 within,
                 ws.len()
+            );
+        }
+        if params.purses {
+            let a = |f: &dyn Fn(&RunResult) -> f32| {
+                med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
+            };
+            println!(
+                "{:<20} {:>12} farmers' shortfall met by purses: normal years {:.2}, 1315-17 {:.2} (with relief {:.2}); purse / need under 500 at 200/1314/1317/400: {:.2} {:.2} {:.2} {:.2}; over 2,000: {:.2} {:.2} {:.2} {:.2}",
+                "D95 purses",
+                "(reported)",
+                a(&|r| r.purse_met.0),
+                a(&|r| r.purse_met.1),
+                a(&|r| r.purse_met.2),
+                a(&|r| r.purse_level[0][0]),
+                a(&|r| r.purse_level[0][1]),
+                a(&|r| r.purse_level[0][2]),
+                a(&|r| r.purse_level[0][3]),
+                a(&|r| r.purse_level[1][0]),
+                a(&|r| r.purse_level[1][1]),
+                a(&|r| r.purse_level[1][2]),
+                a(&|r| r.purse_level[1][3])
             );
         }
         if rs.iter().any(|r| r.price_ac.is_finite()) {

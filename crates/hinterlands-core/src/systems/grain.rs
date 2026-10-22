@@ -546,6 +546,8 @@ pub fn trade(
         unsold_local: 0.0,
         markets: 0,
         toll_share: f32::NAN,
+        dearth_need: 0.0,
+        dearth_bought: 0.0,
     };
     state.market_arcs = arcs
         .iter()
