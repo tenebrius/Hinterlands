@@ -19,7 +19,7 @@ hinterlands <command> [options]
 commands:
   run       --map-seed N --seed N --years 500 [--params p.json] [--every 50]
             [--png out.png] [--snapshot out.bin] [--truth truth.csv] [--towns out.csv] [--cells out.csv] [--dem file.asc]
-  validate  [--maps 3] [--seeds 20] [--years 500] [--params p.json] [--threads N]
+  validate  [--maps 3] [--seeds 20] [--first-seed 1] [--years 500] [--params p.json] [--threads N]
   render    --map-seed N --png out.png [--seed N --years N] [--layer terrain|yield|forest|score|cost]
   bench     [--map-seed N] [--seed N] [--years 500]
   hash      [--map-seed N] [--seed N] [--years 500]   print the final snapshot hash

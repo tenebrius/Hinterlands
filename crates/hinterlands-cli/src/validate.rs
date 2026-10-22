@@ -988,6 +988,8 @@ fn passes(r: &RunResult) -> bool {
 pub fn cmd_validate(args: &Args) {
     let maps = args.u64("maps", 3);
     let seeds = args.u64("seeds", 20);
+    // `--first-seed N` runs seeds N..N+seeds (fresh-seed confirmation, D119).
+    let first_seed = args.u64("first-seed", 1);
     let years = args.u64("years", 500) as u32;
     let first_map = args.u64("map-seed", 1);
     let threads = args.u64(
@@ -1001,7 +1003,7 @@ pub fn cmd_validate(args: &Args) {
         .map(|s| (s, generate(s, &mp)))
         .collect();
     let jobs: Vec<(usize, u64)> = (0..terrains.len())
-        .flat_map(|m| (1..=seeds).map(move |s| (m, s)))
+        .flat_map(|m| (first_seed..first_seed + seeds).map(move |s| (m, s)))
         .collect();
     let next = AtomicUsize::new(0);
     let results = Mutex::new(Vec::new());
@@ -1471,6 +1473,34 @@ pub fn cmd_validate(args: &Args) {
             "runs passing every check: {full}/{}   slowest run {:.2} ms/year (native)",
             rs.len(),
             ms
+        );
+        // Which checks bind (D119): how often each fails, and how often it is
+        // a run's only failure.
+        let mut fails: Vec<(&str, usize, usize)> = CHECKS
+            .iter()
+            .map(|c| {
+                let (mut failed, mut sole) = (0usize, 0usize);
+                for r in rs.iter() {
+                    let r: &RunResult = r;
+                    if !(c.ok)(r) {
+                        failed += 1;
+                        if CHECKS.iter().filter(|d| !(d.ok)(r)).count() == 1 {
+                            sole += 1;
+                        }
+                    }
+                }
+                (c.name, failed, sole)
+            })
+            .filter(|x| x.1 > 0)
+            .collect();
+        fails.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        println!(
+            "failing checks (runs failing / of which the only failure): {}",
+            fails
+                .iter()
+                .map(|(n, k, o)| format!("{n} {k}/{o}"))
+                .collect::<Vec<_>>()
+                .join("; ")
         );
         all_ok &= contingency_ok && over5_ok;
     }
