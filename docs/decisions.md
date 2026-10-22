@@ -633,3 +633,14 @@ Kind: model mechanism behind a switch; stopped.
 - **Cause.** The remaining asymmetry is in the market term of growth (D15). Positive pull is capped and only moves migrants; negative pull removes people. Harvest variance drains people through it even when every place is fed.
 - **Outcome, by the designer's rule:** W1 is dropped, and `local_harvests` and `store_smooth` stay off as the record.
 Kind: model mechanism behind a switch; dropped.
+
+## D85 — W2: market pull on the ten-year average inflow, with weather (owner-approved, designer's brief)
+- **Rule.** `pull_smoothed` (off): growth's market pull answers `avg_inflow`, the ten-year average, instead of the year's inflow.
+- **Step 1, no weather: PASSED.** Every check is equal or better than v6, and runs passing every check go from 14 / 17 / 15 to 17 / 19 / 19. Recovery by 500 falls to 1.36–1.43, and the famine dip rises to 0.18–0.20.
+- **Step 2, σ 0.15 with relief and stores: gate PASSED.**
+  - Top-10 vs off 20/20 on every map; wasm 30.5 ms/year, same hash.
+  - Pre-registered population at year 200: met, 0.95–0.96 with 20/20 seeds within 20%.
+  - Pre-registered stores at year 400 ≥ 0.2: **not met**, 0.02–0.03.
+  - Clark in range (`b_Y` −0.011 to −0.013); famine dip 0.18–0.20.
+- **State.** Both switches stay off until the designer rules on the missed store condition. Details are in `docs/market/w2.md`.
+Kind: model mechanism behind switches (owner-approved).

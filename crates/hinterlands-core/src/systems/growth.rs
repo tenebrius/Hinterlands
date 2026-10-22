@@ -101,6 +101,12 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             s.avg_goods_in += (s.goods_in - s.avg_goods_in) / 10.0;
             s.avg_inflow += (inflow - s.avg_inflow) / 10.0;
         }
+        // W2 (D85): the pull answers the ten-year average inflow, not the year's.
+        let inflow = if p.pull_smoothed && p.goods_enabled {
+            s.avg_inflow
+        } else {
+            inflow
+        };
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }

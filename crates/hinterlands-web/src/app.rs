@@ -147,6 +147,7 @@ impl App {
                     ("harvests", 1, " harvests"),
                     ("relief", 1, " relief"),
                     ("stores", 1, " stores"),
+                    ("pull", 1, " pull"),
                 ]
                 .iter()
                 .filter(|(k, v, _)| url_param(k) == Some(*v))
@@ -353,9 +354,13 @@ fn selftest_years() -> Option<u32> {
 
 /// A numeric `?name=N` from the page URL (`HINTERLANDS_<NAME>` natively).
 /// The model's parameters as the address asks: the defaults, and with
-/// `?stores=1` grain stores (S3) at their tuned cap and loss.
+/// `?stores=1` grain stores (S3) at their tuned cap and loss, and with
+/// `?pull=1` the market pull on the ten-year average inflow (W2).
 fn url_params() -> Params {
     let mut p = Params::default();
+    if url_param("pull") == Some(1) {
+        p.pull_smoothed = true;
+    }
     if url_param("stores") == Some(1) {
         p.grain_stores = true;
         p.store_cap = 1.0;
