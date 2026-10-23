@@ -10,7 +10,7 @@ This section describes what is waiting to be merged; it is rewritten each time.
 
 - **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
 - **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9, stage 2 is R10 and stage 3 is R11. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
-- **Next step:** stage 4. The owner asked (22 October) that the remaining stages go ahead without waiting for approval, with towns the focus, and put optimisation off to a later stage so that the results are right first.
+- **Next step:** the owner's further changes to the look of roads and towns; stage 4 is set aside for now (23 October). See `docs/rendering-handoff.md`.
 
 ## R1 — Smooth relief drawn by a shader
 
