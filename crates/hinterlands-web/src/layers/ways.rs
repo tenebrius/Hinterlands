@@ -95,8 +95,9 @@ pub struct WayData {
     pub most: usize,
 }
 
-/// River lines, which change only with the terrain.
-fn rivers(t: &Terrain) -> Vec<Line> {
+/// River lines, which change only with the terrain and the look (R12: `scale`
+/// widens them against their true width).
+fn rivers(t: &Terrain, scale: f32) -> Vec<Line> {
     let g = t.grid;
     super::rivers::paths(t)
         .into_iter()
@@ -112,7 +113,7 @@ fn rivers(t: &Terrain) -> Vec<Line> {
                     } else {
                         cells[j]
                     };
-                    0.5 * river_width_m(t.flux[i], g.cell_km)
+                    0.5 * scale * river_width_m(t.flux[i], g.cell_km)
                 })
                 .collect();
             // Estuaries: over the last 1.5 km to the sea the river opens out.
@@ -141,13 +142,13 @@ fn rivers(t: &Terrain) -> Vec<Line> {
 
 /// River segments by cell, so roads can be kept off the water: each with the
 /// metres a road's centre must keep from its line (water, meander, half the
-/// widest road, and a gap).
+/// widest road, and a gap), and the water's half-width.
 struct Banks {
-    cells: Vec<Vec<(Vec2, Vec2, f32)>>,
+    cells: Vec<Vec<(Vec2, Vec2, f32, f32)>>,
 }
 
 impl Banks {
-    fn new(t: &Terrain, rivers: &[Line]) -> Self {
+    fn new(t: &Terrain, rivers: &[Line], road_scale: f32) -> Self {
         let g = t.grid;
         let cell_m = g.cell_km * 1000.0;
         let mut cells = vec![Vec::new(); t.n()];
@@ -155,13 +156,13 @@ impl Banks {
             for k in 1..l.pts.len() {
                 let (a, b) = (l.pts[k - 1], l.pts[k]);
                 let hw = l.hw[k - 1].max(l.hw[k]);
-                let clear = hw + meander_m(hw) + 0.5 * ROAD_W.1 + RIVER_GAP;
+                let clear = hw + meander_m(hw) + 0.5 * ROAD_W.1 * road_scale + RIVER_GAP;
                 let m = clear / cell_m;
                 let lo = (a.min(b) - Vec2::splat(m)).floor();
                 let hi = (a.max(b) + Vec2::splat(m)).floor();
                 for y in (lo.y as i32).max(0)..=(hi.y as i32).min(g.h as i32 - 1) {
                     for x in (lo.x as i32).max(0)..=(hi.x as i32).min(g.w as i32 - 1) {
-                        cells[g.idx(x, y)].push((a, b, clear));
+                        cells[g.idx(x, y)].push((a, b, clear, hw));
                     }
                 }
             }
@@ -182,7 +183,7 @@ impl Banks {
             return p;
         }
         let mut best: Option<(f32, Vec2, Vec2, f32)> = None;
-        for &(a, b, clear) in &self.cells[g.idx(x, y)] {
+        for &(a, b, clear, _) in &self.cells[g.idx(x, y)] {
             let ab = b - a;
             let u = ((p - a).dot(ab) / ab.dot(ab).max(1e-12)).clamp(0.0, 1.0);
             let q = a + ab * u;
@@ -231,14 +232,12 @@ impl super::town::Water for WaterAt<'_> {
             return 1e9;
         }
         let mut best = 1e9f32;
-        for &(a, b, clear) in &self.banks.cells[g.idx(x, y)] {
+        for &(a, b, _, hw) in &self.banks.cells[g.idx(x, y)] {
             let ab = b - a;
             let u = ((p - a).dot(ab) / ab.dot(ab).max(1e-12)).clamp(0.0, 1.0);
             let d = (p - (a + ab * u)).length() * cell_m;
             // The water's edge: in a town the river is embanked and does not
             // meander (the shader stills it where the ground is built over).
-            let meander_hw = clear - 0.5 * ROAD_W.1 - RIVER_GAP;
-            let hw = (meander_hw - 2.0) / 1.8;
             best = best.min(d - hw);
         }
         best
@@ -270,8 +269,8 @@ fn elevation_at(t: &Terrain, m: Vec2) -> f32 {
     top + (bottom - top) * fy
 }
 
-/// Road and track lines for this year.
-fn roads(v: &ViewState, banks: &Banks) -> Vec<Line> {
+/// Road and track lines for this year, `scale` times their true width (R12).
+fn roads(v: &ViewState, banks: &Banks, scale: f32) -> Vec<Line> {
     let t = &v.terrain;
     let net = routes::network(v);
     let max = net.max;
@@ -305,11 +304,12 @@ fn roads(v: &ViewState, banks: &Banks) -> Vec<Line> {
         let hw = busy
             .iter()
             .map(|&b| {
-                0.5 * if kind == ROAD {
-                    road_width_m(b)
-                } else {
-                    TRACK_W
-                }
+                0.5 * scale
+                    * if kind == ROAD {
+                        road_width_m(b)
+                    } else {
+                        TRACK_W
+                    }
             })
             .collect();
         out.push(Line {
@@ -324,7 +324,7 @@ fn roads(v: &ViewState, banks: &Banks) -> Vec<Line> {
 
 /// Footpaths from each place to its fields and its nearest neighbours (the
 /// footpaths layer's walk), as lines like the roads, kept off the rivers.
-fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)]) -> Vec<Line> {
+fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)], scale: f32) -> Vec<Line> {
     let t = &v.terrain;
     let g = t.grid;
     let edges: std::collections::BTreeSet<(u32, u32)> = edges.iter().copied().collect();
@@ -353,7 +353,7 @@ fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)]) -> Vec<Line> {
             Line {
                 kind: PATH,
                 busy: vec![0.0; n],
-                hw: vec![0.5 * PATH_W; n],
+                hw: vec![0.5 * PATH_W * scale; n],
                 pts,
             }
         })
@@ -361,8 +361,9 @@ fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)]) -> Vec<Line> {
 }
 
 /// Builds the textures from the river lines (cached per terrain by the caller)
-/// and this year's roads.
-fn layout(t: &Terrain, lines: &[&Line]) -> WayData {
+/// and this year's roads; a road's verges, ditches and hedges widen with it
+/// (`road_scale`, R12).
+fn layout(t: &Terrain, lines: &[&Line], road_scale: f32) -> WayData {
     let g = t.grid;
     let cell_m = g.cell_km * 1000.0;
     let sub = (cell_m / INDEX_M).round().max(1.0);
@@ -371,7 +372,7 @@ fn layout(t: &Terrain, lines: &[&Line]) -> WayData {
     let mut lists: Vec<Vec<u32>> = vec![Vec::new(); (w * h) as usize];
     for l in lines {
         let reach = if l.kind >= TRACK {
-            ROAD_REACH
+            ROAD_REACH * road_scale
         } else {
             RIVER_REACH
         };
@@ -449,7 +450,7 @@ pub struct Ways {
     banks: Option<Banks>,
     /// Signed distance to the coast per cell (land positive), for the towns.
     coast: Vec<f32>,
-    terrain_key: Option<u64>,
+    terrain_key: Option<(u64, [u32; 2])>,
     /// The footpaths' walk, shared with the footpaths layer's rule.
     walk: super::parish::Local,
 }
@@ -457,22 +458,27 @@ pub struct Ways {
 impl Ways {
     /// This year's roads, rivers, footpaths and town plans, as textures.
     pub fn build(&mut self, v: &ViewState) -> (WayData, super::town::ShapeData, super::town::Plan) {
-        if self.terrain_key != Some(v.terrain_version) {
-            self.rivers = rivers(&v.terrain);
-            self.banks = Some(Banks::new(&v.terrain, &self.rivers));
+        let look = v.look;
+        let key = (
+            v.terrain_version,
+            [look.rivers.to_bits(), look.roads.to_bits()],
+        );
+        if self.terrain_key != Some(key) {
+            self.rivers = rivers(&v.terrain, look.rivers);
+            self.banks = Some(Banks::new(&v.terrain, &self.rivers, look.roads));
             self.coast = super::relief::land_data(&v.terrain)
                 .chunks(4)
                 .map(|c| c[1])
                 .collect();
-            self.terrain_key = Some(v.terrain_version);
+            self.terrain_key = Some(key);
         }
         let mut roads = match &self.banks {
-            Some(banks) => roads(v, banks),
+            Some(banks) => roads(v, banks, look.roads),
             None => Vec::new(),
         };
         if let Some(banks) = &self.banks {
             let edges = super::parish::footpaths(v, &mut self.walk).to_vec();
-            roads.extend(footpaths(v, banks, &edges));
+            roads.extend(footpaths(v, banks, &edges, look.roads));
         }
         // The towns, laid out along the roads and tracks (in metres).
         let cell_m = v.terrain.grid.cell_km * 1000.0;
@@ -509,7 +515,7 @@ impl Ways {
             });
         }
         let all: Vec<&Line> = self.rivers.iter().chain(roads.iter()).collect();
-        let shapes = super::town::layout(&v.terrain, &plan.shapes);
-        (layout(&v.terrain, &all), shapes, plan)
+        let shapes = super::town::layout(&v.terrain, &plan.shapes, look.buildings);
+        (layout(&v.terrain, &all, look.roads), shapes, plan)
     }
 }

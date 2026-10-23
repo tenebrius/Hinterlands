@@ -5,6 +5,7 @@ mod camera;
 mod granary;
 mod hover;
 mod layers;
+mod look;
 mod panels;
 mod scale;
 mod sim_handle;

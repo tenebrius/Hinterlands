@@ -47,6 +47,12 @@ uniform sampler2D u_widx;
 uniform vec4 u_way_show;
 // Metres per cell.
 uniform float u_cell_m;
+// The look (R12): roads, rivers, trees and buildings, each against its true size.
+uniform vec4 u_look;
+// The metres detail is drawn in: 1 for true metres, or a look's scale while
+// drawing roads, trees or buildings, whose own detail (verges, crowns, ridges)
+// is laid out in their own metres and grows with them. `mpx` divides by it.
+float g_unit = 1.0;
 
 in vec2 v_uv;
 out vec4 o_color;
@@ -281,32 +287,43 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     float dens = wood * 0.9 + (1.0 - wood) * f * 0.035;
     vec2 dgrad = vec2(dFdx(dens) / dFdx(pm.x), dFdy(dens) / dFdy(pm.y));
     vec3 woodc = green;
-    float tex = smoothstep(25.0, 12.0, mpx());
+    // Trees are drawn in their own metres (R12): the look's tree size scales
+    // the crowns and their spacing together.
+    float ts = u_look.z;
+    float tex = smoothstep(25.0, 12.0, mpx() / ts);
     if (tex > 0.0) {
-        woodc = mix(green, canopy_texture(pm, env, 5.0 * big), tex);
+        woodc = mix(green, canopy_texture(pm, env, 5.0 * big * ts), tex);
     }
-    float crownsf = fine(10.0);
+    float crownsf = fine(10.0 * ts);
     vec3 bare = c;
     c = mix(c, woodc, wood * 0.92 * (1.0 - crownsf));
     if (crownsf > 0.0) {
         vec3 floorc = u_field_season == 3 ? vec3(0.36, 0.29, 0.22) : vec3(0.16, 0.22, 0.12);
         vec3 cc = bare;
+        g_unit = ts;
+        vec2 pt = pm / ts;
+        dgrad *= ts;
         if (cop > 0.0) {
             // Underwood cut in coupes on a rotation, so each coupe has its own height.
             float age = coupe(pm);
-            cc = draw_crowns(cc, pm, 4.5, wood * cop * mix(0.3, 0.95, age), vec2(0.0),
+            cc = draw_crowns(cc, pt, 4.5, wood * cop * mix(0.3, 0.95, age), vec2(0.0),
                 0.5 + 1.2 * age, 1.0 + 1.8 * age, 521, vec4(env.xyz, 2.0), mix(floorc, vec3(0.45, 0.38, 0.27), 1.0 - age), wood * cop);
         }
         // The woodland floor shows between crowns only well inside the wood.
-        cc = draw_crowns(cc, pm, 11.0, dens * (1.0 - 0.8 * cop), dgrad * (1.0 - 0.8 * cop),
+        cc = draw_crowns(cc, pt, 11.0, dens * (1.0 - 0.8 * cop), dgrad * (1.0 - 0.8 * cop),
             3.5 * big, 8.0 * big, 511, env, floorc, smoothstep(0.55, 0.8, wood) * (1.0 - cop));
+        g_unit = 1.0;
         c = mix(c, cc, crownsf);
     }
 
     // Gorse and thorn scattered on the downland, and thinly on poor open land.
     float thorn = past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015;
-    if (thorn > 0.0 && fine(3.0) > 0.0) {
-        c = mix(c, draw_crowns(c, pm, 13.0, thorn, vec2(0.0), 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0), fine(3.0));
+    if (thorn > 0.0 && fine(3.0 * ts) > 0.0) {
+        float f3 = fine(3.0 * ts);
+        g_unit = ts;
+        vec3 bush = draw_crowns(c, pm / ts, 13.0, thorn, vec2(0.0), 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0);
+        g_unit = 1.0;
+        c = mix(c, bush, f3);
     }
 
     // Deserted places (R5's ruins), drawn at the size of a village since R11:
@@ -450,7 +467,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
     vec2 pw = p + wander / u_cell_m;
     Way road, river;
     ways_near(pw, 1.0 - smoothstep(0.0, 0.08, share), road, river);
-    if (min(road.sd, river.sd) > 40.0) {
+    if (min(road.sd / u_look.x, river.sd) > 40.0) {
         return c;
     }
     float wood = smoothstep(0.4, 0.8, cover_smooth(p).r);
@@ -491,6 +508,18 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
         c = mix(c, water, rcov);
     }
 
+    // Roads are drawn in their own metres (R12): a road the look widens has
+    // its ruts, verges, ditches and hedges widened with it.
+    float rsc = u_look.x;
+    g_unit = rsc;
+    road.sd /= rsc;
+    road.x /= rsc;
+    road.hw /= rsc;
+    road.along /= rsc;
+    pm /= rsc;
+    rd /= rsc;
+    rhw /= rsc;
+
     // Roads: a worn surface the colour of the soil, ruts, grass down the middle of
     // quiet lanes, worn verges, banks where a lane cuts into a slope, and ditches
     // and hedges along the highways; paved streets in town; bridges over water.
@@ -515,6 +544,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
         }
         // Land trade off the roads gives way to a town's own streets.
         if (road.kind == 2 && rank > 1.5 && max(town, step(0.1, share)) > 0.0) {
+            g_unit = 1.0;
             return c;
         }
         float busy = road.busy;
@@ -596,6 +626,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
         // A faint edge where the surface meets the grass.
         c = mix(c, c * 0.86, band(d, hw - 0.3, hw + 0.1) * open * (1.0 - over));
     }
+    g_unit = 1.0;
     return c;
 }
 

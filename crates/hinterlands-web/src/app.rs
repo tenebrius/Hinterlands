@@ -109,6 +109,10 @@ impl App {
                 }
             }
         }
+        // `?look=storybook`, `true`, or five numbers (R12).
+        if let Some(l) = url_text("look").and_then(|s| crate::look::Look::parse(&s)) {
+            view::update(&mut view, &mut sim, Msg::SetLook(l));
+        }
         if let Some(k) = url_param("season") {
             view::update(&mut view, &mut sim, Msg::SetSeason(Some(k.min(3) as u8)));
         }

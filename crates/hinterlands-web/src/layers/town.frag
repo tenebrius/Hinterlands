@@ -150,9 +150,14 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
     if (T.gk < 0) {
         return c;
     }
+    // Drawn in the town's own metres (R12): the look's building size scales
+    // yards, beds, fences and stalls with the plots.
+    float z = u_look.w;
+    g_unit = z;
+    pm /= z;
     vec3 g = c;
-    vec2 l = T.gl;
-    vec2 h = T.gh;
+    vec2 l = T.gl / z;
+    vec2 h = T.gh / z;
     float edge = inner_edge(l, h);
     vec3 grass = turf(grass_color(), pm);
     vec3 earth = vec3(0.55, 0.50, 0.40) * (0.9 + 0.2 * vnoise(pm / 1.5, 701) * soft(1.5));
@@ -239,6 +244,7 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         vec3 water = u_field_season == 3 ? vec3(0.75, 0.80, 0.84) : WATER_EDGE * 0.95;
         g = mix(grass * 0.75, water, smoothstep(0.3, 0.8, edge / h.y) * (0.5 + 0.5 * wet));
     }
+    g_unit = 1.0;
     return mix(c, g, T.gcov);
 }
 
@@ -296,10 +302,12 @@ vec3 town_buildings(vec3 c, Town T) {
     if (T.bk < 0) {
         return c;
     }
-    vec2 l = T.bl;
-    vec2 h = T.bh;
+    float z = u_look.w;
+    vec2 l = T.bl / z;
+    vec2 h = T.bh / z;
     float edge = inner_edge(l, h);
     vec3 r;
+    g_unit = z;
     if (T.bk == K_HOUSE || T.bk == K_BARN || T.bk == K_HALL) {
         r = roof_color(T.bx, T.bt, l, h) * (T.bk == K_BARN ? 0.9 : 1.0);
         r *= roof_light(l, h, T.bang, T.bx < 0.5);
@@ -315,6 +323,7 @@ vec3 town_buildings(vec3 c, Town T) {
     } else if (T.bk == K_CHURCH) {
         // A chancel narrower than the nave at the east end.
         if (l.x > h.x * 0.45 && abs(l.y) > h.y * 0.78) {
+            g_unit = 1.0;
             return c;
         }
         r = (T.bx > 0.5 ? LEAD : roof_color(2.0, T.bt, l, h)) * roof_light(l, h, T.bang, false);
@@ -353,6 +362,7 @@ vec3 town_buildings(vec3 c, Town T) {
         vec2 w = vec2(n.x * ca - n.y * sa, n.x * sa + n.y * ca);
         r = roof_color(2.0, T.bt, l, h) * (0.8 + 0.3 * dot(w, SUN));
     } else {
+        g_unit = 1.0;
         return c;
     }
     // Eaves: a dark line where the roof meets its shadow side.
@@ -360,5 +370,6 @@ vec3 town_buildings(vec3 c, Town T) {
     if (u_season == 3) {
         r = mix(r, vec3(0.93, 0.94, 0.96), 0.55);
     }
+    g_unit = 1.0;
     return mix(c, r, T.bcov);
 }

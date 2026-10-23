@@ -68,6 +68,8 @@ pub struct ReliefLayer {
     shape_sub: f32,
     /// The year the roads and towns were last laid out.
     ways_year: Option<(u64, u32)>,
+    /// The look they were laid out for (R12).
+    ways_look: Option<[u32; 5]>,
 }
 
 /// The textures, by unit, and the sampler each is bound to.
@@ -126,6 +128,8 @@ struct Frame {
     cell_m: f32,
     way_sub: f32,
     shape_sub: f32,
+    /// The look (R12): roads, rivers, trees and buildings against true size.
+    look: [f32; 4],
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -379,6 +383,13 @@ impl Gpu {
                 f.ways[3],
             );
             gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
+            gl.uniform_4_f32(
+                at("u_look").as_ref(),
+                f.look[0],
+                f.look[1],
+                f.look[2],
+                f.look[3],
+            );
             gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
             gl.uniform_1_f32(at("u_ssub").as_ref(), f.shape_sub);
             gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
@@ -448,6 +459,12 @@ impl Layer for ReliefLayer {
             self.terrain_key = Some(v.terrain_version);
         }
         let key = (v.terrain_version, v.snapshot.year);
+        // A new look lays the roads and towns out again at once.
+        if self.ways_look != Some(v.look.key()) {
+            self.ways_look = Some(v.look.key());
+            self.ways_year = None;
+            self.key = None;
+        }
         if self.key != Some(key) {
             let (cover, plot) = year_data(v);
             gpu.queue(COVER, size, cover);
@@ -534,6 +551,7 @@ impl Layer for ReliefLayer {
             cell_m: t.grid.cell_km * 1000.0,
             way_sub: self.way_sub,
             shape_sub: self.shape_sub,
+            look: [v.look.roads, v.look.rivers, v.look.trees, v.look.buildings],
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

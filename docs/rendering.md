@@ -378,6 +378,41 @@ Each place is laid out the way it grew, from its roads, by a planner on the CPU 
 
 Kind: rendering.
 
+## R12 — Map style: sizes against true size, and people to a house
+
+The owner's review of R9–R11: drawing everything at true size is accurate but not much fun to look at. The sizes are now adjustable. A new panel, **Map style**, sets how large things are drawn against their true size, and how many people a house holds.
+
+- **The sliders:**
+  - **Road width ×** (0.5–5): roads, tracks, town streets and footpaths. A road's verges, ruts, ditches and hedges widen with it, because the shader draws the road in its own metres. The planner keeps plots and lanes clear of the wider roads, and roads keep the wider gap from the rivers.
+  - **River width ×** (0.5–4): the water, with meanders to match. Roads beside the rivers, and plots, keep off the wider water.
+  - **Tree size ×** (0.5–4): crowns in woods, coppice, thorn, hedgerow standards and orchards. Spacing grows with size, so a wood has fewer, larger trees rather than a denser canopy.
+  - **Building size ×** (0.5–4): every size in the town planner. That covers plots, houses, barns, courts, churches, the cathedral and friaries, market places and halls, greens, lane spacing, and walls, towers and gates. Yards, beds, fences, stalls and roof detail are drawn in the town's own metres and scale with them, and building heights scale too, so shadows lengthen.
+  - **People per house** (1–40; a household is 4.5): sets how many houses a place has. More people to a house with larger buildings gives fewer, bolder houses over about the same ground.
+- **Presets:**
+
+  | Preset | Roads | Rivers | Trees | Buildings | People per house |
+  |---|---|---|---|---|---|
+  | True scale (default, R9–R11) | 1 | 1 | 1 | 1 | 4.5 |
+  | Storybook | 2.5 | 1.6 | 1.8 | 2 | 12 |
+
+- **When things change.** A new look lays the roads and towns out again at once, while paused or playing. A slider sends its value when the drag ends, so the planner runs once, not on every step of the drag.
+- **`?look=`** sets the look from the URL, for screenshots. It takes `true`, `storybook`, or five numbers in the order of the sliders, e.g. `?look=2.5,1.6,1.8,2,12`.
+- **How it works.**
+  - On the CPU the widths are multiplied where the lines are made (`ways.rs`), and the planner multiplies its sizes by the building scale (`town.rs`, `z`).
+  - In the shader a uniform `u_look` carries the four scales. While a road, a tree or a building is drawn, `g_unit` is set to its scale, and `mpx()` divides by it. So detail laid out in metres is laid out in "design metres", and fades in at the right zoom.
+- **Checks.**
+  - True scale draws as R11 did: 0.3% of pixels differ at 1 m over Asherfield, all from the animated smoke.
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - The release wasm build gives the same hash at `?selftest=500` (30.4 ms/year).
+  - Clippy on the web crate is unchanged: 7 warnings, and the existing `approx_constant` error in the green's angle.
+  - No change to the core, mapgen or CLI.
+- **Screenshots:**
+  - `14-look-village-1m-true` and `14-look-village-1m-storybook`: Asherfield, 1550, at 1 m per point.
+  - `14-look-upland-town-2m-storybook`: Liningbourne at 2 m.
+- **Next (R13):** the layout of villages and towns, after the hand-drawn generators the owner likes (Watabou's village and city generators).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -404,6 +439,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
   - **Asherfield, 1300,** then a walled city of 4,500: `13-city-1300-4m-before`/`-after`, `13-city-1300-1m-before`/`-after`, and `13-city-1300-winter`.
   - **Dewermouth** (the port city of 15,000 at the river mouth): `13-port-4m-before`/`-after` and `13-port-1m`.
   - **Others:** `13-upland-town-2m` (Liningbourne, stone-slate roofs) and `13-river-town-2m` (Mereelwick).
+- R12: `14-look-village-1m-true` and `14-look-village-1m-storybook` (Asherfield, 1550, true scale and the storybook preset), and `14-look-upland-town-2m-storybook` (Liningbourne).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

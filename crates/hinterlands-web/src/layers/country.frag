@@ -79,7 +79,7 @@ const vec3 SUN3 = vec3(-0.5, -0.5, 0.7071);
 
 // Metres per physical pixel.
 float mpx() {
-    return u_cell_m / u_px;
+    return u_cell_m / u_px / g_unit;
 }
 
 // How much of the band lo..hi metres across a pixel centred at x covers:
@@ -685,14 +685,16 @@ vec3 hedge(vec3 c, vec2 pm, Parcels Q, float age, float mosaic) {
     c = mix(c, hcol, band(Q.edge, -1.0, w) * on);
     // Standard trees, more of them as the hedge ages, at no fixed spacing: each
     // stretch of about 40 m has one by chance, anywhere in it.
-    float k = floor(Q.along / 40.0);
+    // The look's tree size (R12) scales them and their spacing.
+    float ts = u_look.z;
+    float k = floor(Q.along / (40.0 * ts));
     for (int j = -1; j <= 1; j++) {
         float kk = k + float(j);
         if (hash2(pair, int(kk), 499) > 0.25 + 0.45 * old) {
             continue;
         }
-        float tc = (kk + hash2(pair, int(kk), 501)) * 40.0;
-        float r = 3.0 + 4.5 * hash2(pair, int(kk), 503) * (0.6 + 0.4 * old);
+        float tc = (kk + hash2(pair, int(kk), 501)) * 40.0 * ts;
+        float r = (3.0 + 4.5 * hash2(pair, int(kk), 503) * (0.6 + 0.4 * old)) * ts;
         vec2 d = vec2(Q.along - tc, Q.edge);
         float dd = length(d);
         if (dd > 2.0 * r) {
@@ -773,19 +775,21 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
             vec2 nrm = vec2(-dir.y, dir.x);
             float t = fract(dot(pm - S.sa, nrm) / 9.0);
             col = crop_color(int(hash(S.a, 467) * 3.0)) * mix(1.0, ridge_light(t, 0.5, nrm), fine(4.5));
-        } else if (k < 0.18 && fine(2.0) > 0.0) {
+        } else if (k < 0.18 && fine(2.0 * u_look.z) > 0.0) {
             // An orchard: fruit trees in rough rows across the close.
+            float ts = u_look.z;
+            float row = 7.5 * ts;
             vec2 dir = vec2(cos(A.angle), sin(A.angle));
             vec2 rel = pm - S.sa;
-            vec2 q = vec2(dot(rel, dir), dot(rel, vec2(-dir.y, dir.x))) / 7.5;
+            vec2 q = vec2(dot(rel, dir), dot(rel, vec2(-dir.y, dir.x))) / row;
             ivec2 b = ivec2(floor(q));
             vec2 o = vec2(0.5) + (vec2(hash(b, 461), hash(b, 462)) - 0.5) * 0.35;
-            float d = length(q - vec2(b) - o) * 7.5;
-            float r = 2.0 + 0.9 * hash(b, 463);
-            if (S.edge > 3.0) {
-                col *= 1.0 - 0.25 * band(length((q - vec2(b) - o) * 7.5 - SUN * 2.0), -r, r);
+            float d = length(q - vec2(b) - o) * row;
+            float r = (2.0 + 0.9 * hash(b, 463)) * ts;
+            if (S.edge > 3.0 * ts) {
+                col *= 1.0 - 0.25 * band(length((q - vec2(b) - o) * row - SUN * 2.0 * ts), -r, r);
                 vec3 lc = leaf(u_field_season == 3 ? 0 : 1, hash(b, 464)) * (0.8 + 0.3 * clamp(1.0 - d / r, 0.0, 1.0));
-                col = mix(col, lc, band(d, -r, r) * fine(2.0));
+                col = mix(col, lc, band(d, -r, r) * fine(r));
             }
         } else if (k < 0.3) {
             // A kitchen garden in beds.
