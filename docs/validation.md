@@ -23,7 +23,9 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 **Over 2,000 (D135):** reported, not gated: the count and the urban share (people in places over 2,000) against England's c. 10% c. 1300. The hierarchy is gated by rank-size, largest share and over 5,000.
 
-**Outside trade (D126):** the band is 3–50% of market inflow. The ceiling guards against an export colony, a region whose market is mostly outside trade; it was 30% from L1 (D110) and 20% from v5. Exports per head against England's (about 14 d c. 1300) are reported.
+**Outside trade (D139):** gated as exports (grain, wool and cloth to the ports) over the region's total output in the model, 1–35%, against England's c. 6–7% c. 1300 (Broadberry et al. 2015). The share of market inflow and exports per head are reported.
+
+**Outside trade (D126, superseded by D139):** the band is 3–50% of market inflow. The ceiling guards against an export colony, a region whose market is mostly outside trade; it was 30% from L1 (D110) and 20% from v5. Exports per head against England's (about 14 d c. 1300) are reported.
 
 **From D120 (22 October 2026) the gate runs 40 seeds a map:** `hinterlands validate --maps 3 --seeds 40`. Every per-run check must hold in 75% of the runs (30 of 40) on every map, and the contingency check is computed over the 40. Where the accepted model itself is below 30/40 (at D120: road length 300–500 on map 1, 29/40), a stage passes that check if it is no worse than the accepted model's count. Runs passing every check are reported, not gated. The rule as it stood before D120 follows.
 

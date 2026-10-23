@@ -166,6 +166,11 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D137 result (134fa79), D139:**
+  - The payment fix passes alone: adopt it, gated.
+  - The later cloth price breaks outside trade (medians 0.50–0.53) but moves the cloth share to the record's level about 40 years late.
+  - Outside trade re-founded: exports over total output, 1–35%, England about 6–7% (third change; it now has a referent).
+  - Then the later price is gated; then a putting-out design note.
 - **D2 default (c7f9312), D137:**
   - Gate passed (25/36/28); golden `5e773d6f60251a23`.
   - Trace: capacity follows mill W, which barely answers the margin. Mills paid sellers about nothing (a defect: they paid from the purse before the proceeds).
@@ -251,4 +256,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-23 — D2 default accepted; D137 sent: mill settlement fix, Munro's later cloth price.
+Last updated: 2026-10-23 — D139 sent: payment fix alone, outside trade on output, then the later price.
