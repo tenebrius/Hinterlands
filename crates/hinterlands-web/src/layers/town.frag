@@ -63,6 +63,40 @@ struct Town {
     float bnear;
 };
 
+// Metres from pm to the nearest building, wall or open ground (not plots)
+// listed for its square (R27).
+float town_sd_at(vec2 pm) {
+    int s;
+    int e = shape_square(ivec2(floor(pm / u_cell_m * u_ssub)), s);
+    if (e < 0) {
+        return 1e9;
+    }
+    vec4 sq = way_texel(u_ssq, e);
+    int start = int(sq.r);
+    int n = min(int(sq.g), SHAPE_MAX);
+    float best = 1e9;
+    for (int k = 0; k < SHAPE_MAX; k++) {
+        if (k >= n) {
+            break;
+        }
+        int j = start + k;
+        int id = int(way_texel(u_sidx, j >> 2)[j & 3]);
+        vec4 a = way_texel(u_shapes, 5 * id);
+        vec4 b = way_texel(u_shapes, 5 * id + 1);
+        int kind = int(b.y + 0.5);
+        if (kind == K_PLOT || kind == K_COURT) {
+            continue;
+        }
+        float ca = cos(b.x);
+        float sa = sin(b.x);
+        vec2 d = pm - a.xy;
+        vec2 l = vec2(d.x * ca + d.y * sa, -d.x * sa + d.y * ca);
+        vec2 q = abs(l) - a.zw;
+        best = min(best, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0));
+    }
+    return best;
+}
+
 Town town_scan(vec2 pm) {
     Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
                   -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
@@ -124,6 +158,12 @@ Town town_scan(vec2 pm) {
                     T.rank = extra;
                 }
             }
+            // Trees keep off the open grounds that are drawn over the land
+            // (the ditch, churchyards, greens, the market), not the plots,
+            // whose ground is no longer drawn (R27).
+            if (kind != K_PLOT && kind != K_COURT) {
+                T.bnear = min(T.bnear, sd);
+            }
             if (cov > T.gcov) {
                 T.gk = kind;
                 T.gl = l;
@@ -133,9 +173,8 @@ Town town_scan(vec2 pm) {
                 T.gcov = cov;
             }
         } else {
-            if (kind != K_WALL) {
-                T.bnear = min(T.bnear, sd);
-            }
+            // Trees keep off buildings and the wall alike (R27).
+            T.bnear = min(T.bnear, sd);
             if (cov > 0.0 && height > T.btop) {
                 T.bk = kind;
                 T.bl = l;

@@ -2700,10 +2700,12 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
         let (lo, hi) = s.bounds();
         // Reach: the shadow, and for plots the streets beside them (so the
         // shader knows it is in town).
+        // Buildings and open grounds reach far enough for trees to keep off
+        // them whole (R27): the largest crown and its clearance.
         let m = Vec2::splat(if s.kind == PLOT || s.kind == COURT {
             10.0 * z
         } else {
-            2.0 + 0.8 * s.height
+            (2.0 + 0.8 * s.height).max(14.0 * z)
         });
         let (x0, y0) = (
             ((lo.x - m.x) / sq_m).floor() as i32,

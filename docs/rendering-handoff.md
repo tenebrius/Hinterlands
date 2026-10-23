@@ -27,9 +27,11 @@ For the graphics session picking this work up after a context reset (written 23 
   - **R24:** one smooth multi-scale bend field (`ways.rs`, `warp`) moves every line on the CPU (the shader's wander is retired); street-front plots turned a few degrees off square, shared by neighbours; town lanes end at their last fronted point or join a nearby street.
   - **R25:** wall ring laid before the lanes (`wall_ring`), lanes kept off it; thicker continuous wall with outer battlements; market stalls; label halo and close-in cartouche; suburbs along main roads to 1.6 x reach.
   - **R26 (owner's test):** plot and court ground not drawn; the land beneath shows round the buildings.
+  - **R27:** trees, bushes and shadows kept or left out whole (`tree_clear`, `grove_at`, `crown_top` taking the pixel); no hedges, highway hedges or thorn inside a place's edge. Frame time about doubled (12 s in SwiftShader at 1 m).
 - **Not doing next:** stage 4 (buildings to size, traffic pacing, tonnes readouts, label placer, chronicle markers, price surface). The owner has put it aside.
-- **Next:** the owner's review of R26 (keep or restore plot ground); then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
+- **Next:** the owner's review of R27; then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
 - **Queued** (in `docs/rendering.md`):
+  - **ground inside town walls** (owner, 23 October): less green than outside, mostly compacted soil and paving, with some grass;
   - varied buildings and districts within towns (after stage 4, unless the owner says otherwise);
   - an optimisation stage, which the owner has deferred so that the results are right first.
 

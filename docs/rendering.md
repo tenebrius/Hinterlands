@@ -809,6 +809,33 @@ The owner suspected that the ground of the plots (yards, gardens, fences, and th
 
 Kind: rendering.
 
+## R27 — Whole trees and bushes: no crowns, hedges or shadows cut off
+
+The owner's screenshots after R26 showed hedges, bushes and trees cut off, both next to things (the ditch, the wall, streets) and where there was no obvious reason.
+
+- **Causes found, and fixes:**
+  - **Groves, the main cause:** inside a place, whether a tree stands was decided from the density at each pixel, carried to the tree's centre by the pixel's gradient. The groves' density curves, so pixels of one crown disagreed and drew crescents, half crowns, and shadows with no tree. Now each tree takes the groves' density at its own centre (`grove_at`), the same for every pixel of it.
+  - **Tree clearance:** trees on roads, buildings, the wall and open grounds were cut where those were drawn over them (R23's fade cut crowns in half). Now a crown is left out whole when its centre and radius would reach them (`tree_clear`).
+    - **How it's measured:** the distance is measured at the tree's centre (`road_sd_at`, `town_sd_at`). A safe shortcut uses the pixel's own distances when the pixel is clearly far, so every pixel agrees.
+    - **Covers:** woods, groves, lone trees, coppice, thorn and hedgerow standards, and their shadows.
+  - **Shadows:** a crown's shadow now uses the same trees as the crown. Before, its density was carried from the shadow point, not the pixel, so shadows fell from trees that were not drawn.
+  - **Hedges in town:** within a place's edge its closes lie open, with no hedges between them. Hedges there were cut by the plots and broke into fragments.
+  - **Highway hedges and ditches:** none within a place's edge.
+  - **Thorn:** none within a place's edge.
+  - **Woodland floor:** none where its trees are left out by roads or buildings.
+- **Plots** (R26) stay undrawn. Trees no longer keep off the plots, which are not drawn, only off buildings, walls and open grounds, which now list themselves at least 14 m (times the building scale) round them.
+- **Frame time:** at full zoom in SwiftShader, Liningbourne (storybook) takes 12.1 s a frame and a wood beside a stream 13.7 s, about double R24's. The cost is the per-tree tests. Optimisation remains deferred, at the owner's decision.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`28-artefacts-*`, 1 m per point):
+  - **Walled Asherfield, 1300:** `city-1300-1m-before` and `city-1300-1m-after`.
+  - **Others:** Liningbourne (`upland-town-1m`), the village (`village-1m`), Halenford (`small-town-1m`) and a wood (`wood-road-1m`).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -849,6 +876,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R24: `25-bends-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `25-bends-small-town-2m-storybook` and `25-bends-city-1300-2m-storybook` (bending roads, plots off square, lanes that end at houses).
 - R25: `26-walls-upland-town-1m`/`-3m`/`-1m-true`, `26-walls-city-1300-1m`/`-2m` and `26-walls-small-town-3m` (walls first, the wall, stalls, cartouche, suburbs).
 - R26: `27-no-yards-upland-town-1m`/`-1m-true`, `27-no-yards-city-1300-1m` and `27-no-yards-village-1m` (plot ground not drawn).
+- R27: `28-artefacts-city-1300-1m-before`/`-after`, `28-artefacts-upland-town-1m`, `28-artefacts-village-1m`, `28-artefacts-small-town-1m` and `28-artefacts-wood-road-1m` (whole trees, no cut hedges).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

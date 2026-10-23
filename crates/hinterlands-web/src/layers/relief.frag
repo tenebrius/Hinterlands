@@ -64,9 +64,44 @@ float g_bnear = 1e9;
 // (R23; 1e9 when far from any), set before the land is drawn so trees keep off
 // the roads.
 float g_road_sd = 1e9;
-// How far a tree may stand here, 0 on a road .. 1 clear of it (R23).
-float road_free() {
-    return u_way_show.x > 0.5 ? smoothstep(1.5 * u_look.z, 6.0 * u_look.z, g_road_sd) : 1.0;
+// The pixel's position in metres (R27).
+vec2 g_pm = vec2(0.0);
+// Whether the crowns being drawn include a place's groves (R27), whose density
+// is then taken at each tree's own centre (`grove_at`) rather than carried
+// from the pixel, so a tree is kept or not as a whole.
+bool g_grove_on = false;
+float grove_at(vec2 pm);
+// Metres from a point to the nearest road's edge, and to the nearest building
+// or open ground of a town (defined below).
+float road_sd_at(vec2 pm);
+float town_sd_at(vec2 pm);
+// Whether a tree of radius r (metres) centred at c (metres) stands clear of
+// the roads and the buildings, walls and open grounds of towns: decided at
+// its centre, the same for every pixel of its crown, so a crown is whole or
+// absent, never cut (R27). Far from any, by the distances at the pixel, it
+// is clear without looking further.
+bool tree_clear(vec2 c, float r) {
+    // Always measured at the centre itself, never estimated from the pixel:
+    // the pixel's own distances only see the shapes listed for its square,
+    // so pixels in neighbouring squares disagreed and crowns broke into
+    // crescents along the squares' edges.
+    // Shortcut: the pixel's own distances are exact within the reach of its
+    // square's lists (40 m for roads, 14 m times the building scale for
+    // towns); a tree whose whole clearance lies within that and is clear of
+    // the pixel's distance is clear at its centre too, by the triangle
+    // inequality, so every pixel agrees.
+    float off = length(c - g_pm) + 2.0;
+    float need_r = r + 0.5 * u_look.z;
+    bool road_ok = u_way_show.x < 0.5
+        || (off + need_r < 40.0 && g_road_sd > off + need_r)
+        || road_sd_at(c) > need_r;
+    if (!road_ok) {
+        return false;
+    }
+    float need_b = r + 1.0 * u_look.z;
+    return u_town_show.x < 0.5
+        || (off + need_b < 14.0 * u_look.w && g_bnear > off + need_b)
+        || town_sd_at(c) > need_b;
 }
 
 in vec2 v_uv;
@@ -283,6 +318,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         + (vnoise(pm / 25.0, 27) - 0.5) * 0.06 * fine(8.0);
     float clumps = smoothstep(0.0, max(aa(edge), 0.02), edge);
     float wood = mix(smoothstep(0.05, 0.85, f), clumps, smoothstep(5.0, 12.0, u_px));
+    float wood_base = wood;
     // Woods give way to a place's plots and gardens (R11), their edge broken
     // as a wood's edge is.
     if (u_town_show.x > 0.5 && mpx() < 15.0) {
@@ -291,15 +327,10 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         // Trees about the place (R13), as on hand-drawn village maps: groves
         // and single trees among its closes and lots and round its edge, kept
         // off the houses and their yards.
-        float inside = smoothstep(-25.0, 5.0, town_land(pm));
-        if (inside > 0.0) {
-            float clump = smoothstep(0.5, 0.72, mottle(pm / (70.0 * u_look.z), 771));
-            // None where the ground is densely built over (R19).
-            float grove = (0.07 + 0.5 * clump) * inside
-                * smoothstep(3.0, 9.0, g_bnear / u_look.w)
-                * (1.0 - smoothstep(0.3, 0.55, built_share(pm)));
-            wood = max(wood, grove);
-        }
+        wood_base = wood;
+        float grove = grove_at(pm);
+        g_grove_on = grove > 0.0 || town_land(pm) > -60.0;
+        wood = max(wood, grove);
     }
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));
     green = mix(green, vec3(0.24, 0.36, 0.25), smoothstep(400.0, 1000.0, e));
@@ -312,10 +343,11 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     float big = 1.0 + 0.2 * old - 0.15 * cop;
     // No trees on the roads (R23): woods, groves and lone trees stand back
     // from them, by about a crown.
-    float rfree = road_free();
-    wood *= rfree;
-    // Tree density, kept per crown from its value and gradient here.
-    float dens = (wood * 0.9 + (1.0 - wood) * f * 0.035) * rfree;
+    // Tree density, kept per crown from its value and gradient here. Crowns
+    // that would stand on a road, a building or a wall are left out whole
+    // (`tree_clear`, R27).
+    // Without the groves, which are taken at each tree (R27).
+    float dens = wood_base * 0.9 + (1.0 - wood_base) * f * 0.035;
     vec2 dgrad = vec2(dFdx(dens) / dFdx(pm.x), dFdy(dens) / dFdy(pm.y));
     vec3 woodc = green;
     // Trees are drawn in their own metres (R12): the look's tree size scales
@@ -331,6 +363,9 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     if (crownsf > 0.0) {
         vec3 floorc = u_field_season == 3 ? vec3(0.36, 0.29, 0.22) : vec3(0.16, 0.22, 0.12);
         vec3 cc = bare;
+        // No woodland floor where its trees are left out, by roads and
+        // buildings (R27).
+        float floor_free = smoothstep(8.0 * ts, 20.0 * ts, min(g_bnear, u_way_show.x > 0.5 ? g_road_sd : 1e9));
         g_unit = ts;
         vec2 pt = pm / ts;
         dgrad *= ts;
@@ -342,17 +377,23 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         }
         // The woodland floor shows between crowns only well inside the wood.
         cc = draw_crowns(cc, pt, 11.0, dens * (1.0 - 0.8 * cop), dgrad * (1.0 - 0.8 * cop),
-            3.5 * big, 8.0 * big, 511, env, floorc, smoothstep(0.55, 0.8, wood) * (1.0 - cop));
+            3.5 * big, 8.0 * big, 511, env, floorc,
+            smoothstep(0.55, 0.8, wood) * (1.0 - cop) * floor_free);
+        g_grove_on = false;
         g_unit = 1.0;
         c = mix(c, cc, crownsf);
     }
 
     // Gorse and thorn scattered on the downland, and thinly on poor open land.
-    float thorn = (past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015) * rfree;
+    // None within a place's edge (R27).
+    float thorn = (past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015)
+        * (u_town_show.x > 0.5 ? 1.0 - smoothstep(-30.0, 0.0, town_land(pm)) : 1.0);
+    // Its gradient, so a bush is kept or not as a whole (R27).
+    vec2 tgrad = vec2(dFdx(thorn) / dFdx(pm.x), dFdy(thorn) / dFdy(pm.y));
     if (thorn > 0.0 && fine(3.0 * ts) > 0.0) {
         float f3 = fine(3.0 * ts);
         g_unit = ts;
-        vec3 bush = draw_crowns(c, pm / ts, 13.0, thorn, vec2(0.0), 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0);
+        vec3 bush = draw_crowns(c, pm / ts, 13.0, thorn, tgrad * ts, 1.0, 2.6, 541, vec4(0.0, 0.0, 0.0, 1.0), c, 0.0);
         g_unit = 1.0;
         c = mix(c, bush, f3);
     }
@@ -495,6 +536,12 @@ void ways_at(vec2 p, float share, out Way road, out Way river) {
     vec2 pm = p * u_cell_m;
     vec2 wander = (vec2(vnoise(pm / 60.0, 205), vnoise(pm / 60.0, 207)) - 0.5) * 2.0;
     ways_near(p + wander / u_cell_m, 1.0 - smoothstep(0.0, 0.08, share), road, river);
+}
+
+float road_sd_at(vec2 pm) {
+    Way road, river;
+    ways_near(pm / u_cell_m, 1.0, road, river);
+    return road.sd;
 }
 
 vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, float msd, Way road, Way river) {
@@ -658,7 +705,10 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, flo
         c *= 1.0 + 0.4 * lit * sunk * band(d, hw, hw + 1.8);
         if (busy > 0.5 && !track) {
             // Highways: a ditch each side, and a hedge beyond it, broken by gates.
-            float hi = smoothstep(0.5, 0.8, busy) * open;
+            // None within a place's edge (R27), where they broke into
+            // fragments between the plots.
+            float in_town = u_town_show.x > 0.5 ? smoothstep(-30.0, 0.0, town_land(p * u_cell_m)) : 0.0;
+            float hi = smoothstep(0.5, 0.8, busy) * open * (1.0 - in_town);
             float dd = hw + vw;
             vec3 ditch = wet ? vec3(0.33, 0.41, 0.46) : vec3(0.27, 0.31, 0.19);
             c = mix(c, ditch, band(d, dd, dd + 1.0) * hi);
@@ -737,6 +787,8 @@ void main() {
         ways_at(p, share, road, river);
         g_road_sd = road.sd;
     }
+    // The pixel's position, for trees deciding whether to look further.
+    g_pm = pm;
     vec3 land = land_color(s, p, coast);
     if (u_town_show.x > 0.5 && close_in) {
         land = town_ground(land, pm, T);

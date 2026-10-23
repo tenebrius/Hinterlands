@@ -73,6 +73,18 @@ float town_land(vec2 pm) {
     return v * 162.0;
 }
 
+// The density of a place's groves and single trees at pm (R13, R27): clumps
+// of about 70 m (times the tree scale) among its closes and lots and round
+// its edge, none where the ground is densely built over.
+float grove_at(vec2 pm) {
+    float inside = smoothstep(-25.0, 5.0, town_land(pm));
+    if (inside <= 0.0) {
+        return 0.0;
+    }
+    float clump = smoothstep(0.5, 0.72, mottle(pm / (70.0 * u_look.z), 771));
+    return (0.07 + 0.5 * clump) * inside * (1.0 - smoothstep(0.3, 0.55, built_share(pm)));
+}
+
 // Towards the light (north-west, 45 degrees up), in map space with y down.
 const vec2 SUN = vec2(-0.7071, -0.7071);
 const vec3 SUN3 = vec3(-0.5, -0.5, 0.7071);
@@ -483,13 +495,18 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
                 vec2 ctr = tree_centre(g, c, cs, sg);
                 vec2 d = pm - ctr;
                 float keep = clamp(dens + dot(dgrad, ctr - pm), 0.0, 1.0);
+                if (g_grove_on) {
+                    keep = max(keep, 0.9 * grove_at(ctr * g_unit));
+                }
                 if (hash(c, sg + 2) >= keep) {
                     continue;
                 }
                 // Trees standing alone (where few are kept) grow broad.
                 float r = mix(rmin, rmax, hash(c, sg + 3)) * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
                 float dd = length(d);
-                if (dd > r + m) {
+                // Only a crown that covers the pixel competes to be seen
+                // (R27): one just beyond it hid its neighbours' crowns.
+                if (dd > r + 0.5 * m || !tree_clear(ctr * g_unit, r * g_unit)) {
                     continue;
                 }
                 float z = sqrt(max(r * r - dd * dd, 0.0));
@@ -520,7 +537,10 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
 }
 
 // The highest crown top near a point, for shadows.
-float crown_top(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt) {
+// `here` is the pixel where `dens` and `dgrad` were taken (R27): a tree's
+// density is extrapolated from there, so a crown and its shadow agree on
+// which trees stand.
+float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt) {
     float best = -1.0;
     for (int g = 0; g < 3; g++) {
         float cs = cellm * GRID_SIZE[g] * 1.7320508;
@@ -530,13 +550,16 @@ float crown_top(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
             for (int dx = -1; dx <= 1; dx++) {
                 ivec2 c = b + ivec2(dx, dy);
                 vec2 ctr = tree_centre(g, c, cs, sg);
-                float keep = clamp(dens + dot(dgrad, ctr - pm), 0.0, 1.0);
+                float keep = clamp(dens + dot(dgrad, ctr - here), 0.0, 1.0);
+                if (g_grove_on) {
+                    keep = max(keep, 0.9 * grove_at(ctr * g_unit));
+                }
                 if (hash(c, sg + 2) >= keep) {
                     continue;
                 }
                 float r = mix(rmin, rmax, hash(c, sg + 3)) * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
                 float dd = length(pm - ctr);
-                if (dd < r) {
+                if (dd < r && tree_clear(ctr * g_unit, r * g_unit)) {
                     best = max(best, sqrt(r * r - dd * dd) + r * 0.9 + 2.0 * hash(c, sg + 4));
                 }
             }
@@ -552,7 +575,7 @@ vec3 draw_crowns(vec3 c, vec2 pm, float cellm, float dens, vec2 dgrad, float rmi
     Crown cr = crowns_at(pm, cellm, dens, dgrad, rmin, rmax, salt, env);
     float own = max(cr.top, 0.0) * cr.cover;
     float sh = 0.4 * (rmin + rmax);
-    float lit = crown_top(pm + SUN * sh, cellm, dens, dgrad, rmin, rmax, salt);
+    float lit = crown_top(pm + SUN * sh, pm, cellm, dens, dgrad, rmin, rmax, salt);
     float shadow = smoothstep(0.0, 1.5, lit - own - sh * 0.7);
     c = mix(c, under, floorc);
     c *= 1.0 - 0.38 * shadow;
@@ -702,13 +725,19 @@ vec3 hedge(vec3 c, vec2 pm, Parcels Q, float age, float mosaic) {
         if (dd > 2.0 * r) {
             continue;
         }
+        // Its centre, from this pixel: none on a road or a building (R27).
+        bool first = Q.a.x < Q.b.x || (Q.a.x == Q.b.x && Q.a.y < Q.b.y);
+        vec2 t = vec2(-Q.n.y, Q.n.x) * (first ? 1.0 : -1.0);
+        if (!tree_clear(pm - d.x * t + Q.edge * Q.n, r)) {
+            continue;
+        }
         vec3 lc = leaf(hash2(pair, int(kk), 505) < 0.7 ? 0 : 4, hash2(pair, int(kk), 507));
         float sd = length(d + vec2(0.0, -0.6 * r * (away > 0.5 ? 1.0 : -1.0)));
         c *= 1.0 - 0.3 * band(sd, -r, r) * fine(r) * mosaic * (1.0 - band(dd, -r, r));
         float z = sqrt(max(r * r - dd * dd, 0.0)) / r;
         float lit = 0.6 + 0.5 * z;
         // None on a road (R23).
-        float cover = band(dd, -r, r) * (u_field_season == 3 ? 0.7 : 1.0) * road_free();
+        float cover = band(dd, -r, r) * (u_field_season == 3 ? 0.7 : 1.0);
         c = mix(c, lc * lit * (0.86 + 0.28 * vnoise(pm / 1.3, 509) * fine(1.3)), cover * mosaic);
     }
     return c;
@@ -728,8 +757,9 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
         A.hedged = true;
     }
     bool town_close = A.use == TOWN_CLOSE;
-    // Among a village's houses its closes lie open, unhedged (R13).
-    bool open_ground = town_close && built_share(pm) > 0.06;
+    // Within a place's edge its closes lie open, unhedged (R13; all of them
+    // since R27, as hedges cut by the plots broke into fragments).
+    bool open_ground = town_close;
     bool inner = A.use == CLOSE_GRASS || A.use == CLOSE_CROP || town_close;
     Parcels S;
     if (inner) {
@@ -828,7 +858,7 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
 
     // Hedges: round closes, round the field block once it is established (R3's
     // fifty years), between holdings and round meadows.
-    if (u_show.w > 0.5 && Q.edge < 40.0) {
+    if (u_show.w > 0.5 && Q.edge < 40.0 && !town_close) {
         Plot B = plot_of(Q.b, Q.sb);
         bool fa = A.use != OPEN;
         bool fb = B.use != OPEN;
