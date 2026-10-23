@@ -44,7 +44,7 @@ const ESTABLISHED: u32 = 50;
 const GHOST_YEARS: u32 = 200;
 
 /// Road and river pieces the shader reads per index square (as `WAY_MAX` in the shader).
-const MAX_WAYS: usize = 128;
+const MAX_WAYS: usize = 160;
 
 /// Set when the shader could not be built, so the cell layers take over again.
 static FAILED: AtomicBool = AtomicBool::new(false);

@@ -381,7 +381,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
 
 const int WAY_ROW = 2048;
 // Most segments read per index square (MAX_WAYS in relief.rs).
-const int WAY_MAX = 128;
+const int WAY_MAX = 160;
 const vec3 WATER_DEEP = vec3(0.21, 0.36, 0.47);
 const vec3 WATER_EDGE = vec3(0.38, 0.48, 0.45);
 const vec3 MUD = vec3(0.40, 0.34, 0.25);

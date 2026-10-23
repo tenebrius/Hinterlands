@@ -91,7 +91,7 @@ pub struct WayData {
     /// Segment numbers, four to a texel.
     pub idx: Vec<f32>,
     pub idx_size: (i32, i32),
-    /// The most segments any cell lists (the shader looks at up to 96).
+    /// The most segments any cell lists (the shader looks at up to 160).
     pub most: usize,
 }
 

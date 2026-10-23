@@ -493,6 +493,34 @@ The hand-drawn maps the owner likes outline everything in ink. A sixth slider in
 
 Kind: rendering.
 
+## R15 — Dense town cores: buildings with no street frontage
+
+The owner's note on R14: towards the centre of a town the buildings should crowd so close that many have no road of their own. They pointed to a Watabou city map whose blocks are packed solid, the inner buildings reached only through the others. After the lots are laid out, a town's core is now packed with more buildings (`infill` in `town.rs`).
+
+- **Where:** places of 300 people or more, more strongly up to 2,500 (`amount`). The core is a disc of 0.55–0.9 times the place's estimated radius. Packing is full to 45% of the way out, then thins to nothing at the edge of the core.
+- **By aggregation:** every house and back range in the core, nearest the centre first, tries to have a building set against each of its four sides. That one is 6–14 m by 4.4–8 m (times the building scale), 0.35 m apart, at the same angle or square to it, shifted along the side. Each new building tries in turn. So blocks fill solid from their street fronts inward, and most of the new buildings have no frontage.
+- **Then the gaps:** a jittered grid (4 m × scale) fills what is left, each building turned to the nearest street.
+- **Kept clear of:**
+  - streets and the fronts of lots (1.5 m × scale from a street's edge);
+  - other buildings, market places, greens, churchyards, precincts and courts;
+  - water, and the city wall (a building stays on its side of the wall).
+- **Only on the place's ground:** an infill building stands on a lot or within 20 m × scale of one, which covers the middles of blocks deeper than two lots. It never stands in the fields or across a river.
+- **Households:** infill buildings are drawn as back houses, workshops and stores. They do not change the households counted (the R11 summary) or the town's extent.
+- **The look:** at true scale a walled city's core is now solidly built within its wall, with open suburbs outside. At storybook the blocks fill in clusters, as on the owner's reference map.
+- **Road index:** the curvier lanes of R13 put up to 132 road pieces in one index square at Dewermouth. The shader now reads up to 160 (`MAX_WAYS`, `WAY_MAX`).
+- **Frame time** (SwiftShader, Liningbourne at 1 m): 5,633 ms at true scale and 5,300 at storybook, as R13.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`17-*`):
+  - `17-infill-upland-town-1m-true` and `17-infill-upland-town-1m-storybook` (Liningbourne);
+  - `17-infill-city-1300-2m-storybook` (walled Asherfield);
+  - `17-infill-port-2m-storybook` (Dewermouth).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -522,6 +550,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R12: `14-look-village-1m-true` and `14-look-village-1m-storybook` (Asherfield, 1550, true scale and the storybook preset), and `14-look-upland-town-2m-storybook` (Liningbourne).
 - R13: `15-village-1m-true`/`-storybook` and `15-upland-town-1m-true`/`-storybook` (village and town lots after hand-drawn maps), `15-city-1300-2m-storybook` and `15-city-1300-wall-1m-storybook` (walled Asherfield), `15-port-2m-storybook` (Dewermouth) and `15-river-town-2m-storybook` (Mereelwick).
 - R14: `16-ink-village-1m`, `16-ink-city-1300-2m`, `16-ink-upland-town-1m` and `16-ink-port-2m` (the storybook look with ink), and `16-true-village-1m`.
+- R15: `17-infill-upland-town-1m-true`/`-storybook`, `17-infill-city-1300-2m-storybook` and `17-infill-port-2m-storybook` (dense town cores).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

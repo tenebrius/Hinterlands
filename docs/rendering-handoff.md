@@ -15,8 +15,9 @@ For the graphics session picking this work up after a context reset (written 23 
   - **R12, map style:** a "Map style" panel (`look.rs`, `panels/look.rs`) with road, river, tree and building scales and people per house. It has True scale and Storybook presets and takes `?look=`.
   - **R13, layout:** villages and towns laid out after Watabou's generators. Village houses vary, with farmsteads and gaps, no fences, groves and open greens. Town cores are built up behind, and lanes curve and join.
   - **R14, ink outlines:** a sixth slider that draws dark edges round roofs, crowns, rivers, roads and walls.
+  - **R15, dense cores:** town cores packed with buildings that have no street frontage, by aggregation from the fronts (`infill`).
 - **Not doing next:** stage 4 (buildings to size, traffic pacing, tonnes readouts, label placer, chronicle markers, price surface). The owner has put it aside.
-- **Next:** the owner's review of R12–R14 (the storybook look, its preset values, and the layouts).
+- **Next:** the owner's review of R12–R15 (the storybook look, its preset values, and the layouts).
 - **Queued** (in `docs/rendering.md`):
   - varied buildings and districts within towns (after stage 4, unless the owner says otherwise);
   - an optimisation stage, which the owner has deferred so that the results are right first.

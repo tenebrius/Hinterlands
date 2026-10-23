@@ -1008,6 +1008,21 @@ fn lay_out(
         space,
         wall.as_deref(),
     );
+    // The core of a town packed with buildings behind its fronts (R15).
+    if pop >= 500.0 {
+        infill(
+            seed,
+            pop,
+            upland,
+            centre,
+            r_est,
+            z,
+            water,
+            space,
+            start_shapes,
+            wall.as_deref(),
+        );
+    }
     let mut reach = 0.0f32;
     for s in &space.shapes[first_shape..] {
         if s.kind == PLOT || s.kind == COURT {
@@ -1700,6 +1715,249 @@ impl Lot {
             self.add(b, out);
         }
     }
+}
+
+/// Packs the core of a town with buildings behind its street fronts (R15), as
+/// the cores of hand-drawn town maps are: from the centre outward, wherever a
+/// building fits clear of the streets, the other buildings, the open places
+/// (market, greens, churchyards, courts), the water and the wall. Each is
+/// turned to the nearest street, and many stand with no frontage of their own,
+/// reached through the yards. They may cover the back of a lot, not its front.
+/// The packing thins out away from the centre and grows with the town.
+#[allow(clippy::too_many_arguments)]
+fn infill(
+    seed: usize,
+    pop: f32,
+    upland: bool,
+    centre: Vec2,
+    r_est: f32,
+    z: f32,
+    water: &dyn Water,
+    space: &mut Space,
+    start: usize,
+    wall: Option<&[Vec2]>,
+) {
+    let amount = smoothstep(300.0, 2500.0, pop);
+    let core_r = r_est * (0.55 + 0.35 * amount);
+    // What a new building must keep clear of: every building and open place
+    // of this place (its lots' ground excepted), indexed by bucket.
+    let mut block: Vec<Shape> = space.shapes[start..]
+        .iter()
+        .filter(|s| s.kind != PLOT)
+        .copied()
+        .collect();
+    let mut at: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
+    let index = |at: &mut BTreeMap<(i32, i32), Vec<u32>>, s: &Shape, i: usize| {
+        let (lo, hi) = s.bounds();
+        for b in buckets(lo, hi) {
+            at.entry(b).or_default().push(i as u32);
+        }
+    };
+    for (i, s) in block.iter().enumerate() {
+        index(&mut at, s, i);
+    }
+    // The place's lots: infill stands on their ground or within a short way
+    // of it (the middles of blocks deeper than two lots), never out in the
+    // fields.
+    let lots: Vec<Shape> = space.shapes[start..]
+        .iter()
+        .filter(|s| s.kind == PLOT)
+        .copied()
+        .collect();
+    let mut lot_at: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
+    let reach = 20.0 * z;
+    for (i, s) in lots.iter().enumerate() {
+        let (lo, hi) = s.bounds();
+        for b in buckets(lo - Vec2::splat(reach), hi + Vec2::splat(reach)) {
+            lot_at.entry(b).or_default().push(i as u32);
+        }
+    }
+    let on_lots = |q: Vec2| {
+        let b = ((q.x / BUCKET).floor() as i32, (q.y / BUCKET).floor() as i32);
+        lot_at.get(&b).is_some_and(|ids| {
+            ids.iter().any(|&i| {
+                let l = &lots[i as usize];
+                let (u, w) = l.axes();
+                let d = q - l.c;
+                d.dot(u).abs() <= l.h.x + reach && d.dot(w).abs() <= l.h.y + reach
+            })
+        })
+    };
+    let clear = |block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>, s: &Shape| {
+        let (lo, hi) = s.bounds();
+        for b in buckets(lo, hi) {
+            if let Some(ids) = at.get(&b) {
+                if ids.iter().any(|&i| block[i as usize].overlaps(s)) {
+                    return false;
+                }
+            }
+        }
+        true
+    };
+    // Lot fronts stay open: no infill within this of a street's edge.
+    let front_gap = 1.5 * z;
+    let inside_wall = |p: Vec2| wall.is_some_and(|w| point_in(p, w));
+    let near_wall = |p: Vec2| {
+        wall.is_some_and(|w| {
+            (0..w.len()).any(|k| seg_dist(p, w[k], w[(k + 1) % w.len()]) < 8.0 * z)
+        })
+    };
+    // Candidate spots on a jittered grid, nearest the centre first.
+    let step = 4.0 * z;
+    let n = (core_r / step).ceil() as i32;
+    let mut spots: Vec<(f32, Vec2, usize)> = Vec::new();
+    for gy in -n..=n {
+        for gx in -n..=n {
+            let k = seed * 7_368_787 + ((gy + n) * (2 * n + 1) + gx + n) as usize;
+            let p = centre
+                + Vec2::new(gx as f32 + h01(k, 121) - 0.5, gy as f32 + h01(k, 122) - 0.5) * step;
+            let d = (p - centre).length() / core_r;
+            // Fewer tries further out, none past the core.
+            if d >= 1.0 || h01(k, 123) > amount * (1.0 - smoothstep(0.5, 1.0, d)) {
+                continue;
+            }
+            spots.push((d + 0.15 * h01(k, 124), p, k));
+        }
+    }
+    spots.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let roof_of = |k: usize| {
+        if upland && h01(k, 127) < 0.6 {
+            2.0
+        } else if h01(k, 128) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
+            1.0
+        } else {
+            0.0
+        }
+    };
+    let fits = |b: &Shape, block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>| -> bool {
+        if !b.corners().iter().all(|&q| on_lots(q)) {
+            return false;
+        }
+        let probes = b.probes();
+        if !probes
+            .iter()
+            .all(|&q| water.land(q) && water.river_gap(q) > 2.0)
+        {
+            return false;
+        }
+        if wall.is_some() {
+            let inside = inside_wall(probes[0]);
+            if probes
+                .iter()
+                .any(|&q| inside_wall(q) != inside || near_wall(q))
+            {
+                return false;
+            }
+        }
+        space.off_streets(b, front_gap) && clear(block, at, b)
+    };
+    let mut added: Vec<Shape> = Vec::new();
+    // First by aggregation: each building in the core tries to have others
+    // built against its sides, so the blocks fill solid from their street
+    // fronts inward, as the cores of hand-drawn towns are.
+    let mut queue: Vec<usize> = (0..block.len())
+        .filter(|&i| {
+            let s = &block[i];
+            (s.kind == HOUSE || s.kind == BARN) && (s.c - centre).length() < core_r
+        })
+        .collect();
+    queue.sort_by(|&i, &j| {
+        (block[i].c - centre)
+            .length()
+            .total_cmp(&(block[j].c - centre).length())
+    });
+    let gap = 0.35 * z;
+    let mut qi = 0;
+    while qi < queue.len() && qi < 20_000 {
+        let base = block[queue[qi]];
+        let d = (base.c - centre).length() / core_r;
+        let keep = amount * (1.0 - smoothstep(0.45, 1.0, d));
+        let (u, w) = base.axes();
+        for side in 0..4usize {
+            let k = seed * 104_723 + qi * 4 + side;
+            if h01(k, 141) > keep {
+                continue;
+            }
+            let n = [u, -u, w, -w][side];
+            let t = perp(n);
+            let hb = if side < 2 { base.h.x } else { base.h.y };
+            let ht = if side < 2 { base.h.y } else { base.h.x };
+            let ang = base.angle
+                + if h01(k, 142) < 0.25 {
+                    std::f32::consts::FRAC_PI_2
+                } else {
+                    0.0
+                }
+                + (h01(k, 143) - 0.5) * 0.06;
+            for shrink in [1.0f32, 0.7] {
+                let h = Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink;
+                let (nu, nw) = (dir(ang), perp(dir(ang)));
+                let hn = n.dot(nu).abs() * h.x + n.dot(nw).abs() * h.y;
+                let b = Shape {
+                    c: base.c + n * (hb + hn + gap) + t * (h01(k, 144) - 0.5) * 2.0 * ht,
+                    h,
+                    angle: ang,
+                    kind: HOUSE,
+                    tone: h01(k, 131),
+                    extra: roof_of(k),
+                    height: (6.0 + 4.0 * h01(k, 132)) * z,
+                };
+                if fits(&b, &block, &at) {
+                    index(&mut at, &b, block.len());
+                    queue.push(block.len());
+                    block.push(b);
+                    added.push(b);
+                    break;
+                }
+            }
+        }
+        qi += 1;
+    }
+    // Then any gaps left, on a jittered grid, nearest the centre first.
+    for (_, p, k) in spots {
+        // The nearest street, for the building's angle.
+        let mut best = (f32::MAX, Vec2::new(1.0, 0.0));
+        for b in buckets(p - Vec2::splat(BUCKET), p + Vec2::splat(BUCKET)) {
+            if let Some(ids) = space.seg_at.get(&b) {
+                for &i in ids {
+                    let (a, c, _) = space.segs[i as usize];
+                    let d = seg_dist(p, a, c);
+                    if d < best.0 {
+                        best = (d, (c - a).normalized());
+                    }
+                }
+            }
+        }
+        if best.0 == f32::MAX {
+            continue;
+        }
+        let along = best.1;
+        let ang = along.y.atan2(along.x)
+            + if h01(k, 125) < 0.35 {
+                std::f32::consts::FRAC_PI_2
+            } else {
+                0.0
+            }
+            + (h01(k, 126) - 0.5) * 0.12;
+        for shrink in [1.0f32, 0.75, 0.55] {
+            let b = Shape {
+                c: p,
+                h: Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink,
+                angle: ang,
+                kind: HOUSE,
+                tone: h01(k, 131),
+                extra: roof_of(k),
+                height: (6.0 + 4.0 * h01(k, 132)) * z,
+            };
+            if fits(&b, &block, &at) {
+                index(&mut at, &b, block.len());
+                block.push(b);
+                added.push(b);
+                break;
+            }
+        }
+    }
+    space.shapes.extend(added);
 }
 
 /// Whether p lies inside the closed polygon w.
