@@ -1604,6 +1604,37 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 - coin by channel;
 - the urban share.
 
+### D137 result (134fa79): the payment fix is adopted alone; the outside-trade measure is re-founded on output; then the later price (D139)
+
+**What happened.**
+- **The payment fix alone** passes outside trade on 10 seeds, at medians 0.42–0.45.
+- **The later cloth price** (Munro deflated by Clark's wheat, ×1.37–1.66 relative from 1490) pushes outside trade over the 50% ceiling on every map: 19 / 5 / 18 of 40.
+- **It brings the cloth share towards the record:** 0.40 in 1510, 0.48 in 1520 and 0.58 in 1540, about 40 years late, as I expected (the price acts through the margin).
+- **On the mills' price:** the mills pay within 10% of the clearing price to 1480 and up to 1.14 after. The implementer's composition reading is accepted, since each mill pays exactly its sellers' price.
+
+**1. The payment fix is a defect fix, adopted on its own.** Gate it on 40 seeds. If it passes, it becomes the default, with a new golden.
+
+**2. The outside-trade measure is re-founded. I said at D130 I would decide this if it bound again, and it has.**
+- **The problem is the denominator, not the trade.** The share divides outside trade by the modelled market inflow: mostly grain and a few goods, without most of the real internal economy. That is why the region reads 40–50% "outside" while its exports per head (7–9 d) are about half of England's (14 d).
+- A sourced price series for England's chief export should not fail a check whose level has no referent.
+- **The new measure: exports (grain, wool and cloth to the ports) as a share of the region's total output** in the model (the whole harvest at its price, wool, goods and cloth), each year, gated at 1600 as before.
+- **Its referent:** England's overseas exports c. 1300 were about £250–300k, chiefly wool, against a GDP of about £4.5m (Broadberry et al. 2015), about 6–7%.
+- **Band 1–35%:**
+  - below 1% the region is closed;
+  - above about a third of everything it produces, it is an export colony.
+
+  The band is set by what the check guards against, before seeing any run on this measure. A county-sized region may stand well above the national 6–7%.
+- **The old share and exports per head stay reported.**
+- **This is the third change to this check** (20% at v5, 30% at L1, 50% at D126). Each time a sourced trade channel was added, the old denominator broke. This one has a referent, so it should not need moving again. If it does, the cause is in the model.
+
+**3. Then the later cloth price,** gated with the new measure (40 seeds, every check).
+
+**Pre-registered, reported only:**
+- exports over 1600 output are between 5% and 25% on every map. That is about one to four times England's ratio, and rests on the region being county-sized;
+- the cloth share by decade stays as in D138: the record's level about 40 years late.
+
+**Then** a design note on putting-out labour (clothiers drawing rural labour into cloth for its returns), the mechanism that may close the 40-year lag. It comes as a note to me first, after the gate passes.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
