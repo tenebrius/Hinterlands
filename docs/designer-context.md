@@ -166,6 +166,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **RESUMED by Divish, 23 October (D135):** over-2,000 made reported (floor 5 is several times England's per-head rate of about one town per 80–100k in 1377; the model's urban share is 0.33–0.37 against England's 10%; the hierarchy is gated by rank-size, largest share and over 5,000). D1b and D2 become the default after a formal re-validate. Then the cloth pace trace (capacity, mill W growth, netbacks, cloth price after 1450).
 - **PAUSED by Divish after the D132 report (D134).** The no-duty D2 (34de135) fails only map 3's over 2,000 (22/40); cloth runs at half the record's pace after 1420. Open on resuming: the over-2,000 band (map 3's spread) and the cloth pace. The model is at D1.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
@@ -245,4 +246,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-23 — resume section written for the context clear; paused at D134.
+Last updated: 2026-10-23 — resumed; D135 sent: over-2,000 reported, D1b and D2 to the default, cloth pace trace.

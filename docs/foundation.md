@@ -1531,6 +1531,42 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 
 **Paused by the owner after this report.** Nothing is decided on the over-2,000 band or on the cloth pace, and neither switch is the default. The model stays at D1 (golden `4a9737eafc305561`). On resuming, those two decisions come first.
 
+### Resumed (owner, 23 October 2026): the over-2,000 count becomes reported; D1b and D2 become the default; the cloth pace is traced (D135)
+
+**1. The over-2,000 count is reported, no longer gated. It is revised after seeing it fail, so the reason has to stand without the run.**
+- **The band has no source.** It came from the v1 table, "5–12: hierarchy absent or runaway". D1 met it on map 3 only with the artefact iron towns.
+- **The record puts the floor far too high for a region of this size:**
+  - About 10% of England's people lived in towns over 2,000 c. 1300 (*Urban History*, on the size of medieval English towns).
+  - In 1377 there were about 31 provincial towns over 2,000 (Dyer's estimates from the poll tax, as tabulated by Lomax), plus London, for some 2.5–3 million people. That is about one such town per 80,000–100,000 people.
+  - The model's regions hold 80–90k people in 1600, and the floor asks for five such towns. That is several times England's rate.
+  - By share the model is already more urban than England: 0.33–0.37 of its people are in places over 2,000 in 1600 (0.22–0.27 in 1340), against England's tenth.
+- **What the check guarded is gated elsewhere.**
+  - A hierarchy that is missing or runaway shows in the rank-size slope (34–40/40 in the last gate), in the largest place's share, and in over 5,000 (1–5).
+  - Map 3's failure is a hierarchy that is present (median 5; ranks 1–4 hold) with the fifth place at about 2,000: a knife-edge on one rank, not an absent hierarchy.
+- **This is the same step as over 5,000's median at D48.**
+- **Reported from now on:**
+  - the count over 2,000;
+  - the urban share (people in places over 2,000), against England's c. 10% c. 1300.
+
+  The model is about three times England's share. That is noted as an open question for later. It is not gated, since a region with its own regional capital stands above the national mean.
+
+**2. D1b and D2 become the default.**
+- Under the revised gate, the D133 run (34de135) passes every gated check on every map: every other check is 34/40 or better. Runs passing every check are 23 / 36 / 14, against D1's 27 / 28 / 17.
+- The implementer re-runs `just validate` on 40 seeds with the change, so that the record is formal. Then `port_reach` and `cloth` are switched on, and the new golden is recorded in `docs/milestones.md` with the browser selftest.
+- **The pre-registrations missed at D133 stay recorded as missed:**
+  - map 3's population is 11% below D1b's (allowed 10%);
+  - coin is above D1b's after 1550;
+  - the cloth share is about half the record's after 1420.
+
+**3. Then trace the cloth pace before any change.** The share is about 0.20 through the 1400s and 0.33–0.35 around 1500, against the record's 0.5 and 0.7. Report by decade, 1350–1550, on 9 runs:
+- mill capacity against what the mills use, and how many mills are at capacity;
+- mill towns' W and its growth, against the cloth margin they earn;
+- the netbacks of cloth and of raw wool at the median seller, with carriage;
+- wool's port price against cloth's: Clark's wool series against Munro's cloth value, which is held flat;
+- whether a price for English cloth after 1450 can be found (Munro's later tables). English cloth prices rose after 1450, and a flat cloth price would slow the shift.
+
+`cloth_lb_per_w` is not tuned (it is calibrated at the start only). The trace says which mechanism sets the pace, and I decide from it.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
