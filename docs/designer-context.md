@@ -166,6 +166,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **PAUSED at D141 (9c84611):** payment fix default, golden `2e6856056e73a1c6`, exports/output 0.066–0.078. On resuming: (1) output counts milled wool twice, so count cloth by value added; (2) gate the later cloth price; (3) putting-out note.
 - **PAUSE ordered by Divish (23 October):** development pauses after the implementer's running D139 test finishes. Record its result, then stop; no putting-out note until resumed.
 - **D137 result (134fa79), D139:**
   - The payment fix passes alone: adopt it, gated.
@@ -257,4 +258,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-23 — pause ordered by Divish after the running D139 test.
+Last updated: 2026-10-23 — paused at D141 after the D139 step 1 result.

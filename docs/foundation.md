@@ -1635,6 +1635,18 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 
 **Then** a design note on putting-out labour (clothiers drawing rural labour into cloth for its returns), the mechanism that may close the 40-year lag. It comes as a note to me first, after the gate passes.
 
+### D139 step 1 result (9c84611), and a pause (owner, 23 October 2026; D141)
+
+**Accepted.** The payment fix, gated alone under the new outside-trade measure, passes on 40 seeds and is the default. The golden is `2e6856056e73a1c6`, the same in the browser.
+- Runs passing every check: 23 / 37 / 25.
+- Exports over output: medians 0.066 / 0.078 / 0.073 (40/40), at about England's 6–7%. The pre-registration is met in the medians.
+- The cloth share is 0.15–0.18 in 1440–80 and 0.34–0.41 from 1490. Capacity binds everywhere.
+
+**Paused by the owner after this report.** On resuming, in this order:
+1. **Fix the output denominator first.** Milled wool is counted twice, once in the clip and again in the cloth. Count cloth by its value added (cloth less the wool it uses), and re-read the medians. This is a correction of the measure, not of the band.
+2. **Step 3 of D139:** the later cloth price (`cloth_price_late`, built and off), gated.
+3. **The putting-out design note** (the 40-year lag in the cloth share), before any code.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
