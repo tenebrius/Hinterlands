@@ -49,6 +49,10 @@ uniform vec4 u_way_show;
 uniform float u_cell_m;
 // The look (R12): roads, rivers, trees and buildings, each against its true size.
 uniform vec4 u_look;
+// Ink outlines (R14), 0..1: dark edges round roofs, crowns, rivers, roads and
+// walls, as on hand-drawn maps, about a pixel wide at any zoom.
+uniform float u_ink;
+const vec3 INK = vec3(0.17, 0.15, 0.13);
 // The metres detail is drawn in: 1 for true metres, or a look's scale while
 // drawing roads, trees or buildings, whose own detail (verges, crowns, ridges)
 // is laid out in their own metres and grows with them. `mpx` divides by it.
@@ -519,6 +523,9 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
         }
         rcov = band(rd, -rhw, rhw);
         c = mix(c, water, rcov);
+        // The bank in ink.
+        float iw = max(0.3, 1.3 * mpx());
+        c = mix(c, vec3(0.16, 0.21, 0.25), band(rd, rhw - iw, rhw + 0.3 * iw) * u_ink);
     }
 
     // Roads are drawn in their own metres (R12): a road the look widens has
@@ -638,6 +645,9 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
         c = mix(c, surf, band(d, -hw, hw));
         // A faint edge where the surface meets the grass.
         c = mix(c, c * 0.86, band(d, hw - 0.3, hw + 0.1) * open * (1.0 - over));
+        // Its edges in ink, lighter than a building's.
+        float iw = max(0.25, 1.0 * mpx());
+        c = mix(c, mix(c, INK, 0.6), band(d, hw - iw, hw) * u_ink);
     }
     g_unit = 1.0;
     return c;

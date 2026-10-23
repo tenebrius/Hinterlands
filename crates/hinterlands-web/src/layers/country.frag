@@ -507,6 +507,8 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
                 // Clumps of leaves.
                 col *= 0.86 + 0.28 * vnoise((pm + vec2(c) * 13.7) / 1.3, salt + 8) * fine(1.3);
                 float cover = clamp((r - dd) / m + 0.5, 0.0, 1.0);
+                // Its outline in ink (R14).
+                col = mix(col, col * 0.35, (1.0 - smoothstep(0.0, max(0.3, 1.3 * m), r - dd)) * u_ink);
                 if (u_field_season == 3 && sp != 5) {
                     cover *= 0.75;
                 }

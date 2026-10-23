@@ -1807,7 +1807,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
             });
             space.add_shape(Shape {
                 c: mid + out * 9.0 * z,
-                h: Vec2::new(len * 0.5 + 0.4, 4.5 * z),
+                h: Vec2::new(len * 0.5 + 0.4 + 1.5 * z, 4.5 * z),
                 angle: t.y.atan2(t.x),
                 kind: DITCH,
                 tone: h01(seed + k, 82),

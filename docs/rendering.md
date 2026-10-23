@@ -468,6 +468,31 @@ The owner's second point after R11: the layout of villages and towns. Rows of id
 
 Kind: rendering.
 
+## R14 — Ink outlines
+
+The hand-drawn maps the owner likes outline everything in ink. A sixth slider in **Map style**, **Ink outlines** (0–1), draws dark edges as they do. It is about a pixel wide at any zoom, because it is measured in screen pixels within each thing's own metres. It is drawn by the shader alone, so changing it does not lay the towns out again.
+
+- **What is outlined:**
+  - **Roofs:** every building, gatehouse, church and tower, round towers round.
+  - **Crowns:** woods, groves, coppice and thorn, the crown darkened at its rim.
+  - **Rivers:** a dark bank line at the water's edge.
+  - **Roads and streets:** their edges, more lightly.
+- **Walls:**
+  - The wall walk is darkened by half under ink, so the wall reads as a bold line with its towers.
+  - The wet ditch is now shaded across its width rather than from each piece's ends, and its pieces overlap, so it runs unbroken round the wall's curves (at every look).
+- **Presets:** storybook has ink at 1; true scale at 0, drawn as R13.
+- **`?look=`** takes a sixth number for the ink (0 if left out).
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`16-*`):
+  - **Storybook with ink:** `16-ink-village-1m` (Asherfield, 1550), `16-ink-city-1300-2m` (walled Asherfield, 1300), `16-ink-upland-town-1m` (Liningbourne) and `16-ink-port-2m` (Dewermouth).
+  - **True scale, for comparison:** `16-true-village-1m`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -496,6 +521,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
   - **Others:** `13-upland-town-2m` (Liningbourne, stone-slate roofs) and `13-river-town-2m` (Mereelwick).
 - R12: `14-look-village-1m-true` and `14-look-village-1m-storybook` (Asherfield, 1550, true scale and the storybook preset), and `14-look-upland-town-2m-storybook` (Liningbourne).
 - R13: `15-village-1m-true`/`-storybook` and `15-upland-town-1m-true`/`-storybook` (village and town lots after hand-drawn maps), `15-city-1300-2m-storybook` and `15-city-1300-wall-1m-storybook` (walled Asherfield), `15-port-2m-storybook` (Dewermouth) and `15-river-town-2m-storybook` (Mereelwick).
+- R14: `16-ink-village-1m`, `16-ink-city-1300-2m`, `16-ink-upland-town-1m` and `16-ink-port-2m` (the storybook look with ink), and `16-true-village-1m`.
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

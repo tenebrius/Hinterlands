@@ -130,6 +130,8 @@ struct Frame {
     shape_sub: f32,
     /// The look (R12): roads, rivers, trees and buildings against true size.
     look: [f32; 4],
+    /// Ink outlines (R14), 0..1.
+    ink: f32,
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -383,6 +385,7 @@ impl Gpu {
                 f.ways[3],
             );
             gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
+            gl.uniform_1_f32(at("u_ink").as_ref(), f.ink);
             gl.uniform_4_f32(
                 at("u_look").as_ref(),
                 f.look[0],
@@ -552,6 +555,7 @@ impl Layer for ReliefLayer {
             way_sub: self.way_sub,
             shape_sub: self.shape_sub,
             look: [v.look.roads, v.look.rivers, v.look.trees, v.look.buildings],
+            ink: v.look.ink,
         };
         let gpu = self.gpu.clone();
         d.painter.add(egui::PaintCallback {

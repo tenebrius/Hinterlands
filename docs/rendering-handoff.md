@@ -11,8 +11,12 @@ For the graphics session picking this work up after a context reset (written 23 
   - **R9, stage 1:** the scale framework (zoom to 1 m per point) and roads and rivers at true width.
   - **R10, stage 2:** fields, woods, pasture and footpaths at real scale.
   - **R11, stage 3:** villages and towns laid out from their roads. It was revised after the owner's review: the town's edge now comes from the plots, cities have tenements and courts, and cities are more compact.
+- **Done since (23 October), on the owner's notes that true scale was accurate but not fun:**
+  - **R12, map style:** a "Map style" panel (`look.rs`, `panels/look.rs`) with road, river, tree and building scales and people per house. It has True scale and Storybook presets and takes `?look=`.
+  - **R13, layout:** villages and towns laid out after Watabou's generators. Village houses vary, with farmsteads and gaps, no fences, groves and open greens. Town cores are built up behind, and lanes curve and join.
+  - **R14, ink outlines:** a sixth slider that draws dark edges round roofs, crowns, rivers, roads and walls.
 - **Not doing next:** stage 4 (buildings to size, traffic pacing, tonnes readouts, label placer, chronicle markers, price surface). The owner has put it aside.
-- **Next:** the owner has further changes to the look of the roads and towns, to be given in the next message. Work on those first.
+- **Next:** the owner's review of R12–R14 (the storybook look, its preset values, and the layouts).
 - **Queued** (in `docs/rendering.md`):
   - varied buildings and districts within towns (after stage 4, unless the owner says otherwise);
   - an optimisation stage, which the owner has deferred so that the results are right first.
@@ -58,6 +62,17 @@ For the graphics session picking this work up after a context reset (written 23 
   - `town_land` and `built_share`, the town edge, and the town's closes (`TOWN_CLOSE`).
 - **`layers/town.frag`:** `town_scan` (the shapes per pixel), `town_ground` (plots, courts, market, green, churchyard, precinct, ditch), roofs (thatch, tile, slate), towers, walls and gates.
 - **`layers/routes.rs`, `rivers.rs`, `parish.rs`, `dots.rs`, `goods.rs`, `wool.rs`, `outside.rs`, `prices.rs`, `buildings.rs`, `settlements.rs`:** map symbols that fade out close in.
+
+## The look (R12–R14)
+- **`Look`** (`look.rs`) is held in `ViewState::look`, set by `Msg::SetLook` or `?look=`.
+- **CPU side:**
+  - `ways.rs` multiplies road, track, street, footpath and river widths.
+  - `town.rs` multiplies every size by `z` (the building scale). Lots deepen by √z, and open places and great buildings grow with z^0.6.
+  - A changed look lays roads and towns out again (`ReliefLayer::ways_look`).
+- **Shader side:**
+  - `u_look` (roads, rivers, trees, buildings) and `u_ink`.
+  - While a road, a tree or a building is drawn, `g_unit` holds its scale, and `mpx()` divides by it, so its detail is in its own metres.
+  - `g_bnear` (from the town scan, which now runs before the land) keeps trees off the houses.
 
 ## How to build and look
 - **Build:**

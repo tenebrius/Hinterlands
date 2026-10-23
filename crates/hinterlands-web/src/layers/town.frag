@@ -272,7 +272,10 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
     } else if (T.gk == K_DITCH) {
         float wet = 1.0 - smoothstep(0.0, 0.3, T.gt);
         vec3 water = u_field_season == 3 ? vec3(0.75, 0.80, 0.84) : WATER_EDGE * 0.95;
-        g = mix(grass * 0.75, water, smoothstep(0.3, 0.8, edge / h.y) * (0.5 + 0.5 * wet));
+        // Shaded across its width, not from each piece's ends, so the pieces
+        // join round the wall's curves (R14).
+        float mid = 1.0 - abs(l.y) / h.y;
+        g = mix(grass * 0.75, water, smoothstep(0.3, 0.8, mid) * (0.5 + 0.5 * wet));
     }
     g_unit = 1.0;
     return mix(c, g, T.gcov);
@@ -335,7 +338,8 @@ vec3 town_buildings(vec3 c, Town T) {
     float z = u_look.w;
     vec2 l = T.bl / z;
     vec2 h = T.bh / z;
-    float edge = inner_edge(l, h);
+    // Round towers measure their edge round, for the eaves and the ink.
+    float edge = T.bk == K_WALL_TOWER ? (1.0 - length(l / h)) * min(h.x, h.y) : inner_edge(l, h);
     vec3 r;
     g_unit = z;
     if (T.bk == K_HOUSE || T.bk == K_BARN || T.bk == K_HALL) {
@@ -386,6 +390,7 @@ vec3 town_buildings(vec3 c, Town T) {
         float merlon = step(0.45, fract(l.x / 2.0));
         r = mix(r, vec3(0.38, 0.35, 0.32), band(side, -1.0, 0.6) * mix(1.0, merlon, fine(1.0)));
         r = mix(r, vec3(0.22, 0.20, 0.18), band(side, -1.0, max(0.2, 0.8 * mpx())));
+        r = mix(r, r * 0.7, 0.5 * u_ink);
     } else if (T.bk == K_WALL_TOWER) {
         // A round tower with a conical roof.
         vec2 n = normalize(l + 1e-4);
@@ -399,6 +404,8 @@ vec3 town_buildings(vec3 c, Town T) {
     }
     // Eaves: a dark line where the roof meets its shadow side.
     r = mix(r, r * 0.7, band(edge, -1.0, 0.25) * fine(0.5));
+    // The outline in ink (R14).
+    r = mix(r, INK, band(edge, -1.0, max(0.25, 1.3 * mpx())) * u_ink);
     if (u_season == 3) {
         r = mix(r, vec3(0.93, 0.94, 0.96), 0.55);
     }

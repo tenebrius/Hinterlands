@@ -16,6 +16,8 @@ pub struct Look {
     pub buildings: f32,
     /// People to a house (a household is 4.5).
     pub per_house: f32,
+    /// Ink outlines round roofs, crowns, rivers, roads and walls (R14), 0..1.
+    pub ink: f32,
 }
 
 /// One slider: label, range, and the field it sets.
@@ -28,6 +30,7 @@ impl Look {
         trees: 1.0,
         buildings: 1.0,
         per_house: 4.5,
+        ink: 0.0,
     };
     pub const STORYBOOK: Look = Look {
         roads: 2.2,
@@ -35,14 +38,16 @@ impl Look {
         trees: 1.5,
         buildings: 2.5,
         per_house: 10.0,
+        ink: 1.0,
     };
 
-    pub const FIELDS: [Field; 5] = [
+    pub const FIELDS: [Field; 6] = [
         ("Road width ×", 0.5, 5.0, |l| &mut l.roads),
         ("River width ×", 0.5, 4.0, |l| &mut l.rivers),
         ("Tree size ×", 0.5, 4.0, |l| &mut l.trees),
         ("Building size ×", 0.5, 4.0, |l| &mut l.buildings),
         ("People per house", 1.0, 40.0, |l| &mut l.per_house),
+        ("Ink outlines", 0.0, 1.0, |l| &mut l.ink),
     ];
 
     /// Kept within the sliders' ranges.
@@ -54,22 +59,25 @@ impl Look {
         self
     }
 
-    /// From `?look=`: `true`, `storybook`, or five numbers in the order of
-    /// the sliders (roads, rivers, trees, buildings, people per house).
+    /// From `?look=`: `true`, `storybook`, or five or six numbers in the
+    /// order of the sliders (roads, rivers, trees, buildings, people per house,
+    /// and ink, 0 if left out).
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "true" => Some(Self::TRUE_SCALE),
             "storybook" => Some(Self::STORYBOOK),
             _ => {
                 let n: Vec<f32> = s.split(',').filter_map(|x| x.parse().ok()).collect();
+                let ink = n.get(5).copied().unwrap_or(0.0);
                 match n[..] {
-                    [roads, rivers, trees, buildings, per_house] => Some(
+                    [roads, rivers, trees, buildings, per_house, ..] if n.len() <= 6 => Some(
                         Self {
                             roads,
                             rivers,
                             trees,
                             buildings,
                             per_house,
+                            ink,
                         }
                         .clamped(),
                     ),
@@ -79,7 +87,8 @@ impl Look {
         }
     }
 
-    /// A key that changes whenever the look does, for caches.
+    /// A key that changes whenever the look of the plan does (not the ink,
+    /// which is drawn by the shader alone), for caches.
     pub fn key(&self) -> [u32; 5] {
         [
             self.roads.to_bits(),
