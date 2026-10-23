@@ -568,6 +568,23 @@ The owner asked for R16's infill outlines to be biased towards longer shapes: ne
 
 Kind: rendering.
 
+## R18 — No sharp corners on infill houses
+
+The owner's note on R17: the infill outlines should not have too sharp angles.
+
+- **The limit:** every corner of an infill house is kept within 25° of square (between 65° and 115°).
+- **The fix:** an outline with a sharper corner is eased towards the box inside it (the four corners' smallest reach each way), in steps of a quarter, until no corner is too sharp. Easing only draws corners in, so the house stays clear of its neighbours.
+- **Order:** the check runs after the house is made longer than wide (R17), since narrowing it can sharpen its corners.
+- **The look:** outlines still lean and taper to fit their gaps, but gently, with no spikes or wedges.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots:** `20-square-city-1300-1m-storybook` (walled Asherfield, 1300) and `20-square-upland-town-1m-storybook` (Liningbourne).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -600,6 +617,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R15: `17-infill-upland-town-1m-true`/`-storybook`, `17-infill-city-1300-2m-storybook` and `17-infill-port-2m-storybook` (dense town cores).
 - R16: `18-organic-city-1300-1m-storybook`, `18-organic-upland-town-1m-storybook`/`-true` and `18-organic-port-1m-storybook` (infill of free outline).
 - R17: `19-longer-city-1300-1m-storybook` and `19-longer-upland-town-1m-storybook` (infill held to longer outlines).
+- R18: `20-square-city-1300-1m-storybook` and `20-square-upland-town-1m-storybook` (no sharp corners on infill).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

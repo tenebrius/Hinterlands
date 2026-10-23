@@ -1993,6 +1993,30 @@ fn infill(
             let f = ay / (LONG * ax);
             corner.iter_mut().for_each(|q| q.x *= f);
         }
+        // No sharp corners (R18): every corner within 25 degrees of square.
+        // An outline with a sharper one is eased towards the box inside it
+        // (which only draws corners in) until none is.
+        let sharp = |c: &[Vec2; 4]| {
+            (0..4).any(|i| {
+                let a = (c[(i + 3) % 4] - c[i]).normalized();
+                let b = (c[(i + 1) % 4] - c[i]).normalized();
+                a.dot(b).abs() > 0.4226
+            })
+        };
+        if sharp(&corner) {
+            let bx = corner.iter().map(|q| q.x.abs()).fold(f32::MAX, f32::min);
+            let by = corner.iter().map(|q| q.y.abs()).fold(f32::MAX, f32::min);
+            let boxed = corner.map(|q| Vec2::new(q.x.signum() * bx, q.y.signum() * by));
+            let from = corner;
+            for t in [0.25f32, 0.5, 0.75, 1.0] {
+                for i in 0..4 {
+                    corner[i] = from[i] + (boxed[i] - from[i]) * t;
+                }
+                if !sharp(&corner) {
+                    break;
+                }
+            }
+        }
         if corner
             .iter()
             .any(|q| q.x.abs() < 1.2 * z || q.y.abs() < 1.2 * z)
