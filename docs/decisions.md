@@ -831,3 +831,20 @@ Kind: model mechanism, held off (designer's decision D132).
   - the netbacks are taken at the clip-weighted median seller.
 - **Details:** `docs/demand/d2e.md`.
 Kind: model default and validation rule (designer's decision D135).
+
+## D138 — D137 built: gate failed on outside trade, stopped
+- **Built per D137** on the branch (0eb62f1), not on main:
+  - mills pay the sellers' clearing price out of the cloth proceeds;
+  - from 1450 the cloth price follows Munro's all-ports export values deflated by Clark's wheat price (`cloth_price_late`), at 1.009–1.661 against the 1371–1450 level, held after 1513.
+- **The gate on 40 seeds failed on outside trade on every map:** 19 / 5 / 18 of 40, medians 0.50–0.53 (D136: 40/40 each).
+  - With the payment fix alone (`cloth_price_late` off, 10 seeds) it passes 10/10, at medians 0.42–0.45. So the later price takes it over the ceiling: cloth coming in doubles by 1600.
+- **Pre-registered:**
+  - the price mills pay is within 10% in most years but reaches 1.14 in some years after 1490;
+  - growers' coin rises only after 1450;
+  - mill towns' W falls only in 1450–80;
+  - the cloth share around 1500 stays below the record (0.33–0.40), but reaches 0.58 by 1540.
+- **Implementer's readings:**
+  - the series' points sit at the middle of their decades, linear between them;
+  - before 1450 the factor is 1.0.
+- **Main stays at D136.** Details: `docs/demand/d2f.md`.
+Kind: model mechanism and data, held off (designer's decision D137).
