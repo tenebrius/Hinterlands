@@ -325,7 +325,11 @@ impl Gpu {
         Ok(())
     }
 
-    unsafe fn compile(gl: &glow::Context, header: &str, frag: &str) -> Result<glow::Program, String> {
+    unsafe fn compile(
+        gl: &glow::Context,
+        header: &str,
+        frag: &str,
+    ) -> Result<glow::Program, String> {
         let program = gl.create_program()?;
         let mut shaders = Vec::new();
         for (kind, src) in [(glow::VERTEX_SHADER, VERT), (glow::FRAGMENT_SHADER, frag)] {
@@ -374,7 +378,13 @@ impl Gpu {
 
     /// Draws the relief into the cache if it is out of date (or always, with
     /// `redraw`), then copies the cache to the viewport egui has set.
-    fn paint(&mut self, gl: &glow::Context, f: Frame, vp: egui::ViewportInPixels, redraw: bool) {
+    fn paint(
+        &mut self,
+        gl: &glow::Context,
+        f: Frame,
+        vp: egui::epaint::ViewportInPixels,
+        redraw: bool,
+    ) {
         if self.failed {
             return;
         }
