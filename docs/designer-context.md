@@ -2,6 +2,42 @@
 
 Read this at the start of a session when acting as the **designer** for Hinterlands. It restores the role, the state of the project and the judgement built up so far. The brief itself is `docs/foundation.md`; this file is what sits around it.
 
+## Resuming after a context clear (state at D134)
+
+Read this section first, then `docs/foundation.md` from "Development resumes (D119)" to the end, which holds every decision since.
+
+**State.**
+- Paused by Divish after the D132 report.
+- The default model is D1:
+  - stock-based demand for salt, iron and stone;
+  - ports sell iron and salt;
+  - golden `4a9737eafc305561`.
+- Built but off: `port_reach` (D1b) and `cloth` (D2: the fallow flock, home wool, export cloth at the mills, the entropy split of wool, capacity `cloth_lb_per_w` 2.5, making cost 2.7 d, no duties).
+- The gate (D120): 40 seeds a map, 30/40 per check, outside trade 3–50% (D126). Runs passing every check are reported, not gated.
+
+**The last result (34de135, `docs/demand/d2d.md`).**
+- The gate fails only over 2,000 on map 3 (22/40). Runs passing every check: 23 / 36 / 14.
+- The cloth share is about 0.25 in 1400 (met). It is 0.19–0.22 in 1450 and 0.33–0.35 in 1500, against a record of about 0.5 and 0.7.
+
+**Two decisions are waiting, in this order. My leanings are not yet decided.**
+1. **The over-2,000 band on map 3.**
+   - Map 3 keeps its town people: 0.37 of its people are in places over 2,000 in 1600, as in D1. But it has a bigger top place and smaller ranks 5–8, so the count falls below 5 in 4 of 10 runs.
+   - The band (5–12, from v1) has no source, and D1 passed it only with the artefact iron towns.
+   - Leaning: judge the band against a sourced urban hierarchy (England in 1300 and 1600: the urban share and the number of towns of 2,000+ per head; Dyer, Campbell, Wrigley), or replace the count with the urban share. Decide on the sources, not on the run; rule: revise only with a reason that stands alone.
+2. **The cloth pace after 1420** is half the record's.
+   - Candidates: capacity growth tied to the mill towns' W is too slow; or the cloth price, which is flat at Munro's 1371–1450 value while English cloth prices rose after 1450.
+   - First ask for a trace (capacity against use by decade, mill W growth, netbacks of cloth against wool). Do not tune `cloth_lb_per_w`; it is calibrated at the start only.
+
+**After those two:** gate D1b and D2 as the default, then D3 (wealth raises stocks; cloth per head rises with income, with Dyer's three yards in 1500 as its check). Growth after 1480 is still noted.
+
+**Working rules, beyond the ones above.**
+- Every pre-registration names its mechanism and says which quantity that mechanism fixes and which it leaves free (rules 5 and 12). The implementer confirms the mechanism is in the code before the run.
+- A calibration may fix a start or a level, never the path that is the test (D130, D132).
+- Never pre-register a gain inside the run-to-run noise (rule 11). At 40 seeds a count moves by about ±3.
+- **Decision numbers:** the implementer writes D-numbers in `docs/decisions.md` for builds (D125, D127, D129, D131, D133). The designer takes the next free number in `docs/foundation.md`. Check both files before numbering.
+- Each round: pull main, read the implementer's report doc, record the decision in `docs/foundation.md`, update this file, commit and push to main and the branch `claude/sharp-lovelace-azqxcu`, then send one message to the implementer naming the commit.
+- The proposal session (`session_01MrMcFJCCYku1zTBbBkDVfp`) sends owner proposals (`docs/proposals/`). Decide them in the foundation and reply "no reply needed".
+
 ## The role
 
 There are two roles on this project and they are kept separate.
@@ -209,4 +245,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-23 — paused by Divish after the D132 report (D134).
+Last updated: 2026-10-23 — resume section written for the context clear; paused at D134.
