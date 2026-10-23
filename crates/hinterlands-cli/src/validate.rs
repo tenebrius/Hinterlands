@@ -48,6 +48,11 @@ pub struct RunResult {
     /// Exports a head c. 1300, pence (D126): grain, wool and cloth the ports
     /// paid for, the mean over years 195-204, against England's about 14 d.
     pub exports_1300: f32,
+    /// Exports over output (D139): grain, wool and cloth the ports paid for,
+    /// over the region's output (the harvest at its price, the wool clip at
+    /// the port price, goods sold at their price, and cloth), the last year;
+    /// NaN with ports off.
+    pub exports_output: f32,
     /// S2′ (D80): relief arrived per year, the share of deficit met outside
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
     /// year; `None` with relief off.
@@ -342,14 +347,14 @@ pub const CHECKS: &[Check] = &[
         ok: |r| r.shock.as_ref().is_none_or(|s| s.overlap_off >= 0.5),
     },
     // v5 gate (D64; passes trivially with outside ports off).
+    // Outside trade (D139): exports over the region's output, against
+    // England's 6-7% c. 1300 (Broadberry et al. 2015); below 1% the region is
+    // closed, above about a third an export colony. The share of market
+    // inflow (3-50% from D126) is reported.
     Check {
-        name: "outside trade",
-        target: "3-50%",
-        // Revised after failure (D110): with wool, the chief export, the
-        // 20% ceiling set for grain and imports alone no longer holds. 50%
-        // from D126: a county-sized region's outside includes the rest of
-        // England; the ceiling guards against an export colony.
-        ok: |r| r.outside_share.is_nan() || (0.03..=0.50).contains(&r.outside_share),
+        name: "exports / output",
+        target: "1-35%",
+        ok: |r| r.exports_output.is_nan() || (0.01..=0.35).contains(&r.exports_output),
     },
     // v7 gate (D88): Clark (1999) on the market grain prices.
     Check {
@@ -896,6 +901,34 @@ pub fn run_one(
         } else {
             f32::NAN
         },
+        exports_output: if params.outside_ports {
+            let st = &sim.state;
+            let l = st.money;
+            let to_coin = params.port_world_price
+                / (params.wheat_s_bu * 12.0 * params.bu_per_person).max(1e-6);
+            let grain_p = |s: &hinterlands_core::state::Settlement| {
+                if s.price[0] > 0.0 {
+                    s.price[0]
+                } else {
+                    params.port_world_price
+                }
+            };
+            let harvest: f32 = st.settlements.iter().map(|s| s.food_prod * grain_p(s)).sum();
+            let goods: f32 = st
+                .sites
+                .iter()
+                .filter_map(|x| {
+                    let i = st.index_of(x.holder)?;
+                    let p = st.settlements[i].price[1 + x.good.index()];
+                    Some(x.sold * if p > 0.0 { p } else { 1.0 })
+                })
+                .sum();
+            let wool = st.cloth_stats[0] * st.cloth_trace[8] * to_coin;
+            let exports = l.port_in + l.wool_in + l.cloth_in;
+            exports / (harvest + goods + wool + l.cloth_in).max(1e-6)
+        } else {
+            f32::NAN
+        },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
             // Wool is trade with the outside too (D108), and export cloth (D2),
@@ -1145,7 +1178,7 @@ pub fn cmd_validate(args: &Args) {
                         }
                     }
                     "road length 300-500" => r.road_change,
-                    "outside trade" => r.outside_share,
+                    "exports / output" => r.exports_output,
                     "unsold at markets" => r.waste,
                     "pasture outward" => r.pasture_cost.0 - r.pasture_cost.1,
                     "pasture on poor land" => r.pasture_yield.0 - r.pasture_yield.1,
@@ -1273,6 +1306,25 @@ pub fn cmd_validate(args: &Args) {
             "",
             ""
         );
+        // The share of market inflow, gated 3-50% from D126 to D139; reported.
+        if rs.iter().any(|r| r.outside_share.is_finite()) {
+            let mut v: Vec<f32> = rs.iter().map(|r| r.outside_share).collect();
+            v.sort_by(|a, b| a.total_cmp(b));
+            let inside = rs
+                .iter()
+                .filter(|r| (0.03..=0.50).contains(&r.outside_share))
+                .count();
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
+                "outside trade",
+                "(rep. 3-50%)",
+                canon.map_or(f32::NAN, |r| r.outside_share),
+                v.get(v.len() / 2).copied().unwrap_or(f32::NAN),
+                inside,
+                rs.len(),
+                ""
+            );
+        }
         println!(
             "{:<20} {:>12} {:>10} {:>10.1} {:>10} {:>8}",
             "largest to mouth km",

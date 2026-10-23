@@ -261,7 +261,7 @@ define_params! {
         home_lb_per_yd: f32 = 2.0, [0, 10], "Wool in a yard of home cloth, lb: between kersey (1.6) and broadcloth (3.5) (statute of 1464/65; D123)";
         cloth_d_lb: f32 = 5.7, [0, 50], "Price of export cloth, pence a lb of wool content: about 2 pounds a broadcloth of 84 lb, 1371-1450 (Munro, English customs valuations; D124)";
         cloth_cost_d_lb: f32 = 2.7, [0, 50], "Cost of making cloth, pence a lb of wool content: Munro, Ypres 1500 (wool 52% of a broadcloth's total cost) at 5.7 d a lb; Leuven 1434 would give 2.1 (D132)";
-        cloth_price_late: bool = true, [0, 1], "From 1450 the export cloth price follows Munro's all-ports customs values deflated by Clark's wheat price (D137)";
+        cloth_price_late: bool = false, [0, 1], "From 1450 the export cloth price follows Munro's all-ports customs values deflated by Clark's wheat price (D137)";
         cloth_lb_per_w: f32 = 2.5, [0, 1000], "Export cloth a mill settlement can make a year, lb of wool content per head of W; it binds, so the industry grows only as the cloth margin grows its towns (calibration of the start, D132: the largest value tried with cloth at most 0.10 of the wool leaving in 1350-59; median 0.089 on 9 runs, 2.8 gives 0.109)";
         elast_mill: f32 = 20.0, [0, 50], "Elasticity of a mill's demand for wool about its bid, so that it buys little above it (calibration; D128)";
         rho_cloth: f32 = 86.0, [0.1, 500], "Value density of cloth relative to grain: wool's 50 scaled by cloth's price over wool's (derived; D2)";
