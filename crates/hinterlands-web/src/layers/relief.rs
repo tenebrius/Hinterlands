@@ -31,6 +31,17 @@ void main() {
 }
 "#;
 
+/// Copies the cached relief to the screen pixel for pixel (R28).
+const BLIT: &str = r#"
+precision highp float;
+uniform sampler2D u_cache;
+uniform ivec2 u_origin;
+out vec4 o_color;
+void main() {
+    o_color = texelFetch(u_cache, ivec2(gl_FragCoord.xy) - u_origin, 0);
+}
+"#;
+
 const FRAG: &str = include_str!("relief.frag");
 /// The real-scale countryside (R10), spliced into `FRAG` at its marker.
 const COUNTRY: &str = include_str!("country.frag");
@@ -70,6 +81,8 @@ pub struct ReliefLayer {
     ways_year: Option<(u64, u32)>,
     /// The look they were laid out for (R12).
     ways_look: Option<[u32; 5]>,
+    /// `?redraw=1`: draw the relief every frame, bypassing the cache (R28), to time the shader.
+    redraw: Option<bool>,
 }
 
 /// The textures, by unit, and the sampler each is bound to.
@@ -104,10 +117,18 @@ struct Gpu {
     /// Data waiting to be uploaded on the next paint: texture, size, texels.
     pending: Vec<(usize, (i32, i32), Vec<f32>)>,
     failed: bool,
+    /// The rendered relief (R28): a framebuffer and its texture, the size in
+    /// pixels, and the frame it holds. It is drawn again only when the frame,
+    /// the size or the data change; otherwise it is copied to the screen.
+    blit: Option<glow::Program>,
+    fbo: Option<glow::Framebuffer>,
+    cache: Option<glow::Texture>,
+    cache_size: (i32, i32),
+    cached: Option<Frame>,
 }
 
 /// What the shader needs each frame.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 struct Frame {
     grid: [f32; 2],
     p0: [f32; 2],
@@ -290,15 +311,24 @@ impl Gpu {
         } else {
             "#version 330\n"
         };
-        let program = gl.create_program()?;
-        let mut shaders = Vec::new();
         let frag = FRAG
             .replace("// @include country.frag\n", COUNTRY)
             .replace("// @include town.frag\n", TOWN_FRAG);
-        for (kind, src) in [
-            (glow::VERTEX_SHADER, VERT),
-            (glow::FRAGMENT_SHADER, frag.as_str()),
-        ] {
+        self.program = Some(Self::compile(gl, header, &frag)?);
+        self.blit = Some(Self::compile(gl, header, BLIT)?);
+        self.vao = Some(gl.create_vertex_array()?);
+        for _ in SAMPLERS {
+            self.tex.push(gl.create_texture()?);
+        }
+        self.fbo = Some(gl.create_framebuffer()?);
+        self.cache = Some(gl.create_texture()?);
+        Ok(())
+    }
+
+    unsafe fn compile(gl: &glow::Context, header: &str, frag: &str) -> Result<glow::Program, String> {
+        let program = gl.create_program()?;
+        let mut shaders = Vec::new();
+        for (kind, src) in [(glow::VERTEX_SHADER, VERT), (glow::FRAGMENT_SHADER, frag)] {
             let s = gl.create_shader(kind)?;
             gl.shader_source(s, &format!("{header}{src}"));
             gl.compile_shader(s);
@@ -316,12 +346,7 @@ impl Gpu {
             gl.detach_shader(program, s);
             gl.delete_shader(s);
         }
-        self.program = Some(program);
-        self.vao = Some(gl.create_vertex_array()?);
-        for _ in SAMPLERS {
-            self.tex.push(gl.create_texture()?);
-        }
-        Ok(())
+        Ok(program)
     }
 
     unsafe fn upload(gl: &glow::Context, tex: glow::Texture, size: (i32, i32), data: &[f32]) {
@@ -347,7 +372,9 @@ impl Gpu {
         );
     }
 
-    fn paint(&mut self, gl: &glow::Context, f: Frame) {
+    /// Draws the relief into the cache if it is out of date (or always, with
+    /// `redraw`), then copies the cache to the viewport egui has set.
+    fn paint(&mut self, gl: &glow::Context, f: Frame, vp: egui::ViewportInPixels, redraw: bool) {
         if self.failed {
             return;
         }
@@ -360,61 +387,123 @@ impl Gpu {
                     return;
                 }
             }
-            let Some(program) = self.program else {
+            let (Some(program), Some(blit), Some(fbo), Some(cache)) =
+                (self.program, self.blit, self.fbo, self.cache)
+            else {
                 return;
             };
+            if !self.pending.is_empty() {
+                self.cached = None;
+            }
             for (k, size, data) in std::mem::take(&mut self.pending) {
                 Self::upload(gl, self.tex[k], size, &data);
             }
-            gl.use_program(Some(program));
+            let size = (vp.width_px, vp.height_px);
+            if size != self.cache_size {
+                gl.bind_texture(glow::TEXTURE_2D, Some(cache));
+                for p in [glow::TEXTURE_MIN_FILTER, glow::TEXTURE_MAG_FILTER] {
+                    gl.tex_parameter_i32(glow::TEXTURE_2D, p, glow::NEAREST as i32);
+                }
+                for p in [glow::TEXTURE_WRAP_S, glow::TEXTURE_WRAP_T] {
+                    gl.tex_parameter_i32(glow::TEXTURE_2D, p, glow::CLAMP_TO_EDGE as i32);
+                }
+                gl.tex_image_2d(
+                    glow::TEXTURE_2D,
+                    0,
+                    glow::RGBA8 as i32,
+                    size.0,
+                    size.1,
+                    0,
+                    glow::RGBA,
+                    glow::UNSIGNED_BYTE,
+                    glow::PixelUnpackData::Slice(None),
+                );
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+                gl.framebuffer_texture_2d(
+                    glow::FRAMEBUFFER,
+                    glow::COLOR_ATTACHMENT0,
+                    glow::TEXTURE_2D,
+                    Some(cache),
+                    0,
+                );
+                gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                self.cache_size = size;
+                self.cached = None;
+            }
             gl.bind_vertex_array(self.vao);
-            // Bound from the last unit down, so unit 0 is left active as egui expects.
-            for k in (0..SAMPLERS.len()).rev() {
-                gl.active_texture(glow::TEXTURE0 + k as u32);
-                gl.bind_texture(glow::TEXTURE_2D, Some(self.tex[k]));
-            }
-            let at = |name: &str| gl.get_uniform_location(program, name);
-            for (k, name) in SAMPLERS.iter().enumerate() {
-                gl.uniform_1_i32(at(name).as_ref(), k as i32);
-            }
-            gl.uniform_4_f32(
-                at("u_way_show").as_ref(),
-                f.ways[0],
-                f.ways[1],
-                f.ways[2],
-                f.ways[3],
-            );
-            gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
-            gl.uniform_1_f32(at("u_ink").as_ref(), f.ink);
-            gl.uniform_4_f32(
-                at("u_look").as_ref(),
-                f.look[0],
-                f.look[1],
-                f.look[2],
-                f.look[3],
-            );
-            gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
-            gl.uniform_1_f32(at("u_ssub").as_ref(), f.shape_sub);
-            gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
-            gl.uniform_1_f32(at("u_year").as_ref(), f.year);
-            gl.uniform_1_i32(at("u_season").as_ref(), f.season);
-            gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
-            gl.uniform_4_f32(
-                at("u_show").as_ref(),
-                f.show[0],
-                f.show[1],
-                f.show[2],
-                f.show[3],
-            );
-            gl.uniform_2_f32(at("u_grid").as_ref(), f.grid[0], f.grid[1]);
-            gl.uniform_2_f32(at("u_p0").as_ref(), f.p0[0], f.p0[1]);
-            gl.uniform_2_f32(at("u_p1").as_ref(), f.p1[0], f.p1[1]);
-            gl.uniform_1_f32(at("u_px").as_ref(), f.px);
             gl.disable(glow::BLEND);
+            if redraw || self.cached != Some(f) {
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+                gl.viewport(0, 0, size.0, size.1);
+                gl.disable(glow::SCISSOR_TEST);
+                self.draw_relief(gl, program, f);
+                gl.enable(glow::SCISSOR_TEST);
+                // egui paints to the screen's framebuffer (`intermediate_fbo` is None).
+                gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                gl.viewport(vp.left_px, vp.from_bottom_px, vp.width_px, vp.height_px);
+                self.cached = Some(f);
+            }
+            gl.use_program(Some(blit));
+            gl.active_texture(glow::TEXTURE0);
+            gl.bind_texture(glow::TEXTURE_2D, Some(cache));
+            gl.uniform_1_i32(gl.get_uniform_location(blit, "u_cache").as_ref(), 0);
+            gl.uniform_2_i32(
+                gl.get_uniform_location(blit, "u_origin").as_ref(),
+                vp.left_px,
+                vp.from_bottom_px,
+            );
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
             gl.enable(glow::BLEND);
             gl.bind_vertex_array(None);
         }
+    }
+
+    /// One full draw of the relief shader into the bound framebuffer.
+    unsafe fn draw_relief(&self, gl: &glow::Context, program: glow::Program, f: Frame) {
+        gl.use_program(Some(program));
+        // Bound from the last unit down, so unit 0 is left active as egui expects.
+        for k in (0..SAMPLERS.len()).rev() {
+            gl.active_texture(glow::TEXTURE0 + k as u32);
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.tex[k]));
+        }
+        let at = |name: &str| gl.get_uniform_location(program, name);
+        for (k, name) in SAMPLERS.iter().enumerate() {
+            gl.uniform_1_i32(at(name).as_ref(), k as i32);
+        }
+        gl.uniform_4_f32(
+            at("u_way_show").as_ref(),
+            f.ways[0],
+            f.ways[1],
+            f.ways[2],
+            f.ways[3],
+        );
+        gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
+        gl.uniform_1_f32(at("u_ink").as_ref(), f.ink);
+        gl.uniform_4_f32(
+            at("u_look").as_ref(),
+            f.look[0],
+            f.look[1],
+            f.look[2],
+            f.look[3],
+        );
+        gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
+        gl.uniform_1_f32(at("u_ssub").as_ref(), f.shape_sub);
+        gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
+        gl.uniform_1_f32(at("u_year").as_ref(), f.year);
+        gl.uniform_1_i32(at("u_season").as_ref(), f.season);
+        gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
+        gl.uniform_4_f32(
+            at("u_show").as_ref(),
+            f.show[0],
+            f.show[1],
+            f.show[2],
+            f.show[3],
+        );
+        gl.uniform_2_f32(at("u_grid").as_ref(), f.grid[0], f.grid[1]);
+        gl.uniform_2_f32(at("u_p0").as_ref(), f.p0[0], f.p0[1]);
+        gl.uniform_2_f32(at("u_p1").as_ref(), f.p1[0], f.p1[1]);
+        gl.uniform_1_f32(at("u_px").as_ref(), f.px);
+        gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
     }
 }
 
@@ -558,12 +647,18 @@ impl Layer for ReliefLayer {
             ink: v.look.ink,
         };
         let gpu = self.gpu.clone();
+        let redraw = *self
+            .redraw
+            .get_or_insert_with(|| crate::app::url_param("redraw") == Some(1));
         d.painter.add(egui::PaintCallback {
             rect,
-            callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                gpu.lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .paint(painter.gl(), frame);
+            callback: Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
+                gpu.lock().unwrap_or_else(|e| e.into_inner()).paint(
+                    painter.gl(),
+                    frame,
+                    info.viewport_in_pixels(),
+                    redraw,
+                );
             })),
         });
     }

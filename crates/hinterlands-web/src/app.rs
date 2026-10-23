@@ -395,7 +395,7 @@ fn url_params() -> Params {
     p
 }
 
-fn url_param(name: &str) -> Option<u32> {
+pub(crate) fn url_param(name: &str) -> Option<u32> {
     url_text(name)?.parse().ok()
 }
 
