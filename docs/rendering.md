@@ -670,6 +670,53 @@ The owner's review of R21:
 
 Kind: rendering.
 
+## R23 — A connected road network, streets by rank, trees off roads, the square as road, yards that fill their blocks
+
+The owner's review of R22, five points:
+- **Network:** roads float about, not connected, while some places that should have a road have none.
+- **Street widths by rank:** a wide market street, ordinary main streets, narrow lanes and alleys.
+- **Trees off roads:** roads were drawn over trees.
+- **The square:** the roads carried their dark edges into the market place, which is road itself; its border belongs on the place.
+- **Yards:** too regular. Each should have grown to fill the space, almost to the point of competing, and the stripes at their ends are not needed.
+
+- **The network** (`ways.rs`, `connectors`).
+  - **The causes:** the drawn roads are the model's roads plus the land trade's tracks, but only where a track's trade is above a tenth of a percent of the busiest (`routes::MIN_SHARE`). So:
+    - routes end in open country where their trade fades below that;
+    - quiet places have no line at all;
+    - lines laid through cell centres pass beside a place whose anchor is the next cell.
+  - **A correct network** reaches every place, runs through their centres and ends only at places. The viewer now adds lanes (drawn as quiet roads, 3 m times the road scale, so towns and villages take them for streets):
+    - **Places off the network:** a place whose centre is more than 60 m from every road and track gets a lane to the nearest point on one, within 3 km. Failing that, it gets a lane to the nearest place within 3 km.
+    - **Dead ends:** a road or track that ends more than 150 m from any place, more than 40 m from any other line and away from the map's edge is carried on to the nearest other line, within 2 km.
+    - **Their course:** each lane bends a little, is smoothed and kept off the rivers as the roads are, and is dropped if it would cross the sea.
+  - **Far out:** the map symbols are unchanged, as these lanes are drawn only close in.
+  - Example: Glenden in 1550 (`24-network-glenden-*`). Its road passed it to the south-east; now a lane runs from the road through the village, and the track from the north-west that ended in the fields runs on into it.
+- **Streets by rank** (`town.rs`).
+  - **The market street:** the main street through the market place is widened (to 8 m, or 1.6 times the road, times the road scale) for half the place's length plus 70 m (times z^0.6) either side, and plots front it at that width.
+  - **Lanes and alleys:** lanes off the main streets keep R11's width. The next generation is three-quarters of it, and alleys beyond a half to 0.55 (never under 1.5 m times the road scale). Back lanes are 70% of their generation's.
+- **Trees off roads** (`relief.frag`, `country.frag`). The nearest road is now found once per pixel, before the land is drawn (`ways_at`, shared with the road drawing). Woods, groves, lone trees, thorn and hedgerow standards fade out from 6 m to 1.5 m (times the tree scale) from a road's edge, so crowns stand back from the road instead of under it.
+- **The square as road.**
+  - **Inside:** roads lose their edges and ink inside the market place, and take its surface exactly, ruts included.
+  - **Edge:** the place's own edge is inked, broken where the roads leave it.
+  - **Water:** its corners are drawn in off the water, and the place gives way to the river and bridges.
+- **Yards.**
+  - **Growing:** after a town's plots are laid, they grow back from their fronts all together, 2 m (times the building scale) a round, up to 20 rounds, to at most 2.2 times the plot depth. Each grows until it meets another plot, a street, water or the wall. Blocks fill with plots of uneven depth instead of rows ending at one depth with grass between.
+  - **No bands:** a town plot's ground has no bands across it.
+    - **Yard:** trodden ground round its buildings and along its front, wider where the town is dense.
+    - **Garden:** a patch of its own shape away from the buildings, in beds of mottled earth and green rather than stripes.
+    - **Grass:** the rest, or an orchard of scattered trees.
+  - **Villages:** their garden beds lose their stripes too.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`24-*`):
+  - **Liningbourne, 1550:** `24-streets-upland-town-1m-storybook` and `24-streets-upland-town-1m-true`.
+  - **Asherfield, 1300:** `24-streets-city-1300-1m-storybook`.
+  - **Glenden:** `24-network-glenden-4m-before`, `24-network-glenden-4m-after` and `24-network-glenden-1m`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -706,6 +753,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R20: `21-r15-restored-upland-town-1m-storybook` and `21-r15-restored-city-1300-2m-storybook` (R15's buildings restored).
 - R21: `22-hierarchy-upland-town-1m-storybook`/`-true`, `22-hierarchy-village-1m-storybook` and `22-hierarchy-small-town-1m-storybook` (a hierarchy of buildings).
 - R22: `23-market-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `23-market-city-1300-1m-storybook` and `23-market-small-town-1m-storybook` (less infill, density falling outward, the paved market place).
+- R23: `24-streets-upland-town-1m-storybook`/`-true`, `24-streets-city-1300-1m-storybook`, and `24-network-glenden-4m-before`/`-after`/`-1m` (a connected network, streets by rank, trees off roads, the square as road, yards filling their blocks).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

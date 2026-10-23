@@ -60,6 +60,14 @@ float g_unit = 1.0;
 // Metres from the point to the nearest building of a town (R13; 1e9 when far
 // from any), set before the land is drawn so trees keep off the houses.
 float g_bnear = 1e9;
+// Metres from the point to the nearest road, track, street or path's edge
+// (R23; 1e9 when far from any), set before the land is drawn so trees keep off
+// the roads.
+float g_road_sd = 1e9;
+// How far a tree may stand here, 0 on a road .. 1 clear of it (R23).
+float road_free() {
+    return u_way_show.x > 0.5 ? smoothstep(1.5 * u_look.z, 6.0 * u_look.z, g_road_sd) : 1.0;
+}
 
 in vec2 v_uv;
 out vec4 o_color;
@@ -302,8 +310,12 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     float cop = clamp((gr.b - f - 0.08) / 0.25, 0.0, 1.0) * step(0.15, f);
     float old = smoothstep(0.6, 0.9, f) * (1.0 - cop);
     float big = 1.0 + 0.2 * old - 0.15 * cop;
+    // No trees on the roads (R23): woods, groves and lone trees stand back
+    // from them, by about a crown.
+    float rfree = road_free();
+    wood *= rfree;
     // Tree density, kept per crown from its value and gradient here.
-    float dens = wood * 0.9 + (1.0 - wood) * f * 0.035;
+    float dens = (wood * 0.9 + (1.0 - wood) * f * 0.035) * rfree;
     vec2 dgrad = vec2(dFdx(dens) / dFdx(pm.x), dFdy(dens) / dFdy(pm.y));
     vec3 woodc = green;
     // Trees are drawn in their own metres (R12): the look's tree size scales
@@ -336,7 +348,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     }
 
     // Gorse and thorn scattered on the downland, and thinly on poor open land.
-    float thorn = past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015;
+    float thorn = (past * 0.05 + (1.0 - field) * (1.0 - wood) * (1.0 - y) * 0.015) * rfree;
     if (thorn > 0.0 && fine(3.0 * ts) > 0.0) {
         float f3 = fine(3.0 * ts);
         g_unit = ts;
@@ -477,12 +489,12 @@ void ways_near(vec2 pw, float calm, out Way road, out Way river) {
 // round about is built over.
 // `msd` is the metres to a market place's edge, negative inside (R22): it is
 // paved as the streets are.
-vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, float msd) {
-    float shade = s.a;
+// The nearest road and river to map point p, after their wander: lines wander
+// either side of their smoothed course, some 20 m over most of a kilometre and
+// a few metres over a furlong, so no road runs dead straight along the grid.
+// Roads and rivers wander together, so they stay apart.
+void ways_at(vec2 p, float share, out Way road, out Way river) {
     vec2 pm = p * u_cell_m;
-    // Lines wander either side of their smoothed course, some 20 m over most of a
-    // kilometre and a few metres over a furlong, so no road runs dead straight
-    // along the grid. Roads and rivers wander together, so they stay apart.
     vec2 wander = (vec2(vnoise(pm / 700.0, 201), vnoise(pm / 700.0, 203)) - 0.5) * 40.0
         + (vec2(vnoise(pm / 160.0, 205), vnoise(pm / 160.0, 207)) - 0.5) * 8.0;
     // Within a place they keep to the lines its plan was laid along (R19),
@@ -490,9 +502,12 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, flo
     if (u_town_show.x > 0.5) {
         wander *= 1.0 - smoothstep(-80.0, 0.0, town_land(pm));
     }
-    vec2 pw = p + wander / u_cell_m;
-    Way road, river;
-    ways_near(pw, 1.0 - smoothstep(0.0, 0.08, share), road, river);
+    ways_near(p + wander / u_cell_m, 1.0 - smoothstep(0.0, 0.08, share), road, river);
+}
+
+vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, float msd, Way road, Way river) {
+    float shade = s.a;
+    vec2 pm = p * u_cell_m;
     if (min(road.sd / u_look.x, river.sd) > 40.0 && msd > 2.0) {
         return c;
     }
@@ -553,7 +568,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, flo
     // with its edge in ink as a street's is.
     if (u_way_show.x > 0.5 && msd < 2.0) {
         float md = msd / rsc;
-        float mcov = clamp(0.5 - md / mpx(), 0.0, 1.0);
+        float mcov = clamp(0.5 - md / mpx(), 0.0, 1.0) * (1.0 - rcov);
         float mbusy = road.sd < 40.0 ? road.busy : 0.0;
         vec3 soil = mix(vec3(0.68, 0.57, 0.42), vec3(0.52, 0.42, 0.30), clamp(s.b, 0.0, 1.0));
         vec3 surf = mix(soil, vec3(0.78, 0.69, 0.52), 0.45 * mbusy);
@@ -568,9 +583,12 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, flo
         vec3 street = vec3(0.64, 0.61, 0.56) * (0.9 + 0.2 * vnoise(pm / 0.6, 237) * fine(0.6));
         surf = mix(surf, street, 0.8 * smoothstep(1.2, 2.0, max(rank, 2.0)));
         c = mix(c, surf, mcov);
-        float iw = max(0.25, 1.0 * mpx());
-        c = mix(c, mix(c, INK, 0.6), band(-md, 0.0, iw) * u_ink);
     }
+    // Inside the market place the roads lose their edges (R23): the place is
+    // the road itself, and its own edge is drawn after them.
+    float in_market = clamp(0.5 - (msd / rsc) / mpx(), 0.0, 1.0) * (1.0 - rcov);
+    float roadcov = 0.0;
+    vec3 c_market = c;
 
     // Roads: a worn surface the colour of the soil, ruts, grass down the middle of
     // quiet lanes, worn verges, banks where a lane cuts into a slope, and ditches
@@ -675,11 +693,20 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, flo
             hw = mix(hw, hwb, over);
         }
         c = mix(c, surf, band(d, -hw, hw));
+        roadcov = band(d, -hw, hw);
         // A faint edge where the surface meets the grass.
-        c = mix(c, c * 0.86, band(d, hw - 0.3, hw + 0.1) * open * (1.0 - over));
+        c = mix(c, c * 0.86, band(d, hw - 0.3, hw + 0.1) * open * (1.0 - over) * (1.0 - in_market));
         // Its edges in ink, lighter than a building's.
         float iw = max(0.25, 1.0 * mpx());
-        c = mix(c, mix(c, INK, 0.6), band(d, hw - iw, hw) * u_ink);
+        c = mix(c, mix(c, INK, 0.6), band(d, hw - iw, hw) * u_ink * (1.0 - in_market));
+    }
+    // Within it the roads are the place's own surface.
+    c = mix(c, c_market, in_market);
+    // The market place's edge in ink, as a street's, broken where the roads
+    // leave it (R23).
+    if (msd < 2.0) {
+        float iw = max(0.25, 1.0 * mpx());
+        c = mix(c, mix(c, INK, 0.6), band(-msd / rsc, 0.0, iw) * u_ink * (1.0 - roadcov));
     }
     g_unit = 1.0;
     return c;
@@ -708,6 +735,16 @@ void main() {
         T = town_scan(pm);
         g_bnear = T.bnear;
     }
+    // The roads and rivers, found once, before the land so trees keep off the
+    // roads (R23).
+    bool ways_on = (u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && close_in;
+    float share = u_town_show.x > 0.5 && close_in ? built_share(pm) : 0.0;
+    Way road = Way(1e9, 0.0, 0.0, 0.0, vec2(1.0, 0.0), -1, 0.0);
+    Way river = road;
+    if (ways_on) {
+        ways_at(p, share, road, river);
+        g_road_sd = road.sd;
+    }
     vec3 land = land_color(s, p, coast);
     if (u_town_show.x > 0.5 && close_in) {
         land = town_ground(land, pm, T);
@@ -715,8 +752,8 @@ void main() {
     // Roads and rivers at true width, once a pixel is under 15 m: past the old
     // deepest zoom, where the map symbols begin to fade. Further out they are
     // a fraction of a pixel and the symbols carry them.
-    if ((u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && close_in) {
-        land = ways_color(land, p, s, T.near, T.rank, u_town_show.x > 0.5 ? built_share(pm) : 0.0, T.msd);
+    if (ways_on) {
+        land = ways_color(land, p, s, T.near, T.rank, share, T.msd, road, river);
     }
     if (u_town_show.x > 0.5) {
         if (close_in) {

@@ -322,6 +322,123 @@ fn roads(v: &ViewState, banks: &Banks, scale: f32) -> Vec<Line> {
     out
 }
 
+/// Lanes that make the network whole (R23). The model's roads and busy
+/// tracks leave quiet places off the network, pass beside places without going
+/// in, and end in open country where a route's trade falls below the drawing
+/// threshold. A place whose centre is more than a little way off every road
+/// and track gets a lane to the nearest of them (or, if none is near, to the
+/// nearest place); a road or track that ends in open country is carried on to
+/// the nearest other. Each lane bends a little, is kept off the rivers, and
+/// never crosses the sea. Drawn as quiet roads, so towns take them for streets.
+fn connectors(v: &ViewState, banks: &Banks, lines: &[Line], scale: f32) -> Vec<Line> {
+    let t = &v.terrain;
+    let g = t.grid;
+    let cell_m = g.cell_km * 1000.0;
+    let segs: Vec<(Vec2, Vec2, usize)> = lines
+        .iter()
+        .enumerate()
+        .flat_map(|(li, l)| l.pts.windows(2).map(move |w| (w[0], w[1], li)))
+        .collect();
+    let seg_dist = |p: Vec2, a: Vec2, b: Vec2| {
+        let ab = b - a;
+        let u = ((p - a).dot(ab) / ab.dot(ab).max(1e-12)).clamp(0.0, 1.0);
+        let q = a + ab * u;
+        ((p - q).length(), q)
+    };
+    // The nearest point on any line but `skip`, in cells.
+    let nearest = |p: Vec2, skip: Option<usize>| -> Option<(f32, Vec2)> {
+        segs.iter()
+            .filter(|s| Some(s.2) != skip)
+            .map(|&(a, b, _)| seg_dist(p, a, b))
+            .min_by(|x, y| x.0.total_cmp(&y.0))
+    };
+    let anchors: Vec<(u32, Vec2, f32)> = v
+        .snapshot
+        .settlements
+        .iter()
+        .map(|s| {
+            let (x, y) = g.xy(s.anchor as usize);
+            (s.id, Vec2::new(x as f32 + 0.5, y as f32 + 0.5), s.pop)
+        })
+        .collect();
+    let on_land = |a: Vec2, b: Vec2| {
+        let n = (((b - a).length() * cell_m) / 50.0).ceil().max(1.0) as usize;
+        (0..=n).all(|k| {
+            let p = a + (b - a) * (k as f32 / n as f32);
+            let (x, y) = (p.x.floor() as i32, p.y.floor() as i32);
+            g.in_bounds(x, y) && t.is_land(g.idx(x, y))
+        })
+    };
+    let mut wanted: Vec<(Vec2, Vec2, usize)> = Vec::new();
+    let reach = 3000.0 / cell_m;
+    // Places off the network.
+    for &(id, c, _) in &anchors {
+        let off = nearest(c, None);
+        if off.is_some_and(|(d, _)| d * cell_m <= 60.0) {
+            continue;
+        }
+        let target = match off {
+            Some((d, q)) if d <= reach => Some(q),
+            _ => anchors
+                .iter()
+                .filter(|o| o.0 != id)
+                .map(|o| ((o.1 - c).length(), o.1))
+                .filter(|(d, _)| *d <= reach)
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+                .map(|x| x.1),
+        };
+        if let Some(q) = target {
+            wanted.push((c, q, id as usize));
+        }
+    }
+    // Roads and tracks that end in open country.
+    for (li, l) in lines.iter().enumerate() {
+        for end in [l.pts[0], l.pts[l.pts.len() - 1]] {
+            let at_place = anchors
+                .iter()
+                .any(|a| (a.1 - end).length() * cell_m < 150.0);
+            let edge =
+                end.x < 1.0 || end.y < 1.0 || end.x > g.w as f32 - 1.0 || end.y > g.h as f32 - 1.0;
+            if at_place || edge {
+                continue;
+            }
+            match nearest(end, Some(li)) {
+                Some((d, _)) if d * cell_m < 40.0 => {}
+                Some((d, q)) if d * cell_m < 2000.0 => wanted.push((end, q, 100_000 + li)),
+                _ => {}
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for (a, b, key) in wanted {
+        if (b - a).length() * cell_m < 20.0 || !on_land(a, b) {
+            continue;
+        }
+        // A gentle bend, then smoothed and kept off the rivers.
+        let d = b - a;
+        let side = (super::countryside::hash(key, 61) & 0xffff) as f32 / 65536.0 - 0.5;
+        let mid = a + d * 0.5 + Vec2::new(-d.y, d.x) * side * 0.25;
+        let pts = vec![a, a + (mid - a) * 0.5, mid, mid + (b - mid) * 0.5, b];
+        let zero = vec![0.0; pts.len()];
+        let (pts, _) = lines::chaikin(&pts, &zero, ROUNDS, |a, _, _| a);
+        let last = pts.len() - 1;
+        let pts: Vec<Vec2> = (0..=last)
+            .map(|k| {
+                let dir = (k > 0 && k < last).then(|| (pts[k + 1] - pts[k - 1]).normalized());
+                banks.push(t, pts[k], dir)
+            })
+            .collect();
+        let n = pts.len();
+        out.push(Line {
+            kind: ROAD,
+            busy: vec![0.0; n],
+            hw: vec![0.5 * scale * ROAD_W.0; n],
+            pts,
+        });
+    }
+    out
+}
+
 /// Footpaths from each place to its fields and its nearest neighbours (the
 /// footpaths layer's walk), as lines like the roads, kept off the rivers.
 fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)], scale: f32) -> Vec<Line> {
@@ -476,6 +593,10 @@ impl Ways {
             Some(banks) => roads(v, banks, look.roads),
             None => Vec::new(),
         };
+        if let Some(banks) = &self.banks {
+            let more = connectors(v, banks, &roads, look.roads);
+            roads.extend(more);
+        }
         if let Some(banks) = &self.banks {
             let edges = super::parish::footpaths(v, &mut self.walk).to_vec();
             roads.extend(footpaths(v, banks, &edges, look.roads));

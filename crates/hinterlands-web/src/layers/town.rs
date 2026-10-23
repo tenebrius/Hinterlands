@@ -356,6 +356,21 @@ impl Space {
     fn clear(&self, s: &Shape, gap: f32) -> bool {
         self.clear_of_shapes(s) && self.off_streets(s, gap)
     }
+    /// As `clear_of_shapes`, but ignoring shape `skip` (a lot growing).
+    fn clear_except(&self, s: &Shape, skip: u32) -> bool {
+        let (lo, hi) = s.bounds();
+        for b in buckets(lo, hi) {
+            if let Some(ids) = self.shape_at.get(&b) {
+                if ids
+                    .iter()
+                    .any(|&i| i != skip && self.shapes[i as usize].overlaps(s))
+                {
+                    return false;
+                }
+            }
+        }
+        true
+    }
     fn clear_of_shapes(&self, s: &Shape) -> bool {
         let (lo, hi) = s.bounds();
         let mut seen: Vec<u32> = Vec::new();
@@ -699,9 +714,24 @@ fn lay_out(
                     e.x * f.y - e.y * f.x > 0.0
                 })
             };
-            let mut q = corner(1.0);
+            // Corners are drawn in off the water (R23).
+            let dry = |c: [Vec2; 6]| {
+                c.map(|mut v| {
+                    for _ in 0..8 {
+                        if water.land(v) && water.river_gap(v) > 3.0 * z {
+                            break;
+                        }
+                        v = p + (v - p) * 0.85;
+                    }
+                    v
+                })
+            };
+            let mut q = dry(corner(1.0));
             if !convex6(&q) {
-                q = corner(0.5);
+                q = dry(corner(0.5));
+            }
+            if !convex6(&q) {
+                q = dry(corner(0.0));
             }
             if !convex6(&q) {
                 q = corner(0.0);
@@ -731,6 +761,29 @@ fn lay_out(
                     if (b - a).length() > 6.0 * z {
                         market_sides.push(Poly::new(vec![a, b], 0.3 * z, true));
                     }
+                }
+                // The market street (R23): the main street through the market
+                // place is widened for some way either side of it.
+                let st = &streets[i];
+                let half = 0.5 * len + 70.0 * zo;
+                let (s_lo, s_hi) = ((s - half).max(0.0), (s + half).min(st.len()));
+                let wide = (4.0 * rs).max(st.hw * 1.6);
+                let mut pts: Vec<Vec2> = vec![st.at(s_lo).0];
+                pts.extend(
+                    st.pts
+                        .iter()
+                        .zip(&st.acc)
+                        .filter(|(_, a)| **a > s_lo && **a < s_hi)
+                        .map(|(p, _)| *p),
+                );
+                pts.push(st.at(s_hi).0);
+                if pts.len() >= 2 {
+                    space.add_street(&pts, wide);
+                    plan.streets.push(Street {
+                        pts: pts.clone(),
+                        hw: wide,
+                    });
+                    streets.push(Poly::new(pts, wide, true));
                 }
                 reserved.push(m);
                 if pop >= 1500.0 {
@@ -797,10 +850,13 @@ fn lay_out(
         let spacing =
             (130.0 - 60.0 * smoothstep(500.0, 8000.0, pop)) * z * if village { 1.3 } else { 1.0 };
         let reach = r_est * if few { 1.7 } else { 1.25 };
-        let hw =
+        let lane_hw =
             (1.6 + 1.0 * smoothstep(800.0, 5000.0, pop)) * rs * if village { 0.8 } else { 1.0 };
         let mut from = 0usize;
         for gen in 0..generations {
+            // Lanes off the main streets; narrower lanes off those; alleys
+            // beyond (R23), never under a metre and a half.
+            let hw = (lane_hw * [1.0, 0.75, 0.55, 0.5, 0.5, 0.5][gen.min(5)]).max(0.75 * rs);
             let upto = streets.len();
             let mut made: Vec<(usize, Vec<Vec2>, bool)> = Vec::new();
             for (i, st) in streets.iter().enumerate().take(upto).skip(from) {
@@ -963,6 +1019,12 @@ fn lay_out(
                     if pts.last() != r.last() {
                         pts.push(*r.last().unwrap());
                     }
+                    // Back lanes are narrower than the lanes (R23).
+                    let hw = if side_street {
+                        hw
+                    } else {
+                        (0.7 * hw).max(0.75 * rs)
+                    };
                     space.add_street(&pts, hw);
                     plan.streets.push(Street {
                         pts: pts.clone(),
@@ -1433,6 +1495,7 @@ fn place_plots(
         })
     };
     let mut placed = 0u32;
+    let mut lots: Vec<(Lot, usize)> = Vec::new();
     for (n, sl) in slots.iter().enumerate() {
         if placed >= households {
             break;
@@ -1527,6 +1590,7 @@ fn place_plots(
         if court {
             plot.kind = COURT;
         }
+        let plot_id = space.shapes.len();
         space.add_shape(plot);
         placed += hh;
         // The first lot of a village, by the centre on its main street, is
@@ -1564,6 +1628,66 @@ fn place_plots(
             roof,
             z,
         };
+        lots.push((lot, plot_id));
+    }
+    // A town's lots grow back into the room behind them, a step at a time
+    // all together, until each meets another lot, a street, water or the
+    // wall (R23): so they fill the blocks, as plots did when their holders
+    // took in what lay behind, rather than all stopping at one depth.
+    if town > 0.5 {
+        let step = 2.0 * z;
+        let mut growing: Vec<bool> = lots.iter().map(|(l, _)| l.hh < 3).collect();
+        for _round in 0..20 {
+            let mut any = false;
+            for (k, (lot, id)) in lots.iter_mut().enumerate() {
+                if !growing[k] || lot.depth + step > 2.2 * depth0 {
+                    growing[k] = false;
+                    continue;
+                }
+                let into = lot.nrm;
+                let cand = Shape {
+                    c: lot.plot.c + into * (0.5 * step),
+                    h: Vec2::new(lot.plot.h.x, lot.plot.h.y + 0.5 * step),
+                    ..lot.plot
+                };
+                // Only the new strip at the back needs testing.
+                let strip = Shape {
+                    c: lot.plot.c + into * (lot.plot.h.y + 0.5 * step),
+                    h: Vec2::new(lot.plot.h.x, 0.5 * step),
+                    ..lot.plot
+                };
+                let probes = strip.probes();
+                let ok = probes
+                    .iter()
+                    .all(|&q| water.land(q) && water.river_gap(q) > 2.0)
+                    && (wall.is_none()
+                        || probes.iter().all(|&q| {
+                            inside_wall(q) == inside_wall(lot.front_edge) && !near_wall(q)
+                        }))
+                    && space.clear_except(&strip, *id as u32)
+                    && space.off_streets(&strip, 0.5 * z);
+                if ok {
+                    space.shapes[*id] = cand;
+                    let (lo, hi) = cand.bounds();
+                    for b in buckets(lo, hi) {
+                        let ids = space.shape_at.entry(b).or_default();
+                        if !ids.contains(&(*id as u32)) {
+                            ids.push(*id as u32);
+                        }
+                    }
+                    lot.plot = cand;
+                    lot.depth += step;
+                    any = true;
+                } else {
+                    growing[k] = false;
+                }
+            }
+            if !any {
+                break;
+            }
+        }
+    }
+    for (lot, _) in lots {
         let mut built: Vec<Shape> = Vec::new();
         lot.build(&mut built);
         space.shapes.extend(built);

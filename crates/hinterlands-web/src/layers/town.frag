@@ -198,16 +198,12 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         // crop in strips of its own.
         // In a town's core the yards run most of the way back (R13).
         float yard_end = mix(mix(11.0, 13.0, town) + 3.0 * fract(style * 13.0), depth * 0.85, dense * town);
-        float garden_end = yard_end + mix(8.0, 18.0, town) * (0.6 + 0.8 * fract(style * 7.0));
         vec3 yardc = mix(earth, grass, 0.5 + 0.3 * vnoise(pm / 3.0, 705) * soft(3.0));
+        // Garden beds: patches of earth and green, not stripes (R23).
         vec3 beds = mix(vec3(0.46, 0.41, 0.31), vec3(0.40, 0.55, 0.27),
-            0.5 + 0.5 * sign(sin(l.x / 0.7 + style * 40.0)) * fine(1.4));
+            smoothstep(0.35, 0.65, vnoise(pm / 1.6, 763)) * soft(1.6) + 0.5 * (1.0 - soft(1.6)));
         if (u_field_season == 3) {
             beds = vec3(0.46, 0.41, 0.32);
-        }
-        vec3 back = grass;
-        if (style < 0.3 && T.gx < 1.5) {
-            back = crop_color(int(style * 10.0) % 3) * (0.93 + 0.08 * step(0.5, fract(l.x / 3.0)) * fine(3.0));
         }
         if (town < 0.5) {
             // A village lot (R13), after hand-drawn village maps: no fence round
@@ -229,12 +225,24 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
             g_unit = 1.0;
             return mix(c, g, T.gcov);
         }
-        g = y < yard_end ? yardc : y < garden_end ? beds : back;
-        // Fruit trees in the orchards, on a rough grid down the back of the plot.
-        if (style > 0.3 && style < 0.62 && y > garden_end + 3.0 && fine(2.0) > 0.0) {
-            vec2 q = vec2(l.x / 7.0, (y - garden_end) / 7.5);
+        // A town lot (R23): no bands across it. Trodden ground round its
+        // buildings and along its front, wider where the town is dense; a
+        // patch of garden of its own shape away from the buildings; grass
+        // (or an orchard) elsewhere.
+        float wob = (vnoise(pm / 5.0, 761) - 0.5) * 4.0 + (vnoise(pm / 1.7, 762) - 0.5) * 1.5;
+        float bn = T.bnear / u_look.w;
+        float yard = max(1.0 - smoothstep(-1.0, 1.0, bn - 3.0 - 6.0 * dense - wob),
+                         1.0 - smoothstep(1.0, 2.5, y));
+        float gpatch = smoothstep(0.52, 0.6, vnoise(pm / (5.0 + 4.0 * fract(style * 9.0)), 764) + 0.15 * (style - 0.5))
+            * smoothstep(2.0, 4.0, bn);
+        g = mix(grass, beds, gpatch);
+        g = mix(g, yardc, yard);
+        // Fruit trees in the orchards, scattered down the plot away from the
+        // buildings.
+        if (style > 0.3 && style < 0.62 && bn > 5.0 && fine(2.0) > 0.0) {
+            vec2 q = vec2(l.x / 7.0, y / 7.5);
             ivec2 b = ivec2(floor(q));
-            vec2 o = vec2(0.5) + (vec2(hash(b, 707), hash(b, 708)) - 0.5) * 0.4;
+            vec2 o = vec2(0.5) + (vec2(hash(b, 707), hash(b, 708)) - 0.5) * 0.7;
             vec2 dd = (q - vec2(b) - o) * vec2(7.0, 7.5);
             float r = 2.0 + 0.8 * hash(b, 709);
             if (abs(l.x) < h.x - 1.5 && depth - y > 2.0) {

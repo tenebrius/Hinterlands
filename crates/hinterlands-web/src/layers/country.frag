@@ -707,7 +707,8 @@ vec3 hedge(vec3 c, vec2 pm, Parcels Q, float age, float mosaic) {
         c *= 1.0 - 0.3 * band(sd, -r, r) * fine(r) * mosaic * (1.0 - band(dd, -r, r));
         float z = sqrt(max(r * r - dd * dd, 0.0)) / r;
         float lit = 0.6 + 0.5 * z;
-        float cover = band(dd, -r, r) * (u_field_season == 3 ? 0.7 : 1.0);
+        // None on a road (R23).
+        float cover = band(dd, -r, r) * (u_field_season == 3 ? 0.7 : 1.0) * road_free();
         c = mix(c, lc * lit * (0.86 + 0.28 * vnoise(pm / 1.3, 509) * fine(1.3)), cover * mosaic);
     }
     return c;
