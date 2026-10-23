@@ -5,9 +5,8 @@
 // the ground they make (yards, gardens, crofts, cobbles), their shadows, and
 // the roofs over them. The streets are drawn as roads between the two.
 
-// Four texels per shape: (centre x, y, half length, half width) in metres,
-// then (angle, kind, tone, extra + 4 x height in metres), then for a house of
-// four free corners (R16) its corners from the centre, two to a texel.
+// Two texels per shape: (centre x, y, half length, half width) in metres, then
+// (angle, kind, tone, extra + 4 x height in metres).
 uniform sampler2D u_shapes;
 // Shape numbers, four to a texel.
 uniform sampler2D u_sidx;
@@ -21,49 +20,6 @@ const int K_CHURCHYARD = 3;
 const int K_PRECINCT = 4;
 const int K_DITCH = 5;
 const int K_COURT = 6;
-const int K_YARD = 7;
-const int K_CORE = 8;
-// A garden in a block-built core, and a house's roof there (R19).
-const int K_CORE_GARDEN = 9;
-const int K_CORE_ROOF = 20;
-
-// The block-built cores (R19): per cell, (metres in from its lot's edge,
-// below 0 off any lot; the lot's id, 0 for none; 1000 x kind + height, kind
-// 1 house, 2 yard, 3 garden; roof material + 0.9 x tone).
-uniform sampler2D u_core;
-
-vec4 core_texel(int base, int side, ivec2 c) {
-    c = clamp(c, ivec2(0), ivec2(side - 1));
-    return way_texel(u_core, base + c.y * side + c.x);
-}
-
-// A point in a core: the lot it falls in (its texel) and the distance in from
-// that lot's edge, interpolated between cells (a neighbour of another lot
-// counts as outside, so edges fall between lots), with its gradient.
-struct CoreAt {
-    vec4 lot;
-    float d;
-    vec2 grad;
-};
-
-CoreAt core_at(vec2 pm, vec4 info, int base) {
-    vec2 g = (pm - info.xy) / info.z - 0.5;
-    int side = int(info.w + 0.5);
-    ivec2 b = ivec2(floor(g));
-    vec2 f = g - vec2(b);
-    vec4 t00 = core_texel(base, side, b);
-    vec4 t10 = core_texel(base, side, b + ivec2(1, 0));
-    vec4 t01 = core_texel(base, side, b + ivec2(0, 1));
-    vec4 t11 = core_texel(base, side, b + ivec2(1, 1));
-    vec4 lot = f.x < 0.5 ? (f.y < 0.5 ? t00 : t01) : (f.y < 0.5 ? t10 : t11);
-    float v00 = t00.y == lot.y ? t00.x : -abs(t00.x);
-    float v10 = t10.y == lot.y ? t10.x : -abs(t10.x);
-    float v01 = t01.y == lot.y ? t01.x : -abs(t01.x);
-    float v11 = t11.y == lot.y ? t11.x : -abs(t11.x);
-    float d = mix(mix(v00, v10, f.x), mix(v01, v11, f.x), f.y);
-    vec2 grad = vec2(mix(v10 - v00, v11 - v01, f.y), mix(v01 - v00, v11 - v10, f.x)) / info.z;
-    return CoreAt(lot, d, grad);
-}
 const int K_HOUSE = 10;
 const int K_BARN = 11;
 const int K_CHURCH = 12;
@@ -73,45 +29,6 @@ const int K_WALL_TOWER = 15;
 const int K_GATE = 16;
 const int K_HALL = 17;
 const int K_CLOISTER = 18;
-const int K_QHOUSE = 19;
-
-// A four-cornered outline (corners q, convex, either winding) at offset d
-// from its centre: signed distance (negative inside, the largest distance
-// outside any edge's line), the nearest edge's outward normal and the
-// position along it, and the distance inside to the second nearest edge.
-struct Quad {
-    float sd;
-    vec2 n;
-    float along;
-    float e2;
-};
-
-Quad quad_at(vec2 d, vec2 q[4]) {
-    vec2 mid = (q[0] + q[1] + q[2] + q[3]) * 0.25;
-    Quad Q = Quad(-1e9, vec2(1.0, 0.0), 0.0, 1e9);
-    float best = 1e9;
-    for (int k = 0; k < 4; k++) {
-        vec2 a = q[k];
-        vec2 b = q[(k + 1) & 3];
-        vec2 t = (b - a) / max(length(b - a), 1e-3);
-        vec2 n = vec2(t.y, -t.x);
-        if (dot(n, a - mid) < 0.0) {
-            n = -n;
-        }
-        float e = dot(d - a, n);
-        Q.sd = max(Q.sd, e);
-        float inside = -e;
-        if (inside < best) {
-            Q.e2 = best;
-            best = inside;
-            Q.n = n;
-            Q.along = dot(d - a, t);
-        } else {
-            Q.e2 = min(Q.e2, inside);
-        }
-    }
-    return Q;
-}
 
 struct Town {
     // The ground shape at the point (-1 for none): local position (x along
@@ -162,8 +79,8 @@ Town town_scan(vec2 pm) {
         }
         int j = start + k;
         int id = int(way_texel(u_sidx, j >> 2)[j & 3]);
-        vec4 a = way_texel(u_shapes, 4 * id);
-        vec4 b = way_texel(u_shapes, 4 * id + 1);
+        vec4 a = way_texel(u_shapes, 2 * id);
+        vec4 b = way_texel(u_shapes, 2 * id + 1);
         float ca = cos(b.x);
         float sa = sin(b.x);
         vec2 d = pm - a.xy;
@@ -171,77 +88,9 @@ Town town_scan(vec2 pm) {
         int kind = int(b.y + 0.5);
         float height = floor(b.w / 4.0 + 0.01);
         float extra = b.w - 4.0 * height;
-        if (kind == K_CORE) {
-            // A block-built core (R19): inside its square, the raster.
-            float sdc = length(d) - a.z;
-            if (sdc < nearest) {
-                nearest = sdc;
-                T.rank = extra;
-            }
-            if (sdc > 0.0) {
-                continue;
-            }
-            vec4 info = way_texel(u_shapes, 4 * id + 2);
-            int base = int(way_texel(u_shapes, 4 * id + 3).x + 0.5);
-            CoreAt C = core_at(pm, info, base);
-            if (C.lot.y <= 0.0) {
-                continue;
-            }
-            float lk = floor(C.lot.z / 1000.0);
-            float lh = C.lot.z - 1000.0 * lk;
-            float z = u_look.w;
-            // Ground: the lot's yard or garden, and under a house's eaves.
-            float gcov = clamp(0.5 + C.d / m, 0.0, 1.0);
-            if (gcov > T.gcov) {
-                T.gk = lk > 2.5 ? K_CORE_GARDEN : K_YARD;
-                T.gl = vec2(0.0, C.d);
-                T.gh = vec2(1e3);
-                T.gt = fract(C.lot.w) / 0.9;
-                T.gx = extra;
-                T.gcov = gcov;
-            }
-            if (lk < 1.5) {
-                // A house to its lot's edges, less a hair for the party wall.
-                float e = C.d - 0.3 * z;
-                float cov = clamp(0.5 + e / m, 0.0, 1.0);
-                T.bnear = min(T.bnear, -e);
-                if (cov > 0.0 && lh > T.btop) {
-                    T.bk = K_CORE_ROOF;
-                    T.bl = vec2(0.0, e);
-                    T.bh = vec2(length(C.grad), 0.0);
-                    T.bt = fract(C.lot.w) / 0.9;
-                    T.bx = floor(C.lot.w);
-                    T.bcov = cov;
-                    T.btop = lh;
-                    T.bang = atan(-C.grad.y, -C.grad.x);
-                }
-                // Its shadow, away from the light: the house a little way
-                // towards the sun casts onto this point.
-            }
-            CoreAt S = core_at(pm + SUN * height * 0.45, info, base);
-            if (S.lot.y > 0.0 && floor(S.lot.z / 1000.0) < 1.5 && S.d > 0.3 * z) {
-                float own = lk < 1.5 && C.d > 0.3 * z ? 1.0 : 0.0;
-                T.shadow = max(T.shadow, clamp(0.5 + (S.d - 0.3 * z) / m, 0.0, 1.0) * (1.0 - own));
-            }
-            continue;
-        }
         bool round = kind == K_GREEN || kind == K_WALL_TOWER || kind == K_MARKET;
         float sd;
-        bool quad = kind == K_QHOUSE || kind == K_YARD;
-        vec2 qc[4];
-        Quad Q;
-        if (quad) {
-            vec4 q01 = way_texel(u_shapes, 4 * id + 2);
-            vec4 q23 = way_texel(u_shapes, 4 * id + 3);
-            qc[0] = q01.xy;
-            qc[1] = q01.zw;
-            qc[2] = q23.xy;
-            qc[3] = q23.zw;
-            Q = quad_at(d, qc);
-            // Bounded by the circle round its corners, whatever the data.
-            float rr = max(max(length(qc[0]), length(qc[1])), max(length(qc[2]), length(qc[3])));
-            sd = max(Q.sd, length(d) - rr);
-        } else if (round) {
+        if (round) {
             sd = (length(l / a.zw) - 1.0) * min(a.z, a.w);
         } else {
             vec2 q = abs(l) - a.zw;
@@ -257,7 +106,7 @@ Town town_scan(vec2 pm) {
             }
             if (cov > T.gcov) {
                 T.gk = kind;
-                T.gl = quad ? vec2(Q.along, -Q.sd) : l;
+                T.gl = l;
                 T.gh = a.zw;
                 T.gt = b.z;
                 T.gx = extra;
@@ -267,36 +116,22 @@ Town town_scan(vec2 pm) {
             if (kind != K_WALL) {
                 T.bnear = min(T.bnear, sd);
             }
-            // A block-built core's houses are town ground for its streets
-            // (paving, quays) as plots are (R19).
-            if (quad && sd < nearest) {
-                nearest = sd;
-                T.rank = max(T.rank, 2.0);
-            }
             if (cov > 0.0 && height > T.btop) {
                 T.bk = kind;
                 T.bl = l;
                 T.bh = a.zw;
-                if (quad) {
-                    // Along the nearest eave, and in from it; the ridge where
-                    // the two nearest slopes meet; the slope's direction.
-                    T.bl = vec2(Q.along, -Q.sd);
-                    T.bh = vec2(Q.e2 + Q.sd, 0.0);
-                }
                 T.bt = b.z;
                 T.bx = extra;
                 T.bcov = cov;
                 T.btop = height;
-                T.bang = quad ? atan(Q.n.y, Q.n.x) : b.x;
+                T.bang = b.x;
             }
             // In shadow if the building stands between the point and the light
             // (the sun 45 degrees up, shadows shortened a little).
             vec2 ds = d + SUN * height * 0.6;
             vec2 ls = vec2(ds.x * ca + ds.y * sa, -ds.x * sa + ds.y * ca);
             float ss;
-            if (quad) {
-                ss = quad_at(ds, qc).sd;
-            } else if (round) {
+            if (round) {
                 ss = (length(ls / a.zw) - 1.0) * min(a.z, a.w);
             } else {
                 vec2 q = abs(ls) - a.zw;
@@ -399,18 +234,6 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         // wall round it.
         g = mix(earth, vec3(0.60, 0.57, 0.51), 0.4) * (0.9 + 0.2 * vnoise(pm / 0.9, 751) * soft(0.9));
         g = mix(g, vec3(0.42, 0.38, 0.32), band(edge, -1.0, 0.4) * fine(0.8));
-    } else if (T.gk == K_CORE_GARDEN) {
-        // A garden in a block-built core: beds and grass, fenced.
-        float k = fract(T.gt * 7.0);
-        vec3 bedc = u_field_season == 3 ? vec3(0.46, 0.41, 0.32) : vec3(0.40, 0.54, 0.27);
-        g = k < 0.5 ? mix(vec3(0.47, 0.42, 0.32), bedc, 0.5 + 0.5 * sign(sin(pm.x / 0.8 + T.gt * 30.0)) * fine(1.6)) : grass;
-        g = mix(g, vec3(0.42, 0.36, 0.28), band(l.y, -1.0, 0.3) * fine(0.6));
-    } else if (T.gk == K_YARD) {
-        // A yard in a block-built core (R19): trodden earth and setts, its
-        // edge a wall line between the lots.
-        g = mix(earth, vec3(0.62, 0.58, 0.51), 0.45 + 0.2 * vnoise(pm / 2.5, 771) * soft(2.5));
-        g *= 0.92 + 0.12 * vnoise(pm / 0.8, 772) * soft(0.8);
-        g = mix(g, vec3(0.42, 0.38, 0.32), band(l.y, -1.0, 0.3) * fine(0.6));
     } else if (T.gk == K_MARKET) {
         g = vec3(0.64, 0.60, 0.53) * (0.9 + 0.18 * vnoise(pm / 0.7, 703) * soft(0.7));
         g = mix(g, vec3(0.50, 0.46, 0.40), (1.0 - smoothstep(0.0, 6.0, edge)) * 0.25);
@@ -513,43 +336,6 @@ vec3 town_buildings(vec3 c, Town T) {
         return c;
     }
     float z = u_look.w;
-    if (T.bk == K_CORE_ROOF) {
-        // A house of a block-built core (R19): a roof over its lot of any
-        // shape, each slope falling to the nearest edge, so it is hipped; the
-        // ridges where the slopes meet.
-        g_unit = z;
-        float e1 = T.bl.y / z;
-        vec2 n = vec2(cos(T.bang), sin(T.bang));
-        vec3 r = roof_color(T.bx, T.bt, vec2(0.0, e1), vec2(1e3, 1.0));
-        r *= 0.88 + 0.22 * dot(n, SUN);
-        r = mix(r, r * 0.8, (1.0 - smoothstep(0.35, 0.8, T.bh.x)) * fine(0.5));
-        r = mix(r, r * 0.7, band(e1, -1.0, 0.25) * fine(0.5));
-        r = mix(r, INK, band(e1, -1.0, max(0.25, 1.3 * mpx())) * u_ink);
-        if (u_season == 3) {
-            r = mix(r, vec3(0.93, 0.94, 0.96), 0.55);
-        }
-        g_unit = 1.0;
-        return mix(c, r, T.bcov);
-    }
-    if (T.bk == K_QHOUSE) {
-        // A hipped roof over four free corners (R16): each slope falls to its
-        // nearest eave, so the tiles or thatch run along the eaves; ridges and
-        // hips where two slopes meet.
-        g_unit = z;
-        float e1 = T.bl.y / z;
-        float ridge = T.bh.x / z;
-        vec2 n = vec2(cos(T.bang), sin(T.bang));
-        vec3 r = roof_color(T.bx, T.bt, vec2(T.bl.x / z, e1), vec2(1e3, 1.0));
-        r *= 0.88 + 0.22 * dot(n, SUN);
-        r = mix(r, r * 0.8, band(ridge, -0.25, 0.25) * fine(0.5));
-        r = mix(r, r * 0.7, band(e1, -1.0, 0.25) * fine(0.5));
-        r = mix(r, INK, band(e1, -1.0, max(0.25, 1.3 * mpx())) * u_ink);
-        if (u_season == 3) {
-            r = mix(r, vec3(0.93, 0.94, 0.96), 0.55);
-        }
-        g_unit = 1.0;
-        return mix(c, r, T.bcov);
-    }
     vec2 l = T.bl / z;
     vec2 h = T.bh / z;
     // Round towers measure their edge round, for the eaves and the ink.

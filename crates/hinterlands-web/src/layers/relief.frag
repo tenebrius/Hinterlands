@@ -286,7 +286,7 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         float inside = smoothstep(-25.0, 5.0, town_land(pm));
         if (inside > 0.0) {
             float clump = smoothstep(0.5, 0.72, mottle(pm / (70.0 * u_look.z), 771));
-            // None in a built-up core (R19), where the ground is yards.
+            // None where the ground is densely built over (R19).
             float grove = (0.07 + 0.5 * clump) * inside
                 * smoothstep(3.0, 9.0, g_bnear / u_look.w)
                 * (1.0 - smoothstep(0.3, 0.55, built_share(pm)));

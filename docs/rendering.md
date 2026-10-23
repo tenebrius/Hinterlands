@@ -585,6 +585,28 @@ The owner's note on R17: the infill outlines should not have too sharp angles.
 
 Kind: rendering.
 
+## R20 — Back to R15's buildings and layout
+
+The owner's decision: the buildings and layouts of R16–R19 are set aside, and R15's are restored. That means:
+- R16's free outlines, R17's longer outlines and R18's square corners;
+- the block-built cores of R19 (a raster cut into lots after Watabou's TownGeneratorOS, drawn from a texture), which looked like stacked bricks.
+
+R15's infill of rectangular buildings in town cores, as recorded there, is back.
+
+- **What returns:** `town.rs` and `town.frag` are as at R15 (commit `1a1c285`), including the Map style building scale and R14's ink.
+- **What is kept from after R15** (fixes that do not concern the shape, position or number of buildings):
+  - **Roads in town:** roads and rivers no longer wander off the lines the plan was laid along within a place's edge, easing back over it (`relief.frag`). Before, a road could run up to 20 m off the line its plots front, over their corners.
+  - **Trees:** the groves among a place's houses keep out of ground more than about half built over.
+  - The rest of R12–R15 (map style, layout, ink, dense cores) stands as recorded. R16–R19 stay in the record and in the history (commits `43d2c3c` to `83f8874`), but are no longer in the code.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots:** `21-r15-restored-upland-town-1m-storybook` (Liningbourne) and `21-r15-restored-city-1300-2m-storybook` (walled Asherfield).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -618,6 +640,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R16: `18-organic-city-1300-1m-storybook`, `18-organic-upland-town-1m-storybook`/`-true` and `18-organic-port-1m-storybook` (infill of free outline).
 - R17: `19-longer-city-1300-1m-storybook` and `19-longer-upland-town-1m-storybook` (infill held to longer outlines).
 - R18: `20-square-city-1300-1m-storybook` and `20-square-upland-town-1m-storybook` (no sharp corners on infill).
+- R20: `21-r15-restored-upland-town-1m-storybook` and `21-r15-restored-city-1300-2m-storybook` (R15's buildings restored).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

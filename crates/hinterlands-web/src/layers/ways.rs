@@ -515,7 +515,7 @@ impl Ways {
             });
         }
         let all: Vec<&Line> = self.rivers.iter().chain(roads.iter()).collect();
-        let shapes = super::town::layout(&v.terrain, &plan, look.buildings);
+        let shapes = super::town::layout(&v.terrain, &plan.shapes, look.buildings);
         (layout(&v.terrain, &all, look.roads), shapes, plan)
     }
 }
