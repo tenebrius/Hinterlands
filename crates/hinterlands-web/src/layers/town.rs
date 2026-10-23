@@ -27,6 +27,9 @@ pub const DITCH: f32 = 5.0;
 /// A plot built over as a court: tenements at the front, a row of cottages
 /// down one side, an alley beside them.
 pub const COURT: f32 = 6.0;
+/// A block-built core (R19): its lots, yards and gardens are a raster (`Core`,
+/// numbered by `tone`), drawn from the shape's square.
+pub const CORE: f32 = 8.0;
 pub const BUILDING: f32 = 10.0;
 pub const HOUSE: f32 = 10.0;
 pub const BARN: f32 = 11.0;
@@ -121,7 +124,7 @@ fn boundary(centre: Vec2, shapes: &[Shape], z: f32) -> [f32; BOUND] {
     let mut r = [0.0f32; BOUND];
     for s in shapes
         .iter()
-        .filter(|s| s.kind < BUILDING && s.kind != DITCH)
+        .filter(|s| (s.kind < BUILDING && s.kind != DITCH) || s.kind == QHOUSE)
     {
         for c in s.corners().into_iter().chain(std::iter::once(s.c)) {
             let d = c - centre;
@@ -144,6 +147,8 @@ pub struct Plan {
     pub shapes: Vec<Shape>,
     pub streets: Vec<Street>,
     pub places: Vec<Place>,
+    /// The block-built cores of towns (R19).
+    pub cores: Vec<Core>,
 }
 
 /// What the planner needs to know about water: metres a point keeps from any
@@ -992,7 +997,73 @@ fn lay_out(
 
     // Plots, from the centre outward along every street.
     let first_shape = space.shapes.len();
-    let wall = if walled {
+    // The core of a town as blocks cut into lots (R19); the plots along the
+    // streets take the rest of the houses, beyond it.
+    let mut core_houses = 0u32;
+    let mut core_r = 0.0f32;
+    let mut core_cells: Vec<Shape> = Vec::new();
+    if pop >= 500.0 {
+        // Room for most of the households, at about 125 m² of block and
+        // street to a house (times the look's building scale to the 1.5).
+        let share = 0.5 + 0.35 * smoothstep(500.0, 1500.0, pop);
+        let max_houses = (households as f32 * share) as u32;
+        core_r = (max_houses as f32 * 125.0 * z.powf(1.5) / std::f32::consts::PI)
+            .sqrt()
+            .min(r_est);
+        let (core, houses) = block_core(
+            seed,
+            pop,
+            upland,
+            centre,
+            core_r,
+            z,
+            max_houses,
+            &streets,
+            water,
+            space,
+            start_shapes,
+        );
+        core_houses = houses;
+        // Its lots' cells, for a wall round them.
+        if walled {
+            core_cells = core
+                .texels
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t[1] > 0.0)
+                .map(|(i, _)| Shape {
+                    c: core.origin
+                        + Vec2::new((i % core.side) as f32 + 0.5, (i / core.side) as f32 + 0.5)
+                            * core.cell,
+                    h: Vec2::ZERO,
+                    angle: 0.0,
+                    kind: PLOT,
+                    tone: 0.0,
+                    extra: 0.0,
+                    height: 0.0,
+                    q: None,
+                })
+                .collect();
+        }
+        // Its square, for the index; not an obstacle (the plots keep out of
+        // the core by distance).
+        space.shapes.push(Shape {
+            c: centre,
+            h: Vec2::splat(core_r),
+            angle: 0.0,
+            kind: CORE,
+            tone: plan.cores.len() as f32,
+            extra: rank as u8 as f32,
+            height: 12.0 * z,
+            q: None,
+        });
+        plan.cores.push(core);
+    }
+    let wall = if walled && !core_cells.is_empty() {
+        // A walled city's wall goes round its block-built core (R19), with
+        // suburbs along the roads beyond.
+        Some(wall_line(centre, &core_cells, z))
+    } else if walled {
         // A first layout finds the core; the wall goes round about half the
         // houses, then the plots are laid again clear of it.
         let mark = space.shapes.len();
@@ -1005,6 +1076,7 @@ fn lay_out(
             households,
             centre,
             reach_max,
+            0.0,
             z,
             &streets,
             water,
@@ -1033,39 +1105,26 @@ fn lay_out(
     } else {
         None
     };
-    let placed = place_plots(
-        seed,
-        pop,
-        rank,
-        upland,
-        upland && poor,
-        households,
-        centre,
-        reach_max,
-        z,
-        &streets,
-        water,
-        space,
-        wall.as_deref(),
-    );
-    // The core of a town packed with buildings behind its fronts (R15).
-    if pop >= 500.0 {
-        infill(
+    let placed = core_houses
+        + place_plots(
             seed,
             pop,
+            rank,
             upland,
+            upland && poor,
+            households - core_houses.min(households),
             centre,
-            r_est,
+            reach_max,
+            core_r,
             z,
+            &streets,
             water,
             space,
-            start_shapes,
             wall.as_deref(),
         );
-    }
     let mut reach = 0.0f32;
     for s in &space.shapes[first_shape..] {
-        if s.kind == PLOT || s.kind == COURT {
+        if s.kind == PLOT || s.kind == COURT || s.kind == CORE {
             reach = reach.max((s.c - centre).length() + s.h.x.max(s.h.y));
         }
     }
@@ -1317,6 +1376,7 @@ fn place_plots(
     households: u32,
     centre: Vec2,
     reach_max: f32,
+    skip_r: f32,
     z: f32,
     streets: &[Poly],
     water: &dyn Water,
@@ -1352,7 +1412,12 @@ fn place_plots(
                 if mid < 0.0 || mid > st.len() {
                     break;
                 }
+                // Within the block-built core (R19) there are no plots.
+                let in_core = (st.at(mid).0 - centre).length() < skip_r;
                 for side in [1.0f32, -1.0] {
+                    if in_core {
+                        continue;
+                    }
                     let pri = (st.at(mid).0 - centre).length()
                         + if st.main { 0.0 } else { 10.0 * z }
                         + 15.0 * z * h01(seed + i * 7 + n as usize * 3 + (side > 0.0) as usize, 53);
@@ -1426,6 +1491,10 @@ fn place_plots(
                 .iter()
                 .all(|&q| water.land(q) && water.river_gap(q) > 2.0)
             {
+                continue;
+            }
+            // None reaches into a block-built core (R19).
+            if skip_r > 0.0 && probes.iter().any(|&q| (q - centre).length() < skip_r) {
                 continue;
             }
             if wall.is_some() {
@@ -1774,382 +1843,353 @@ impl Lot {
     }
 }
 
-/// Packs the core of a town with buildings behind its street fronts (R15), as
-/// the cores of hand-drawn town maps are: from the centre outward, wherever a
-/// building fits clear of the streets, the other buildings, the open places
-/// (market, greens, churchyards, courts), the water and the wall. Each is
-/// turned to the nearest street, and many stand with no frontage of their own,
-/// reached through the yards. They may cover the back of a lot, not its front.
-/// The packing thins out away from the centre and grows with the town.
+/// A block-built core as a raster (R19): per cell, row-major from `origin`,
+/// (metres in from its lot's edge, or less than 0 off any lot; the lot's id,
+/// 0 for none; 1000 x kind + height in metres, kind 1 house, 2 yard,
+/// 3 garden; roof material + 0.9 x tone).
+pub struct Core {
+    pub origin: Vec2,
+    pub cell: f32,
+    pub side: usize,
+    pub texels: Vec<[f32; 4]>,
+}
+
+const LOT_HOUSE: f32 = 1.0;
+const LOT_YARD: f32 = 2.0;
+const LOT_GARDEN: f32 = 3.0;
+
+/// The core of a town or city laid out as blocks (R19), after the hand-drawn
+/// town maps the owner and the reviewer pointed to. The ground between the
+/// streets is found on a fine raster of the core (streets, water, the wall and
+/// the place's open places and great buildings stamped in); each connected
+/// piece is a block; each block is cut again and again, in the frame of its
+/// nearest street (across where it is long for a lot's frontage, along where
+/// it is deep, a little askew), into lots of varied size, so every lot is a
+/// slice of its block and its walls follow the cuts and the streets. In the
+/// core each lot is a house built to its edges, sharing walls with its
+/// neighbours, so a block reads as one mass with a ragged outline; towards
+/// the edge of the core some lots are yards and gardens. The raster, with
+/// each cell's distance in from its lot's edge, is drawn by the shader, so a
+/// lot of any shape has a hipped roof falling to its edges. Returns the core
+/// and how many houses it holds (a large lot counts as two), at most
+/// `max_houses`.
 #[allow(clippy::too_many_arguments)]
-fn infill(
+fn block_core(
     seed: usize,
     pop: f32,
     upland: bool,
     centre: Vec2,
-    r_est: f32,
+    r_core: f32,
     z: f32,
+    max_houses: u32,
+    streets: &[Poly],
     water: &dyn Water,
-    space: &mut Space,
+    space: &Space,
     start: usize,
-    wall: Option<&[Vec2]>,
-) {
-    let amount = smoothstep(300.0, 2500.0, pop);
-    let core_r = r_est * (0.55 + 0.35 * amount);
-    // What a new building must keep clear of: every building and open place
-    // of this place (its lots' ground excepted), indexed by bucket.
-    let mut block: Vec<Shape> = space.shapes[start..]
-        .iter()
-        .filter(|s| s.kind != PLOT)
-        .copied()
+) -> (Core, u32) {
+    // Cells of under a metre at true scale, fewer than 600 a side.
+    let cell = (0.8 * z.powf(0.75)).max(2.0 * r_core / 600.0);
+    let n = (r_core / cell).ceil() as i32;
+    let side = (2 * n + 1) as usize;
+    let origin = centre - Vec2::splat((n as f32 + 0.5) * cell);
+    let at = |i: usize| origin + Vec2::new((i % side) as f32 + 0.5, (i / side) as f32 + 0.5) * cell;
+    let mut taken: Vec<bool> = (0..side * side)
+        .map(|i| (at(i) - centre).length() > r_core)
         .collect();
-    let mut at: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
-    let index = |at: &mut BTreeMap<(i32, i32), Vec<u32>>, s: &Shape, i: usize| {
-        let (lo, hi) = s.bounds();
-        for b in buckets(lo, hi) {
-            at.entry(b).or_default().push(i as u32);
-        }
-    };
-    for (i, s) in block.iter().enumerate() {
-        index(&mut at, s, i);
-    }
-    // The place's lots: infill stands on their ground or within a short way
-    // of it (the middles of blocks deeper than two lots), never out in the
-    // fields.
-    let lots: Vec<Shape> = space.shapes[start..]
-        .iter()
-        .filter(|s| s.kind == PLOT)
-        .copied()
-        .collect();
-    let mut lot_at: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
-    let reach = 20.0 * z;
-    for (i, s) in lots.iter().enumerate() {
-        let (lo, hi) = s.bounds();
-        for b in buckets(lo - Vec2::splat(reach), hi + Vec2::splat(reach)) {
-            lot_at.entry(b).or_default().push(i as u32);
-        }
-    }
-    let on_lots = |q: Vec2| {
-        let b = ((q.x / BUCKET).floor() as i32, (q.y / BUCKET).floor() as i32);
-        lot_at.get(&b).is_some_and(|ids| {
-            ids.iter().any(|&i| {
-                let l = &lots[i as usize];
-                let (u, w) = l.axes();
-                let d = q - l.c;
-                d.dot(u).abs() <= l.h.x + reach && d.dot(w).abs() <= l.h.y + reach
-            })
-        })
-    };
-    let clear = |block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>, s: &Shape| {
-        let (lo, hi) = s.bounds();
-        for b in buckets(lo, hi) {
-            if let Some(ids) = at.get(&b) {
-                if ids.iter().any(|&i| block[i as usize].overlaps(s)) {
-                    return false;
+    // Stamps every cell in a box whose centre passes the test.
+    let stamp = |lo: Vec2, hi: Vec2, taken: &mut Vec<bool>, f: &dyn Fn(Vec2) -> bool| {
+        let x0 = (((lo.x - origin.x) / cell).floor() as i32).max(0);
+        let y0 = (((lo.y - origin.y) / cell).floor() as i32).max(0);
+        let x1 = (((hi.x - origin.x) / cell).floor() as i32).min(side as i32 - 1);
+        let y1 = (((hi.y - origin.y) / cell).floor() as i32).min(side as i32 - 1);
+        for iy in y0..=y1 {
+            for ix in x0..=x1 {
+                let i = iy as usize * side + ix as usize;
+                if !taken[i] && f(at(i)) {
+                    taken[i] = true;
                 }
             }
         }
-        true
     };
-    // Lot fronts stay open: no infill within this of a street's edge.
-    let front_gap = 1.5 * z;
-    let inside_wall = |p: Vec2| wall.is_some_and(|w| point_in(p, w));
-    let near_wall = |p: Vec2| {
-        wall.is_some_and(|w| {
-            (0..w.len()).any(|k| seg_dist(p, w[k], w[(k + 1) % w.len()]) < 8.0 * z)
-        })
-    };
-    // Candidate spots on a jittered grid, nearest the centre first.
-    let step = 4.0 * z;
-    let n = (core_r / step).ceil() as i32;
-    let mut spots: Vec<(f32, Vec2, usize)> = Vec::new();
-    for gy in -n..=n {
-        for gx in -n..=n {
-            let k = seed * 7_368_787 + ((gy + n) * (2 * n + 1) + gx + n) as usize;
-            let p = centre
-                + Vec2::new(gx as f32 + h01(k, 121) - 0.5, gy as f32 + h01(k, 122) - 0.5) * step;
-            let d = (p - centre).length() / core_r;
-            // Fewer tries further out, none past the core.
-            if d >= 1.0 || h01(k, 123) > amount * (1.0 - smoothstep(0.5, 1.0, d)) {
-                continue;
+    // The streets, with a hair of pavement, so the lots front them directly:
+    // each cell's distance in metres from the nearest street's edge (below 0
+    // on the street), so lots meet the streets on a smooth line, not the
+    // cells' steps.
+    let kerb = 0.6 * z;
+    let mut to_street = vec![f32::MAX; side * side];
+    for st in streets {
+        for w in st.pts.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let m = st.hw + kerb + 3.0 * cell;
+            let x0 = ((((a.x.min(b.x) - m) - origin.x) / cell).floor() as i32).max(0);
+            let y0 = ((((a.y.min(b.y) - m) - origin.y) / cell).floor() as i32).max(0);
+            let x1 = ((((a.x.max(b.x) + m) - origin.x) / cell).floor() as i32).min(side as i32 - 1);
+            let y1 = ((((a.y.max(b.y) + m) - origin.y) / cell).floor() as i32).min(side as i32 - 1);
+            for iy in y0..=y1 {
+                for ix in x0..=x1 {
+                    let i = iy as usize * side + ix as usize;
+                    let d = seg_dist(at(i), a, b) - st.hw - kerb;
+                    to_street[i] = to_street[i].min(d);
+                }
             }
-            spots.push((d + 0.15 * h01(k, 124), p, k));
         }
     }
-    spots.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let roof_of = |k: usize| {
-        if upland && h01(k, 127) < 0.6 {
+    for i in 0..side * side {
+        if to_street[i] < 0.0 {
+            taken[i] = true;
+        }
+    }
+    // The place's open places and great buildings, with a little room.
+    for s in space.shapes[start..].iter().copied() {
+        let (lo, hi) = s.bounds();
+        let m = Vec2::splat(1.5 * z + cell);
+        stamp(lo - m, hi + m, &mut taken, &|p| s.sd(p) < 1.5 * z);
+    }
+    // Water.
+    for i in 0..side * side {
+        if !taken[i] {
+            let p = at(i);
+            if !water.land(p) || water.river_gap(p) < 2.0 {
+                taken[i] = true;
+            }
+        }
+    }
+    // The blocks: pieces of free ground, four-connected.
+    let mut seen = vec![false; side * side];
+    let mut blocks: Vec<Vec<usize>> = Vec::new();
+    for i0 in 0..side * side {
+        if taken[i0] || seen[i0] {
+            continue;
+        }
+        let mut cells = vec![i0];
+        seen[i0] = true;
+        let mut k = 0;
+        while k < cells.len() {
+            let i = cells[k];
+            let (ix, iy) = ((i % side) as i32, (i / side) as i32);
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let (jx, jy) = (ix + dx, iy + dy);
+                if jx < 0 || jy < 0 || jx >= side as i32 || jy >= side as i32 {
+                    continue;
+                }
+                let j = jy as usize * side + jx as usize;
+                if !taken[j] && !seen[j] {
+                    seen[j] = true;
+                    cells.push(j);
+                }
+            }
+            k += 1;
+        }
+        blocks.push(cells);
+    }
+    // The direction of the nearest street to a point, for the frame each
+    // piece is cut in, so lot walls run along and across the streets.
+    let street_dir = |p: Vec2| {
+        let mut best = (f32::MAX, Vec2::new(1.0, 0.0));
+        for st in streets {
+            for w in st.pts.windows(2) {
+                let d = seg_dist(p, w[0], w[1]) - st.hw;
+                if d < best.0 {
+                    best = (d, (w[1] - w[0]).normalized());
+                }
+            }
+        }
+        best.1
+    };
+    // Each block cut into lots. Sizes grow more slowly than the look's
+    // building scale, so lots stay house-sized.
+    let area = cell * cell;
+    let zs = z.powf(1.5);
+    let min_cells = ((25.0 * zs) / area).ceil() as usize;
+    let mut lots: Vec<Vec<usize>> = Vec::new();
+    let mut k = seed * 1_000_003;
+    for cells in blocks {
+        if cells.len() < min_cells {
+            continue;
+        }
+        let mut stack = vec![cells];
+        while let Some(piece) = stack.pop() {
+            k += 1;
+            let mean = piece.iter().fold(Vec2::ZERO, |a, &i| a + at(i)) / piece.len() as f32;
+            let t = street_dir(mean);
+            let w = perp(t);
+            let (mut lo, mut hi) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+            for &i in &piece {
+                let l = Vec2::new((at(i) - mean).dot(t), (at(i) - mean).dot(w));
+                lo = lo.min(l);
+                hi = hi.max(l);
+            }
+            let (along, across) = (hi.x - lo.x, hi.y - lo.y);
+            let a = piece.len() as f32 * area;
+            let big = h01(k, 151) < 0.06;
+            let target = if big {
+                300.0
+            } else {
+                45.0 + 100.0 * h01(k, 152)
+            } * zs;
+            let front = (6.0 + 6.0 * h01(k, 153)) * z.powf(0.75) * if big { 2.0 } else { 1.0 };
+            let deep = (12.0 + 8.0 * h01(k, 158)) * z.powf(0.75);
+            if (a <= target && along <= 1.6 * front && across <= 1.6 * deep)
+                || piece.len() < 2 * min_cells
+            {
+                lots.push(piece);
+                continue;
+            }
+            let skew = (h01(k, 154) - 0.5) * 0.16;
+            let (nrm, off) = if along / front >= across / deep {
+                (
+                    dir(t.y.atan2(t.x) + skew),
+                    (h01(k, 155) - 0.5) * 0.4 * along,
+                )
+            } else {
+                (
+                    dir(w.y.atan2(w.x) + skew),
+                    (h01(k, 155) - 0.5) * 0.3 * across,
+                )
+            };
+            let cut = mean + nrm * off;
+            let (one, two): (Vec<usize>, Vec<usize>) =
+                piece.iter().partition(|&&i| (at(i) - cut).dot(nrm) < 0.0);
+            if one.len() < min_cells || two.len() < min_cells {
+                lots.push(piece);
+            } else {
+                stack.push(one);
+                stack.push(two);
+            }
+        }
+    }
+    // Each lot's use, from the centre outward: houses until the households
+    // are housed, then yards; towards the edge of the core some gardens.
+    let mut order: Vec<(f32, usize)> = lots
+        .iter()
+        .enumerate()
+        .map(|(i, l)| {
+            let m = l.iter().fold(Vec2::ZERO, |a, &c| a + at(c)) / l.len() as f32;
+            ((m - centre).length(), i)
+        })
+        .collect();
+    order.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut lot_of = vec![0u32; side * side];
+    let mut attr = vec![[0.0f32; 4]; lots.len() + 1];
+    let mut houses = 0u32;
+    for (d, i) in order {
+        let cells = &lots[i];
+        let key = seed * 7919 + i * 31 + 17;
+        let t = d / r_core;
+        let built = if houses >= max_houses {
+            0.0
+        } else {
+            1.0 - 0.7 * smoothstep(0.75, 1.0, t)
+        };
+        let kind = if h01(key, 156) < built {
+            houses += if cells.len() as f32 * area > 200.0 * zs {
+                2
+            } else {
+                1
+            };
+            LOT_HOUSE
+        } else if t > 0.6 && h01(key, 157) < 0.6 {
+            LOT_GARDEN
+        } else {
+            LOT_YARD
+        };
+        let roof = if upland && h01(key, 159) < 0.6 {
             2.0
-        } else if h01(k, 128) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
+        } else if h01(key, 160) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
             1.0
         } else {
             0.0
-        }
-    };
-    let fits = |b: &Shape, block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>| -> bool {
-        if !b.corners().iter().all(|&q| on_lots(q)) {
-            return false;
-        }
-        let probes = b.probes();
-        if !probes
-            .iter()
-            .all(|&q| water.land(q) && water.river_gap(q) > 2.0)
-        {
-            return false;
-        }
-        if wall.is_some() {
-            let inside = inside_wall(probes[0]);
-            if probes
-                .iter()
-                .any(|&q| inside_wall(q) != inside || near_wall(q))
-            {
-                return false;
-            }
-        }
-        space.off_streets(b, front_gap) && clear(block, at, b)
-    };
-    // Whether a point is taken: off the place's ground, in water, across the
-    // wall, by a street, or within a hair of a building or open place.
-    let gap = 0.35 * z;
-    let blocked = |q: Vec2, from: Vec2, block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>| {
-        if !on_lots(q) || !water.land(q) || water.river_gap(q) < 2.0 {
-            return true;
-        }
-        if wall.is_some() && (inside_wall(q) != inside_wall(from) || near_wall(q)) {
-            return true;
-        }
-        let b = ((q.x / BUCKET).floor() as i32, (q.y / BUCKET).floor() as i32);
-        if let Some(ids) = space.seg_at.get(&b) {
-            if ids.iter().any(|&i| {
-                let (a, c, hw) = space.segs[i as usize];
-                seg_dist(q, a, c) < hw + front_gap
-            }) {
-                return true;
-            }
-        }
-        at.get(&b)
-            .is_some_and(|ids| ids.iter().any(|&i| block[i as usize].sd(q) < gap))
-    };
-    // A house grown from seed p, turned to `ang`: in each of eight directions
-    // it reaches out until it meets something or its own size, and its four
-    // corners take the room found, so it fits its gap, wedge or skewed as the
-    // gap is, rather than standing as a box square to the street (R16).
-    let grow = |p: Vec2,
-                ang: f32,
-                k: usize,
-                block: &[Shape],
-                at: &BTreeMap<(i32, i32), Vec<u32>>|
-     -> Option<Shape> {
-        if blocked(p, p, block, at) {
-            return None;
-        }
-        let (u, w) = (dir(ang), perp(dir(ang)));
-        // Longer than wide (R17): houses, not squares.
-        let lu = (5.0 + 6.0 * h01(k, 129)) * z;
-        let lw = (2.5 + 2.0 * h01(k, 130)) * z;
-        let step = 0.6 * z;
-        let reach = |d: Vec2, cap: f32| {
-            let mut t = 0.0;
-            while t + step <= cap && !blocked(p + d * (t + step), p, block, at) {
-                t += step;
-            }
-            t
         };
-        let mut corner = [Vec2::ZERO; 4];
-        for (i, (sx, sy)) in [(1.0f32, 1.0f32), (1.0, -1.0), (-1.0, -1.0), (-1.0, 1.0)]
-            .into_iter()
-            .enumerate()
-        {
-            let fx = reach(u * sx, lu);
-            let fy = reach(w * sy, lw);
-            // The corner itself, drawn in towards the seed until it is clear:
-            // a corner that meets something leans in, the others stand square.
-            let jit = 0.9 + 0.1 * h01(k, 133 + i as u32);
-            let (mut x, mut y) = (fx * jit, fy * jit);
-            let mut free = false;
-            for _ in 0..8 {
-                if !blocked(p + u * (sx * x) + w * (sy * y), p, block, at) {
-                    free = true;
-                    break;
-                }
-                x *= 0.88;
-                y *= 0.88;
+        let core = 1.0 - smoothstep(0.3, 0.9, t);
+        let height = ((6.0 + 3.0 * core + 3.0 * h01(key, 162)) * z).round();
+        attr[i + 1] = [
+            0.0,
+            (i + 1) as f32,
+            1000.0 * kind + height,
+            roof + 0.9 * h01(key, 161),
+        ];
+        for &c in cells {
+            lot_of[c] = (i + 1) as u32;
+        }
+    }
+    // Each cell's distance in from its lot's edge (two-pass chamfer, within
+    // the lot), the edge lying half a cell out from the last cells.
+    let mut dist: Vec<f32> = (0..side * side)
+        .map(|i| {
+            let id = lot_of[i];
+            if id == 0 {
+                return -0.5 * cell;
             }
-            if !free || x < 1.2 * z || y < 1.2 * z {
-                return None;
+            let (ix, iy) = ((i % side) as i32, (i / side) as i32);
+            let edge = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| {
+                let (jx, jy) = (ix + dx, iy + dy);
+                jx < 0
+                    || jy < 0
+                    || jx >= side as i32
+                    || jy >= side as i32
+                    || lot_of[jy as usize * side + jx as usize] != id
+            });
+            if edge {
+                0.5 * cell
+            } else {
+                f32::MAX
             }
-            corner[i] = Vec2::new(sx * x, sy * y);
-        }
-        // At least 1.6 times as long as wide, along whichever way the gap
-        // ran longer: the narrower way is drawn in further (which keeps it
-        // clear), so the roof has a ridge rather than a point.
-        let ax = corner.iter().map(|q| q.x.abs()).sum::<f32>() / 4.0;
-        let ay = corner.iter().map(|q| q.y.abs()).sum::<f32>() / 4.0;
-        const LONG: f32 = 1.6;
-        if ax >= ay && ax < LONG * ay {
-            let f = ax / (LONG * ay);
-            corner.iter_mut().for_each(|q| q.y *= f);
-        } else if ay > ax && ay < LONG * ax {
-            let f = ay / (LONG * ax);
-            corner.iter_mut().for_each(|q| q.x *= f);
-        }
-        // No sharp corners (R18): every corner within 25 degrees of square.
-        // An outline with a sharper one is eased towards the box inside it
-        // (which only draws corners in) until none is.
-        let sharp = |c: &[Vec2; 4]| {
-            (0..4).any(|i| {
-                let a = (c[(i + 3) % 4] - c[i]).normalized();
-                let b = (c[(i + 1) % 4] - c[i]).normalized();
-                a.dot(b).abs() > 0.4226
-            })
-        };
-        if sharp(&corner) {
-            let bx = corner.iter().map(|q| q.x.abs()).fold(f32::MAX, f32::min);
-            let by = corner.iter().map(|q| q.y.abs()).fold(f32::MAX, f32::min);
-            let boxed = corner.map(|q| Vec2::new(q.x.signum() * bx, q.y.signum() * by));
-            let from = corner;
-            for t in [0.25f32, 0.5, 0.75, 1.0] {
-                for i in 0..4 {
-                    corner[i] = from[i] + (boxed[i] - from[i]) * t;
-                }
-                if !sharp(&corner) {
-                    break;
-                }
-            }
-        }
-        if corner
-            .iter()
-            .any(|q| q.x.abs() < 1.2 * z || q.y.abs() < 1.2 * z)
-        {
-            return None;
-        }
-        // Convex, and not too small.
-        let mut area = 0.0;
-        for i in 0..4 {
-            let (a, b, c) = (corner[i], corner[(i + 1) % 4], corner[(i + 2) % 4]);
-            let cr = (b - a).x * (c - b).y - (b - a).y * (c - b).x;
-            if cr > 0.0 {
-                return None;
-            }
-            area += a.x * b.y - a.y * b.x;
-        }
-        if area.abs() * 0.5 < 16.0 * z * z {
-            return None;
-        }
-        let world = corner.map(|q| p + u * q.x + w * q.y);
-        let mid = (world[0] + world[1] + world[2] + world[3]) * 0.25;
-        let hx = corner.iter().map(|q| q.x.abs()).fold(0.0f32, f32::max);
-        let hy = corner.iter().map(|q| q.y.abs()).fold(0.0f32, f32::max);
-        Some(Shape {
-            c: mid,
-            h: Vec2::new(hx, hy),
-            angle: ang,
-            kind: QHOUSE,
-            tone: h01(k, 131),
-            extra: roof_of(k),
-            height: (6.0 + 4.0 * h01(k, 132)) * z,
-            q: Some(world),
-        })
-    };
-    let mut added: Vec<Shape> = Vec::new();
-    // Try a grown house, shrinking it towards its seed if it grazes anything.
-    let mut place =
-        |b: Shape, block: &mut Vec<Shape>, at: &mut BTreeMap<(i32, i32), Vec<u32>>| -> bool {
-            let mut b = b;
-            for _ in 0..3 {
-                if fits(&b, block, at) {
-                    index(at, &b, block.len());
-                    block.push(b);
-                    added.push(b);
-                    return true;
-                }
-                let q = b.q.unwrap_or_else(|| b.corners());
-                b.q = Some(q.map(|p| b.c + (p - b.c) * 0.85));
-            }
-            false
-        };
-    // First by aggregation: each building in the core seeds others against
-    // its sides, so the blocks fill from their street fronts inward, as the
-    // cores of hand-drawn towns do.
-    let mut queue: Vec<usize> = (0..block.len())
-        .filter(|&i| {
-            let s = &block[i];
-            (s.kind == HOUSE || s.kind == BARN) && (s.c - centre).length() < core_r
         })
         .collect();
-    queue.sort_by(|&i, &j| {
-        (block[i].c - centre)
-            .length()
-            .total_cmp(&(block[j].c - centre).length())
-    });
-    let mut qi = 0;
-    while qi < queue.len() && qi < 20_000 {
-        let base = block[queue[qi]];
-        let d = (base.c - centre).length() / core_r;
-        let keep = amount * (1.0 - smoothstep(0.45, 1.0, d));
-        let (u, w) = base.axes();
-        let bc = base.corners();
-        for (side, n) in [u, -u, w, -w].into_iter().enumerate() {
-            let k = seed * 104_723 + qi * 4 + side;
-            if h01(k, 141) > keep {
+    let diag = cell * std::f32::consts::SQRT_2;
+    let steps = [
+        (-1i32, 0i32, cell),
+        (0, -1, cell),
+        (-1, -1, diag),
+        (1, -1, diag),
+    ];
+    for pass in 0..2 {
+        let range: Box<dyn Iterator<Item = usize>> = if pass == 0 {
+            Box::new(0..side * side)
+        } else {
+            Box::new((0..side * side).rev())
+        };
+        for i in range {
+            let id = lot_of[i];
+            if id == 0 {
                 continue;
             }
-            let reach_n = bc
-                .iter()
-                .map(|c| (*c - base.c).dot(n))
-                .fold(f32::MIN, f32::max);
-            let reach_t = bc
-                .iter()
-                .map(|c| (*c - base.c).dot(perp(n)).abs())
-                .fold(0.0f32, f32::max);
-            let p = base.c
-                + n * (reach_n + gap + 2.0 * z)
-                + perp(n) * (h01(k, 144) - 0.5) * 1.6 * reach_t;
-            let ang = base.angle
-                + if h01(k, 142) < 0.25 {
-                    std::f32::consts::FRAC_PI_2
-                } else {
-                    0.0
+            let (ix, iy) = ((i % side) as i32, (i / side) as i32);
+            for &(dx, dy, wgt) in &steps {
+                let (dx, dy) = if pass == 0 { (dx, dy) } else { (-dx, -dy) };
+                let (jx, jy) = (ix + dx, iy + dy);
+                if jx < 0 || jy < 0 || jx >= side as i32 || jy >= side as i32 {
+                    continue;
                 }
-                + (h01(k, 143) - 0.5) * 0.4;
-            if let Some(b) = grow(p, ang, k, &block, &at) {
-                if place(b, &mut block, &mut at) {
-                    queue.push(block.len() - 1);
+                let j = jy as usize * side + jx as usize;
+                if lot_of[j] == id && dist[j] + wgt < dist[i] {
+                    dist[i] = dist[j] + wgt;
                 }
             }
         }
-        qi += 1;
     }
-    // Then any gaps left, on a jittered grid, nearest the centre first.
-    for (_, p, k) in spots {
-        // The nearest street, for the building's angle.
-        let mut best = (f32::MAX, Vec2::new(1.0, 0.0));
-        for b in buckets(p - Vec2::splat(BUCKET), p + Vec2::splat(BUCKET)) {
-            if let Some(ids) = space.seg_at.get(&b) {
-                for &i in ids {
-                    let (a, c, _) = space.segs[i as usize];
-                    let d = seg_dist(p, a, c);
-                    if d < best.0 {
-                        best = (d, (c - a).normalized());
-                    }
-                }
-            }
-        }
-        if best.0 == f32::MAX {
-            continue;
-        }
-        let ang = best.1.y.atan2(best.1.x)
-            + if h01(k, 125) < 0.35 {
-                std::f32::consts::FRAC_PI_2
+    let texels = (0..side * side)
+        .map(|i| {
+            let a = attr[lot_of[i] as usize];
+            // On a street, how far in; in a lot, no further in than from
+            // the street's edge.
+            let d = if lot_of[i] == 0 {
+                dist[i].min(to_street[i])
             } else {
-                0.0
-            }
-            + (h01(k, 126) - 0.5) * 0.5;
-        if let Some(b) = grow(p, ang, k, &block, &at) {
-            place(b, &mut block, &mut at);
-        }
-    }
-    space.shapes.extend(added);
+                dist[i].min(to_street[i].max(0.05 * cell))
+            };
+            [d, a[1], a[2], a[3]]
+        })
+        .collect();
+    (
+        Core {
+            origin,
+            cell,
+            side,
+            texels,
+        },
+        houses,
+    )
 }
 
 /// Whether p lies inside the closed polygon w.
@@ -2317,6 +2357,9 @@ fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
 /// entries in the index list, how much of it is built over, and whether it is
 /// town land; the index.
 pub struct ShapeData {
+    /// The block-built cores' rasters (R19), four floats a cell.
+    pub core: Vec<f32>,
+    pub core_size: (i32, i32),
     pub shp: Vec<f32>,
     pub shp_size: (i32, i32),
     pub cell: Vec<f32>,
@@ -2333,7 +2376,8 @@ const ROW: usize = super::ways::ROW;
 /// Squares of about this many metres index the shapes.
 const SQUARE_M: f32 = 62.5;
 
-pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
+pub fn layout(t: &Terrain, plan: &Plan, z: f32) -> ShapeData {
+    let shapes = &plan.shapes[..];
     let g = t.grid;
     let cell_m = g.cell_km * 1000.0;
     let sub = (cell_m / SQUARE_M).round().max(1.0) as i32;
@@ -2363,8 +2407,21 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
                 lists.entry((x, y)).or_default().push(i as u32);
             }
         }
-        // How much of each square the place covers, by points 5 m apart.
-        if s.kind < BUILDING && s.kind != DITCH {
+        // How much of each square the place covers, by points 5 m apart; a
+        // block-built core by its lots (R19).
+        if s.kind == CORE {
+            let core = &plan.cores[s.tone as usize];
+            let a = core.cell * core.cell / (sq_m * sq_m);
+            for (i, tx) in core.texels.iter().enumerate() {
+                if tx[1] > 0.0 {
+                    let p = core.origin
+                        + Vec2::new((i % core.side) as f32 + 0.5, (i / core.side) as f32 + 0.5)
+                            * core.cell;
+                    let key = ((p.x / sq_m).floor() as i32, (p.y / sq_m).floor() as i32);
+                    *cover.entry(key).or_insert(0.0) += a;
+                }
+            }
+        } else if s.kind < BUILDING && s.kind != DITCH {
             let (u, w) = s.axes();
             let (nu, nw) = ((s.h.x / 2.5).ceil() as i32, (s.h.y / 2.5).ceil() as i32);
             let area = 4.0 * s.h.x * s.h.y / ((2 * nu) as f32 * (2 * nw) as f32);
@@ -2427,9 +2484,27 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
             }
         }
     }
+    // The cores' rasters, one after another, four floats a cell.
+    let mut core: Vec<f32> = Vec::new();
+    let mut core_at: Vec<usize> = Vec::new();
+    for c in &plan.cores {
+        core_at.push(core.len() / 4);
+        core.extend(c.texels.iter().flatten());
+    }
     let mut shp = Vec::with_capacity(shapes.len() * 16);
     for s in shapes {
-        let q = s.q.map_or([Vec2::ZERO; 4], |q| q.map(|p| p - s.c));
+        let mut q = s.q.map_or([Vec2::ZERO; 4], |q| q.map(|p| p - s.c));
+        // A core's raster: its origin, cell size and side, and where it
+        // starts in the core texture.
+        if s.kind == CORE {
+            let c = &plan.cores[s.tone as usize];
+            q = [
+                c.origin,
+                Vec2::new(c.cell, c.side as f32),
+                Vec2::new(core_at[s.tone as usize] as f32, 0.0),
+                Vec2::ZERO,
+            ];
+        }
         // Height in whole metres beside the extra (0..3): extra + 4 x height.
         shp.extend_from_slice(&[
             s.c.x,
@@ -2458,7 +2533,10 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
     let shp_size = pad(&mut shp);
     let sq_size = pad(&mut sq);
     let idx_size = pad(&mut idx);
+    let core_size = pad(&mut core);
     ShapeData {
+        core,
+        core_size,
         shp,
         shp_size,
         cell,

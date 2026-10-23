@@ -286,8 +286,10 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
         float inside = smoothstep(-25.0, 5.0, town_land(pm));
         if (inside > 0.0) {
             float clump = smoothstep(0.5, 0.72, mottle(pm / (70.0 * u_look.z), 771));
+            // None in a built-up core (R19), where the ground is yards.
             float grove = (0.07 + 0.5 * clump) * inside
-                * smoothstep(3.0, 9.0, g_bnear / u_look.w);
+                * smoothstep(3.0, 9.0, g_bnear / u_look.w)
+                * (1.0 - smoothstep(0.3, 0.55, built_share(pm)));
             wood = max(wood, grove);
         }
     }
@@ -481,6 +483,11 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
     // along the grid. Roads and rivers wander together, so they stay apart.
     vec2 wander = (vec2(vnoise(pm / 700.0, 201), vnoise(pm / 700.0, 203)) - 0.5) * 40.0
         + (vec2(vnoise(pm / 160.0, 205), vnoise(pm / 160.0, 207)) - 0.5) * 8.0;
+    // Within a place they keep to the lines its plan was laid along (R19),
+    // easing back over the town's edge.
+    if (u_town_show.x > 0.5) {
+        wander *= 1.0 - smoothstep(-80.0, 0.0, town_land(pm));
+    }
     vec2 pw = p + wander / u_cell_m;
     Way road, river;
     ways_near(pw, 1.0 - smoothstep(0.0, 0.08, share), road, river);
