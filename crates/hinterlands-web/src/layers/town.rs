@@ -1944,8 +1944,9 @@ fn infill(
             return None;
         }
         let (u, w) = (dir(ang), perp(dir(ang)));
-        let lu = (4.0 + 5.0 * h01(k, 129)) * z;
-        let lw = (3.0 + 3.0 * h01(k, 130)) * z;
+        // Longer than wide (R17): houses, not squares.
+        let lu = (5.0 + 6.0 * h01(k, 129)) * z;
+        let lw = (2.5 + 2.0 * h01(k, 130)) * z;
         let step = 0.6 * z;
         let reach = |d: Vec2, cap: f32| {
             let mut t = 0.0;
@@ -1978,6 +1979,25 @@ fn infill(
                 return None;
             }
             corner[i] = Vec2::new(sx * x, sy * y);
+        }
+        // At least 1.6 times as long as wide, along whichever way the gap
+        // ran longer: the narrower way is drawn in further (which keeps it
+        // clear), so the roof has a ridge rather than a point.
+        let ax = corner.iter().map(|q| q.x.abs()).sum::<f32>() / 4.0;
+        let ay = corner.iter().map(|q| q.y.abs()).sum::<f32>() / 4.0;
+        const LONG: f32 = 1.6;
+        if ax >= ay && ax < LONG * ay {
+            let f = ax / (LONG * ay);
+            corner.iter_mut().for_each(|q| q.y *= f);
+        } else if ay > ax && ay < LONG * ax {
+            let f = ay / (LONG * ax);
+            corner.iter_mut().for_each(|q| q.x *= f);
+        }
+        if corner
+            .iter()
+            .any(|q| q.x.abs() < 1.2 * z || q.y.abs() < 1.2 * z)
+        {
+            return None;
         }
         // Convex, and not too small.
         let mut area = 0.0;
