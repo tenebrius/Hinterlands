@@ -447,6 +447,9 @@ struct Slot {
     s: f32,
     side: f32,
     front: f32,
+    /// The lot's standing (R21), 0 at the margins .. 1 on the main street
+    /// at the market: how large, tall and well roofed its house is.
+    standing: f32,
 }
 
 /// Lays out every place this year. `roads` are the road and track lines in
@@ -1296,8 +1299,22 @@ fn place_plots(
                 let grow = 1.0 + 0.6 * smoothstep(0.2 * reach_max, 0.8 * reach_max, d);
                 // Village lots vary more in width than a town's (R13).
                 let vary = h01(seed * 977 + i * 31 + n as usize, 51);
+                // Standing (R21): highest on the main streets at the market,
+                // falling away outward and on the lanes, with a little chance.
+                let kn = seed * 977 + i * 31 + n as usize;
+                let prime = (if st.main { 1.0 } else { 0.45 })
+                    * (1.0 - smoothstep(0.05 * reach_max, 0.6 * reach_max, d));
+                let standing = (prime * (0.7 + 0.6 * h01(kn, 52))).clamp(0.0, 1.0);
+                // In a town, merchants' houses and inns take two plots'
+                // frontage on the main streets near the market.
+                let wide = if town > 0.5 && h01(kn, 54) < 0.35 * prime {
+                    1.6 + 0.5 * h01(kn, 58)
+                } else {
+                    1.0
+                };
                 let f = front0
                     * grow
+                    * wide
                     * (0.8 + 0.45 * vary + (1.0 - town) * (0.4 * vary - 0.15))
                     * if scattered { 1.4 } else { 1.0 };
                 let mid = s + sgn * f * 0.5;
@@ -1314,6 +1331,7 @@ fn place_plots(
                         s: mid,
                         side,
                         front: f,
+                        standing,
                     });
                 }
                 s += sgn * f;
@@ -1422,9 +1440,18 @@ fn place_plots(
         }
         space.add_shape(plot);
         placed += hh;
-        let roof = if upland && h01(key, 61) < 0.6 {
+        // The first lot of a village, by the centre on its main street, is
+        // its manor or chief farm (R21).
+        let manor = town < 0.5 && placed == 0 && pop >= 120.0;
+        let standing = if manor { 1.0 } else { sl.standing };
+        // Roofs follow standing (R21): tile and slate on the better houses,
+        // thatch on the humbler and at the margins.
+        let roof = if upland && h01(key, 61) < 0.35 + 0.5 * standing {
             2.0
-        } else if h01(key, 62) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
+        } else if h01(key, 62)
+            < ((0.1 + 0.8 * smoothstep(500.0, 3000.0, pop)) * (0.35 + 1.0 * standing))
+                .max(if manor { 0.7 } else { 0.0 })
+        {
             1.0
         } else {
             0.0
@@ -1442,6 +1469,8 @@ fn place_plots(
             hh,
             town: town > 0.5,
             core: core_t,
+            standing,
+            manor,
             roof,
             z,
         };
@@ -1473,6 +1502,10 @@ struct Lot {
     town: bool,
     /// 1 in the core of a town, 0 at its edge and in villages.
     core: f32,
+    /// 0..1 (R21): the house's size, height and depth follow it.
+    standing: f32,
+    /// A village's manor or chief farm (R21).
+    manor: bool,
     roof: f32,
     z: f32,
 }
@@ -1519,11 +1552,29 @@ impl Lot {
         let z = self.z;
         let ang = self.tan.y.atan2(self.tan.x);
         let half_pi = std::f32::consts::FRAC_PI_2;
-        let end_on = self.h(65) < 0.3;
-        let len = (8.0 + 8.0 * self.h(63)) * z;
-        let wid = (4.5 + 2.0 * self.h(64)) * z;
-        let turn = (self.h(66) - 0.5) * 0.35;
-        let set = (1.0 + 7.0 * self.h(67) * self.h(67)) * z;
+        // Houses grow with standing (R21): cottages at the margins, larger
+        // farmhouses by the centre, and the manor largest of all, set back
+        // in its own yard.
+        let st = self.standing;
+        let end_on = !self.manor && self.h(65) < 0.3;
+        let (len, wid) = if self.manor {
+            ((16.0 + 6.0 * self.h(63)) * z, (7.0 + 2.0 * self.h(64)) * z)
+        } else {
+            (
+                (8.0 + 8.0 * self.h(63)) * (0.75 + 0.45 * st) * z,
+                (4.5 + 2.0 * self.h(64)) * (0.9 + 0.2 * st) * z,
+            )
+        };
+        let turn = if self.manor {
+            0.0
+        } else {
+            (self.h(66) - 0.5) * 0.35
+        };
+        let set = if self.manor {
+            (4.0 + 4.0 * self.h(67)) * z
+        } else {
+            (1.0 + 7.0 * self.h(67) * self.h(67)) * z
+        };
         // The largest fit of the house, turned or (failing that) square to the street.
         let mut house = None;
         'fit: for shrink in [1.0f32, 0.8, 0.62] {
@@ -1540,7 +1591,7 @@ impl Lot {
                     kind: HOUSE,
                     tone: self.h(69),
                     extra: self.roof,
-                    height: (5.5 + 1.5 * self.h(70)) * z,
+                    height: (5.0 + 1.5 * self.h(70) + 3.0 * st) * z,
                 };
                 if self.add(b, out) {
                     house = Some(b);
@@ -1562,7 +1613,30 @@ impl Lot {
         } else {
             (w * w.dot(self.nrm).signum(), u, house.h.y, house.h.x)
         };
-        let pick = self.h(71);
+        // The manor has a great barn standing apart and one built on.
+        if self.manor {
+            let blen = (18.0 + 6.0 * self.h(73)) * z;
+            let bw = (7.0 + 1.5 * self.h(74)) * z;
+            let a = ang + if self.h(77) < 0.5 { 0.0 } else { half_pi };
+            for f in [1.0f32, 0.8, 0.6] {
+                let barn = Shape {
+                    c: self.at(
+                        (self.h(79) - 0.5) * 0.4 * self.front,
+                        self.depth * (0.55 + 0.15 * self.h(81)) * f,
+                    ),
+                    h: Vec2::new(0.5 * blen, 0.5 * bw) * f.max(0.8),
+                    angle: a,
+                    kind: BARN,
+                    tone: self.h(75),
+                    extra: self.roof,
+                    height: 9.0 * z,
+                };
+                if self.add(barn, out) {
+                    break;
+                }
+            }
+        }
+        let pick = if self.manor { 0.0 } else { self.h(71) };
         if pick < 0.35 {
             // A barn or byre from one end of the house, back into the yard: an L.
             let side = if self.h(72) < 0.5 { 1.0 } else { -1.0 };
@@ -1631,21 +1705,62 @@ impl Lot {
             0.0
         };
         let side = if self.h(92) < 0.5 { 1.0 } else { -1.0 };
-        let hl = (0.5 * self.front - 0.15 * z - 0.5 * entry).max(1.5 * z);
-        let hd = (4.0 + 2.5 * self.h(63) + 2.0 * tall) * z;
+        // Standing (R21): the better houses are deeper and a storey or two
+        // taller; at the margins the house is a cottage of one storey, narrower
+        // than its plot and standing back in its garden.
+        let st = self.standing;
+        let cottage = st < 0.2 && self.hh < 2;
+        let mut hl = (0.5 * self.front - 0.15 * z - 0.5 * entry).max(1.5 * z);
+        let mut hd = (3.5 + 2.0 * self.h(63) + 3.0 * st + 2.0 * tall) * z;
         // Fronts stand a little forward or back of their neighbours.
-        let ragged = 0.7 * self.h(93) * z;
+        let mut ragged = 0.7 * self.h(93) * z;
+        let mut along = -side * 0.5 * entry;
+        let mut height = (5.5 + 5.0 * st + 2.5 * self.h(64) + 3.0 * tall) * z;
+        if cottage {
+            hl = hl.min((3.0 + 2.0 * self.h(98)) * z);
+            hd = hd.min(3.0 * z);
+            ragged = (1.0 + 3.0 * self.h(99)) * z;
+            along = (self.h(100) - 0.5) * (self.front - 2.0 * hl - 0.6 * z).max(0.0);
+            height = (4.5 + 1.0 * self.h(64)) * z;
+        }
         let house = Shape {
-            c: self.at(-side * 0.5 * entry, ragged + hd),
+            c: self.at(along, ragged + hd),
             h: Vec2::new(hl, hd),
             angle: ang,
             kind: HOUSE,
             tone: self.h(68),
             extra: self.roof,
-            height: (8.0 + 3.5 * self.h(64) + 3.0 * tall) * z,
+            height,
         };
         out.push(house);
         let start = ragged + 2.0 * hd;
+        // A house of high standing on a broad plot is built round a yard:
+        // a range down one side and another across the back (R21).
+        if st > 0.6 && self.hh < 3 && self.front > 11.0 * z && self.depth > 26.0 * z {
+            let w = (2.5 + 1.0 * self.h(101)) * z;
+            let yard = (6.0 + 6.0 * self.h(102)) * z;
+            let wing = Shape {
+                c: self.at(side * (0.5 * self.front - w - 0.3 * z), start + 0.5 * yard),
+                h: Vec2::new(0.5 * yard, w),
+                angle: ang + half_pi,
+                kind: HOUSE,
+                tone: self.h(68),
+                extra: self.roof,
+                height: height - 2.0 * z,
+            };
+            self.add(wing, out);
+            let rear = Shape {
+                c: self.at(0.0, start + yard + w),
+                h: Vec2::new(hl, w),
+                angle: ang,
+                kind: BARN,
+                tone: self.h(103),
+                extra: self.roof,
+                height: height - 2.5 * z,
+            };
+            self.add(rear, out);
+            return;
+        }
         if self.hh >= 3 {
             // A court: cottages one behind another down one side.
             let across = (self.front - 2.2 * z).clamp(2.2 * z, 3.4 * z);

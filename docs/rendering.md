@@ -607,6 +607,33 @@ R15's infill of rectangular buildings in town cores, as recorded there, is back.
 
 Kind: rendering.
 
+## R21 — A hierarchy of buildings
+
+The first of the reviewer's proposals the owner approved after R20. Each lot now has a standing, and its house follows it, so the better houses stand on the main streets by the market and humbler ones at the margins and on the lanes.
+
+- **Standing**, 0..1 per lot: 1 on a main street (0.45 on a lane), falling to nothing from 5% to 60% of the way out from the centre, and varied by ±30%.
+- **Towns:**
+  - **Merchants' houses and inns:** on the main streets near the market, up to about a third of plots take 1.6–2.1 times the frontage.
+  - **Houses:** depth 3.5–5.5 m plus 3 m × standing; height 5.5–8 m plus 5 m × standing (a storey or two more by the market), plus a storey for tenements as before.
+  - **Courtyard houses:** a house of standing above 0.6 on a plot over 11 m wide and 26 m deep is built round a yard, with a range down one side and another across the back.
+  - **Cottages:** below 0.2, outside tenements, the house is a cottage of one storey, 6–10 m long and narrower than its plot, set back 1–4 m in its garden.
+- **Villages:**
+  - **Houses:** they grow with standing, from small cottages at the edge to larger farmhouses by the centre, and taller.
+  - **Manor:** the first lot of a village of 120 or more (by the centre on its main street) is its manor or chief farm. The house is 16–22 m by 7–9 m, square to the street and set back 4–8 m. It has a great barn of 18–24 m standing apart in its yard, and a barn built on in an L.
+- **Roofs:** they follow standing. Tile is 0.35–1.35 times as likely as before (by standing), and stone slate on the upland 35–85%. Thatch stays on the humbler houses, and the manor is mostly tiled.
+- **Unchanged:** the layout (plots, lanes, infill of the core), the households housed, and every look; the sizes scale with the Map style building size.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`22-*`, year 450, 1 m per point):
+  - **Liningbourne:** `22-hierarchy-upland-town-1m-storybook` and `22-hierarchy-upland-town-1m-true`.
+  - **Asherfield, a village in 1550:** `22-hierarchy-village-1m-storybook`.
+  - **Halenford, a town of about 500:** `22-hierarchy-small-town-1m-storybook`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -641,6 +668,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R17: `19-longer-city-1300-1m-storybook` and `19-longer-upland-town-1m-storybook` (infill held to longer outlines).
 - R18: `20-square-city-1300-1m-storybook` and `20-square-upland-town-1m-storybook` (no sharp corners on infill).
 - R20: `21-r15-restored-upland-town-1m-storybook` and `21-r15-restored-city-1300-2m-storybook` (R15's buildings restored).
+- R21: `22-hierarchy-upland-town-1m-storybook`/`-true`, `22-hierarchy-village-1m-storybook` and `22-hierarchy-small-town-1m-storybook` (a hierarchy of buildings).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
