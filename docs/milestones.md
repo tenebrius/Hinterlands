@@ -668,3 +668,13 @@ Development stops here, by the owner's decision (D117).
   - coin above D1b's from 1550;
   - cloth share about half the record's after 1420.
 - **Details:** `docs/demand/d2d.md` (the gate run's mechanism results), `docs/demand/d2e.md` (this gate and the cloth trace).
+
+## D139 step 1 — Mills pay the clearing price; outside trade on output
+- **Rule change (D139):** outside trade is gated as exports over output, 1–35% in 1600. The share of market inflow is reported.
+- **The gate passes on 40 seeds,** defaults (`target/d2/v139_step1.txt`):
+  - runs passing every check: 23 / 37 / 25;
+  - exports / output medians: 0.066 / 0.078 / 0.073;
+  - the lowest checks: spacing 33/40 (map 1), 34/40 (map 3).
+- **Params:** defaults, with `cloth_price_late` off.
+- **Golden `2e6856056e73a1c6`,** the same in the browser at 98.7 ms a year (`?selftest=500`).
+- **Details:** `docs/demand/d2g.md`.

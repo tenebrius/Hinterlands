@@ -848,3 +848,18 @@ Kind: model default and validation rule (designer's decision D135).
   - before 1450 the factor is 1.0.
 - **Main stays at D136.** Details: `docs/demand/d2f.md`.
 Kind: model mechanism and data, held off (designer's decision D137).
+
+## D140 — D139 step 1: the payment fix passes and is the default; paused before step 3
+- **Built per D139:**
+  - mills pay the clearing price out of the cloth proceeds;
+  - outside trade is gated as exports over output, 1–35% in 1600. The old share of market inflow is reported.
+- **The gate on 40 seeds passed:**
+  - exports / output medians 0.066 / 0.078 / 0.073 (40/40 each);
+  - runs passing every check 23 / 37 / 25;
+  - the old share stays inside 3–50% in 39 / 39 / 40 runs.
+- **The payment fix is the default.** Golden `2e6856056e73a1c6`, the same in the browser.
+- `cloth_price_late` is built and off.
+- **Not run, by the pause:** step 3 (the later price's gate) and the putting-out note.
+- **Implementer's reading:** output counts milled wool in the clip and in the cloth, as D139 lists them.
+- **Details:** `docs/demand/d2g.md`.
+Kind: model mechanism, default and validation rule (designer's decision D139).
