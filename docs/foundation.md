@@ -1513,6 +1513,24 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 - **The cloth share of wool leaving** is 0.2–0.5 in 1390–1410, 0.35–0.65 in 1440–60 and 0.55–0.85 in 1490–1510. This rests on sourced prices and making cost, with only capacity calibrated, at the start.
 - **Raw wool** is still exported in every decade, at least a quarter of its 1300 volume through 1450.
 
+### No-duty D2 result (34de135), and a pause (owner, 23 October 2026; D134)
+
+**The result, recorded.**
+- The gate fails on one check only: over 2,000 on map 3, at 22/40 (D1b alone 25/40). Every other check is 34/40 or better.
+- Runs passing every check: 23 / 36 / 14 (D1: 27 / 28 / 17).
+- **Met:**
+  - wool leaving the region holds;
+  - home wool use is about 1.0 of need;
+  - the cloth share is 0.25–0.28 around 1400;
+  - raw wool is exported in every decade.
+- **Missed:**
+  - cloth around 1450 (0.19–0.22) and 1500 (0.33–0.35), about half the record's pace after 1420;
+  - map 3's population (−11%);
+  - coin after 1550 (above).
+- **Map 3** keeps its town people (0.37 in places over 2,000) but loses the spread: a larger top place and smaller ranks 5–8.
+
+**Paused by the owner after this report.** Nothing is decided on the over-2,000 band or on the cloth pace, and neither switch is the default. The model stays at D1 (golden `4a9737eafc305561`). On resuming, those two decisions come first.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
