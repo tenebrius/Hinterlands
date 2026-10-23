@@ -5,8 +5,9 @@
 // the ground they make (yards, gardens, crofts, cobbles), their shadows, and
 // the roofs over them. The streets are drawn as roads between the two.
 
-// Two texels per shape: (centre x, y, half length, half width) in metres, then
-// (angle, kind, tone, extra + 4 x height in metres).
+// Four texels per shape: (centre x, y, half length, half width) in metres,
+// then (angle, kind, tone, extra + 4 x height in metres), then for a house of
+// four free corners (R16) its corners from the centre, two to a texel.
 uniform sampler2D u_shapes;
 // Shape numbers, four to a texel.
 uniform sampler2D u_sidx;
@@ -29,6 +30,45 @@ const int K_WALL_TOWER = 15;
 const int K_GATE = 16;
 const int K_HALL = 17;
 const int K_CLOISTER = 18;
+const int K_QHOUSE = 19;
+
+// A four-cornered outline (corners q, convex, either winding) at offset d
+// from its centre: signed distance (negative inside, the largest distance
+// outside any edge's line), the nearest edge's outward normal and the
+// position along it, and the distance inside to the second nearest edge.
+struct Quad {
+    float sd;
+    vec2 n;
+    float along;
+    float e2;
+};
+
+Quad quad_at(vec2 d, vec2 q[4]) {
+    vec2 mid = (q[0] + q[1] + q[2] + q[3]) * 0.25;
+    Quad Q = Quad(-1e9, vec2(1.0, 0.0), 0.0, 1e9);
+    float best = 1e9;
+    for (int k = 0; k < 4; k++) {
+        vec2 a = q[k];
+        vec2 b = q[(k + 1) & 3];
+        vec2 t = normalize(b - a);
+        vec2 n = vec2(t.y, -t.x);
+        if (dot(n, a - mid) < 0.0) {
+            n = -n;
+        }
+        float e = dot(d - a, n);
+        Q.sd = max(Q.sd, e);
+        float inside = -e;
+        if (inside < best) {
+            Q.e2 = best;
+            best = inside;
+            Q.n = n;
+            Q.along = dot(d - a, t);
+        } else {
+            Q.e2 = min(Q.e2, inside);
+        }
+    }
+    return Q;
+}
 
 struct Town {
     // The ground shape at the point (-1 for none): local position (x along
@@ -79,8 +119,8 @@ Town town_scan(vec2 pm) {
         }
         int j = start + k;
         int id = int(way_texel(u_sidx, j >> 2)[j & 3]);
-        vec4 a = way_texel(u_shapes, 2 * id);
-        vec4 b = way_texel(u_shapes, 2 * id + 1);
+        vec4 a = way_texel(u_shapes, 4 * id);
+        vec4 b = way_texel(u_shapes, 4 * id + 1);
         float ca = cos(b.x);
         float sa = sin(b.x);
         vec2 d = pm - a.xy;
@@ -90,7 +130,19 @@ Town town_scan(vec2 pm) {
         float extra = b.w - 4.0 * height;
         bool round = kind == K_GREEN || kind == K_WALL_TOWER || kind == K_MARKET;
         float sd;
-        if (round) {
+        bool quad = kind == K_QHOUSE;
+        vec2 qc[4];
+        Quad Q;
+        if (quad) {
+            vec4 q01 = way_texel(u_shapes, 4 * id + 2);
+            vec4 q23 = way_texel(u_shapes, 4 * id + 3);
+            qc[0] = q01.xy;
+            qc[1] = q01.zw;
+            qc[2] = q23.xy;
+            qc[3] = q23.zw;
+            Q = quad_at(d, qc);
+            sd = Q.sd;
+        } else if (round) {
             sd = (length(l / a.zw) - 1.0) * min(a.z, a.w);
         } else {
             vec2 q = abs(l) - a.zw;
@@ -120,18 +172,26 @@ Town town_scan(vec2 pm) {
                 T.bk = kind;
                 T.bl = l;
                 T.bh = a.zw;
+                if (quad) {
+                    // Along the nearest eave, and in from it; the ridge where
+                    // the two nearest slopes meet; the slope's direction.
+                    T.bl = vec2(Q.along, -Q.sd);
+                    T.bh = vec2(Q.e2 + Q.sd, 0.0);
+                }
                 T.bt = b.z;
                 T.bx = extra;
                 T.bcov = cov;
                 T.btop = height;
-                T.bang = b.x;
+                T.bang = quad ? atan(Q.n.y, Q.n.x) : b.x;
             }
             // In shadow if the building stands between the point and the light
             // (the sun 45 degrees up, shadows shortened a little).
             vec2 ds = d + SUN * height * 0.6;
             vec2 ls = vec2(ds.x * ca + ds.y * sa, -ds.x * sa + ds.y * ca);
             float ss;
-            if (round) {
+            if (quad) {
+                ss = quad_at(ds, qc).sd;
+            } else if (round) {
                 ss = (length(ls / a.zw) - 1.0) * min(a.z, a.w);
             } else {
                 vec2 q = abs(ls) - a.zw;
@@ -336,6 +396,25 @@ vec3 town_buildings(vec3 c, Town T) {
         return c;
     }
     float z = u_look.w;
+    if (T.bk == K_QHOUSE) {
+        // A hipped roof over four free corners (R16): each slope falls to its
+        // nearest eave, so the tiles or thatch run along the eaves; ridges and
+        // hips where two slopes meet.
+        g_unit = z;
+        float e1 = T.bl.y / z;
+        float ridge = T.bh.x / z;
+        vec2 n = vec2(cos(T.bang), sin(T.bang));
+        vec3 r = roof_color(T.bx, T.bt, vec2(T.bl.x / z, e1), vec2(1e3, 1.0));
+        r *= 0.88 + 0.22 * dot(n, SUN);
+        r = mix(r, r * 0.8, band(ridge, -0.25, 0.25) * fine(0.5));
+        r = mix(r, r * 0.7, band(e1, -1.0, 0.25) * fine(0.5));
+        r = mix(r, INK, band(e1, -1.0, max(0.25, 1.3 * mpx())) * u_ink);
+        if (u_season == 3) {
+            r = mix(r, vec3(0.93, 0.94, 0.96), 0.55);
+        }
+        g_unit = 1.0;
+        return mix(c, r, T.bcov);
+    }
     vec2 l = T.bl / z;
     vec2 h = T.bh / z;
     // Round towers measure their edge round, for the eaves and the ink.

@@ -37,6 +37,8 @@ pub const WALL_TOWER: f32 = 15.0;
 pub const GATE: f32 = 16.0;
 pub const HALL: f32 = 17.0;
 pub const CLOISTER: f32 = 18.0;
+/// A house of four free corners fitted to the gap it fills (R16).
+pub const QHOUSE: f32 = 19.0;
 
 /// A rectangle (or, for greens and wall towers, an ellipse) in metres.
 #[derive(Clone, Copy, Debug)]
@@ -53,6 +55,9 @@ pub struct Shape {
     pub extra: f32,
     /// Metres high, for shadows.
     pub height: f32,
+    /// A building of four free corners (R16, kind `QHOUSE`), in metres; `c`,
+    /// `h` and `angle` then give its middle and a box round it.
+    pub q: Option<[Vec2; 4]>,
 }
 
 /// A street the planner made (side streets, back lanes, lanes of hamlets off
@@ -178,6 +183,9 @@ impl Shape {
         (u, perp(u))
     }
     fn corners(&self) -> [Vec2; 4] {
+        if let Some(q) = self.q {
+            return q;
+        }
         let (u, w) = self.axes();
         let (a, b) = (u * self.h.x, w * self.h.y);
         [
@@ -189,9 +197,15 @@ impl Shape {
     }
     fn overlaps(&self, o: &Shape) -> bool {
         let (ca, cb) = (self.corners(), o.corners());
-        let (u1, w1) = self.axes();
-        let (u2, w2) = o.axes();
-        for ax in [u1, w1, u2, w2] {
+        // Separating axes: the edge normals of both (convex) outlines.
+        let normals = |c: &[Vec2; 4]| {
+            let mut n = [Vec2::ZERO; 4];
+            for k in 0..4 {
+                n[k] = perp(c[(k + 1) % 4] - c[k]);
+            }
+            n
+        };
+        for ax in normals(&ca).into_iter().chain(normals(&cb)) {
             let pa = ca.iter().map(|p| p.dot(ax));
             let pb = cb.iter().map(|p| p.dot(ax));
             let (amin, amax) = pa.fold((f32::MAX, f32::MIN), |m, x| (m.0.min(x), m.1.max(x)));
@@ -201,6 +215,23 @@ impl Shape {
             }
         }
         true
+    }
+    /// Signed distance from p to the outline (negative inside), as the
+    /// largest distance outside any edge's line: exact inside, near enough
+    /// outside for a few metres' clearance.
+    fn sd(&self, p: Vec2) -> f32 {
+        let c = self.corners();
+        let mid = (c[0] + c[1] + c[2] + c[3]) * 0.25;
+        let mut d = f32::MIN;
+        for k in 0..4 {
+            let (a, b) = (c[k], c[(k + 1) % 4]);
+            let mut n = perp(b - a).normalized();
+            if n.dot(a - mid) < 0.0 {
+                n = -n;
+            }
+            d = d.max((p - a).dot(n));
+        }
+        d
     }
     fn bounds(&self) -> (Vec2, Vec2) {
         let c = self.corners();
@@ -368,6 +399,12 @@ impl Space {
 
 /// Whether segment ac passes through the rectangle s.
 fn crosses(s: &Shape, a: Vec2, c: Vec2) -> bool {
+    if s.q.is_some() {
+        let q = s.corners();
+        return s.sd(a) < 0.0
+            || s.sd(c) < 0.0
+            || (0..4).any(|k| intersect(a, c, q[k], q[(k + 1) % 4]).is_some());
+    }
     let (u, w) = s.axes();
     let la = Vec2::new((a - s.c).dot(u), (a - s.c).dot(w));
     let lc = Vec2::new((c - s.c).dot(u), (c - s.c).dot(w));
@@ -653,6 +690,7 @@ fn lay_out(
                 tone: h01(seed, 13),
                 extra: 0.0,
                 height: 0.0,
+                q: None,
             };
             if water.land(m.c) {
                 reserved.push(m);
@@ -667,6 +705,7 @@ fn lay_out(
                         tone: h01(seed, 16),
                         extra: 1.0,
                         height: 9.0 * z,
+                        q: None,
                     });
                 }
             }
@@ -690,6 +729,7 @@ fn lay_out(
                 tone: h01(seed, 20),
                 extra: 0.0,
                 height: 0.0,
+                q: None,
             };
             if water.land(g.c) {
                 reserved.push(g);
@@ -1126,6 +1166,7 @@ fn place_church(
             tone: h01(key, 31),
             extra: 0.0,
             height: 0.0,
+            q: None,
         };
         if !yard
             .probes()
@@ -1154,6 +1195,7 @@ fn place_church(
             tone: h01(key, 33),
             extra: if pop >= 1500.0 { 1.0 } else { 0.0 },
             height: if big { 30.0 } else { 11.0 } * z,
+            q: None,
         };
         space.shapes.push(body);
         // The tower at the west end; transepts on a cathedral; its cloister.
@@ -1166,6 +1208,7 @@ fn place_church(
             tone: h01(key, 34),
             extra: 0.0,
             height: if big { 60.0 } else { 22.0 } * z,
+            q: None,
         });
         if big {
             space.shapes.push(Shape {
@@ -1176,6 +1219,7 @@ fn place_church(
                 tone: h01(key, 35),
                 extra: 1.0,
                 height: 28.0 * z,
+                q: None,
             });
             space.shapes.push(Shape {
                 c: yard.c + (perp(dir(a)) * 38.0 + dir(a) * 10.0) * z,
@@ -1185,6 +1229,7 @@ fn place_church(
                 tone: h01(key, 36),
                 extra: 1.0,
                 height: 9.0 * z,
+                q: None,
             });
         }
         return;
@@ -1224,6 +1269,7 @@ fn place_friary(
             tone: h01(key, 41),
             extra: 0.0,
             height: 0.0,
+            q: None,
         };
         if !yard
             .probes()
@@ -1243,6 +1289,7 @@ fn place_friary(
             tone: h01(key, 43),
             extra: 1.0,
             height: 14.0 * z,
+            q: None,
         });
         space.shapes.push(Shape {
             c: yard.c + perp(dir(a)) * 14.0 * z,
@@ -1252,6 +1299,7 @@ fn place_friary(
             tone: h01(key, 44),
             extra: 1.0,
             height: 8.0 * z,
+            q: None,
         });
         return;
     }
@@ -1371,6 +1419,7 @@ fn place_plots(
                 tone: h01(key, 59),
                 extra: rank as u8 as f32,
                 height: 0.0,
+                q: None,
             };
             let probes = plot.probes();
             if !probes
@@ -1541,6 +1590,7 @@ impl Lot {
                     tone: self.h(69),
                     extra: self.roof,
                     height: (5.5 + 1.5 * self.h(70)) * z,
+                    q: None,
                 };
                 if self.add(b, out) {
                     house = Some(b);
@@ -1576,6 +1626,7 @@ impl Lot {
                 tone: self.h(75),
                 extra: self.roof,
                 height: (5.0 + 1.5 * self.h(76)) * z,
+                q: None,
             };
             self.add(barn, out);
         } else if pick < 0.75 {
@@ -1595,6 +1646,7 @@ impl Lot {
                     tone: self.h(75),
                     extra: self.roof,
                     height: (5.5 + 1.5 * self.h(76)) * z,
+                    q: None,
                 };
                 if self.add(barn, out) {
                     break;
@@ -1614,6 +1666,7 @@ impl Lot {
                 tone: self.h(88),
                 extra: 0.0,
                 height: 3.0 * z,
+                q: None,
             };
             self.add(shed, out);
         }
@@ -1643,6 +1696,7 @@ impl Lot {
             tone: self.h(68),
             extra: self.roof,
             height: (8.0 + 3.5 * self.h(64) + 3.0 * tall) * z,
+            q: None,
         };
         out.push(house);
         let start = ragged + 2.0 * hd;
@@ -1663,6 +1717,7 @@ impl Lot {
                     tone: h01(k, 82),
                     extra: self.roof,
                     height: (5.0 + 2.0 * h01(k, 83)) * z,
+                    q: None,
                 };
                 self.add(cot, out);
             }
@@ -1691,6 +1746,7 @@ impl Lot {
                 tone: h01(k, 73),
                 extra: self.roof,
                 height: (5.0 + 2.5 * self.core * h01(k, 72)) * z,
+                q: None,
             };
             if !self.add(b, out) {
                 break;
@@ -1711,6 +1767,7 @@ impl Lot {
                 tone: self.h(97),
                 extra: self.roof,
                 height: 6.0 * z,
+                q: None,
             };
             self.add(b, out);
         }
@@ -1851,10 +1908,125 @@ fn infill(
         }
         space.off_streets(b, front_gap) && clear(block, at, b)
     };
+    // Whether a point is taken: off the place's ground, in water, across the
+    // wall, by a street, or within a hair of a building or open place.
+    let gap = 0.35 * z;
+    let blocked = |q: Vec2, from: Vec2, block: &[Shape], at: &BTreeMap<(i32, i32), Vec<u32>>| {
+        if !on_lots(q) || !water.land(q) || water.river_gap(q) < 2.0 {
+            return true;
+        }
+        if wall.is_some() && (inside_wall(q) != inside_wall(from) || near_wall(q)) {
+            return true;
+        }
+        let b = ((q.x / BUCKET).floor() as i32, (q.y / BUCKET).floor() as i32);
+        if let Some(ids) = space.seg_at.get(&b) {
+            if ids.iter().any(|&i| {
+                let (a, c, hw) = space.segs[i as usize];
+                seg_dist(q, a, c) < hw + front_gap
+            }) {
+                return true;
+            }
+        }
+        at.get(&b)
+            .is_some_and(|ids| ids.iter().any(|&i| block[i as usize].sd(q) < gap))
+    };
+    // A house grown from seed p, turned to `ang`: in each of eight directions
+    // it reaches out until it meets something or its own size, and its four
+    // corners take the room found, so it fits its gap, wedge or skewed as the
+    // gap is, rather than standing as a box square to the street (R16).
+    let grow = |p: Vec2,
+                ang: f32,
+                k: usize,
+                block: &[Shape],
+                at: &BTreeMap<(i32, i32), Vec<u32>>|
+     -> Option<Shape> {
+        if blocked(p, p, block, at) {
+            return None;
+        }
+        let (u, w) = (dir(ang), perp(dir(ang)));
+        let lu = (4.0 + 5.0 * h01(k, 129)) * z;
+        let lw = (3.0 + 3.0 * h01(k, 130)) * z;
+        let step = 0.6 * z;
+        let reach = |d: Vec2, cap: f32| {
+            let mut t = 0.0;
+            while t + step <= cap && !blocked(p + d * (t + step), p, block, at) {
+                t += step;
+            }
+            t
+        };
+        let mut corner = [Vec2::ZERO; 4];
+        for (i, (sx, sy)) in [(1.0f32, 1.0f32), (1.0, -1.0), (-1.0, -1.0), (-1.0, 1.0)]
+            .into_iter()
+            .enumerate()
+        {
+            let fx = reach(u * sx, lu);
+            let fy = reach(w * sy, lw);
+            // The corner itself, drawn in towards the seed until it is clear:
+            // a corner that meets something leans in, the others stand square.
+            let jit = 0.9 + 0.1 * h01(k, 133 + i as u32);
+            let (mut x, mut y) = (fx * jit, fy * jit);
+            let mut free = false;
+            for _ in 0..8 {
+                if !blocked(p + u * (sx * x) + w * (sy * y), p, block, at) {
+                    free = true;
+                    break;
+                }
+                x *= 0.88;
+                y *= 0.88;
+            }
+            if !free || x < 1.2 * z || y < 1.2 * z {
+                return None;
+            }
+            corner[i] = Vec2::new(sx * x, sy * y);
+        }
+        // Convex, and not too small.
+        let mut area = 0.0;
+        for i in 0..4 {
+            let (a, b, c) = (corner[i], corner[(i + 1) % 4], corner[(i + 2) % 4]);
+            let cr = (b - a).x * (c - b).y - (b - a).y * (c - b).x;
+            if cr > 0.0 {
+                return None;
+            }
+            area += a.x * b.y - a.y * b.x;
+        }
+        if area.abs() * 0.5 < 16.0 * z * z {
+            return None;
+        }
+        let world = corner.map(|q| p + u * q.x + w * q.y);
+        let mid = (world[0] + world[1] + world[2] + world[3]) * 0.25;
+        let hx = corner.iter().map(|q| q.x.abs()).fold(0.0f32, f32::max);
+        let hy = corner.iter().map(|q| q.y.abs()).fold(0.0f32, f32::max);
+        Some(Shape {
+            c: mid,
+            h: Vec2::new(hx, hy),
+            angle: ang,
+            kind: QHOUSE,
+            tone: h01(k, 131),
+            extra: roof_of(k),
+            height: (6.0 + 4.0 * h01(k, 132)) * z,
+            q: Some(world),
+        })
+    };
     let mut added: Vec<Shape> = Vec::new();
-    // First by aggregation: each building in the core tries to have others
-    // built against its sides, so the blocks fill solid from their street
-    // fronts inward, as the cores of hand-drawn towns are.
+    // Try a grown house, shrinking it towards its seed if it grazes anything.
+    let mut place =
+        |b: Shape, block: &mut Vec<Shape>, at: &mut BTreeMap<(i32, i32), Vec<u32>>| -> bool {
+            let mut b = b;
+            for _ in 0..3 {
+                if fits(&b, block, at) {
+                    index(at, &b, block.len());
+                    block.push(b);
+                    added.push(b);
+                    return true;
+                }
+                let q = b.q.unwrap_or_else(|| b.corners());
+                b.q = Some(q.map(|p| b.c + (p - b.c) * 0.85));
+            }
+            false
+        };
+    // First by aggregation: each building in the core seeds others against
+    // its sides, so the blocks fill from their street fronts inward, as the
+    // cores of hand-drawn towns do.
     let mut queue: Vec<usize> = (0..block.len())
         .filter(|&i| {
             let s = &block[i];
@@ -1866,48 +2038,39 @@ fn infill(
             .length()
             .total_cmp(&(block[j].c - centre).length())
     });
-    let gap = 0.35 * z;
     let mut qi = 0;
     while qi < queue.len() && qi < 20_000 {
         let base = block[queue[qi]];
         let d = (base.c - centre).length() / core_r;
         let keep = amount * (1.0 - smoothstep(0.45, 1.0, d));
         let (u, w) = base.axes();
-        for side in 0..4usize {
+        let bc = base.corners();
+        for (side, n) in [u, -u, w, -w].into_iter().enumerate() {
             let k = seed * 104_723 + qi * 4 + side;
             if h01(k, 141) > keep {
                 continue;
             }
-            let n = [u, -u, w, -w][side];
-            let t = perp(n);
-            let hb = if side < 2 { base.h.x } else { base.h.y };
-            let ht = if side < 2 { base.h.y } else { base.h.x };
+            let reach_n = bc
+                .iter()
+                .map(|c| (*c - base.c).dot(n))
+                .fold(f32::MIN, f32::max);
+            let reach_t = bc
+                .iter()
+                .map(|c| (*c - base.c).dot(perp(n)).abs())
+                .fold(0.0f32, f32::max);
+            let p = base.c
+                + n * (reach_n + gap + 2.0 * z)
+                + perp(n) * (h01(k, 144) - 0.5) * 1.6 * reach_t;
             let ang = base.angle
                 + if h01(k, 142) < 0.25 {
                     std::f32::consts::FRAC_PI_2
                 } else {
                     0.0
                 }
-                + (h01(k, 143) - 0.5) * 0.06;
-            for shrink in [1.0f32, 0.7] {
-                let h = Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink;
-                let (nu, nw) = (dir(ang), perp(dir(ang)));
-                let hn = n.dot(nu).abs() * h.x + n.dot(nw).abs() * h.y;
-                let b = Shape {
-                    c: base.c + n * (hb + hn + gap) + t * (h01(k, 144) - 0.5) * 2.0 * ht,
-                    h,
-                    angle: ang,
-                    kind: HOUSE,
-                    tone: h01(k, 131),
-                    extra: roof_of(k),
-                    height: (6.0 + 4.0 * h01(k, 132)) * z,
-                };
-                if fits(&b, &block, &at) {
-                    index(&mut at, &b, block.len());
-                    queue.push(block.len());
-                    block.push(b);
-                    added.push(b);
-                    break;
+                + (h01(k, 143) - 0.5) * 0.4;
+            if let Some(b) = grow(p, ang, k, &block, &at) {
+                if place(b, &mut block, &mut at) {
+                    queue.push(block.len() - 1);
                 }
             }
         }
@@ -1931,30 +2094,15 @@ fn infill(
         if best.0 == f32::MAX {
             continue;
         }
-        let along = best.1;
-        let ang = along.y.atan2(along.x)
+        let ang = best.1.y.atan2(best.1.x)
             + if h01(k, 125) < 0.35 {
                 std::f32::consts::FRAC_PI_2
             } else {
                 0.0
             }
-            + (h01(k, 126) - 0.5) * 0.12;
-        for shrink in [1.0f32, 0.75, 0.55] {
-            let b = Shape {
-                c: p,
-                h: Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink,
-                angle: ang,
-                kind: HOUSE,
-                tone: h01(k, 131),
-                extra: roof_of(k),
-                height: (6.0 + 4.0 * h01(k, 132)) * z,
-            };
-            if fits(&b, &block, &at) {
-                index(&mut at, &b, block.len());
-                block.push(b);
-                added.push(b);
-                break;
-            }
+            + (h01(k, 126) - 0.5) * 0.5;
+        if let Some(b) = grow(p, ang, k, &block, &at) {
+            place(b, &mut block, &mut at);
         }
     }
     space.shapes.extend(added);
@@ -2062,6 +2210,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                 tone: h01(seed + k, 81),
                 extra: 0.0,
                 height: 8.0 * z,
+                q: None,
             });
             space.add_shape(Shape {
                 c: mid + out * 9.0 * z,
@@ -2071,6 +2220,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                 tone: h01(seed + k, 82),
                 extra: 0.0,
                 height: 0.0,
+                q: None,
             });
         }
         along += len;
@@ -2084,6 +2234,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                     tone: h01(seed + k, 83),
                     extra: 0.0,
                     height: 11.0 * z,
+                    q: None,
                 });
             }
             next_tower = along + (50.0 + 15.0 * h01(seed + k, 84)) * z;
@@ -2099,6 +2250,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
             tone: h01(seed + k, 85),
             extra: 0.0,
             height: 13.0 * z,
+            q: None,
         });
     }
 }
@@ -2115,7 +2267,8 @@ fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
     ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then(|| p1 + r * t)
 }
 
-/// The shapes as textures: the shapes, two texels each; per map cell, where its
+/// The shapes as textures: the shapes, four texels each (the last two the
+/// corners of a four-cornered house, from its middle, R16); per map cell, where its
 /// squares start in the square table (-1 if it has none); per square, its
 /// entries in the index list, how much of it is built over, and whether it is
 /// town land; the index.
@@ -2230,8 +2383,9 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
             }
         }
     }
-    let mut shp = Vec::with_capacity(shapes.len() * 8);
+    let mut shp = Vec::with_capacity(shapes.len() * 16);
     for s in shapes {
+        let q = s.q.map_or([Vec2::ZERO; 4], |q| q.map(|p| p - s.c));
         // Height in whole metres beside the extra (0..3): extra + 4 x height.
         shp.extend_from_slice(&[
             s.c.x,
@@ -2242,6 +2396,14 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
             s.kind,
             s.tone,
             s.extra + 4.0 * s.height.round(),
+            q[0].x,
+            q[0].y,
+            q[1].x,
+            q[1].y,
+            q[2].x,
+            q[2].y,
+            q[3].x,
+            q[3].y,
         ]);
     }
     let pad = |v: &mut Vec<f32>| -> (i32, i32) {

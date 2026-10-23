@@ -521,6 +521,37 @@ The owner's note on R14: towards the centre of a town the buildings should crowd
 
 Kind: rendering.
 
+## R16 — Infill buildings of free outline, fitted to their gaps
+
+The owner's note on R15: the infill buildings need not be rectangles square to the street, or they all face the same way. They should look built organically, each filling the empty space it was squeezed into. Infill houses are now outlines of four free corners, grown into their gaps.
+
+- **A new kind of shape,** `QHOUSE`, with four free corners (convex). The planner's shapes carry them (`Shape::q`). Overlap tests (separating axes), a signed distance, and street crossings work for any convex outline.
+- **Shape texture:** it now has four texels per shape. The last two hold a four-cornered house's corners, measured from its middle.
+- **Growing a house:**
+  - **The seed:** beside a building's side (aggregation, as in R15) or on the grid of gaps, turned to its neighbour or to the nearest street, ±10–14°, a quarter or a third of them square to it.
+  - **Reaching out:** from the seed the house reaches along its own four directions until it meets a street, a lot's front, another building, an open place, water, the wall or the edge of the place's ground. It stops at 4–9 m by 3–6 m half-size (times the building scale), so large gaps take several houses.
+  - **Corners:** each corner is drawn in towards the seed until it is clear. So a corner that meets something leans in, and the others stand square. The result is a trapezium, a skewed or tapering outline that fits its gap.
+  - **Limits:** outlines smaller than 16 m² × scale², or not convex, are dropped. If a house grazes anything it is shrunk towards its seed (up to three times).
+- **Drawing (`town.frag`):** a four-cornered house has a hipped roof.
+  - **Slopes:** each slope falls to its nearest eave and is lit by that eave's direction.
+  - **Courses:** tiles, thatch or slates run along the eaves.
+  - **Ridges and hips:** they lie where two slopes meet.
+  - **Like other buildings:** eaves, ink, winter snow and shadows (from the same outline) as for any building.
+- **The look:** the cores of towns now fill with buildings of every outline and angle, packed to the streets and to each other, as on hand-drawn town maps. The fronts along the streets stay rectangular, in their rows.
+- **Frame time** (SwiftShader, Liningbourne at 1 m): 6,250 ms at true scale and 5,750 at storybook, against 5,633 and 5,300 in R15. The per-pixel outline test and the larger shape texture account for about 10%.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No index square passes its limit.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`18-*`):
+  - **Walled Asherfield in 1300:** `18-organic-city-1300-1m-storybook`.
+  - **Liningbourne:** `18-organic-upland-town-1m-storybook` and `18-organic-upland-town-1m-true`.
+  - **Dewermouth:** `18-organic-port-1m-storybook`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -551,6 +582,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R13: `15-village-1m-true`/`-storybook` and `15-upland-town-1m-true`/`-storybook` (village and town lots after hand-drawn maps), `15-city-1300-2m-storybook` and `15-city-1300-wall-1m-storybook` (walled Asherfield), `15-port-2m-storybook` (Dewermouth) and `15-river-town-2m-storybook` (Mereelwick).
 - R14: `16-ink-village-1m`, `16-ink-city-1300-2m`, `16-ink-upland-town-1m` and `16-ink-port-2m` (the storybook look with ink), and `16-true-village-1m`.
 - R15: `17-infill-upland-town-1m-true`/`-storybook`, `17-infill-city-1300-2m-storybook` and `17-infill-port-2m-storybook` (dense town cores).
+- R16: `18-organic-city-1300-1m-storybook`, `18-organic-upland-town-1m-storybook`/`-true` and `18-organic-port-1m-storybook` (infill of free outline).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
