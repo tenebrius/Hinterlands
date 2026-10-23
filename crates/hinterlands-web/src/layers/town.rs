@@ -37,6 +37,8 @@ pub const WALL_TOWER: f32 = 15.0;
 pub const GATE: f32 = 16.0;
 pub const HALL: f32 = 17.0;
 pub const CLOISTER: f32 = 18.0;
+/// A market stall (R25).
+pub const STALL: f32 = 20.0;
 
 /// A rectangle (or, for greens and wall towers, an ellipse) in metres.
 #[derive(Clone, Copy, Debug)]
@@ -604,15 +606,21 @@ fn lay_out(
     // Towns take only the roads for their main streets (land trade off the
     // roads gives way to them); smaller places, and towns no road reaches,
     // their tracks too.
+    // Towns' approach roads carry suburbs beyond their lanes (R25).
+    let road_reach = if pop >= 500.0 {
+        1.6 * reach_max
+    } else {
+        reach_max
+    };
     let near = |lo: &Vec2, hi: &Vec2| {
-        let r = Vec2::splat(reach_max);
+        let r = Vec2::splat(road_reach);
         !(anchor.x + r.x < lo.x
             || anchor.x - r.x > hi.x
             || anchor.y + r.y < lo.y
             || anchor.y - r.y > hi.y)
     };
     let has_road = roads.iter().zip(bounds).any(|((pts, _, road), (lo, hi))| {
-        *road && near(lo, hi) && !clip_disc(pts, anchor, reach_max).is_empty()
+        *road && near(lo, hi) && !clip_disc(pts, anchor, road_reach).is_empty()
     });
     for ((pts, hw, road), (lo, hi)) in roads.iter().zip(bounds) {
         if !road && pop >= 500.0 && has_road {
@@ -621,7 +629,7 @@ fn lay_out(
         if !near(lo, hi) {
             continue;
         }
-        for run in clip_disc(pts, anchor, reach_max) {
+        for run in clip_disc(pts, anchor, road_reach) {
             if !road {
                 space.add_street(&run, *hw);
             }
@@ -841,6 +849,14 @@ fn lay_out(
         }
     }
 
+    // A city's wall comes first (R25): a ring round about half its houses,
+    // its gates where the main roads enter; the lanes and plots are then laid
+    // within it and outside it, never across it.
+    let wall: Option<Vec<Vec2>> = walled.then(|| wall_ring(seed, centre, 0.72 * r_est, water, z));
+    let near_wall = |p: Vec2, d: f32| {
+        wall.as_ref()
+            .is_some_and(|w| (0..w.len()).any(|k| seg_dist(p, w[k], w[(k + 1) % w.len()]) < d))
+    };
     // Side streets in towns, grown in generations: lanes off the main
     // streets, then lanes off those in the larger towns, each kept a block's
     // depth from every street but the one it leaves, so they join into blocks
@@ -949,6 +965,7 @@ fn lay_out(
                         if !water.land(p)
                             || water.river_gap(p) < 4.0
                             || (p - centre).length() > reach_max
+                            || near_wall(p, 8.0 * z + hw)
                         {
                             return Err(None);
                         }
@@ -1052,6 +1069,75 @@ fn lay_out(
     for r in &reserved {
         space.add_shape(*r);
     }
+    // Stalls on the market place (R25): booths in loose rows along its sides
+    // and here and there in its middle, clear of the way through it and of
+    // the hall, each with its awning.
+    for m in reserved.iter().filter(|r| r.kind == MARKET) {
+        let Some(q) = m.q else { continue };
+        let inside = |p: Vec2, margin: f32| {
+            (0..6).all(|k| {
+                let (a, b) = (q[k], q[(k + 1) % 6]);
+                let e = (b - a).normalized();
+                (p - a).dot(Vec2::new(e.y, -e.x)) < -margin
+            })
+        };
+        let (u, w) = (dir(m.angle), perp(dir(m.angle)));
+        let step = Vec2::new(4.2, 4.0) * zo;
+        let (nx, ny) = ((m.h.x / step.x) as i32, (m.h.y / step.y) as i32);
+        let mut stalls: Vec<Shape> = Vec::new();
+        for gy in -ny..=ny {
+            for gx in -nx..=nx {
+                let k = seed * 4099 + ((gy + ny) * 97 + gx + nx) as usize;
+                let p = m.c
+                    + u * ((gx as f32 + 0.3 * (h01(k, 201) - 0.5)) * step.x)
+                    + w * ((gy as f32 + 0.3 * (h01(k, 202) - 0.5)) * step.y);
+                // Most stalls stand near the sides of the place.
+                let edge = (0..6)
+                    .map(|e| {
+                        let (a, b) = (q[e], q[(e + 1) % 6]);
+                        let n = (b - a).normalized();
+                        -(p - a).dot(Vec2::new(n.y, -n.x))
+                    })
+                    .fold(f32::MAX, f32::min);
+                let chance = if edge < 9.0 * zo { 0.75 } else { 0.18 };
+                if h01(k, 203) > chance
+                    || !inside(p, 2.0 * zo)
+                    || !water.land(p)
+                    || water.river_gap(p) < 3.0 * zo
+                {
+                    continue;
+                }
+                let st = Shape {
+                    c: p,
+                    h: Vec2::new(1.4 + 0.5 * h01(k, 204), 1.1 + 0.3 * h01(k, 205)) * zo,
+                    angle: m.angle
+                        + if h01(k, 206) < 0.2 {
+                            std::f32::consts::FRAC_PI_2
+                        } else {
+                            0.0
+                        },
+                    kind: STALL,
+                    tone: h01(k, 207),
+                    extra: 0.0,
+                    height: 2.5 * zo,
+                    q: None,
+                };
+                let hall_clear = reserved.iter().filter(|r| r.kind == HALL).all(|h| {
+                    !h.overlaps(&Shape {
+                        h: st.h + Vec2::splat(1.5 * zo),
+                        ..st
+                    })
+                });
+                if hall_clear
+                    && space.off_streets(&st, 0.8 * zo)
+                    && stalls.iter().all(|o| !o.overlaps(&st))
+                {
+                    stalls.push(st);
+                }
+            }
+        }
+        space.shapes.extend(stalls);
+    }
 
     // Churches: one to about a thousand people, in a churchyard beside a street
     // near the centre, the others spread out; a cathedral in its close in the
@@ -1107,47 +1193,6 @@ fn lay_out(
     // of the market place (R22).
     let first_shape = space.shapes.len();
     let plot_streets: Vec<Poly> = streets.iter().cloned().chain(market_sides).collect();
-    let wall = if walled {
-        // A first layout finds the core; the wall goes round about half the
-        // houses, then the plots are laid again clear of it.
-        let mark = space.shapes.len();
-        place_plots(
-            seed,
-            pop,
-            rank,
-            upland,
-            upland && poor,
-            households,
-            centre,
-            reach_max,
-            z,
-            &plot_streets,
-            water,
-            space,
-            None,
-        );
-        let core: Vec<Shape> = space.shapes[mark..]
-            .iter()
-            .filter(|s| s.kind == PLOT || s.kind == COURT)
-            .take(
-                space.shapes[mark..]
-                    .iter()
-                    .filter(|s| s.kind == PLOT || s.kind == COURT)
-                    .count()
-                    / 2,
-            )
-            .copied()
-            .collect();
-        let line = wall_line(centre, &core, z);
-        // Undo the first layout.
-        space.shapes.truncate(mark);
-        for v in space.shape_at.values_mut() {
-            v.retain(|&i| (i as usize) < mark);
-        }
-        Some(line)
-    } else {
-        None
-    };
     let placed = place_plots(
         seed,
         pop,
@@ -1185,7 +1230,7 @@ fn lay_out(
         }
     }
     if let Some(line) = &wall {
-        build_wall(seed, line, &streets, space, z);
+        build_wall(seed, line, &streets, space, water, z);
     }
     let bound = boundary(centre, &space.shapes[start_shapes..], z);
     // The place's own lanes (R24): each ends at its last house, or runs on to
@@ -1298,7 +1343,10 @@ fn lay_out(
                 kept[0]
             };
             if let Some((d, q)) = nearest_on(e) {
-                if d < 30.0 * z && d > 0.5 * z && link_clear(e, q) {
+                let crosses_wall = wall.as_ref().is_some_and(|w| {
+                    (0..w.len()).any(|k| intersect(e, q, w[k], w[(k + 1) % w.len()]).is_some())
+                });
+                if d < 30.0 * z && d > 0.5 * z && link_clear(e, q) && !crosses_wall {
                     if at_end {
                         kept.push(q);
                     } else {
@@ -1559,7 +1607,14 @@ fn place_plots(
             loop {
                 let (p, _) = st.at(s);
                 let d = (p - centre).length();
-                if d > reach_max {
+                // Suburbs (R25): in a town the main roads are built along
+                // further out than the lanes.
+                let limit = if st.main && town > 0.5 {
+                    1.6 * reach_max
+                } else {
+                    reach_max
+                };
+                if d > limit {
                     break;
                 }
                 // Plots widen towards the edge of the place.
@@ -1589,7 +1644,15 @@ fn place_plots(
                     break;
                 }
                 for side in [1.0f32, -1.0] {
-                    let pri = (st.at(mid).0 - centre).length()
+                    // A town's houses go to its main roads before its outer
+                    // lanes, so it strings out along the roads it grew on.
+                    let dm = (st.at(mid).0 - centre).length();
+                    let pri = dm
+                        * if st.main && town > 0.5 && dm > 0.4 * reach_max {
+                            0.65
+                        } else {
+                            1.0
+                        }
                         + if st.main { 0.0 } else { 10.0 * z }
                         + 15.0 * z * h01(seed + i * 7 + n as usize * 3 + (side > 0.0) as usize, 53);
                     slots.push(Slot {
@@ -2450,32 +2513,29 @@ fn point_in(p: Vec2, w: &[Vec2]) -> bool {
     inside
 }
 
-/// The line of a city's wall round its core plots: the farthest corner in each
-/// of 48 directions, with room for a lane inside, smoothed.
-fn wall_line(centre: Vec2, core: &[Shape], z: f32) -> Vec<Vec2> {
+/// The line of a city's wall (R25), laid before its streets: a ring of 48
+/// directions at about `r` metres from the centre, its radius wandering at
+/// two scales so it is not a circle, smoothed by corner cutting.
+fn wall_ring(seed: usize, centre: Vec2, r: f32, _water: &dyn Water, z: f32) -> Vec<Vec2> {
     const N: usize = 48;
-    let mut r = [0.0f32; N];
-    for s in core {
-        for c in s.corners() {
-            let d = c - centre;
-            let k = ((d.y.atan2(d.x) / std::f32::consts::TAU + 1.0) * N as f32) as usize % N;
-            r[k] = r[k].max(d.length() + 14.0 * z);
-        }
-    }
-    let base = r.iter().copied().fold(0.0f32, f32::max).max(80.0 * z) * 0.5;
-    for x in r.iter_mut() {
-        if *x == 0.0 {
-            *x = base;
-        }
-    }
-    let r: Vec<f32> = (0..N)
-        .map(|k| (r[(k + N - 1) % N] + 2.0 * r[k] + r[(k + 1) % N]) / 4.0)
-        .map(|x| x.max(base * 0.6))
+    let r = r.max(90.0 * z);
+    let ph = h01(seed, 191) * std::f32::consts::TAU;
+    let radius: Vec<f32> = (0..N)
+        .map(|k| {
+            let a = k as f32 / N as f32 * std::f32::consts::TAU;
+            r * (1.0
+                + 0.12 * (2.0 * a + ph).sin()
+                + 0.07 * (3.0 * a + 2.0 * ph).cos()
+                + 0.06 * (h01(seed * 53 + k, 192) - 0.5))
+        })
         .collect();
     let mut pts: Vec<Vec2> = (0..N)
-        .map(|k| centre + dir(k as f32 / N as f32 * std::f32::consts::TAU) * r[k])
+        .map(|k| {
+            let a = k as f32 / N as f32 * std::f32::consts::TAU;
+            let rr = (radius[(k + N - 1) % N] + 2.0 * radius[k] + radius[(k + 1) % N]) / 4.0;
+            centre + dir(a) * rr
+        })
         .collect();
-    // Two rounds of closed corner cutting.
     for _ in 0..2 {
         let n = pts.len();
         let mut out = Vec::with_capacity(2 * n);
@@ -2491,7 +2551,14 @@ fn wall_line(centre: Vec2, core: &[Shape], z: f32) -> Vec<Vec2> {
 
 /// The wall itself: stretches of curtain wall, round towers about every 55 m,
 /// a gatehouse where each street passes through, and a ditch outside.
-fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z: f32) {
+fn build_wall(
+    seed: usize,
+    line: &[Vec2],
+    streets: &[Poly],
+    space: &mut Space,
+    water: &dyn Water,
+    z: f32,
+) {
     let n = line.len();
     // Where streets cross the wall: (index along the wall, point, street tangent).
     // Gatehouses where the roads pass; where a lane meets the wall, a
@@ -2530,19 +2597,22 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
         } else {
             -perp(t)
         };
-        if !near_gate(mid, 12.0 * z) {
+        // No wall across the river: it ends at the banks (R25).
+        let wet = !water.land(mid) || water.river_gap(mid) < 3.0 * z;
+        if !near_gate(mid, 12.0 * z) && !wet {
             space.shapes.push(Shape {
                 c: mid,
-                h: Vec2::new(len * 0.5 + 0.4, 1.3 * z),
+                h: Vec2::new(len * 0.5 + 1.0 * z, 3.0 * z),
                 angle: t.y.atan2(t.x),
                 kind: WALL,
                 tone: h01(seed + k, 81),
-                extra: 0.0,
+                // Which side is outside, for the battlements.
+                extra: if out.dot(perp(t)) > 0.0 { 1.0 } else { 0.0 },
                 height: 8.0 * z,
                 q: None,
             });
             space.add_shape(Shape {
-                c: mid + out * 9.0 * z,
+                c: mid + out * 8.5 * z,
                 h: Vec2::new(len * 0.5 + 0.4 + 1.5 * z, 4.5 * z),
                 angle: t.y.atan2(t.x),
                 kind: DITCH,
@@ -2554,10 +2624,10 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
         }
         along += len;
         if along >= next_tower {
-            if !near_gate(b, 20.0 * z) {
+            if !near_gate(b, 20.0 * z) && water.land(b) && water.river_gap(b) > 3.0 * z {
                 space.shapes.push(Shape {
                     c: b + out * z,
-                    h: Vec2::splat(4.2 * z),
+                    h: Vec2::splat(4.8 * z),
                     angle: 0.0,
                     kind: WALL_TOWER,
                     tone: h01(seed + k, 83),

@@ -30,6 +30,7 @@ const int K_WALL_TOWER = 15;
 const int K_GATE = 16;
 const int K_HALL = 17;
 const int K_CLOISTER = 18;
+const int K_STALL = 20;
 
 struct Town {
     // The ground shape at the point (-1 for none): local position (x along
@@ -399,15 +400,31 @@ vec3 town_buildings(vec3 c, Town T) {
             vec2 w = vec2(n.x * ca - n.y * sa, n.x * sa + n.y * ca) * outer;
             r = LEAD * (0.82 + 0.3 * dot(w, SUN));
         }
+    } else if (T.bk == K_STALL) {
+        // A market stall (R25): an awning striped across in two colours,
+        // lit on its slope.
+        vec3 a1 = T.bt < 0.33 ? vec3(0.70, 0.22, 0.18) : T.bt < 0.66 ? vec3(0.78, 0.62, 0.25) : vec3(0.25, 0.42, 0.55);
+        vec3 a2 = vec3(0.90, 0.86, 0.76);
+        r = mix(a1, a2, step(0.5, fract(l.x / 0.7)) * fine(0.35));
+        r *= roof_light(l, h, T.bang, false);
     } else if (T.bk == K_WALL) {
-        // The wall walk between crenellated parapets, darker than the streets
-        // so the wall does not read as one (R13), its outer faces dark.
-        r = vec3(0.57, 0.54, 0.49) * (0.93 + 0.1 * vnoise(l / 1.0, 731) * soft(1.0));
+        // The curtain wall (R25): a broad band of dressed stone, the wall walk
+        // down its middle between two continuous parapets, battlements only on
+        // the outer one (`extra` 1 when the outside is to the left of its
+        // run), and its faces dark.
         float side = h.y - abs(l.y);
-        float merlon = step(0.45, fract(l.x / 2.0));
-        r = mix(r, vec3(0.38, 0.35, 0.32), band(side, -1.0, 0.6) * mix(1.0, merlon, fine(1.0)));
-        r = mix(r, vec3(0.22, 0.20, 0.18), band(side, -1.0, max(0.2, 0.8 * mpx())));
-        r = mix(r, r * 0.7, 0.5 * u_ink);
+        // Pieces join end to end: only the long faces are edges.
+        edge = side;
+        bool outer = (l.y > 0.0) == (T.bx > 0.5);
+        vec3 stone = vec3(0.63, 0.60, 0.54) * (0.94 + 0.1 * vnoise(l / 1.2, 731) * soft(1.2));
+        r = stone * 0.9;
+        float pw = 0.25 * h.y + 0.3;
+        r = mix(r, stone * 1.06, band(side, 0.0, pw));
+        // Battlements: small merlons along the outer parapet only, faint so
+        // they do not read as sleepers.
+        float crenel = step(0.6, fract(l.x / 1.8)) * (outer ? 1.0 : 0.0);
+        r = mix(r, stone * 0.8, band(side, 0.1, pw - 0.2) * crenel * fine(0.6));
+        r = mix(r, vec3(0.20, 0.18, 0.16), band(side, -1.0, max(0.18, 0.7 * mpx())));
     } else if (T.bk == K_WALL_TOWER) {
         // A round tower with a conical roof.
         vec2 n = normalize(l + 1e-4);

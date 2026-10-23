@@ -753,6 +753,46 @@ The owner's review of R23, three points:
 
 Kind: rendering.
 
+## R25 — Walls and gates first, a wall that reads as a wall, market stalls, a label cartouche, suburbs along the roads
+
+The owner's list, in order:
+1. place a walled town's wall and gates from its main roads first, and lay its streets so they do not cut into the wall;
+2. make the wall look like a wall, and thicker;
+3. put market stalls on the square;
+4. fix the label halo;
+5. add suburbs along the approach roads.
+
+- **Wall first** (`town.rs`, `wall_ring`).
+  - **The ring:** a city's wall line is now laid before its lanes, round about half its houses (0.72 of the place's estimated radius). It wanders at two scales so it is not a circle, and is smoothed.
+  - **Gates:** a gatehouse wherever a main road crosses it.
+  - **Lanes:** they keep 8 m plus their half-width (times the building scale) off the wall line, and a lane's run to join a street never crosses it, so no lane cuts into the wall. Plots keep to their side of it as before.
+  - **Water:** no wall or tower stands in the river; the wall ends at the banks.
+  - **Retired:** R11's first layout of plots, made to find the wall line, is gone.
+- **The wall itself.**
+  - **Size:** 6 m thick (times the building scale), with its towers 9.6 m across.
+  - **Look:** a broad band of dressed stone, with the wall walk between two continuous parapets. Faint merlons stand only along the outer parapet, and its faces are dark.
+  - **Pieces:** the wall's pieces now join without an outline across their ends, and overlap a little, so it is one continuous wall, not a row of boxes or sleepers.
+  - **Ditch:** close beside it.
+- **Market stalls.**
+  - **Placing:** booths of about 3 by 2.4 m (times z^0.6) stand on the market place in loose rows, three in four along its sides and one in five in its middle.
+  - **Clearance:** they stand clear of the way through it, of the market hall and of the water.
+  - **Drawing:** each has an awning striped in red, ochre or blue with cream, lit on its slope.
+- **Labels** (`labels.rs`).
+  - **Halo:** every name's halo is thicker and nearly opaque, traced at twelve points 2 px out.
+  - **Cartouche:** close in (past 64 points per cell), where a place's centre is its bridge or market place, its name stands in a small parchment cartouche 90 px above the centre, inked round, on a leader line down to a dot at the centre.
+- **Suburbs along the roads.** A town's main roads now run on, and are built along, to 1.6 times the reach of its lanes. Beyond 40% of the way out, plots on the main roads come before plots on the lanes (by a factor of 0.65 on distance). So a town strings out along its approach roads, with gaps (R22) and fields between, and a walled city has its suburbs outside its gates.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`26-walls-*`):
+  - **Liningbourne, 1550:** `upland-town-1m`, `upland-town-3m` and `upland-town-1m-true`.
+  - **Asherfield, 1300:** `city-1300-1m` and `city-1300-2m`.
+  - **Halenford:** `small-town-3m`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -791,6 +831,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R22: `23-market-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `23-market-city-1300-1m-storybook` and `23-market-small-town-1m-storybook` (less infill, density falling outward, the paved market place).
 - R23: `24-streets-upland-town-1m-storybook`/`-true`, `24-streets-city-1300-1m-storybook`, and `24-network-glenden-4m-before`/`-after`/`-1m` (a connected network, streets by rank, trees off roads, the square as road, yards filling their blocks).
 - R24: `25-bends-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `25-bends-small-town-2m-storybook` and `25-bends-city-1300-2m-storybook` (bending roads, plots off square, lanes that end at houses).
+- R25: `26-walls-upland-town-1m`/`-3m`/`-1m-true`, `26-walls-city-1300-1m`/`-2m` and `26-walls-small-town-3m` (walls first, the wall, stalls, cartouche, suburbs).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
