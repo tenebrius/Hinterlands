@@ -489,19 +489,11 @@ void ways_near(vec2 pw, float calm, out Way road, out Way river) {
 // round about is built over.
 // `msd` is the metres to a market place's edge, negative inside (R22): it is
 // paved as the streets are.
-// The nearest road and river to map point p, after their wander: lines wander
-// either side of their smoothed course, some 20 m over most of a kilometre and
-// a few metres over a furlong, so no road runs dead straight along the grid.
-// Roads and rivers wander together, so they stay apart.
+// The nearest road and river to map point p. Their bends are laid out on the
+// CPU (R24); here they only wander a metre or two, so edges are not ruled.
 void ways_at(vec2 p, float share, out Way road, out Way river) {
     vec2 pm = p * u_cell_m;
-    vec2 wander = (vec2(vnoise(pm / 700.0, 201), vnoise(pm / 700.0, 203)) - 0.5) * 40.0
-        + (vec2(vnoise(pm / 160.0, 205), vnoise(pm / 160.0, 207)) - 0.5) * 8.0;
-    // Within a place they keep to the lines its plan was laid along (R19),
-    // easing back over the town's edge.
-    if (u_town_show.x > 0.5) {
-        wander *= 1.0 - smoothstep(-80.0, 0.0, town_land(pm));
-    }
+    vec2 wander = (vec2(vnoise(pm / 60.0, 205), vnoise(pm / 60.0, 207)) - 0.5) * 2.0;
     ways_near(p + wander / u_cell_m, 1.0 - smoothstep(0.0, 0.08, share), road, river);
 }
 

@@ -717,6 +717,42 @@ The owner's review of R22, five points:
 
 Kind: rendering.
 
+## R24 — Roads that bend, lanes that end at houses or join a street, plots a little off square
+
+The owner's review of R23, three points:
+- the road network inside towns and at their edges is at fault, with lanes floating and loose;
+- the buildings along the roads are too regular: a little offset from 90 degrees, with the next building taking up that angle;
+- the roads are too straight. They need bends at various frequencies and amplitudes, but not noisy or inefficient.
+
+- **Bends** (`ways.rs`, `warp`).
+  - **The field:** every road, track, lane, connector, footpath and river line is moved, after smoothing, by one smooth field of displacement in three wavebands:
+    - about 3 km, up to 90 m;
+    - 1.1 km, up to 35 m;
+    - 400 m, up to 9 m.
+  - **Variety:** the whole is scaled by a slower field (about 6 km) between 0.3 and 1.1, so some country has straighter roads and some more winding.
+  - **Limits:** no bend is tighter than a few hundred metres across, so roads curve as roads do round fields and slopes, without wiggling. Rivers take 70% of it.
+  - **Junctions:** because all lines through a point move alike, junctions, bridges and towns stay joined. Towns are laid out along the bent roads.
+  - **Retired:** the shader's own wander of R9 (40 m and 8 m, per pixel) is gone. It moved each pixel's lookup rather than the lines, and was retired inside towns in R19. A 2 m wobble at 60 m stays, so edges are not ruled.
+  - **Far out:** the map symbols stay on their cell lines.
+- **Plots a little off square** (`place_plots`). Each street-front plot, and so its house, is turned off square to the street by a drift that varies smoothly along each side of each street (±7° over about 35 m), plus ±1.5° of its own. Neighbours share nearly the same turn, as houses built against each other do. A plot that does not fit turned is tried square.
+- **Lanes inside towns** (the end of `lay_out`). Each lane the town makes now ends at its last fronted point, the last place a plot, court, churchyard, precinct or green fronts it. If it comes within 30 m (times the building scale) of another street at a loose end, it runs on to join that street, provided the link crosses no plot.
+  - **Dropped:** a lane that no house fronts and that joins nothing.
+  - **Dropped:** any remnant under 15 m.
+
+  So no lane floats in a town or runs on into its fields. Lanes are cul-de-sacs at the last house, or through-lanes.
+- **Market hall:** it stands on whichever side of the market place is dry, or not at all. The bends had put it in the river at Liningbourne.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`25-*`, 1550 unless named):
+  - **Liningbourne:** `25-bends-upland-town-1m-storybook`, `25-bends-upland-town-2m-storybook` and `25-bends-upland-town-1m-true`.
+  - **Halenford:** `25-bends-small-town-2m-storybook`.
+  - **Asherfield in 1300:** `25-bends-city-1300-2m-storybook`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -754,6 +790,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R21: `22-hierarchy-upland-town-1m-storybook`/`-true`, `22-hierarchy-village-1m-storybook` and `22-hierarchy-small-town-1m-storybook` (a hierarchy of buildings).
 - R22: `23-market-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `23-market-city-1300-1m-storybook` and `23-market-small-town-1m-storybook` (less infill, density falling outward, the paved market place).
 - R23: `24-streets-upland-town-1m-storybook`/`-true`, `24-streets-city-1300-1m-storybook`, and `24-network-glenden-4m-before`/`-after`/`-1m` (a connected network, streets by rank, trees off roads, the square as road, yards filling their blocks).
+- R24: `25-bends-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `25-bends-small-town-2m-storybook` and `25-bends-city-1300-2m-storybook` (bending roads, plots off square, lanes that end at houses).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

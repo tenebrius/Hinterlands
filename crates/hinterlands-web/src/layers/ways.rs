@@ -95,6 +95,40 @@ pub struct WayData {
     pub most: usize,
 }
 
+/// Value noise on a lattice of `wave` metres, -0.5..0.5, smooth between.
+fn vnoise(p_m: Vec2, wave: f32, k: u32) -> f32 {
+    use super::countryside::hash;
+    let q = p_m / wave;
+    let (x0, y0) = (q.x.floor(), q.y.floor());
+    let (fx, fy) = (q.x - x0, q.y - y0);
+    let (sx, sy) = (fx * fx * (3.0 - 2.0 * fx), fy * fy * (3.0 - 2.0 * fy));
+    let h = |x: f32, y: f32| {
+        let i = (x as i64).wrapping_mul(73_856_093) ^ (y as i64).wrapping_mul(19_349_663);
+        (hash(i as usize, k) & 0xffff) as f32 / 65536.0 - 0.5
+    };
+    let top = h(x0, y0) + (h(x0 + 1.0, y0) - h(x0, y0)) * sx;
+    let bottom = h(x0, y0 + 1.0) + (h(x0 + 1.0, y0 + 1.0) - h(x0, y0 + 1.0)) * sx;
+    top + (bottom - top) * sy
+}
+
+/// Where a line through map point p (cells) is drawn (R24): moved by a smooth
+/// field of displacement in three wavebands, about 3 km by up to 90 m, 1.1 km
+/// by up to 35 m and 400 m by up to 9 m, the whole varied over some 6 km so
+/// some country has straighter roads and some winding. Curves stay gentle
+/// (no bend tighter than about 300 m across), so a road bends as roads do
+/// round fields and slopes without wandering for nothing. Every line through a
+/// point moves alike, so lines that meet still meet. `amount` scales it.
+fn warp(p: Vec2, cell_m: f32, amount: f32) -> Vec2 {
+    let pm = p * cell_m;
+    let region = 0.6 + 1.6 * (vnoise(pm, 6000.0, 301) + 0.5);
+    let d = |k: u32| {
+        180.0 * vnoise(pm, 3000.0, k)
+            + 70.0 * vnoise(pm, 1100.0, k + 1)
+            + 18.0 * vnoise(pm, 400.0, k + 2)
+    };
+    p + Vec2::new(d(303), d(307)) * (0.5 * region * amount / cell_m)
+}
+
 /// River lines, which change only with the terrain and the look (R12: `scale`
 /// widens them against their true width).
 fn rivers(t: &Terrain, scale: f32) -> Vec<Line> {
@@ -130,6 +164,11 @@ fn rivers(t: &Terrain, scale: f32) -> Vec<Line> {
                 }
             }
             let (pts, hw) = lines::chaikin(&pts, &hw, ROUNDS, |a, b, f| a + (b - a) * f);
+            // Rivers bend with the same field as the roads, a little less (R24).
+            let pts: Vec<Vec2> = pts
+                .iter()
+                .map(|&p| warp(p, g.cell_km * 1000.0, 0.7))
+                .collect();
             Line {
                 kind: if nav { RIVER } else { STREAM },
                 busy: vec![0.0; pts.len()],
@@ -292,6 +331,9 @@ fn roads(v: &ViewState, banks: &Banks, scale: f32) -> Vec<Line> {
             })
             .collect();
         let (pts, busy) = lines::chaikin(&pts, &busy, ROUNDS, |a, b, f| a + (b - a) * f);
+        // Bends (R24), before they are kept off the (bent) rivers.
+        let cell_m = t.grid.cell_km * 1000.0;
+        let pts: Vec<Vec2> = pts.iter().map(|&p| warp(p, cell_m, 1.0)).collect();
         // Keep off the rivers, then one more round to ease the bends that makes.
         let last = pts.len() - 1;
         let pts: Vec<Vec2> = (0..=last)
@@ -459,6 +501,10 @@ fn footpaths(v: &ViewState, banks: &Banks, edges: &[(u32, u32)], scale: f32) -> 
                 .collect();
             let zero = vec![0.0; pts.len()];
             let (pts, _) = lines::chaikin(&pts, &zero, ROUNDS, |a, _, _| a);
+            let pts: Vec<Vec2> = pts
+                .iter()
+                .map(|&p| warp(p, g.cell_km * 1000.0, 1.0))
+                .collect();
             let last = pts.len() - 1;
             let pts: Vec<Vec2> = (0..=last)
                 .map(|k| {

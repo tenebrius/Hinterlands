@@ -787,18 +787,30 @@ fn lay_out(
                 }
                 reserved.push(m);
                 if pop >= 1500.0 {
-                    let side = if h01(seed, 14) < 0.5 { 1.0 } else { -1.0 };
-                    let off = perp(tan) * side * (wid * 0.5 - 8.0 * z);
-                    reserved.push(Shape {
-                        c: p + off,
-                        h: Vec2::new(9.0 + 4.0 * h01(seed, 15), 4.5) * z,
-                        angle: m.angle,
-                        kind: HALL,
-                        tone: h01(seed, 16),
-                        extra: 1.0,
-                        height: 9.0 * z,
-                        q: None,
-                    });
+                    // The market hall, on whichever side of the place is dry
+                    // ground, else none (R24).
+                    let first = if h01(seed, 14) < 0.5 { 1.0 } else { -1.0 };
+                    for side in [first, -first] {
+                        let off = perp(tan) * side * (wid * 0.5 - 8.0 * z);
+                        let hall = Shape {
+                            c: p + off,
+                            h: Vec2::new(9.0 + 4.0 * h01(seed, 15), 4.5) * z,
+                            angle: m.angle,
+                            kind: HALL,
+                            tone: h01(seed, 16),
+                            extra: 1.0,
+                            height: 9.0 * z,
+                            q: None,
+                        };
+                        if hall
+                            .probes()
+                            .iter()
+                            .all(|&v| water.land(v) && water.river_gap(v) > 3.0 * z)
+                        {
+                            reserved.push(hall);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1176,25 +1188,132 @@ fn lay_out(
         build_wall(seed, line, &streets, space, z);
     }
     let bound = boundary(centre, &space.shapes[start_shapes..], z);
-    // The place's own lanes end where its plots do: a lane is cut back to its
-    // last point within the boundary, so none runs on into the fields.
-    let inside = |p: Vec2| {
-        let d = p - centre;
-        let a = d.y.atan2(d.x) / std::f32::consts::TAU;
-        let f = (a + 1.0).fract() * BOUND as f32;
-        let k = f as usize % BOUND;
-        let r = bound[k] + (bound[(k + 1) % BOUND] - bound[k]) * f.fract();
-        d.length() < r - 8.0 * z
+    // The place's own lanes (R24): each ends at its last house, or runs on to
+    // join a street near its end; a lane that no house fronts and that joins
+    // nothing is not made. So no lane floats in the town or runs on into the
+    // fields.
+    let ground = |k: f32| k == PLOT || k == COURT || k == CHURCHYARD || k == PRECINCT || k == GREEN;
+    let fronted = |p: Vec2, hw: f32| -> bool {
+        let r = hw + 4.0 * z;
+        buckets(p - Vec2::splat(r), p + Vec2::splat(r)).any(|b| {
+            space.shape_at.get(&b).is_some_and(|ids| {
+                ids.iter().any(|&i| {
+                    let s = &space.shapes[i as usize];
+                    if !ground(s.kind) {
+                        return false;
+                    }
+                    let (u, w) = s.axes();
+                    let l = Vec2::new((p - s.c).dot(u).abs(), (p - s.c).dot(w).abs()) - s.h;
+                    l.max(Vec2::ZERO).length() + l.x.max(l.y).min(0.0) < hw + 2.5 * z
+                })
+            })
+        })
     };
-    for st in &mut plan.streets[start_streets..] {
-        let mut last = 0;
-        for (k, &p) in st.pts.iter().enumerate() {
-            if inside(p) {
-                last = k;
+    // Whether a link from a to b crosses any plot or building ground.
+    let link_clear = |a: Vec2, b: Vec2| -> bool {
+        buckets(a.min(b), a.max(b)).all(|bk| {
+            space.shape_at.get(&bk).is_none_or(|ids| {
+                ids.iter().all(|&i| {
+                    let s = &space.shapes[i as usize];
+                    !ground(s.kind) || !crosses(s, a, b)
+                })
+            })
+        })
+    };
+    let mut lanes: Vec<Street> = plan.streets.drain(start_streets..).collect();
+    let others = |me: usize, lanes: &Vec<Street>| -> Vec<(Vec2, Vec2, f32)> {
+        let mut v: Vec<(Vec2, Vec2, f32)> = streets
+            .iter()
+            .filter(|st| st.main)
+            .flat_map(|st| {
+                st.pts
+                    .windows(2)
+                    .map(|w| (w[0], w[1], st.hw))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        for (k, l) in lanes.iter().enumerate() {
+            if k != me {
+                v.extend(l.pts.windows(2).map(|w| (w[0], w[1], l.hw)));
             }
         }
-        st.pts.truncate(last + 1);
+        v
+    };
+    let wide_from = 2.9 * rs;
+    for me in 0..lanes.len() {
+        if lanes[me].hw > wide_from || lanes[me].pts.len() < 2 {
+            continue;
+        }
+        let segs = others(me, &lanes);
+        let joined = |p: Vec2, hw: f32| {
+            segs.iter()
+                .any(|&(a, b, h)| seg_dist(p, a, b) < h + hw + 1.5 * z)
+        };
+        let nearest_on = |p: Vec2| {
+            segs.iter()
+                .map(|&(a, b, h)| {
+                    let ab = b - a;
+                    let t = ((p - a).dot(ab) / ab.dot(ab).max(1e-9)).clamp(0.0, 1.0);
+                    let q = a + ab * t;
+                    ((p - q).length() - h, q)
+                })
+                .min_by(|x, y| x.0.total_cmp(&y.0))
+        };
+        let hw = lanes[me].hw;
+        let pts = lanes[me].pts.clone();
+        let n = pts.len();
+        let start_joined = joined(pts[0], hw);
+        let end_joined = joined(pts[n - 1], hw);
+        // The run of points between the first and last fronted ones, kept to
+        // a joined end.
+        let fr: Vec<bool> = pts.iter().map(|&p| fronted(p, hw)).collect();
+        let first = if start_joined {
+            Some(0)
+        } else {
+            fr.iter().position(|&f| f)
+        };
+        let last = if end_joined {
+            Some(n - 1)
+        } else {
+            fr.iter().rposition(|&f| f)
+        };
+        let (Some(i0), Some(i1)) = (first, last) else {
+            lanes[me].pts.clear();
+            continue;
+        };
+        if i1 <= i0 {
+            lanes[me].pts.clear();
+            continue;
+        }
+        let mut kept: Vec<Vec2> = pts[i0..=i1].to_vec();
+        // A loose end near a street runs on to join it.
+        for at_end in [false, true] {
+            let joined_here = if at_end { end_joined } else { start_joined };
+            if joined_here {
+                continue;
+            }
+            let e = if at_end {
+                kept[kept.len() - 1]
+            } else {
+                kept[0]
+            };
+            if let Some((d, q)) = nearest_on(e) {
+                if d < 30.0 * z && d > 0.5 * z && link_clear(e, q) {
+                    if at_end {
+                        kept.push(q);
+                    } else {
+                        kept.insert(0, q);
+                    }
+                }
+            }
+        }
+        let len: f32 = kept.windows(2).map(|w| (w[1] - w[0]).length()).sum();
+        if len < 15.0 * z {
+            kept.clear();
+        }
+        lanes[me].pts = kept;
     }
+    plan.streets.extend(lanes);
     plan.streets.retain(|st| st.pts.len() >= 2);
     Place {
         id,
@@ -1514,17 +1633,30 @@ fn place_plots(
             continue;
         }
         let st = &streets[sl.street];
-        let (p, tan) = st.at(sl.s);
-        let nrm = perp(tan) * sl.side;
-        let angle = tan.y.atan2(tan.x);
+        let (p, tan0) = st.at(sl.s);
         let setback = (0.6 + (1.0 - town) * 1.5) * z;
         let mut ok = None;
+        // Plots stand a few degrees off square to their street (R24), the
+        // turn drifting smoothly along it, so neighbours share it as houses
+        // built against each other do; failing that, square.
+        let skey = seed * 131 + sl.street * 7919 + (sl.side > 0.0) as usize * 17;
+        let a = sl.s / (35.0 * z);
+        let (i0, f) = (a.floor(), a - a.floor());
+        let hk = |i: f32| h01(skey.wrapping_add((i as i64 as usize).wrapping_mul(31)), 151);
+        let drift = hk(i0) + (hk(i0 + 1.0) - hk(i0)) * f * f * (3.0 - 2.0 * f) - 0.5;
+        let turn = drift * 0.24 + (h01(seed * 104729 + n, 152) - 0.5) * 0.05;
         // Plots run back further towards the edge of a town; near its middle,
         // where land was dear, they are shorter.
         let d_c = (p - centre).length();
         let core = 0.6 + 0.4 * smoothstep(0.1 * reach_max, 0.6 * reach_max, d_c);
         let core = if town > 0.5 { core } else { 1.0 };
-        for depth_f in [1.0f32, 0.75, 0.55] {
+        'fit: for (turn, depth_f) in [turn, 0.0]
+            .into_iter()
+            .flat_map(|t| [1.0f32, 0.75, 0.55].map(|d| (t, d)))
+        {
+            let tan = dir(tan0.y.atan2(tan0.x) + turn);
+            let nrm = perp(tan) * sl.side;
+            let angle = tan.y.atan2(tan.x);
             let depth = depth0 * depth_f * core * (0.65 + 0.7 * h01(key, 57));
             // The plot's angle is turned so its local y runs from the street
             // to the back, whichever side of the street it is on.
@@ -1569,10 +1701,10 @@ fn place_plots(
             if !space.clear_of_shapes(&plot) || !space.off_streets(&inset, 0.3) {
                 continue;
             }
-            ok = Some((plot, depth));
-            break;
+            ok = Some((plot, depth, tan, nrm));
+            break 'fit;
         }
-        let Some((mut plot, depth)) = ok else {
+        let Some((mut plot, depth, tan, nrm)) = ok else {
             continue;
         };
         // In the core of a large town a plot holds several households: the
