@@ -1654,3 +1654,88 @@ pub fn cmd_diag(args: &Args) {
         top.join(",")
     );
 }
+
+/// The cloth-pace trace (D135), by decade from `--from` (250, 1350) to `--to`
+/// (450, 1550), each figure the mean over the decade's ten years: mills
+/// bidding and at capacity, capacity and wool milled; the mill towns' W at
+/// the decade's start, its growth to the end, and their cloth margin a head
+/// of W a year (d); and in d a lb at the median seller, the raw-wool and
+/// cloth netbacks and the price realised, the clip share whose cloth netback
+/// beats wool's, wool's port price, cloth's value, the median mill bid and
+/// the price mills paid.
+pub fn cmd_clothpace(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let from = args.u64("from", 250) as u32;
+    let to = args.u64("to", 450) as u32;
+    let p = sim.params.clone();
+    let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
+    println!("clothpace map seed decade mills_bidding mills_at_cap cap_lb milled_lb use_share mill_towns mill_w w_growth region_w_growth margin_d_per_w wool_nb_d cloth_nb_d realised_d cloth_beats_share wool_port_d cloth_d mill_bid_d mill_paid_d");
+    while sim.state.year < from {
+        sim.step(1);
+    }
+    let mut y0 = from;
+    while y0 < to {
+        // Mill towns at the decade's start: places that milled last year.
+        let towns: Vec<(u32, f32)> = sim
+            .state
+            .settlements
+            .iter()
+            .filter(|s| s.cloth_made > 0.0)
+            .map(|s| (s.id, s.market))
+            .collect();
+        let w0: f32 = towns.iter().map(|t| t.1).sum();
+        let region0: f32 = sim.state.settlements.iter().map(|s| s.market).sum();
+        let mut acc = [0f32; 11];
+        let mut margin = 0f32;
+        for _ in 0..10 {
+            sim.step(1);
+            let tr = sim.state.cloth_trace;
+            for (a, v) in acc.iter_mut().zip(tr.iter()) {
+                if v.is_finite() {
+                    *a += v / 10.0;
+                }
+            }
+            margin += sim
+                .state
+                .settlements
+                .iter()
+                .filter(|s| towns.iter().any(|t| t.0 == s.id))
+                .map(|s| s.cloth_margin)
+                .sum::<f32>()
+                / 10.0;
+        }
+        let w1: f32 = sim
+            .state
+            .settlements
+            .iter()
+            .filter(|s| towns.iter().any(|t| t.0 == s.id))
+            .map(|s| s.market)
+            .sum();
+        let region1: f32 = sim.state.settlements.iter().map(|s| s.market).sum();
+        println!(
+            "clothpace {map} {seed} {} {:.1} {:.1} {:.0} {:.0} {:.3} {} {:.0} {:.3} {:.3} {:.2} {:.2} {:.2} {:.2} {:.3} {:.2} {:.2} {:.2} {:.2}",
+            1100 + y0,
+            acc[0],
+            acc[1],
+            acc[2],
+            acc[3],
+            if acc[2] > 0.0 { acc[3] / acc[2] } else { f32::NAN },
+            towns.len(),
+            w0,
+            if w0 > 0.0 { w1 / w0 - 1.0 } else { f32::NAN },
+            if region0 > 0.0 { region1 / region0 - 1.0 } else { f32::NAN },
+            if w0 > 0.0 { margin / w0 / to_coin.max(1e-9) } else { f32::NAN },
+            acc[4],
+            acc[5],
+            acc[6],
+            acc[7],
+            acc[8],
+            p.cloth_d_lb,
+            acc[9],
+            acc[10]
+        );
+        y0 += 10;
+    }
+}

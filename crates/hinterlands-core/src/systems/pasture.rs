@@ -41,6 +41,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     state.wool_ship.clear();
     state.fallow_wool = 0.0;
     state.cloth_stats = [0.0; 5];
+    state.cloth_trace = [0.0; 11];
     let m = state.settlements.len();
     for s in state.settlements.iter_mut() {
         s.wool_in = 0.0;
@@ -683,4 +684,71 @@ fn wool_market(
                 .push((id, k1, gross / p.port_world_price.max(1e-6)));
         }
     }
+    // The cloth-pace trace (D135), in d a lb; reported only.
+    let d = vw / to_coin.max(1e-9);
+    let wmed = |mut v: Vec<(f32, f32)>| -> f32 {
+        v.retain(|x| x.0.is_finite() && x.1 > 0.0);
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let half = v.iter().map(|x| x.1).sum::<f32>() / 2.0;
+        let mut acc = 0.0;
+        for &(x, w) in &v {
+            acc += w;
+            if acc >= half {
+                return x;
+            }
+        }
+        f32::NAN
+    };
+    let (mut wool_nb, mut cloth_nb, mut real) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut beat, mut clip) = (0f32, 0f32);
+    for (k, x) in sellers.iter().enumerate() {
+        let w = x.lb_p + x.lb_f;
+        if w <= 0.0 || by_from[k].is_empty() {
+            continue;
+        }
+        let wn = route[x.i].map_or(f32::NAN, |r| (1.0 - tau_w * r.0) * d);
+        let cn = by_from[k]
+            .iter()
+            .filter(|&&a| arcs[a].1 >= m && arcs[a].1 < port)
+            .map(|&a| (mill_bid[arcs[a].1 - m] - arcs[a].2) * d)
+            .fold(f32::NAN, f32::max);
+        wool_nb.push((wn, w));
+        cloth_nb.push((cn, w));
+        real.push((sup[k] * d, w));
+        clip += w;
+        if cn > wn || (cn.is_finite() && !wn.is_finite()) {
+            beat += w;
+        }
+    }
+    let (mut bidding, mut full, mut cap_lb, mut used) = (0f32, 0f32, 0f32, 0f32);
+    let (mut bids, mut paid) = (Vec::new(), Vec::new());
+    for j in 0..m {
+        if d0[m + j] <= 0.0 {
+            continue;
+        }
+        let c = d0[m + j] / vw;
+        bidding += 1.0;
+        cap_lb += c;
+        used += milled[j];
+        if milled[j] >= 0.99 * c {
+            full += 1.0;
+        }
+        bids.push((mill_bid[j] * d, milled[j]));
+        if milled[j] > 0.0 {
+            paid.push((mill_paid[j] / milled[j] / to_coin.max(1e-9), milled[j]));
+        }
+    }
+    state.cloth_trace = [
+        bidding,
+        full,
+        cap_lb,
+        used,
+        wmed(wool_nb),
+        wmed(cloth_nb),
+        wmed(real),
+        if clip > 0.0 { beat / clip } else { f32::NAN },
+        d,
+        wmed(bids),
+        wmed(paid),
+    ];
 }

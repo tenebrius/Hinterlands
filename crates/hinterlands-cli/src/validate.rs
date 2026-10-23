@@ -262,11 +262,7 @@ pub const CHECKS: &[Check] = &[
         target: "150-350",
         ok: |r| (150..=350).contains(&r.m.count),
     },
-    Check {
-        name: "over 2,000",
-        target: "5-12",
-        ok: |r| (5..=12).contains(&r.m.over_2000),
-    },
+    // Over 2,000 is reported, not gated, since D135.
     Check {
         name: "over 5,000",
         target: "1-5",
@@ -1126,7 +1122,6 @@ pub fn cmd_validate(args: &Args) {
             let value = |r: &RunResult| -> f32 {
                 match c.name {
                     "settlements" => r.m.count as f32,
-                    "over 2,000" => r.m.over_2000 as f32,
                     "over 5,000" => r.m.over_5000 as f32,
                     "largest share" => r.m.largest_share,
                     "rank-size slope" => r.m.rank_slope,
@@ -1253,6 +1248,30 @@ pub fn cmd_validate(args: &Args) {
         println!(
             "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
             "over 5,000 median", "(reported)", "", over5_median, "", ""
+        );
+        // Reported, not gated, since D135: the count over 2,000 and the urban
+        // share against England's c. 10% c. 1300.
+        let mut over2: Vec<u32> = rs.iter().map(|r| r.m.over_2000).collect();
+        over2.sort();
+        let mut urban: Vec<f32> = rs.iter().map(|r| r.m.urban_share).collect();
+        urban.sort_by(|a, b| a.total_cmp(b));
+        println!(
+            "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
+            "over 2,000",
+            "(reported)",
+            canon.map_or(String::new(), |r| r.m.over_2000.to_string()),
+            over2.get(over2.len() / 2).copied().unwrap_or(0),
+            format!("{}-{}", over2.first().unwrap_or(&0), over2.last().unwrap_or(&0)),
+            ""
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10.3} {:>10} {:>8}",
+            "urban share >2,000",
+            "(Eng. ~0.10)",
+            canon.map_or(String::new(), |r| format!("{:.3}", r.m.urban_share)),
+            urban.get(urban.len() / 2).copied().unwrap_or(f32::NAN),
+            "",
+            ""
         );
         println!(
             "{:<20} {:>12} {:>10} {:>10.1} {:>10} {:>8}",

@@ -160,7 +160,7 @@ define_params! {
         rho_stone: f32 = 0.4, [0.1, 20], "Value density of stone relative to grain";
         port_goods: bool = false, [0, 1], "The outside ports sell salt and iron, as they sell imports (D1 step 1, D121)";
         demand_stocks: bool = true, [0, 1], "Demand for salt, iron and stone from stocks, and ports selling salt and iron (D1, D121)";
-        port_reach: bool = false, [0, 1], "Every settlement reaches its nearest outside port, at the full travel cost, for salt and iron (D1b, D124)";
+        port_reach: bool = true, [0, 1], "Every settlement reaches its nearest outside port, at the full travel cost, for salt and iron (D1b, D124; default from D135)";
         salt_lb: f32 = 15.0, [0, 100], "Salt a person uses a year, lb (calibration: no source found, D121)";
         salt_lb_per_d: f32 = 3.1, [0.1, 100], "Pounds of salt a penny buys (London 1438, secondary)";
         ploughs_per_km2: f32 = 2.0, [0, 10], "Ploughs per km2 of arable (a ploughland of about 100 acres; approximate)";
@@ -253,7 +253,7 @@ define_params! {
         grass_log_forest: f32 = 0.1, [0, 1], "Forest cover below which a cell counts as an old field (L4)";
         sheep_per_acre: f32 = 1.5, [0, 5], "Sheep a pasture acre carries (Howell; L0)";
         fleece_lb: f32 = 1.5, [0, 5], "Wool a fleece, lb (200-260 fleeces to the sack; L0)";
-        cloth: bool = false, [0, 1], "D2 (D123): the fallow flock (step 1), then cloth; off until the D2 gate passes";
+        cloth: bool = true, [0, 1], "D2 (D123): the fallow flock, wool and export cloth by port reach (default from D135)";
         fallow_share: f32 = 0.333, [0, 1], "Share of the arable lying fallow a year (three-field rotation; D123)";
         sheep_per_fallow_acre: f32 = 1.0, [0, 5], "Sheep folded a fallow acre, with the commons (calibration; sheep-corn husbandry, Campbell 2000; D123)";
         cloth_yd_adult: f32 = 1.5, [0, 10], "Home cloth an adult buys a year, yards, held constant until D3 (Dyer 1989, bracketed; D123)";

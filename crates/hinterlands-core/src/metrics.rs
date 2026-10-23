@@ -12,6 +12,8 @@ pub struct Metrics {
     pub total_pop: f32,
     pub largest: f32,
     pub over_2000: u32,
+    /// Share of people in settlements over 2,000 (reported, D135).
+    pub urban_share: f32,
     pub over_5000: u32,
     pub largest_share: f32,
     /// OLS slope of ln(size) on ln(rank), top 30.
@@ -159,6 +161,11 @@ pub fn compute(snap: &Snapshot, t: &Terrain) -> Metrics {
         total_pop: total,
         largest,
         over_2000: big.len() as u32,
+        urban_share: if total > 0.0 {
+            big.iter().map(|s| s.pop).sum::<f32>() / total
+        } else {
+            0.0
+        },
         over_5000: sizes.iter().filter(|&&x| x > 5000.0).count() as u32,
         largest_share: if total > 0.0 { largest / total } else { 0.0 },
         rank_slope: rank_slope(&sizes, 30),

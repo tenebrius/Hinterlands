@@ -8,7 +8,7 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 | --- | --- | --- |
 | Determinism | FNV-1a hash of the bincode snapshot after 500 years; the canonical run (map 1, seed 1) is run twice and must match. The browser build must match the native hash (`?selftest=N`). | identical |
 | Settlement count | Settlements alive at the end. | 150–350 |
-| Over 2,000 / over 5,000 | Settlements with population strictly above 2,000 / 5,000. The median of over 5,000 across the 20 seeds is reported (gated at ≥ 2 from D20 until v2, D48). | 5–12 / 1–5; median reported |
+| Over 2,000 / over 5,000 | Settlements with population strictly above 2,000 / 5,000. The median of over 5,000 across the 20 seeds is reported (gated at ≥ 2 from D20 until v2, D48). | reported (D135; was 5–12), with the urban share / 1–5; median reported |
 | Largest share | Largest population divided by total population. | < 0.25 |
 | Rank-size slope | Ordinary least squares slope of ln(population) on ln(rank) over the 30 largest settlements (all, if fewer than 30; undefined below 3). | −1.3 to −0.8 |
 | Market-town spacing | For each settlement over 500, straight-line distance between anchor cell centres to the nearest other settlement over 500; the median of these. | 8–15 km |
