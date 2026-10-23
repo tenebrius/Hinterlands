@@ -521,12 +521,18 @@ fn lay_out(
     // own lanes are `rs` times their true width (R12).
     let z = look.buildings;
     let rs = look.roads;
+    // Open places (market places, greens, churchyards) and the great buildings
+    // grow more slowly than houses, so a larger look does not open huge
+    // squares in the middle of a place (R13).
+    let zo = z.powf(0.6);
     let seed = id as usize;
     let start_shapes = space.shapes.len();
     let start_streets = plan.streets.len();
     let households = (pop / look.per_house).round().max(1.0) as u32;
     let (front0, depth0) = plot_size(pop);
-    let (front0, depth0) = (front0 * z, depth0 * z);
+    // Lots widen with the buildings but deepen only as the root of their scale,
+    // so a larger look keeps its lots built over rather than empty (R13).
+    let (front0, depth0) = (front0 * z, depth0 * z.sqrt());
     // Plots needed: fewer than households where the core holds tenements.
     let plots_needed = households as f32 / (1.0 + 0.5 * smoothstep(4000.0, 15000.0, pop));
     let r_est = (plots_needed * front0 * depth0 * 1.5 / std::f32::consts::PI).sqrt();
@@ -637,8 +643,8 @@ fn lay_out(
     if pop >= 500.0 {
         if let Some((i, s)) = main_near {
             let (p, tan) = streets[i].at(s);
-            let len = (38.0 * (pop / 500.0).sqrt()).clamp(38.0, 150.0) * z;
-            let wid = (0.42 * len).clamp(18.0 * z, 60.0 * z) + 2.0 * streets[i].hw;
+            let len = (38.0 * (pop / 500.0).sqrt()).clamp(38.0, 150.0) * zo;
+            let wid = (0.42 * len).clamp(18.0 * zo, 60.0 * zo) + 2.0 * streets[i].hw;
             let m = Shape {
                 c: p,
                 h: Vec2::new(len * 0.5, wid * 0.5),
@@ -675,11 +681,11 @@ fn lay_out(
             })
             .count();
         if arms >= 3 {
-            let r = (30.0 + 25.0 * h01(seed, 17)) * z;
+            let r = (30.0 + 25.0 * h01(seed, 17)) * zo;
             let g = Shape {
                 c: centre,
                 h: Vec2::new(r, r * (0.6 + 0.3 * h01(seed, 18))),
-                angle: h01(seed, 19) * 3.14,
+                angle: h01(seed, 19) * std::f32::consts::PI,
                 kind: GREEN,
                 tone: h01(seed, 20),
                 extra: 0.0,
@@ -695,11 +701,13 @@ fn lay_out(
     // streets, then lanes off those in the larger towns, each kept a block's
     // depth from every street but the one it leaves, so they join into blocks
     // of about 1.5 plot depths; and back lanes behind the main streets' plots.
-    if pop >= 350.0 {
+    // Villages of 150 or more have a lane or two of their own (R13).
+    if pop >= 150.0 {
+        let village = pop < 350.0;
         // A town on only one or two roads (often by a river, which takes half
         // its frontage) grows more lanes, further out, to house its people.
         let mains = streets.iter().filter(|st| st.main).count();
-        let few = mains <= 2;
+        let few = mains <= 2 && !village;
         let generations = if pop < 1500.0 {
             1
         } else if pop < 5000.0 {
@@ -707,9 +715,11 @@ fn lay_out(
         } else {
             4
         } + if few { 2 } else { 0 };
-        let spacing = (130.0 - 60.0 * smoothstep(500.0, 8000.0, pop)) * z;
+        let spacing =
+            (130.0 - 60.0 * smoothstep(500.0, 8000.0, pop)) * z * if village { 1.3 } else { 1.0 };
         let reach = r_est * if few { 1.7 } else { 1.25 };
-        let hw = (1.6 + 1.0 * smoothstep(800.0, 5000.0, pop)) * rs;
+        let hw =
+            (1.6 + 1.0 * smoothstep(800.0, 5000.0, pop)) * rs * if village { 0.8 } else { 1.0 };
         let mut from = 0usize;
         for gen in 0..generations {
             let upto = streets.len();
@@ -719,7 +729,13 @@ fn lay_out(
                     continue;
                 }
                 let (_, s0) = st.nearest(centre);
-                let chance = if gen == 0 { 0.5 } else { 0.4 };
+                let chance = if village {
+                    0.25
+                } else if gen == 0 {
+                    0.5
+                } else {
+                    0.4
+                };
                 for sgn in [1.0f32, -1.0] {
                     let mut s = s0 + sgn * spacing * 0.6;
                     let mut n = 0usize;
@@ -738,14 +754,16 @@ fn lay_out(
                                 + (h01(key, 22) - 0.5) * 0.5;
                             let len = depth0 * 1.6 + (30.0 + 120.0 * h01(key, 23)) * z;
                             let start = p + perp(tan) * side * (st.hw + 0.5);
-                            // A lane bends a little as it goes.
-                            let bend = (h01(key, 24) - 0.5) * 0.6;
-                            let pts: Vec<Vec2> = (0..=10)
-                                .map(|j| j as f32 / 10.0)
-                                .scan((start, a), |st8, f| {
+                            // A lane bends as it goes, one way overall and
+                            // wandering a little along its length (R13).
+                            let bend = (h01(key, 24) - 0.5) * 2.0;
+                            let pts: Vec<Vec2> = (0..=20u32)
+                                .scan((start, a), |st8, j| {
                                     let (p0, a0) = *st8;
-                                    let p1 = p0 + dir(a0) * len / 10.0;
-                                    *st8 = (p1, a0 + bend * f * 0.4);
+                                    let p1 = p0 + dir(a0) * len / 20.0;
+                                    let turn =
+                                        bend * 0.07 + (h01(key * 31 + j as usize, 26) - 0.5) * 0.16;
+                                    *st8 = (p1, a0 + turn);
                                     Some(p0)
                                 })
                                 .collect();
@@ -778,37 +796,39 @@ fn lay_out(
                 // How far a point keeps from street j: the block's depth from
                 // any street but the lane's own (which it leaves, or which a
                 // back lane follows at its plots' depth).
-                let ok = |p: Vec2, from_start: f32, streets: &Vec<Poly>| -> bool {
-                    if !water.land(p)
-                        || water.river_gap(p) < 4.0
-                        || (p - centre).length() > reach_max
-                    {
-                        return false;
-                    }
-                    if reserved.iter().any(|s| {
-                        let (u, v) = s.axes();
-                        let l = p - s.c;
-                        l.dot(u).abs() < s.h.x + 2.0 && l.dot(v).abs() < s.h.y + 2.0
-                    }) {
-                        return false;
-                    }
-                    for (j, st) in streets.iter().enumerate() {
-                        let keep = if j == own {
-                            if side_street {
-                                continue;
-                            }
-                            st.hw + depth0 * 0.5
-                        } else if from_start < 12.0 * z {
-                            continue;
-                        } else {
-                            st.hw + hw + depth0 * 0.7
-                        };
-                        if st.nearest(p).0 < keep {
-                            return false;
+                // Err(Some(j)) when it comes too near street j.
+                let ok =
+                    |p: Vec2, from_start: f32, streets: &Vec<Poly>| -> Result<(), Option<usize>> {
+                        if !water.land(p)
+                            || water.river_gap(p) < 4.0
+                            || (p - centre).length() > reach_max
+                        {
+                            return Err(None);
                         }
-                    }
-                    true
-                };
+                        if reserved.iter().any(|s| {
+                            let (u, v) = s.axes();
+                            let l = p - s.c;
+                            l.dot(u).abs() < s.h.x + 2.0 && l.dot(v).abs() < s.h.y + 2.0
+                        }) {
+                            return Err(None);
+                        }
+                        for (j, st) in streets.iter().enumerate() {
+                            let keep = if j == own {
+                                if side_street {
+                                    continue;
+                                }
+                                st.hw + depth0 * 0.5
+                            } else if from_start < 12.0 * z {
+                                continue;
+                            } else {
+                                st.hw + hw + depth0 * 0.7
+                            };
+                            if st.nearest(p).0 < keep {
+                                return Err(Some(j));
+                            }
+                        }
+                        Ok(())
+                    };
                 let mut runs: Vec<Vec<Vec2>> = Vec::new();
                 let mut run: Vec<Vec2> = Vec::new();
                 let mut along = 0.0f32;
@@ -816,9 +836,27 @@ fn lay_out(
                     let n = ((w[1] - w[0]).length() / 5.0).ceil().max(1.0) as usize;
                     for k in 0..n {
                         let p = w[0] + (w[1] - w[0]) * (k as f32 / n as f32);
-                        if ok(p, along, &streets) {
+                        let here = ok(p, along, &streets);
+                        if here.is_ok() {
                             run.push(p);
                         } else {
+                            // A side street that comes up to another street
+                            // mostly runs on to join it, closing a block (R13).
+                            if let (true, Err(Some(j)), true) = (side_street, here, run.len() >= 2)
+                            {
+                                if h01(own * 7 + j * 131 + seed, 27) < 0.75 {
+                                    let to = &streets[j];
+                                    let q = to.at(to.nearest(p).1).0;
+                                    let last = *run.last().unwrap_or(&p);
+                                    let clear = (1..8).all(|t| {
+                                        let x = last + (q - last) * (t as f32 / 8.0);
+                                        water.land(x) && water.river_gap(x) > 4.0
+                                    });
+                                    if clear && (q - last).length() < 3.0 * depth0 {
+                                        run.push(q);
+                                    }
+                                }
+                            }
                             if run.len() >= 2 {
                                 runs.push(std::mem::take(&mut run));
                             }
@@ -875,9 +913,12 @@ fn lay_out(
                 r_est * (0.35 + 0.6 * c as f32 / n as f32)
             };
             let (yw, yd) = if big {
-                (190.0 * z, 140.0 * z)
+                (190.0 * zo, 140.0 * zo)
             } else {
-                ((42.0 + 10.0 * smoothstep(500.0, 3000.0, pop)) * z, 38.0 * z)
+                (
+                    (42.0 + 10.0 * smoothstep(500.0, 3000.0, pop)) * zo,
+                    38.0 * zo,
+                )
             };
             place_church(
                 seed * 31 + c,
@@ -887,7 +928,7 @@ fn lay_out(
                 yd,
                 big,
                 pop,
-                z,
+                zo,
                 &streets,
                 water,
                 space,
@@ -900,7 +941,7 @@ fn lay_out(
                     seed * 37 + f,
                     centre,
                     r_est * 0.85,
-                    z,
+                    zo,
                     &streets,
                     water,
                     space,
@@ -1220,7 +1261,9 @@ fn place_plots(
     wall: Option<&[Vec2]>,
 ) -> u32 {
     let (front0, depth0) = plot_size(pop);
-    let (front0, depth0) = (front0 * z, depth0 * z);
+    // Lots widen with the buildings but deepen only as the root of their scale,
+    // so a larger look keeps its lots built over rather than empty (R13).
+    let (front0, depth0) = (front0 * z, depth0 * z.sqrt());
     let town = smoothstep(300.0, 1500.0, pop);
     let mut slots: Vec<Slot> = Vec::new();
     for (i, st) in streets.iter().enumerate() {
@@ -1236,9 +1279,11 @@ fn place_plots(
                 }
                 // Plots widen towards the edge of the place.
                 let grow = 1.0 + 0.6 * smoothstep(0.2 * reach_max, 0.8 * reach_max, d);
+                // Village lots vary more in width than a town's (R13).
+                let vary = h01(seed * 977 + i * 31 + n as usize, 51);
                 let f = front0
                     * grow
-                    * (0.8 + 0.45 * h01(seed * 977 + i * 31 + n as usize, 51))
+                    * (0.8 + 0.45 * vary + (1.0 - town) * (0.4 * vary - 0.15))
                     * if scattered { 1.4 } else { 1.0 };
                 let mid = s + sgn * f * 0.5;
                 if mid < 0.0 || mid > st.len() {
@@ -1275,6 +1320,13 @@ fn place_plots(
         }
         let key = seed * 104729 + n;
         if scattered && h01(key, 55) < 0.35 {
+            continue;
+        }
+        // Villages leave gaps between their lots, more of them towards the
+        // edge, where the ground is the village's own closes and trees (R13).
+        let d_mid = (streets[sl.street].at(sl.s).0 - centre).length();
+        let gap = (1.0 - town) * (0.1 + 0.3 * smoothstep(0.25 * reach_max, 0.9 * reach_max, d_mid));
+        if h01(key, 56) < gap {
             continue;
         }
         let st = &streets[sl.street];
@@ -1355,9 +1407,6 @@ fn place_plots(
         }
         space.add_shape(plot);
         placed += hh;
-        // The house at the street front: in towns the whole frontage, two or
-        // three storeys; in villages a longhouse along the street or end on,
-        // set back a little.
         let roof = if upland && h01(key, 61) < 0.6 {
             2.0
         } else if h01(key, 62) < 0.1 + 0.8 * smoothstep(500.0, 3000.0, pop) {
@@ -1366,124 +1415,291 @@ fn place_plots(
             0.0
         };
         let front_edge = p + nrm * (st.hw + setback);
-        let (hl, hd, height, end_on) = if town > 0.5 {
-            // Tenements are deeper and a storey taller.
-            let tall = if hh >= 2 { 1.0 } else { 0.0 };
-            (
-                sl.front * 0.5 - 0.2 * z,
-                (4.0 + 2.0 * h01(key, 63) + 2.0 * tall) * z,
-                (8.0 + 3.0 * h01(key, 64) + 3.0 * tall) * z,
-                false,
-            )
-        } else {
-            let end_on = h01(key, 65) < 0.3;
-            (
-                (5.0 + 2.5 * h01(key, 63)) * z,
-                (2.8 + 0.7 * h01(key, 64)) * z,
-                5.5 * z,
-                end_on,
-            )
+        let core_t = town * (1.0 - smoothstep(0.15 * reach_max, 0.6 * reach_max, d_c));
+        let lot = Lot {
+            key,
+            plot,
+            front_edge,
+            tan,
+            nrm,
+            front: sl.front,
+            depth,
+            hh,
+            town: town > 0.5,
+            core: core_t,
+            roof,
+            z,
         };
-        let back = if town > 0.5 {
-            0.0
-        } else {
-            (2.0 + 6.0 * h01(key, 66)) * z
-        };
-        let (hu, hv, ha) = if end_on {
-            (hl, hd, angle + std::f32::consts::FRAC_PI_2)
-        } else {
-            (hl.min(plot.h.x - 0.3 * z), hd, angle)
-        };
-        let reach_in = if end_on { hu } else { hv };
-        let house = Shape {
-            c: front_edge
-                + nrm * (back + reach_in)
-                + tan
-                    * if end_on {
-                        (h01(key, 67) - 0.5) * (sl.front - 2.0 * hv).max(0.0)
-                    } else {
-                        0.0
-                    },
-            h: Vec2::new(hu, hv),
-            angle: ha,
-            kind: HOUSE,
-            tone: h01(key, 68),
-            extra: roof,
-            height,
-        };
-        space.shapes.push(house);
-        let within = |b: &Shape| {
-            b.corners().iter().all(|&q| {
-                let l = q - plot.c;
-                l.dot(dir(plot.angle)).abs() < plot.h.x
-                    && l.dot(perp(dir(plot.angle))).abs() < plot.h.y
-            })
-        };
-        if court {
-            // The court: cottages one behind another down one side.
-            let side = if h01(key, 80) < 0.5 { 1.0 } else { -1.0 };
-            let across = (sl.front - 2.2 * z).clamp(2.2 * z, 3.4 * z);
-            let start = 2.0 * hd + 2.5 * z;
-            for j in 0..(hh - 1) {
-                let len = (4.0 + 1.5 * h01(key + j as usize, 81)) * z;
-                let c = front_edge
-                    + nrm * (start + j as f32 * 6.0 * z + len * 0.5)
-                    + tan * side * (sl.front * 0.5 - across * 0.5 - 0.3 * z);
-                let cot = Shape {
-                    c,
-                    h: Vec2::new(len * 0.5, across * 0.5),
-                    angle: angle + std::f32::consts::FRAC_PI_2,
-                    kind: HOUSE,
-                    tone: h01(key + j as usize, 82),
-                    extra: roof,
-                    height: (5.0 + 2.0 * h01(key + j as usize, 83)) * z,
-                };
-                if within(&cot) {
-                    space.shapes.push(cot);
-                }
-            }
-            continue;
-        }
-        // A barn behind in villages, a back range down the plot in towns.
-        if h01(key, 69) < 0.5 && depth > 30.0 * z {
-            let b = if town > 0.5 {
-                let len = (4.0 + 5.0 * h01(key, 70)) * z;
-                let w = (sl.front * 0.5 - 0.6 * z).clamp(1.5 * z, 2.5 * z);
-                Shape {
-                    c: front_edge
-                        + nrm * (2.0 * hd + (4.0 + 10.0 * h01(key, 71)) * z + len)
-                        + tan
-                            * (sl.front * 0.5 - w - 0.3 * z)
-                            * if h01(key, 72) < 0.5 { 1.0 } else { -1.0 },
-                    h: Vec2::new(len, w),
-                    angle: angle + std::f32::consts::FRAC_PI_2,
-                    kind: BARN,
-                    tone: h01(key, 73),
-                    extra: roof,
-                    height: 6.0 * z,
-                }
-            } else {
-                Shape {
-                    c: front_edge + nrm * (depth * (0.4 + 0.2 * h01(key, 74))),
-                    h: Vec2::new(4.0 + 3.0 * h01(key, 75), 2.8 + h01(key, 76)) * z,
-                    angle: angle
-                        + if h01(key, 77) < 0.5 {
-                            0.0
-                        } else {
-                            std::f32::consts::FRAC_PI_2
-                        },
-                    kind: BARN,
-                    tone: h01(key, 78),
-                    extra: roof,
-                    height: 6.0 * z,
-                }
-            };
-            if within(&b) {
-                space.shapes.push(b);
-            }
-        }
+        let mut built: Vec<Shape> = Vec::new();
+        lot.build(&mut built);
+        space.shapes.extend(built);
     }
     placed
+}
+
+/// One lot and what stands on it (R13), after the hand-drawn village and town
+/// maps the owner likes. In a village each house has its own size, is turned a
+/// little from the street and set back by its own amount; many have a barn or
+/// byre making an L with the house, or standing apart behind it, and a shed. In
+/// a town the fronts make a row of uneven depth and height, some with an entry
+/// beside them, built up behind in the core.
+struct Lot {
+    key: usize,
+    plot: Shape,
+    /// The middle of the lot's front edge, the street's direction there, and
+    /// the way into the lot.
+    front_edge: Vec2,
+    tan: Vec2,
+    nrm: Vec2,
+    front: f32,
+    depth: f32,
+    /// Households it holds (more than one for tenements and courts).
+    hh: u32,
+    town: bool,
+    /// 1 in the core of a town, 0 at its edge and in villages.
+    core: f32,
+    roof: f32,
+    z: f32,
+}
+
+impl Lot {
+    fn h(&self, k: u32) -> f32 {
+        h01(self.key, k)
+    }
+
+    /// A point `along` metres from the middle of the frontage and `back` into the lot.
+    fn at(&self, along: f32, back: f32) -> Vec2 {
+        self.front_edge + self.tan * along + self.nrm * back
+    }
+
+    /// Whether b lies within the lot, a little in from its edge.
+    fn within(&self, b: &Shape) -> bool {
+        let m = 0.4 * self.z;
+        let (u, w) = self.plot.axes();
+        b.corners().iter().all(|&q| {
+            let l = q - self.plot.c;
+            l.dot(u).abs() < self.plot.h.x - m && l.dot(w).abs() < self.plot.h.y - m
+        })
+    }
+
+    /// Adds b if it lies within the lot and clear of what stands there.
+    fn add(&self, b: Shape, out: &mut Vec<Shape>) -> bool {
+        if self.within(&b) && out.iter().all(|o| !o.overlaps(&b)) {
+            out.push(b);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn build(&self, out: &mut Vec<Shape>) {
+        if self.town {
+            self.build_town(out);
+        } else {
+            self.build_village(out);
+        }
+    }
+
+    fn build_village(&self, out: &mut Vec<Shape>) {
+        let z = self.z;
+        let ang = self.tan.y.atan2(self.tan.x);
+        let half_pi = std::f32::consts::FRAC_PI_2;
+        let end_on = self.h(65) < 0.3;
+        let len = (8.0 + 8.0 * self.h(63)) * z;
+        let wid = (4.5 + 2.0 * self.h(64)) * z;
+        let turn = (self.h(66) - 0.5) * 0.35;
+        let set = (1.0 + 7.0 * self.h(67) * self.h(67)) * z;
+        // The largest fit of the house, turned or (failing that) square to the street.
+        let mut house = None;
+        'fit: for shrink in [1.0f32, 0.8, 0.62] {
+            for t in [turn, 0.0] {
+                let (hx, hy) = (0.5 * len * shrink, 0.5 * wid);
+                // Half its extent along the street, and into the lot.
+                let (span, reach_in) = if end_on { (hy, hx) } else { (hx, hy) };
+                let slack = (0.5 * self.front - span - 0.6 * z).max(0.0);
+                let along = (self.h(68) - 0.5) * 2.0 * slack;
+                let b = Shape {
+                    c: self.at(along, set + reach_in + span * t.abs()),
+                    h: Vec2::new(hx, hy),
+                    angle: ang + t + if end_on { half_pi } else { 0.0 },
+                    kind: HOUSE,
+                    tone: self.h(69),
+                    extra: self.roof,
+                    height: (5.5 + 1.5 * self.h(70)) * z,
+                };
+                if self.add(b, out) {
+                    house = Some(b);
+                    break 'fit;
+                }
+            }
+        }
+        let Some(house) = house else {
+            return;
+        };
+        if self.depth < 22.0 * z {
+            return;
+        }
+        // The house's axis that runs most nearly back into the lot, and the
+        // one across it, with the house's half sizes along them.
+        let (u, w) = house.axes();
+        let (b_ax, s_ax, hb, hs) = if u.dot(self.nrm).abs() > w.dot(self.nrm).abs() {
+            (u * u.dot(self.nrm).signum(), w, house.h.x, house.h.y)
+        } else {
+            (w * w.dot(self.nrm).signum(), u, house.h.y, house.h.x)
+        };
+        let pick = self.h(71);
+        if pick < 0.35 {
+            // A barn or byre from one end of the house, back into the yard: an L.
+            let side = if self.h(72) < 0.5 { 1.0 } else { -1.0 };
+            let blen = (7.0 + 7.0 * self.h(73)) * z;
+            let bw = (3.5 + 1.5 * self.h(74)).min(hs / z) * z;
+            let barn = Shape {
+                c: house.c + s_ax * side * (hs - 0.5 * bw) + b_ax * (hb + 0.5 * blen),
+                h: Vec2::new(0.5 * blen, 0.5 * bw),
+                angle: b_ax.y.atan2(b_ax.x),
+                kind: BARN,
+                tone: self.h(75),
+                extra: self.roof,
+                height: (5.0 + 1.5 * self.h(76)) * z,
+            };
+            self.add(barn, out);
+        } else if pick < 0.75 {
+            // A barn standing apart behind the house, turned its own way.
+            let blen = (6.0 + 8.0 * self.h(73)) * z;
+            let bw = (3.5 + 2.0 * self.h(74)) * z;
+            let a = ang + if self.h(77) < 0.5 { 0.0 } else { half_pi } + (self.h(78) - 0.5) * 0.3;
+            for f in [1.0f32, 0.75] {
+                let barn = Shape {
+                    c: self.at(
+                        (self.h(79) - 0.5) * 0.5 * self.front,
+                        self.depth * (0.45 + 0.25 * self.h(81)) * f,
+                    ),
+                    h: Vec2::new(0.5 * blen, 0.5 * bw),
+                    angle: a,
+                    kind: BARN,
+                    tone: self.h(75),
+                    extra: self.roof,
+                    height: (5.5 + 1.5 * self.h(76)) * z,
+                };
+                if self.add(barn, out) {
+                    break;
+                }
+            }
+        }
+        // A shed or pigsty somewhere in the yard.
+        if self.h(82) < 0.45 {
+            let shed = Shape {
+                c: self.at(
+                    (self.h(83) - 0.5) * 0.8 * self.front,
+                    set + 2.0 * hb + (3.0 + 10.0 * self.h(84)) * z,
+                ),
+                h: Vec2::new(1.3 + 0.8 * self.h(85), 1.0 + 0.5 * self.h(86)) * z,
+                angle: ang + (self.h(87) - 0.5) * 0.6,
+                kind: BARN,
+                tone: self.h(88),
+                extra: 0.0,
+                height: 3.0 * z,
+            };
+            self.add(shed, out);
+        }
+    }
+
+    fn build_town(&self, out: &mut Vec<Shape>) {
+        let z = self.z;
+        let ang = self.tan.y.atan2(self.tan.x);
+        let half_pi = std::f32::consts::FRAC_PI_2;
+        let tall = if self.hh >= 2 { 1.0 } else { 0.0 };
+        // Some fronts leave an entry beside them into the yard behind.
+        let entry = if self.h(90) < 0.3 {
+            (0.9 + 0.8 * self.h(91)) * z
+        } else {
+            0.0
+        };
+        let side = if self.h(92) < 0.5 { 1.0 } else { -1.0 };
+        let hl = (0.5 * self.front - 0.15 * z - 0.5 * entry).max(1.5 * z);
+        let hd = (4.0 + 2.5 * self.h(63) + 2.0 * tall) * z;
+        // Fronts stand a little forward or back of their neighbours.
+        let ragged = 0.7 * self.h(93) * z;
+        let house = Shape {
+            c: self.at(-side * 0.5 * entry, ragged + hd),
+            h: Vec2::new(hl, hd),
+            angle: ang,
+            kind: HOUSE,
+            tone: self.h(68),
+            extra: self.roof,
+            height: (8.0 + 3.5 * self.h(64) + 3.0 * tall) * z,
+        };
+        out.push(house);
+        let start = ragged + 2.0 * hd;
+        if self.hh >= 3 {
+            // A court: cottages one behind another down one side.
+            let across = (self.front - 2.2 * z).clamp(2.2 * z, 3.4 * z);
+            for j in 0..(self.hh - 1) {
+                let k = self.key + j as usize;
+                let len = (4.0 + 1.5 * h01(k, 81)) * z;
+                let cot = Shape {
+                    c: self.at(
+                        side * (0.5 * self.front - 0.5 * across - 0.3 * z),
+                        start + 2.5 * z + j as f32 * 6.0 * z + 0.5 * len,
+                    ),
+                    h: Vec2::new(0.5 * len, 0.5 * across),
+                    angle: ang + half_pi,
+                    kind: HOUSE,
+                    tone: h01(k, 82),
+                    extra: self.roof,
+                    height: (5.0 + 2.0 * h01(k, 83)) * z,
+                };
+                self.add(cot, out);
+            }
+            return;
+        }
+        if self.depth < 20.0 * z {
+            return;
+        }
+        // Back ranges down the sides of the lot, one behind another: in the
+        // core they fill most of its depth, so the blocks read as built over;
+        // towards the edge fewer, with gardens behind.
+        let w = (0.5 * self.front - 0.6 * z).clamp(1.5 * z, 3.0 * z);
+        let mut at = start + (1.0 + 4.0 * self.h(71)) * z;
+        let mut side = side;
+        for j in 0..6u32 {
+            let k = self.key * 7 + j as usize;
+            if h01(k, 69) > 0.3 + 0.6 * self.core - 0.12 * j as f32 {
+                break;
+            }
+            let len = (4.0 + 5.0 * h01(k, 70) + 6.0 * self.core * h01(k, 94)) * z;
+            let b = Shape {
+                c: self.at(side * (0.5 * self.front - w - 0.3 * z), at + len),
+                h: Vec2::new(len, w),
+                angle: ang + half_pi,
+                kind: BARN,
+                tone: h01(k, 73),
+                extra: self.roof,
+                height: (5.0 + 2.5 * self.core * h01(k, 72)) * z,
+            };
+            if !self.add(b, out) {
+                break;
+            }
+            at += 2.0 * len + (1.5 + 4.0 * h01(k, 71)) * z;
+            if h01(k, 74) < 0.4 {
+                side = -side;
+            }
+        }
+        // In the core, a workshop or warehouse across the back of the plot.
+        if self.h(95) < 0.45 * self.core {
+            let d = (3.0 + 2.5 * self.h(96)) * z;
+            let b = Shape {
+                c: self.at(0.0, self.depth - d - 1.0 * z),
+                h: Vec2::new(0.5 * self.front - 0.6 * z, d),
+                angle: ang,
+                kind: BARN,
+                tone: self.h(97),
+                extra: self.roof,
+                height: 6.0 * z,
+            };
+            self.add(b, out);
+        }
+    }
 }
 
 /// Whether p lies inside the closed polygon w.

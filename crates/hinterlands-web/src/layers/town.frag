@@ -55,12 +55,14 @@ struct Town {
     // the rank of the nearest place (0 hamlet .. 3 city).
     float near;
     float rank;
+    // Metres to the nearest building (R13), so trees keep off the houses.
+    float bnear;
 };
 
 Town town_scan(vec2 pm) {
     Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
                   -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
-                  0.0, 0.0, 0.0);
+                  0.0, 0.0, 0.0, 1e9);
     int s;
     int e = shape_square(ivec2(floor(pm / u_cell_m * u_ssub)), s);
     if (e < 0) {
@@ -111,6 +113,9 @@ Town town_scan(vec2 pm) {
                 T.gcov = cov;
             }
         } else {
+            if (kind != K_WALL) {
+                T.bnear = min(T.bnear, sd);
+            }
             if (cov > 0.0 && height > T.btop) {
                 T.bk = kind;
                 T.bl = l;
@@ -153,6 +158,8 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
     // Drawn in the town's own metres (R12): the look's building size scales
     // yards, beds, fences and stalls with the plots.
     float z = u_look.w;
+    // How built over the ground round about is, for the town's yards.
+    float dense = T.gk == K_PLOT ? smoothstep(0.3, 0.65, built_share(pm)) : 0.0;
     g_unit = z;
     pm /= z;
     vec3 g = c;
@@ -170,7 +177,8 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         // A trodden yard round the house (about the first 12-16 m), a kitchen
         // garden of beds behind it, then the croft: grass, an orchard, or a
         // crop in strips of its own.
-        float yard_end = mix(11.0, 13.0, town) + 3.0 * fract(style * 13.0);
+        // In a town's core the yards run most of the way back (R13).
+        float yard_end = mix(mix(11.0, 13.0, town) + 3.0 * fract(style * 13.0), depth * 0.85, dense * town);
         float garden_end = yard_end + mix(8.0, 18.0, town) * (0.6 + 0.8 * fract(style * 7.0));
         vec3 yardc = mix(earth, grass, 0.5 + 0.3 * vnoise(pm / 3.0, 705) * soft(3.0));
         vec3 beds = mix(vec3(0.46, 0.41, 0.31), vec3(0.40, 0.55, 0.27),
@@ -181,6 +189,26 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         vec3 back = grass;
         if (style < 0.3 && T.gx < 1.5) {
             back = crop_color(int(style * 10.0) % 3) * (0.93 + 0.08 * step(0.5, fract(l.x / 3.0)) * fine(3.0));
+        }
+        if (town < 0.5) {
+            // A village lot (R13), after hand-drawn village maps: no fence round
+            // it, trodden ground before and about the house, a fenced patch of
+            // garden beds, and the rest the village's own grass and trees (the
+            // land beneath shows through).
+            // The yard: trodden ground round the buildings, its edge ragged.
+            float wob = (vnoise(pm / 5.0, 761) - 0.5) * 4.0 + (vnoise(pm / 1.7, 762) - 0.5) * 1.5;
+            float yard = 1.0 - smoothstep(-1.0, 1.0, T.bnear / u_look.w - 2.5 - wob);
+            vec2 gc = vec2((fract(style * 7.3) - 0.5) * max(h.x - 5.0, 0.0),
+                yard_end + 9.0 + fract(style * 3.1) * max(depth - yard_end - 20.0, 0.0));
+            vec2 gs = vec2(3.0 + 3.0 * fract(style * 11.0), 2.5 + 2.5 * fract(style * 5.0));
+            vec2 gq = abs(vec2(l.x, y) - gc) - gs;
+            float gsd = max(gq.x, gq.y);
+            float garden = style < 0.75 ? band(gsd, -1e3, 0.0) : 0.0;
+            g = mix(c, yardc, yard * 0.5);
+            g = mix(g, beds, garden);
+            g = mix(g, vec3(0.42, 0.36, 0.28), (style < 0.75 ? band(gsd, -0.25, 0.25) : 0.0) * fine(0.5));
+            g_unit = 1.0;
+            return mix(c, g, T.gcov);
         }
         g = y < yard_end ? yardc : y < garden_end ? beds : back;
         // Fruit trees in the orchards, on a rough grid down the back of the plot.
@@ -197,8 +225,10 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
             }
         }
         // Each plot is fenced or hedged: wattle and walls in towns, hedges in villages.
-        vec3 fence = mix(HEDGE * 0.9, vec3(0.42, 0.36, 0.28), town);
-        g = mix(g, fence, band(edge, -1.0, mix(0.8, 0.35, town)) * fine(0.8));
+        // Town lots are divided by a fence or wall along their sides, without
+        // which the rows read as one (R13: thin, and not across the front).
+        float sides = h.x - abs(l.x);
+        g = mix(g, vec3(0.42, 0.36, 0.28), band(min(sides, depth - y), -1.0, 0.3) * fine(0.6));
     } else if (T.gk == K_COURT) {
         // A court: trodden and patched ground, a drain down the alley, a
         // wall round it.
@@ -349,11 +379,13 @@ vec3 town_buildings(vec3 c, Town T) {
             r = LEAD * (0.82 + 0.3 * dot(w, SUN));
         }
     } else if (T.bk == K_WALL) {
-        // The wall walk between crenellated parapets.
-        r = STONE_TOP * (0.93 + 0.1 * vnoise(l / 1.0, 731) * soft(1.0));
+        // The wall walk between crenellated parapets, darker than the streets
+        // so the wall does not read as one (R13), its outer faces dark.
+        r = vec3(0.57, 0.54, 0.49) * (0.93 + 0.1 * vnoise(l / 1.0, 731) * soft(1.0));
         float side = h.y - abs(l.y);
         float merlon = step(0.45, fract(l.x / 2.0));
-        r = mix(r, r * 0.72, band(side, -1.0, 0.45) * mix(1.0, merlon, fine(1.0)));
+        r = mix(r, vec3(0.38, 0.35, 0.32), band(side, -1.0, 0.6) * mix(1.0, merlon, fine(1.0)));
+        r = mix(r, vec3(0.22, 0.20, 0.18), band(side, -1.0, max(0.2, 0.8 * mpx())));
     } else if (T.bk == K_WALL_TOWER) {
         // A round tower with a conical roof.
         vec2 n = normalize(l + 1e-4);

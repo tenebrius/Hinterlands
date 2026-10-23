@@ -725,6 +725,8 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
         A.hedged = true;
     }
     bool town_close = A.use == TOWN_CLOSE;
+    // Among a village's houses its closes lie open, unhedged (R13).
+    bool open_ground = town_close && built_share(pm) > 0.06;
     bool inner = A.use == CLOSE_GRASS || A.use == CLOSE_CROP || town_close;
     Parcels S;
     if (inner) {
@@ -767,8 +769,9 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
     } else if (A.use == TOWN_CLOSE) {
         // A town's closes: paddocks of grass (most), orchards, kitchen gardens,
         // and on its fringe closes under crops, little fields of its own.
-        float k = hash(S.a, 459);
-        col = turf(grass_color() * mix(vec3(1.02, 1.02, 0.96), vec3(0.93, 1.03, 0.9), hash(S.a, 465)), pm);
+        // Among the houses, one open green (R13).
+        float k = open_ground ? 1.0 : hash(S.a, 459);
+        col = turf(grass_color() * mix(vec3(1.02, 1.02, 0.96), vec3(0.93, 1.03, 0.9), open_ground ? 0.3 : hash(S.a, 465)), pm);
         // Crops only on the fringe, away from the houses.
         if (k >= 0.62 && built_share(S.sa) < 0.02) {
             vec2 dir = vec2(cos(A.angle), sin(A.angle));
@@ -830,7 +833,7 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
             B.use = TOWN_CLOSE;
         }
         bool closes = A.use >= CLOSE_GRASS && A.use <= CLOSE_CROP || B.use >= CLOSE_GRASS && B.use <= CLOSE_CROP
-            || (A.use == TOWN_CLOSE && B.use == TOWN_CLOSE);
+            || (A.use == TOWN_CLOSE && B.use == TOWN_CLOSE && !open_ground);
         bool outline = fa != fb && (fa ? A.hedged : B.hedged);
         bool holdings = fa && fb && A.hedged && B.hedged && A.owner >= 0.0 && B.owner >= 0.0
             && abs(A.owner - B.owner) > 1e-4;
@@ -847,7 +850,7 @@ vec3 farmland(vec3 c, vec2 p, vec2 pm, float mosaic, float upland) {
     // sides lie open.
     ivec2 sp = S.a.x + S.a.y < S.b.x + S.b.y ? S.a * 13 + S.b : S.b * 13 + S.a;
     bool open_side = town_close && hash(sp, 469) < 0.35;
-    if (u_show.w > 0.5 && inner && !open_side && S.edge < Q.edge && S.edge < 40.0) {
+    if (u_show.w > 0.5 && inner && !open_side && !open_ground && S.edge < Q.edge && S.edge < 40.0) {
         c = hedge(c, pm, S, town_close ? 50.0 : A.age, mosaic);
     }
     // The town's edge: a hedge where its closes meet the fields, with its

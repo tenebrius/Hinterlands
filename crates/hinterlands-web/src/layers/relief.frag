@@ -53,6 +53,9 @@ uniform vec4 u_look;
 // drawing roads, trees or buildings, whose own detail (verges, crowns, ridges)
 // is laid out in their own metres and grows with them. `mpx` divides by it.
 float g_unit = 1.0;
+// Metres from the point to the nearest building of a town (R13; 1e9 when far
+// from any), set before the land is drawn so trees keep off the houses.
+float g_bnear = 1e9;
 
 in vec2 v_uv;
 out vec4 o_color;
@@ -273,6 +276,16 @@ vec3 land_color(vec4 s, vec2 p, float coast) {
     if (u_town_show.x > 0.5 && mpx() < 15.0) {
         float ins = town_land(pm) + (vnoise(pm / 25.0, 29) - 0.5) * 30.0;
         wood *= 1.0 - smoothstep(-5.0, 5.0, ins);
+        // Trees about the place (R13), as on hand-drawn village maps: groves
+        // and single trees among its closes and lots and round its edge, kept
+        // off the houses and their yards.
+        float inside = smoothstep(-25.0, 5.0, town_land(pm));
+        if (inside > 0.0) {
+            float clump = smoothstep(0.5, 0.72, mottle(pm / (70.0 * u_look.z), 771));
+            float grove = (0.07 + 0.5 * clump) * inside
+                * smoothstep(3.0, 9.0, g_bnear / u_look.w);
+            wood = max(wood, grove);
+        }
     }
     vec3 green = mix(vec3(0.27, 0.45, 0.24), vec3(0.20, 0.37, 0.21), smoothstep(0.4, 0.9, f));
     green = mix(green, vec3(0.24, 0.36, 0.25), smoothstep(400.0, 1000.0, e));
@@ -641,7 +654,6 @@ void main() {
     float shade = clamp(s.a, 0.45, 1.45);
 
     vec3 sea = sea_color(s, coast);
-    vec3 land = land_color(s, p, coast);
     vec2 pm = p * u_cell_m;
     // Towns close in: the ground of their plots, then the streets, then the
     // shadows and roofs; far out, the share of the ground built over, in the
@@ -649,9 +661,13 @@ void main() {
     bool close_in = mpx() < 15.0;
     Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
                   -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
-                  0.0, 0.0, 0.0);
+                  0.0, 0.0, 0.0, 1e9);
     if (u_town_show.x > 0.5 && close_in) {
         T = town_scan(pm);
+        g_bnear = T.bnear;
+    }
+    vec3 land = land_color(s, p, coast);
+    if (u_town_show.x > 0.5 && close_in) {
         land = town_ground(land, pm, T);
     }
     // Roads and rivers at true width, once a pixel is under 15 m: past the old

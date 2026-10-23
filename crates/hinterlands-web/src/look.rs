@@ -30,11 +30,11 @@ impl Look {
         per_house: 4.5,
     };
     pub const STORYBOOK: Look = Look {
-        roads: 2.5,
+        roads: 2.2,
         rivers: 1.6,
-        trees: 1.8,
-        buildings: 2.0,
-        per_house: 12.0,
+        trees: 1.5,
+        buildings: 2.5,
+        per_house: 10.0,
     };
 
     pub const FIELDS: [Field; 5] = [

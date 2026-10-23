@@ -413,6 +413,61 @@ The owner's review of R9–R11: drawing everything at true size is accurate but 
 
 Kind: rendering.
 
+## R13 — Villages and towns laid out after hand-drawn village maps
+
+The owner's second point after R11: the layout of villages and towns. Rows of identical burgage strips, each with a narrow house at the front, are accurate but regimented. The owner pointed to Watabou's village and city generators as the look they like: houses of their own size and set, turned a little to the street, gaps and clusters, trees among the houses, curving lanes that join into blocks, and town blocks that read as built over. The plan is still made from the model's roads and people (R11); what changed is what stands on each lot, and how the lanes run. This applies at every look, true scale included.
+
+- **Village lots.**
+  - **The house** has its own size, 8–16 m by 4.5–6.5 m (times the building scale). It is turned up to 10° from the street, set back 1–8 m (most near the front), placed anywhere along its frontage, and three in ten stand end on. If it does not fit it is tried square to the street, then shortened.
+  - **Farmsteads:** about a third of the houses have a barn or byre built on at one end, running back into the yard, making an L. Four in ten have a barn standing apart behind, turned its own way, and about half a shed or sty.
+  - **Gaps:** lots vary more in width, and one in ten (one in three at the edge) is left empty. The gaps are the village's own green and trees.
+  - **No fences.**
+    - **Ground:** a village lot draws only a trodden yard close about its buildings (with a ragged edge) and a fenced patch of garden beds. The rest shows the land beneath.
+    - **The land beneath:** among the houses (where more than 6% of the ground is built over) the place's closes lie open, unhedged and all one grass, so a village sits in a green rather than in a grid of rectangles.
+- **Town lots.**
+  - **Fronts:** each lot still fills its frontage, but three in ten leave an entry beside the house. Fronts stand up to 0.7 m forward or back of their neighbours, and vary more in depth and height.
+  - **Back ranges:** up to six run one behind another down the sides of the lot, swapping sides now and then. In the core they fill most of the depth, and there is a workshop or warehouse across the back of almost half the lots, so the blocks read as built over. Towards the edge there are fewer, with gardens behind.
+  - **Yards:** in the core they run most of the way back (where the ground round about is more than about half built over). Lot fences are thin lines down the sides and across the back, not across the front.
+  - **Tenements and courts** are as in R11.
+- **Lanes.**
+  - **Curving:** side streets bend one way overall (up to about 70° along their length) and wander a little.
+  - **Joining:** a lane that comes up to another street's frontage runs on to join it (three times in four), closing a block, unless water lies between.
+  - **Villages:** villages of 150–350 people now grow a lane or two of their own: one generation, a quarter of the chances, and narrower lanes.
+- **Trees about a place.** Groves and single trees stand among a place's closes and lots and round its edge.
+  - **Groves:** clumps at about 70 m (times the tree scale).
+  - **Single trees:** scattered, about 7% of the tree grid between the groves.
+  - **Clearance:** trees keep 3–9 m (times the building scale) off the buildings. The shader now scans the town before drawing the land, so it knows the distance to the nearest building.
+- **Sizes with the look** (R12's building scale `z`):
+  - **Lots:** they widen with `z` but deepen only with √z, so a larger look keeps its lots built over rather than empty.
+  - **Open places and great buildings:** market places, greens, churchyards, churches, the cathedral and friaries grow with z^0.6, so a larger look does not open huge squares in the middle of a place.
+- **Walls.** The wall walk is darker than the streets, with dark outer faces, so a wide wall no longer reads as a lane.
+- **Storybook preset, retuned:** roads ×2.2, rivers ×1.6, trees ×1.5, buildings ×2.5, 10 people to a house.
+- **Housed households** (planner summary, map 1 seed 1; places over 1,000 people):
+  - **True scale:** much as in R11. Asherfield in 1300 houses all 1,002 households (63 ha against 56 expected). Liningbourne in 1550 houses all 1,308. Dewermouth houses 2,237 of 3,342, as before.
+  - **Storybook:** every place houses all its households except the cramped port and river towns (Dewermouth 1,068 of 1,504). Places cover about twice the true-scale area: walled Asherfield in 1300 covers 112 ha.
+- **Frame time** (SwiftShader, median ms per frame, 1,400 × 900, at 1 m):
+
+  | View | R12 | R13 |
+  |---|---|---|
+  | Asherfield, true scale | 3,933 | 3,883 |
+  | Asherfield, storybook | 3,617 | 4,150 |
+  | Liningbourne, true scale | 5,050 | 5,600 |
+  | Liningbourne, storybook | 4,950 | 5,316 |
+
+  Within about 10% of R12. The town scan now runs before the land, for the trees' clearance, but costs no more.
+- **Clippy:** the `approx_constant` error in the green's angle is fixed (it now uses π). The web crate has the same 7 warnings.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`15-*`):
+  - **Asherfield, 1550, at 1 m:** `15-village-1m-true` and `15-village-1m-storybook`.
+  - **Liningbourne, 1550, at 1 m:** `15-upland-town-1m-true` and `15-upland-town-1m-storybook`.
+  - **Asherfield in 1300,** walled: `15-city-1300-2m-storybook` and `15-city-1300-wall-1m-storybook`.
+  - **Others:** Dewermouth, `15-port-2m-storybook`; Mereelwick, `15-river-town-2m-storybook`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -440,6 +495,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
   - **Dewermouth** (the port city of 15,000 at the river mouth): `13-port-4m-before`/`-after` and `13-port-1m`.
   - **Others:** `13-upland-town-2m` (Liningbourne, stone-slate roofs) and `13-river-town-2m` (Mereelwick).
 - R12: `14-look-village-1m-true` and `14-look-village-1m-storybook` (Asherfield, 1550, true scale and the storybook preset), and `14-look-upland-town-2m-storybook` (Liningbourne).
+- R13: `15-village-1m-true`/`-storybook` and `15-upland-town-1m-true`/`-storybook` (village and town lots after hand-drawn maps), `15-city-1300-2m-storybook` and `15-city-1300-wall-1m-storybook` (walled Asherfield), `15-port-2m-storybook` (Dewermouth) and `15-river-town-2m-storybook` (Mereelwick).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
