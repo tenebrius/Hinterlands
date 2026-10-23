@@ -814,3 +814,20 @@ Kind: model mechanism, held off (designer's decision D130).
 - **The cloth share** rises 0.07 → 0.28 → 0.20 → 0.35, about half the record's pace after 1420.
 - **Not made the default.** Details: `docs/demand/d2d.md`.
 Kind: model mechanism, held off (designer's decision D132).
+
+## D136 — D1b + D2 the default; over 2,000 reported; the cloth pace traced (D135)
+- **Built per D135:**
+  - `validate` reports over 2,000 (count) and the urban share (people in places over 2,000 in 1600) against England's c. 0.10, and no longer gates over 2,000;
+  - `Metrics.urban_share` is added; `sweep`'s score drops over 2,000.
+- **The gate on 40 seeds, D1b + D2 on, passed.** Runs passing every gated check: 25 / 36 / 28. Over 2,000: medians 6 / 6 / 5. Urban share: 0.356 / 0.369 / 0.373.
+- **`port_reach` and `cloth` are on by default.** Golden `5e773d6f60251a23`, the same in the browser.
+- **The D133 misses stay missed:** map 3's population (−11%), coin from 1550, and the cloth pace.
+- **The cloth trace** (9 runs, no change): mill capacity binds in every mill from the 1370s, so the cloth share follows the mill towns' W, which grows at about the region's rate.
+  - Mills pay sellers far below the clearing price, from 1450 mostly nothing, because a mill pays from its market purse before its cloth is sold. This is reported, not changed.
+  - **A later English cloth price is sourced:** Munro's all-ports export values, flat to about 1470, then about 1.25–1.36 times the 1371–1450 mean in the 1480s–90s and 1.7–1.9 times in the 1500s–10s, nominal.
+- **Implementer's readings:**
+  - the urban share is taken in the final year;
+  - "mill towns" are the places that milled in the year before each decade;
+  - the netbacks are taken at the clip-weighted median seller.
+- **Details:** `docs/demand/d2e.md`.
+Kind: model default and validation rule (designer's decision D135).
