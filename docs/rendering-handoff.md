@@ -26,8 +26,9 @@ For the graphics session picking this work up after a context reset (written 23 
   - **R23:** connecting lanes (places off the network, dead ends) in `ways.rs`; market street and lane/alley widths; trees kept off roads (roads found once per pixel before the land, `ways_at`); roads lose their edges inside the market place; town plots grow back to fill their blocks; plot ground without bands or stripes.
   - **R24:** one smooth multi-scale bend field (`ways.rs`, `warp`) moves every line on the CPU (the shader's wander is retired); street-front plots turned a few degrees off square, shared by neighbours; town lanes end at their last fronted point or join a nearby street.
   - **R25:** wall ring laid before the lanes (`wall_ring`), lanes kept off it; thicker continuous wall with outer battlements; market stalls; label halo and close-in cartouche; suburbs along main roads to 1.6 x reach.
+  - **R26 (owner's test):** plot and court ground not drawn; the land beneath shows round the buildings.
 - **Not doing next:** stage 4 (buildings to size, traffic pacing, tonnes readouts, label placer, chronicle markers, price surface). The owner has put it aside.
-- **Next:** the owner's review of R25; then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
+- **Next:** the owner's review of R26 (keep or restore plot ground); then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
 - **Queued** (in `docs/rendering.md`):
   - varied buildings and districts within towns (after stage 4, unless the owner says otherwise);
   - an optimisation stage, which the owner has deferred so that the results are right first.

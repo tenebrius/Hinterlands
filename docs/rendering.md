@@ -793,6 +793,22 @@ The owner's list, in order:
 
 Kind: rendering.
 
+## R26 — No ground drawn for plots and courts (the owner's test)
+
+The owner suspected that the ground of the plots (yards, gardens, fences, and the green round each building) was drawn over the hedges, bushes, rivers and even the walls, causing the visual artefacts and inconsistencies. As a test, a plot's or court's own ground is no longer drawn (`town_ground` returns the land beneath for `K_PLOT` and `K_COURT`), so the land beneath shows round the buildings.
+
+- **What changes:** the patchwork of rectangles of other greens is gone, round the plots, along the wall and over the water's edges.
+- **Unchanged:** churchyards, precincts, greens, the market place and the wall's ditch keep their ground. Plots still exist in the plan: they place the houses, keep fields and woods out of the town (R11's town land), and set the built share seen far out.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+- **Screenshots** (`27-no-yards-*`), to compare with `26-walls-*`:
+  - **Liningbourne:** `upland-town-1m` and `upland-town-1m-true`.
+  - **Asherfield, 1300:** `city-1300-1m`.
+  - **Asherfield, a village in 1550:** `village-1m`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -832,6 +848,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R23: `24-streets-upland-town-1m-storybook`/`-true`, `24-streets-city-1300-1m-storybook`, and `24-network-glenden-4m-before`/`-after`/`-1m` (a connected network, streets by rank, trees off roads, the square as road, yards filling their blocks).
 - R24: `25-bends-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `25-bends-small-town-2m-storybook` and `25-bends-city-1300-2m-storybook` (bending roads, plots off square, lanes that end at houses).
 - R25: `26-walls-upland-town-1m`/`-3m`/`-1m-true`, `26-walls-city-1300-1m`/`-2m` and `26-walls-small-town-3m` (walls first, the wall, stalls, cartouche, suburbs).
+- R26: `27-no-yards-upland-town-1m`/`-1m-true`, `27-no-yards-city-1300-1m` and `27-no-yards-village-1m` (plot ground not drawn).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

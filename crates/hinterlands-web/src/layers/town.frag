@@ -172,7 +172,9 @@ float inner_edge(vec2 l, vec2 h) {
 // The ground of the town: yards and gardens and crofts within plots, cobbled
 // market places, greens, churchyards, precincts, the wall's ditch.
 vec3 town_ground(vec3 c, vec2 pm, Town T) {
-    if (T.gk < 0) {
+    // R26: a plot's or court's own ground (yard, garden, fences) is not drawn;
+    // the land beneath shows round the buildings.
+    if (T.gk < 0 || T.gk == K_PLOT || T.gk == K_COURT) {
         return c;
     }
     // Drawn in the town's own metres (R12): the look's building size scales
