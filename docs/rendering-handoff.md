@@ -22,8 +22,9 @@ For the graphics session picking this work up after a context reset (written 23 
   - **R19 (work in progress, abandoned):** block-built cores after Watabou's TownGeneratorOS; the owner found them like stacked bricks.
   - **R20, back to R15's buildings:** R16–R19's buildings and layouts removed by the owner's decision; kept: roads keep to the plan's lines in town, and no groves in densely built ground.
   - **R21, building hierarchy:** each lot has a standing (main streets by the market high, lanes and margins low) that sets house size, height, depth, roof; merchants' houses and courtyard houses in towns, cottages at the edge, a manor in villages.
+  - **R22:** less infill, minimum building widths, density falling faster from the centre, and the market place as an irregular hexagon paved by the road drawing, lined with plots (shape texture now five texels per shape).
 - **Not doing next:** stage 4 (buildings to size, traffic pacing, tonnes readouts, label placer, chronicle markers, price surface). The owner has put it aside.
-- **Next:** the owner's review of R21; then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
+- **Next:** the owner's review of R22; then, if approved, the reviewer's other proposals (roofs by period and clusters, wall styling, street widths by rank, market off the bridgehead, density falloff and ribbon suburbs, label halo).
 - **Queued** (in `docs/rendering.md`):
   - varied buildings and districts within towns (after stage 4, unless the owner says otherwise);
   - an optimisation stage, which the owner has deferred so that the results are right first.

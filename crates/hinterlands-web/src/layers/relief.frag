@@ -475,7 +475,9 @@ void ways_near(vec2 pw, float calm, out Way road, out Way river) {
 // `town` is how far into a built-up area, `rank` the place's (from the town
 // scan; 0 when the settlements layer is off), `share` how much of the ground
 // round about is built over.
-vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
+// `msd` is the metres to a market place's edge, negative inside (R22): it is
+// paved as the streets are.
+vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share, float msd) {
     float shade = s.a;
     vec2 pm = p * u_cell_m;
     // Lines wander either side of their smoothed course, some 20 m over most of a
@@ -491,7 +493,7 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
     vec2 pw = p + wander / u_cell_m;
     Way road, river;
     ways_near(pw, 1.0 - smoothstep(0.0, 0.08, share), road, river);
-    if (min(road.sd / u_look.x, river.sd) > 40.0) {
+    if (min(road.sd / u_look.x, river.sd) > 40.0 && msd > 2.0) {
         return c;
     }
     float wood = smoothstep(0.4, 0.8, cover_smooth(p).r);
@@ -546,6 +548,29 @@ vec3 ways_color(vec3 c, vec2 p, vec4 s, float town, float rank, float share) {
     pm /= rsc;
     rd /= rsc;
     rhw /= rsc;
+
+    // A market place (R22): the town street's own surface, without ruts,
+    // with its edge in ink as a street's is.
+    if (u_way_show.x > 0.5 && msd < 2.0) {
+        float md = msd / rsc;
+        float mcov = clamp(0.5 - md / mpx(), 0.0, 1.0);
+        float mbusy = road.sd < 40.0 ? road.busy : 0.0;
+        vec3 soil = mix(vec3(0.68, 0.57, 0.42), vec3(0.52, 0.42, 0.30), clamp(s.b, 0.0, 1.0));
+        vec3 surf = mix(soil, vec3(0.78, 0.69, 0.52), 0.45 * mbusy);
+        surf *= 0.92 + 0.16 * vnoise(pm / 2.5, 223) * fine(2.5);
+        if (wet) {
+            float pud = smoothstep(0.66, 0.74, vnoise(pm / 1.7, 227));
+            surf = mix(surf, vec3(0.55, 0.61, 0.66), pud * 0.85);
+        }
+        if (winter) {
+            surf = mix(surf, vec3(0.90, 0.91, 0.93), 0.4);
+        }
+        vec3 street = vec3(0.64, 0.61, 0.56) * (0.9 + 0.2 * vnoise(pm / 0.6, 237) * fine(0.6));
+        surf = mix(surf, street, 0.8 * smoothstep(1.2, 2.0, max(rank, 2.0)));
+        c = mix(c, surf, mcov);
+        float iw = max(0.25, 1.0 * mpx());
+        c = mix(c, mix(c, INK, 0.6), band(-md, 0.0, iw) * u_ink);
+    }
 
     // Roads: a worn surface the colour of the soil, ruts, grass down the middle of
     // quiet lanes, worn verges, banks where a lane cuts into a slope, and ditches
@@ -678,7 +703,7 @@ void main() {
     bool close_in = mpx() < 15.0;
     Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
                   -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
-                  0.0, 0.0, 0.0, 1e9);
+                  0.0, 0.0, 0.0, 1e9, 1e9);
     if (u_town_show.x > 0.5 && close_in) {
         T = town_scan(pm);
         g_bnear = T.bnear;
@@ -691,7 +716,7 @@ void main() {
     // deepest zoom, where the map symbols begin to fade. Further out they are
     // a fraction of a pixel and the symbols carry them.
     if ((u_way_show.x > 0.5 || u_way_show.y > 0.5 || u_way_show.w > 0.5) && close_in) {
-        land = ways_color(land, p, s, T.near, T.rank, u_town_show.x > 0.5 ? built_share(pm) : 0.0);
+        land = ways_color(land, p, s, T.near, T.rank, u_town_show.x > 0.5 ? built_share(pm) : 0.0, T.msd);
     }
     if (u_town_show.x > 0.5) {
         if (close_in) {

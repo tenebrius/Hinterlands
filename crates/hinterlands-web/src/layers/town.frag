@@ -5,8 +5,9 @@
 // the ground they make (yards, gardens, crofts, cobbles), their shadows, and
 // the roofs over them. The streets are drawn as roads between the two.
 
-// Two texels per shape: (centre x, y, half length, half width) in metres, then
-// (angle, kind, tone, extra + 4 x height in metres).
+// Five texels per shape: (centre x, y, half length, half width) in metres,
+// then (angle, kind, tone, extra + 4 x height in metres), then for a market
+// place its six corners from its centre (R22).
 uniform sampler2D u_shapes;
 // Shape numbers, four to a texel.
 uniform sampler2D u_sidx;
@@ -55,6 +56,8 @@ struct Town {
     // the rank of the nearest place (0 hamlet .. 3 city).
     float near;
     float rank;
+    // Metres from the point to a market place's edge, negative inside (R22).
+    float msd;
     // Metres to the nearest building (R13), so trees keep off the houses.
     float bnear;
 };
@@ -62,7 +65,7 @@ struct Town {
 Town town_scan(vec2 pm) {
     Town T = Town(-1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0,
                   -1, vec2(0.0), vec2(1.0), 0.0, 0.0, 0.0, -1.0, 0.0,
-                  0.0, 0.0, 0.0, 1e9);
+                  0.0, 0.0, 0.0, 1e9, 1e9);
     int s;
     int e = shape_square(ivec2(floor(pm / u_cell_m * u_ssub)), s);
     if (e < 0) {
@@ -79,8 +82,8 @@ Town town_scan(vec2 pm) {
         }
         int j = start + k;
         int id = int(way_texel(u_sidx, j >> 2)[j & 3]);
-        vec4 a = way_texel(u_shapes, 2 * id);
-        vec4 b = way_texel(u_shapes, 2 * id + 1);
+        vec4 a = way_texel(u_shapes, 5 * id);
+        vec4 b = way_texel(u_shapes, 5 * id + 1);
         float ca = cos(b.x);
         float sa = sin(b.x);
         vec2 d = pm - a.xy;
@@ -88,9 +91,25 @@ Town town_scan(vec2 pm) {
         int kind = int(b.y + 0.5);
         float height = floor(b.w / 4.0 + 0.01);
         float extra = b.w - 4.0 * height;
-        bool round = kind == K_GREEN || kind == K_WALL_TOWER || kind == K_MARKET;
+        bool round = kind == K_GREEN || kind == K_WALL_TOWER;
         float sd;
-        if (round) {
+        if (kind == K_MARKET) {
+            // A market place (R22): a convex six-sided outline.
+            vec4 q01 = way_texel(u_shapes, 5 * id + 2);
+            vec4 q23 = way_texel(u_shapes, 5 * id + 3);
+            vec4 q45 = way_texel(u_shapes, 5 * id + 4);
+            vec2 q[6] = vec2[6](q01.xy, q01.zw, q23.xy, q23.zw, q45.xy, q45.zw);
+            sd = -1e9;
+            for (int e = 0; e < 6; e++) {
+                vec2 ea = q[e];
+                vec2 eb = q[(e + 1) % 6];
+                vec2 t = (eb - ea) / max(length(eb - ea), 1e-3);
+                // Corners run anticlockwise (y down), so the outward normal is
+                // to the right of each edge.
+                sd = max(sd, dot(d - ea, vec2(t.y, -t.x)));
+            }
+            T.msd = min(T.msd, sd);
+        } else if (round) {
             sd = (length(l / a.zw) - 1.0) * min(a.z, a.w);
         } else {
             vec2 q = abs(l) - a.zw;
@@ -100,7 +119,7 @@ Town town_scan(vec2 pm) {
         if (kind < 10) {
             if (kind != K_DITCH && sd < nearest) {
                 nearest = sd;
-                if (kind == K_PLOT || kind == K_COURT) {
+                if (kind == K_PLOT || kind == K_COURT || kind == K_MARKET) {
                     T.rank = extra;
                 }
             }
@@ -235,18 +254,8 @@ vec3 town_ground(vec3 c, vec2 pm, Town T) {
         g = mix(earth, vec3(0.60, 0.57, 0.51), 0.4) * (0.9 + 0.2 * vnoise(pm / 0.9, 751) * soft(0.9));
         g = mix(g, vec3(0.42, 0.38, 0.32), band(edge, -1.0, 0.4) * fine(0.8));
     } else if (T.gk == K_MARKET) {
-        g = vec3(0.64, 0.60, 0.53) * (0.9 + 0.18 * vnoise(pm / 0.7, 703) * soft(0.7));
-        g = mix(g, vec3(0.50, 0.46, 0.40), (1.0 - smoothstep(0.0, 6.0, edge)) * 0.25);
-        // The market cross, and stalls and booths along its sides.
-        g = mix(g, vec3(0.40, 0.37, 0.33), band(length(l), -1.2, 1.2));
-        vec2 q = vec2(l.x / 4.5, l.y);
-        ivec2 b = ivec2(floor(q.x), l.y > 0.0 ? 1 : 0);
-        float row = abs(l.y) - (h.y * 0.62);
-        if (hash(b, 715) < 0.6 && abs(row) < 1.6 && abs(l.x) < h.x * 0.7) {
-            float stall = band(abs(fract(q.x) - 0.5) * 4.5, -1.5, 1.5);
-            vec3 awning = mix(vec3(0.72, 0.66, 0.52), vec3(0.62, 0.28, 0.22), step(0.5, hash(b, 717)));
-            g = mix(g, awning * (0.9 + 0.2 * step(0.0, l.y)), stall * fine(1.0));
-        }
+        // Paved as the streets are, by the roads' own drawing (R22).
+        g = c;
     } else if (T.gk == K_GREEN) {
         g = turf(grass_color() * vec3(0.95, 1.06, 0.95), pm);
         // A pond on many greens.

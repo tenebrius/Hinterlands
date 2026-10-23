@@ -634,6 +634,42 @@ The first of the reviewer's proposals the owner approved after R20. Each lot now
 
 Kind: rendering.
 
+## R22 — Less infill, no narrow buildings, density falling from the centre, a paved market place
+
+The owner's review of R21:
+- there is too much infill;
+- some buildings are too narrow;
+- density must fall more from the centre;
+- the market was a round patch over the terrain where the roads join. It should be an irregular polygon, paved exactly as the roads are, with buildings built round it.
+
+- **Less infill:** R15's packing of the core now reaches at most 55% of its spots (full strength from 6,000 people, none below 800). It works over 45–70% of the place's estimated radius instead of 55–90%, falling away from 10% to 80% of the way out.
+- **No narrow buildings:**
+  - **Infill:** at least 5.6 m across, and shrunk only to 85% to fit (before, down to 55%, 2.4 m).
+  - **Back ranges:** at least 5 m across.
+  - **Court cottages:** 3.5–4.5 m across.
+  - **Plots:** burgage plots are no narrower than 7 m (5.5 m in the largest cities before).
+- **Density falling from the centre:**
+  - **Core:** the part of a town built up behind its fronts now ends at 8–45% of its reach (15–60% before).
+  - **Back ranges:** they thin sooner outward.
+  - **Gaps:** towns now leave lots empty towards their edge, as villages did, up to 35% of them at the margin.
+- **The market place:**
+  - **Shape:** an irregular convex hexagon on the main street at the centre, longer along the street. Each corner has its own angle (±18°) and reach (±22%).
+  - **Paving:** it is paved by the road drawing itself (`ways_color`), with the same surface, noise, puddles, frost and town paving as the streets, and its edge inked as a street's is. The cobbles, cross and stalls are gone.
+  - **Frontages:** each side over 6 m is a frontage for plots, so houses of high standing (R21) line the place.
+  - **Hall:** the market hall stays.
+  - **Data:** the shape texture is now five texels per shape, the last three holding a market's corners. Collisions with the market use its outline.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches.
+  - Clippy is unchanged.
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`23-*`, year 450 unless named):
+  - **Liningbourne:** `23-market-upland-town-1m-storybook`, `23-market-upland-town-2m-storybook` and `23-market-upland-town-1m-true`.
+  - **Asherfield in 1300:** `23-market-city-1300-1m-storybook`.
+  - **Halenford:** `23-market-small-town-1m-storybook`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -669,6 +705,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R18: `20-square-city-1300-1m-storybook` and `20-square-upland-town-1m-storybook` (no sharp corners on infill).
 - R20: `21-r15-restored-upland-town-1m-storybook` and `21-r15-restored-city-1300-2m-storybook` (R15's buildings restored).
 - R21: `22-hierarchy-upland-town-1m-storybook`/`-true`, `22-hierarchy-village-1m-storybook` and `22-hierarchy-small-town-1m-storybook` (a hierarchy of buildings).
+- R22: `23-market-upland-town-1m-storybook`/`-2m-storybook`/`-1m-true`, `23-market-city-1300-1m-storybook` and `23-market-small-town-1m-storybook` (less infill, density falling outward, the paved market place).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

@@ -53,6 +53,9 @@ pub struct Shape {
     pub extra: f32,
     /// Metres high, for shadows.
     pub height: f32,
+    /// A market place's outline (R22): six corners in metres, convex; `c`,
+    /// `h` and `angle` then give a box round it.
+    pub q: Option<[Vec2; 6]>,
 }
 
 /// A street the planner made (side streets, back lanes, lanes of hamlets off
@@ -187,7 +190,33 @@ impl Shape {
             self.c - a + b,
         ]
     }
+    /// The outline: the market's corners, or the box's.
+    fn outline(&self) -> Vec<Vec2> {
+        match self.q {
+            Some(q) => q.to_vec(),
+            None => self.corners().to_vec(),
+        }
+    }
     fn overlaps(&self, o: &Shape) -> bool {
+        if self.q.is_some() || o.q.is_some() {
+            // Separating axes: the edge normals of both (convex) outlines.
+            let (ca, cb) = (self.outline(), o.outline());
+            let normals = |c: &[Vec2]| -> Vec<Vec2> {
+                (0..c.len())
+                    .map(|k| perp(c[(k + 1) % c.len()] - c[k]))
+                    .collect()
+            };
+            for ax in normals(&ca).into_iter().chain(normals(&cb)) {
+                let pa = ca.iter().map(|p| p.dot(ax));
+                let pb = cb.iter().map(|p| p.dot(ax));
+                let (amin, amax) = pa.fold((f32::MAX, f32::MIN), |m, x| (m.0.min(x), m.1.max(x)));
+                let (bmin, bmax) = pb.fold((f32::MAX, f32::MIN), |m, x| (m.0.min(x), m.1.max(x)));
+                if amax <= bmin || bmax <= amin {
+                    return false;
+                }
+            }
+            return true;
+        }
         let (ca, cb) = (self.corners(), o.corners());
         let (u1, w1) = self.axes();
         let (u2, w2) = o.axes();
@@ -230,6 +259,7 @@ impl Shape {
 }
 
 /// A polyline in metres with its arc lengths, for walking along it.
+#[derive(Clone)]
 struct Poly {
     pts: Vec<Vec2>,
     acc: Vec<f32>,
@@ -407,7 +437,8 @@ fn plot_size(pop: f32) -> (f32, f32) {
     } else if l < 2.9 {
         20.0 + (9.0 - 20.0) * smoothstep(2.5, 2.9, l)
     } else {
-        9.0 + (5.5 - 9.0) * smoothstep(2.9, 4.0, l)
+        // No narrower than 7 m (R22), so no house is a sliver.
+        9.0 + (7.0 - 9.0) * smoothstep(2.9, 4.0, l)
     };
     // Crofts run back some 70 m; burgage plots shorten as towns crowd, to
     // about 45 m in the largest cities.
@@ -633,6 +664,7 @@ fn lay_out(
         }
     }
 
+    let mut market_sides: Vec<Poly> = Vec::new();
     // The market place, where the main street passes the centre (towns), with a
     // market hall in the larger; or a green where a village's roads meet.
     let mut reserved: Vec<Shape> = Vec::new();
@@ -648,16 +680,58 @@ fn lay_out(
             let (p, tan) = streets[i].at(s);
             let len = (38.0 * (pop / 500.0).sqrt()).clamp(38.0, 150.0) * zo;
             let wid = (0.42 * len).clamp(18.0 * zo, 60.0 * zo) + 2.0 * streets[i].hw;
+            // An irregular six-sided place (R22), longer along the street,
+            // each corner at its own angle and reach, kept convex; paved as
+            // the streets are, and lined with houses.
+            let (u, w) = (tan, perp(tan));
+            let corner = |jit: f32| -> [Vec2; 6] {
+                std::array::from_fn(|k| {
+                    let a = (k as f32 + 0.5 + jit * (h01(seed * 13 + k, 131) - 0.5) * 0.6) / 6.0
+                        * std::f32::consts::TAU;
+                    let r = 1.0 + jit * (h01(seed * 13 + k, 132) - 0.5) * 0.45;
+                    p + u * (a.cos() * 0.5 * len * r) + w * (a.sin() * 0.5 * wid * r)
+                })
+            };
+            let convex6 = |c: &[Vec2; 6]| {
+                (0..6).all(|k| {
+                    let (a, b, d) = (c[k], c[(k + 1) % 6], c[(k + 2) % 6]);
+                    let (e, f) = (b - a, d - b);
+                    e.x * f.y - e.y * f.x > 0.0
+                })
+            };
+            let mut q = corner(1.0);
+            if !convex6(&q) {
+                q = corner(0.5);
+            }
+            if !convex6(&q) {
+                q = corner(0.0);
+            }
+            let hx = q
+                .iter()
+                .map(|v| (*v - p).dot(u).abs())
+                .fold(0.0f32, f32::max);
+            let hy = q
+                .iter()
+                .map(|v| (*v - p).dot(w).abs())
+                .fold(0.0f32, f32::max);
             let m = Shape {
                 c: p,
-                h: Vec2::new(len * 0.5, wid * 0.5),
+                h: Vec2::new(hx, hy),
                 angle: tan.y.atan2(tan.x),
                 kind: MARKET,
                 tone: h01(seed, 13),
-                extra: 0.0,
+                extra: 2.0,
                 height: 0.0,
+                q: Some(q),
             };
             if water.land(m.c) {
+                // Its sides are frontages: houses line it (R22).
+                for k in 0..6 {
+                    let (a, b) = (q[k], q[(k + 1) % 6]);
+                    if (b - a).length() > 6.0 * z {
+                        market_sides.push(Poly::new(vec![a, b], 0.3 * z, true));
+                    }
+                }
                 reserved.push(m);
                 if pop >= 1500.0 {
                     let side = if h01(seed, 14) < 0.5 { 1.0 } else { -1.0 };
@@ -670,6 +744,7 @@ fn lay_out(
                         tone: h01(seed, 16),
                         extra: 1.0,
                         height: 9.0 * z,
+                        q: None,
                     });
                 }
             }
@@ -693,6 +768,7 @@ fn lay_out(
                 tone: h01(seed, 20),
                 extra: 0.0,
                 height: 0.0,
+                q: None,
             };
             if water.land(g.c) {
                 reserved.push(g);
@@ -953,8 +1029,10 @@ fn lay_out(
         }
     }
 
-    // Plots, from the centre outward along every street.
+    // Plots, from the centre outward along every street, and along the sides
+    // of the market place (R22).
     let first_shape = space.shapes.len();
+    let plot_streets: Vec<Poly> = streets.iter().cloned().chain(market_sides).collect();
     let wall = if walled {
         // A first layout finds the core; the wall goes round about half the
         // houses, then the plots are laid again clear of it.
@@ -969,7 +1047,7 @@ fn lay_out(
             centre,
             reach_max,
             z,
-            &streets,
+            &plot_streets,
             water,
             space,
             None,
@@ -1006,7 +1084,7 @@ fn lay_out(
         centre,
         reach_max,
         z,
-        &streets,
+        &plot_streets,
         water,
         space,
         wall.as_deref(),
@@ -1129,6 +1207,7 @@ fn place_church(
             tone: h01(key, 31),
             extra: 0.0,
             height: 0.0,
+            q: None,
         };
         if !yard
             .probes()
@@ -1157,6 +1236,7 @@ fn place_church(
             tone: h01(key, 33),
             extra: if pop >= 1500.0 { 1.0 } else { 0.0 },
             height: if big { 30.0 } else { 11.0 } * z,
+            q: None,
         };
         space.shapes.push(body);
         // The tower at the west end; transepts on a cathedral; its cloister.
@@ -1169,6 +1249,7 @@ fn place_church(
             tone: h01(key, 34),
             extra: 0.0,
             height: if big { 60.0 } else { 22.0 } * z,
+            q: None,
         });
         if big {
             space.shapes.push(Shape {
@@ -1179,6 +1260,7 @@ fn place_church(
                 tone: h01(key, 35),
                 extra: 1.0,
                 height: 28.0 * z,
+                q: None,
             });
             space.shapes.push(Shape {
                 c: yard.c + (perp(dir(a)) * 38.0 + dir(a) * 10.0) * z,
@@ -1188,6 +1270,7 @@ fn place_church(
                 tone: h01(key, 36),
                 extra: 1.0,
                 height: 9.0 * z,
+                q: None,
             });
         }
         return;
@@ -1227,6 +1310,7 @@ fn place_friary(
             tone: h01(key, 41),
             extra: 0.0,
             height: 0.0,
+            q: None,
         };
         if !yard
             .probes()
@@ -1246,6 +1330,7 @@ fn place_friary(
             tone: h01(key, 43),
             extra: 1.0,
             height: 14.0 * z,
+            q: None,
         });
         space.shapes.push(Shape {
             c: yard.c + perp(dir(a)) * 14.0 * z,
@@ -1255,6 +1340,7 @@ fn place_friary(
             tone: h01(key, 44),
             extra: 1.0,
             height: 8.0 * z,
+            q: None,
         });
         return;
     }
@@ -1358,7 +1444,9 @@ fn place_plots(
         // Villages leave gaps between their lots, more of them towards the
         // edge, where the ground is the village's own closes and trees (R13).
         let d_mid = (streets[sl.street].at(sl.s).0 - centre).length();
-        let gap = (1.0 - town) * (0.1 + 0.3 * smoothstep(0.25 * reach_max, 0.9 * reach_max, d_mid));
+        // Towns too thin out towards their edge (R22).
+        let gap = (1.0 - town) * (0.1 + 0.3 * smoothstep(0.25 * reach_max, 0.9 * reach_max, d_mid))
+            + town * 0.35 * smoothstep(0.35 * reach_max, 0.9 * reach_max, d_mid);
         if h01(key, 56) < gap {
             continue;
         }
@@ -1389,6 +1477,7 @@ fn place_plots(
                 tone: h01(key, 59),
                 extra: rank as u8 as f32,
                 height: 0.0,
+                q: None,
             };
             let probes = plot.probes();
             if !probes
@@ -1457,7 +1546,8 @@ fn place_plots(
             0.0
         };
         let front_edge = p + nrm * (st.hw + setback);
-        let core_t = town * (1.0 - smoothstep(0.15 * reach_max, 0.6 * reach_max, d_c));
+        // The core, where the plots are built over behind, ends sooner (R22).
+        let core_t = town * (1.0 - smoothstep(0.08 * reach_max, 0.45 * reach_max, d_c));
         let lot = Lot {
             key,
             plot,
@@ -1592,6 +1682,7 @@ impl Lot {
                     tone: self.h(69),
                     extra: self.roof,
                     height: (5.0 + 1.5 * self.h(70) + 3.0 * st) * z,
+                    q: None,
                 };
                 if self.add(b, out) {
                     house = Some(b);
@@ -1630,6 +1721,7 @@ impl Lot {
                     tone: self.h(75),
                     extra: self.roof,
                     height: 9.0 * z,
+                    q: None,
                 };
                 if self.add(barn, out) {
                     break;
@@ -1650,6 +1742,7 @@ impl Lot {
                 tone: self.h(75),
                 extra: self.roof,
                 height: (5.0 + 1.5 * self.h(76)) * z,
+                q: None,
             };
             self.add(barn, out);
         } else if pick < 0.75 {
@@ -1669,6 +1762,7 @@ impl Lot {
                     tone: self.h(75),
                     extra: self.roof,
                     height: (5.5 + 1.5 * self.h(76)) * z,
+                    q: None,
                 };
                 if self.add(barn, out) {
                     break;
@@ -1688,6 +1782,7 @@ impl Lot {
                 tone: self.h(88),
                 extra: 0.0,
                 height: 3.0 * z,
+                q: None,
             };
             self.add(shed, out);
         }
@@ -1731,6 +1826,7 @@ impl Lot {
             tone: self.h(68),
             extra: self.roof,
             height,
+            q: None,
         };
         out.push(house);
         let start = ragged + 2.0 * hd;
@@ -1747,6 +1843,7 @@ impl Lot {
                 tone: self.h(68),
                 extra: self.roof,
                 height: height - 2.0 * z,
+                q: None,
             };
             self.add(wing, out);
             let rear = Shape {
@@ -1757,13 +1854,14 @@ impl Lot {
                 tone: self.h(103),
                 extra: self.roof,
                 height: height - 2.5 * z,
+                q: None,
             };
             self.add(rear, out);
             return;
         }
         if self.hh >= 3 {
             // A court: cottages one behind another down one side.
-            let across = (self.front - 2.2 * z).clamp(2.2 * z, 3.4 * z);
+            let across = (self.front - 2.2 * z).clamp(3.5 * z, 4.5 * z);
             for j in 0..(self.hh - 1) {
                 let k = self.key + j as usize;
                 let len = (4.0 + 1.5 * h01(k, 81)) * z;
@@ -1778,6 +1876,7 @@ impl Lot {
                     tone: h01(k, 82),
                     extra: self.roof,
                     height: (5.0 + 2.0 * h01(k, 83)) * z,
+                    q: None,
                 };
                 self.add(cot, out);
             }
@@ -1789,12 +1888,13 @@ impl Lot {
         // Back ranges down the sides of the lot, one behind another: in the
         // core they fill most of its depth, so the blocks read as built over;
         // towards the edge fewer, with gardens behind.
-        let w = (0.5 * self.front - 0.6 * z).clamp(1.5 * z, 3.0 * z);
+        // Back ranges at least 5 m across (R22).
+        let w = (0.5 * self.front - 0.6 * z).clamp(2.5 * z, 3.5 * z);
         let mut at = start + (1.0 + 4.0 * self.h(71)) * z;
         let mut side = side;
         for j in 0..6u32 {
             let k = self.key * 7 + j as usize;
-            if h01(k, 69) > 0.3 + 0.6 * self.core - 0.12 * j as f32 {
+            if h01(k, 69) > 0.12 + 0.7 * self.core - 0.15 * j as f32 {
                 break;
             }
             let len = (4.0 + 5.0 * h01(k, 70) + 6.0 * self.core * h01(k, 94)) * z;
@@ -1806,6 +1906,7 @@ impl Lot {
                 tone: h01(k, 73),
                 extra: self.roof,
                 height: (5.0 + 2.5 * self.core * h01(k, 72)) * z,
+                q: None,
             };
             if !self.add(b, out) {
                 break;
@@ -1826,6 +1927,7 @@ impl Lot {
                 tone: self.h(97),
                 extra: self.roof,
                 height: 6.0 * z,
+                q: None,
             };
             self.add(b, out);
         }
@@ -1852,8 +1954,9 @@ fn infill(
     start: usize,
     wall: Option<&[Vec2]>,
 ) {
-    let amount = smoothstep(300.0, 2500.0, pop);
-    let core_r = r_est * (0.55 + 0.35 * amount);
+    // Less of it, and falling away sooner from the centre (R22).
+    let amount = 0.55 * smoothstep(800.0, 6000.0, pop);
+    let core_r = r_est * (0.45 + 0.25 * smoothstep(800.0, 6000.0, pop));
     // What a new building must keep clear of: every building and open place
     // of this place (its lots' ground excepted), indexed by bucket.
     let mut block: Vec<Shape> = space.shapes[start..]
@@ -1928,7 +2031,7 @@ fn infill(
                 + Vec2::new(gx as f32 + h01(k, 121) - 0.5, gy as f32 + h01(k, 122) - 0.5) * step;
             let d = (p - centre).length() / core_r;
             // Fewer tries further out, none past the core.
-            if d >= 1.0 || h01(k, 123) > amount * (1.0 - smoothstep(0.5, 1.0, d)) {
+            if d >= 1.0 || h01(k, 123) > amount * (1.0 - smoothstep(0.1, 0.8, d)) {
                 continue;
             }
             spots.push((d + 0.15 * h01(k, 124), p, k));
@@ -1986,7 +2089,7 @@ fn infill(
     while qi < queue.len() && qi < 20_000 {
         let base = block[queue[qi]];
         let d = (base.c - centre).length() / core_r;
-        let keep = amount * (1.0 - smoothstep(0.45, 1.0, d));
+        let keep = amount * (1.0 - smoothstep(0.1, 0.8, d));
         let (u, w) = base.axes();
         for side in 0..4usize {
             let k = seed * 104_723 + qi * 4 + side;
@@ -2004,8 +2107,9 @@ fn infill(
                     0.0
                 }
                 + (h01(k, 143) - 0.5) * 0.06;
-            for shrink in [1.0f32, 0.7] {
-                let h = Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink;
+            for shrink in [1.0f32, 0.85] {
+                // At least 5 m across (R22).
+                let h = Vec2::new(3.5 + 4.0 * h01(k, 129), 2.8 + 1.5 * h01(k, 130)) * z * shrink;
                 let (nu, nw) = (dir(ang), perp(dir(ang)));
                 let hn = n.dot(nu).abs() * h.x + n.dot(nw).abs() * h.y;
                 let b = Shape {
@@ -2016,6 +2120,7 @@ fn infill(
                     tone: h01(k, 131),
                     extra: roof_of(k),
                     height: (6.0 + 4.0 * h01(k, 132)) * z,
+                    q: None,
                 };
                 if fits(&b, &block, &at) {
                     index(&mut at, &b, block.len());
@@ -2054,15 +2159,16 @@ fn infill(
                 0.0
             }
             + (h01(k, 126) - 0.5) * 0.12;
-        for shrink in [1.0f32, 0.75, 0.55] {
+        for shrink in [1.0f32, 0.85] {
             let b = Shape {
                 c: p,
-                h: Vec2::new(3.0 + 4.0 * h01(k, 129), 2.2 + 1.8 * h01(k, 130)) * z * shrink,
+                h: Vec2::new(3.5 + 4.0 * h01(k, 129), 2.8 + 1.5 * h01(k, 130)) * z * shrink,
                 angle: ang,
                 kind: HOUSE,
                 tone: h01(k, 131),
                 extra: roof_of(k),
                 height: (6.0 + 4.0 * h01(k, 132)) * z,
+                q: None,
             };
             if fits(&b, &block, &at) {
                 index(&mut at, &b, block.len());
@@ -2177,6 +2283,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                 tone: h01(seed + k, 81),
                 extra: 0.0,
                 height: 8.0 * z,
+                q: None,
             });
             space.add_shape(Shape {
                 c: mid + out * 9.0 * z,
@@ -2186,6 +2293,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                 tone: h01(seed + k, 82),
                 extra: 0.0,
                 height: 0.0,
+                q: None,
             });
         }
         along += len;
@@ -2199,6 +2307,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
                     tone: h01(seed + k, 83),
                     extra: 0.0,
                     height: 11.0 * z,
+                    q: None,
                 });
             }
             next_tower = along + (50.0 + 15.0 * h01(seed + k, 84)) * z;
@@ -2214,6 +2323,7 @@ fn build_wall(seed: usize, line: &[Vec2], streets: &[Poly], space: &mut Space, z
             tone: h01(seed + k, 85),
             extra: 0.0,
             height: 13.0 * z,
+            q: None,
         });
     }
 }
@@ -2230,7 +2340,8 @@ fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
     ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then(|| p1 + r * t)
 }
 
-/// The shapes as textures: the shapes, two texels each; per map cell, where its
+/// The shapes as textures: the shapes, five texels each (the last three a
+/// market place's six corners from its centre, R22); per map cell, where its
 /// squares start in the square table (-1 if it has none); per square, its
 /// entries in the index list, how much of it is built over, and whether it is
 /// town land; the index.
@@ -2345,8 +2456,9 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
             }
         }
     }
-    let mut shp = Vec::with_capacity(shapes.len() * 8);
+    let mut shp = Vec::with_capacity(shapes.len() * 20);
     for s in shapes {
+        let q = s.q.map_or([Vec2::ZERO; 6], |q| q.map(|v| v - s.c));
         // Height in whole metres beside the extra (0..3): extra + 4 x height.
         shp.extend_from_slice(&[
             s.c.x,
@@ -2358,6 +2470,7 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
             s.tone,
             s.extra + 4.0 * s.height.round(),
         ]);
+        shp.extend(q.iter().flat_map(|v| [v.x, v.y]));
     }
     let pad = |v: &mut Vec<f32>| -> (i32, i32) {
         let rows = v.len().div_ceil(4).div_ceil(ROW).max(1);
