@@ -564,9 +564,10 @@ pub struct State {
     /// netback at its port, the best cloth netback (a mill's bid less wool
     /// carriage to it), the price realised; then the clip share whose cloth
     /// netback beats its wool netback, wool's port price, the milled-weighted
-    /// median mill bid and the price mills paid.
+    /// median mill bid and the price mills paid; and the growers' wool
+    /// receipts, coin.
     #[serde(default)]
-    pub cloth_trace: [f32; 11],
+    pub cloth_trace: [f32; 12],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -753,7 +754,7 @@ impl State {
             wool_ship: Vec::new(),
             fallow_wool: 0.0,
             cloth_stats: [0.0; 5],
-            cloth_trace: [0.0; 11],
+            cloth_trace: [0.0; 12],
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

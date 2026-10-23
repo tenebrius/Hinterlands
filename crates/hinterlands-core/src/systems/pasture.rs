@@ -41,7 +41,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     state.wool_ship.clear();
     state.fallow_wool = 0.0;
     state.cloth_stats = [0.0; 5];
-    state.cloth_trace = [0.0; 11];
+    state.cloth_trace = [0.0; 12];
     let m = state.settlements.len();
     for s in state.settlements.iter_mut() {
         s.wool_in = 0.0;
@@ -351,6 +351,45 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
 }
 
+/// Munro's mean value a cloth exported from all English ports (`EngclothPrices2.xls`,
+/// AllPorts6M), by decade, over its 1371-1450 mean (1.879 pounds), divided by
+/// Clark's wheat price (2004, appendix table 1) over its 1371-1450 mean (0.651 s
+/// a bushel) for the same years (D137): 1451-60 to 1501-10, and 1511-15 where
+/// Munro's series ends. Points sit at the middle of their years, as model years.
+const CLOTH_LATE: [(f32, f32); 7] = [
+    (355.5, 1.009),
+    (365.5, 0.985),
+    (375.5, 1.106),
+    (385.5, 1.057),
+    (395.5, 1.369),
+    (405.5, 1.534),
+    (413.0, 1.661),
+];
+
+/// The export cloth price against Munro's 1371-1450 level: 1 before 1450,
+/// then the deflated series, linear between its points and held at its first
+/// value to the first point and at its last after the data end (D137).
+pub fn cloth_price_factor(year: u32, p: &Params) -> f32 {
+    if !p.cloth_price_late || year < 350 {
+        return 1.0;
+    }
+    let y = year as f32;
+    let (first, last) = (CLOTH_LATE[0], CLOTH_LATE[CLOTH_LATE.len() - 1]);
+    if y <= first.0 {
+        return first.1;
+    }
+    if y >= last.0 {
+        return last.1;
+    }
+    for w in CLOTH_LATE.windows(2) {
+        let ((y0, v0), (y1, v1)) = (w[0], w[1]);
+        if y <= y1 {
+            return v0 + (v1 - v0) * (y - y0) / (y1 - y0);
+        }
+    }
+    last.1
+}
+
 /// One place's clip under D2: lb, pasture and fallow.
 struct Seller {
     i: usize,
@@ -393,7 +432,7 @@ fn wool_market(
     // Munro's customs valuation, and the cost of making cloth. Both prices are
     // observed after the export duties, so no duty is taken again (D132).
     let vw = (p.wool_price_sack * (1.0 - fall) * 240.0 / 364.0 * to_coin).max(1e-9);
-    let vc = p.cloth_d_lb * to_coin;
+    let vc = p.cloth_d_lb * cloth_price_factor(state.year, p) * to_coin;
     let make = p.cloth_cost_d_lb * to_coin;
     let tau_w = p.market_tau / p.rho_wool.max(1e-6);
     let tau_c = p.market_tau / p.rho_cloth.max(1e-6);
@@ -604,31 +643,31 @@ fn wool_market(
             state.cloth_stats[3] += lb;
             continue;
         }
-        // The buyer pays from what its market people's food leaves (D93), by
-        // head with its farmers for home wool, from the market for a mill.
-        let bs = &state.settlements[j];
-        let share_m = if mill {
-            1.0
-        } else {
-            (bs.market.max(0.0) / bs.pop.max(1.0)).clamp(0.0, 1.0)
-        };
-        let food = food_of(bs);
-        let from_m = (want * share_m).min((bs.mpurse - food).max(0.0));
-        let from_f = (want * (1.0 - share_m)).min(bs.purse.max(0.0));
-        let paid = from_m + from_f;
-        let r = (sup[k] * q).clamp(0.0, paid);
-        receipts[k] += r;
-        {
-            let bs = &mut state.settlements[j];
-            bs.mpurse -= from_m;
-            bs.purse -= from_f;
-            bs.mpurse += paid - r;
-        }
         if mill {
+            // A mill pays the seller's clearing price out of its cloth
+            // proceeds, as every market pays its sellers (D98, D137); the
+            // carriage stays with the mill's market. It is settled below,
+            // when the cloth is sold.
+            let r = (sup[k] * q).clamp(0.0, want);
+            receipts[k] += r;
             milled[j] += lb;
             mill_paid[j] += r;
             state.cloth_stats[1] += lb;
         } else {
+            // Home wool is paid from what the market people's food leaves
+            // (D93), by head with the farmers.
+            let bs = &state.settlements[j];
+            let share_m = (bs.market.max(0.0) / bs.pop.max(1.0)).clamp(0.0, 1.0);
+            let food = food_of(bs);
+            let from_m = (want * share_m).min((bs.mpurse - food).max(0.0));
+            let from_f = (want * (1.0 - share_m)).min(bs.purse.max(0.0));
+            let paid = from_m + from_f;
+            let r = (sup[k] * q).clamp(0.0, paid);
+            receipts[k] += r;
+            let bs = &mut state.settlements[j];
+            bs.mpurse -= from_m;
+            bs.purse -= from_f;
+            bs.mpurse += paid - r;
             state.cloth_stats[3] += lb;
         }
         // On the seller's path to the buyer, for road loads.
@@ -675,7 +714,8 @@ fn wool_market(
         let s = &mut state.settlements[j];
         s.cloth_made = milled[j];
         s.cloth_wool_cost = mill_paid[j];
-        s.mpurse += gross;
+        // The proceeds less the wool, paid to its sellers above (D137).
+        s.mpurse += gross - mill_paid[j];
         s.cloth_margin = (gross - mill_paid[j]).max(0.0);
         state.money.cloth_in += gross;
         if let Some(k1) = k1 {
@@ -750,5 +790,6 @@ fn wool_market(
         d,
         wmed(bids),
         wmed(paid),
+        receipts.iter().sum(),
     ];
 }
