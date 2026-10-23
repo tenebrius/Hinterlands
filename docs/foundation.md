@@ -1567,6 +1567,43 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 
 `cloth_lb_per_w` is not tuned (it is calibrated at the start only). The trace says which mechanism sets the pace, and I decide from it.
 
+### D2 the default (c7f9312); the cloth trace read (D137)
+
+**Accepted.** The gate passes on 40 seeds with `port_reach` and `cloth` on, and they are now the default. The golden is `5e773d6f60251a23`, the same in the browser.
+- Runs passing every gated check: 25 / 36 / 28. D1 gave 27 / 28 / 17, so this is the most robust the model has been.
+- The region now buys its iron and salt at the ports, grows its own clothing wool, and turns to cloth after 1370 on the observed prices.
+
+**The trace says capacity sets the pace, and that the mills do not pay for their wool.**
+
+1. **Defect: fixed now.**
+   - A mill pays `min(want, purse − food)` before its cloth proceeds are credited. So from 1450 most mills pay sellers nothing, and the "margin" is nearly the whole value of the cloth.
+   - In every other market in the model, the seller is paid the clearing price (D98). Mills pay their wool at the clearing price out of the cloth proceeds. The proceeds always cover it while cloth's netback beats wool's.
+   - The mill town's inflow is then the cloth value less the wool: the making cost, which is the craftsmen's income, plus any margin.
+   - This moves coin back to the wool growers. It will shrink the mill towns, and their capacity with them.
+2. **Data: Munro's later cloth price goes in, as Clark's wool fall did (D110).**
+   - Munro's all-ports export values per cloth, relative to the 1371–1450 mean: about 1.0 in the 1450s–60s, 1.13 (1470s), 1.25 (1480s), 1.36 (1490s), 1.72 (1500s) and 1.92 (1510s).
+   - The model's prices are relative to grain, so the series is first deflated by Clark's wheat price over the same decades, and held at its last value after the data ends. The cloth price follows the deflated series from 1450.
+3. **Nothing else changes, and `cloth_lb_per_w` is not tuned.**
+
+**Reading the pace.**
+- The record's rise from 1420 to 1500 came while the population was flat. So it was not more people. It was more of their time going into cloth: rural spinning and weaving put out by clothiers, drawn by its returns, as well as a rising export price.
+- In the model, capacity follows the mill towns' W, and W barely answers the margin (0.00–0.05 a decade faster than the region). So the share follows the population.
+- Step 2 can act only through the margin, and step 1 cuts the margin. **I do not expect these two to reach the record.** If the pace is still short after them, the missing mechanism is labour entering cloth for its returns (putting-out), and it will be designed as a note first, not tuned.
+
+**Gate:** 40 seeds, every gated check, with both changes, since they alter the default. If it fails, stop and report.
+
+**Pre-registered, reported only. Each names what it fixes and what it leaves free (rule 12):**
+- **Mills pay the clearing price in every year** (step 1 fixes the price paid). The median price paid by mills is within 10% of the sellers' clearing price.
+- **Wool growers' coin rises, and the mill towns' W falls against D136** (step 1 moves coin; nothing else holds W up).
+- **The cloth share around 1500 stays below the record's 0.55–0.85.** The price acts through the margin, and capacity still follows W. If it reaches the record, my reading of what sets the pace is wrong, and I will say so.
+
+**Reported:**
+- the cloth share by decade against the record;
+- mill capacity and use;
+- mill towns' W;
+- coin by channel;
+- the urban share.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

@@ -6,7 +6,7 @@ Read this at the start of a session when acting as the **designer** for Hinterla
 
 Read this section first, then `docs/foundation.md` from "Development resumes (D119)" to the end, which holds every decision since.
 
-**State.**
+**State (see the status bullets below for later rounds).**
 - Paused by Divish after the D132 report.
 - The default model is D1:
   - stock-based demand for salt, iron and stone;
@@ -166,6 +166,11 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D2 default (c7f9312), D137:**
+  - Gate passed (25/36/28); golden `5e773d6f60251a23`.
+  - Trace: capacity follows mill W, which barely answers the margin. Mills paid sellers about nothing (a defect: they paid from the purse before the proceeds).
+  - D137: mills pay the clearing price from the proceeds; Munro's later cloth price, deflated by Clark's wheat; gate.
+  - Pre-registered: the cloth share stays below the record. If it does, the missing mechanism is putting-out labour entering cloth for its returns, as a design note first.
 - **RESUMED by Divish, 23 October (D135):** over-2,000 made reported (floor 5 is several times England's per-head rate of about one town per 80–100k in 1377; the model's urban share is 0.33–0.37 against England's 10%; the hierarchy is gated by rank-size, largest share and over 5,000). D1b and D2 become the default after a formal re-validate. Then the cloth pace trace (capacity, mill W growth, netbacks, cloth price after 1450).
 - **PAUSED by Divish after the D132 report (D134).** The no-duty D2 (34de135) fails only map 3's over 2,000 (22/40); cloth runs at half the record's pace after 1420. Open on resuming: the over-2,000 band (map 3's spread) and the cloth pace. The model is at D1.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
@@ -246,4 +251,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-23 — resumed; D135 sent: over-2,000 reported, D1b and D2 to the default, cloth pace trace.
+Last updated: 2026-10-23 — D2 default accepted; D137 sent: mill settlement fix, Munro's later cloth price.
