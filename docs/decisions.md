@@ -801,3 +801,16 @@ Kind: model mechanism, held off (designer's decision D128).
 - **The map 3 diagnosis:** D2's loss at the top is fewer people (1600: 61k against 87–90k). D1b's is the spread.
 - **Not made the default.** Details: `docs/demand/d2b.md`.
 Kind: model mechanism, held off (designer's decision D130).
+
+## D133 — D1b + D2 without duties: gate failed on map 3's over 2,000 only (D132)
+- **Built per D132:**
+  - no duties;
+  - making cost 2.7 d (Munro, Ypres);
+  - home wool elasticity 0.3;
+  - `cloth_lb_per_w` 2.5, the largest with a 1350–59 cloth share at or under 0.10.
+- **The gate fails on one check:** over 2,000 on map 3 (22/40; D1b alone 25/40).
+- **Runs passing every check:** 23 / 36 / 14, against 15 / 10 / 2 for D1b alone.
+- **Map 3's share of people in places over 2,000 in 1600** is 0.366 (D1b 0.349). The loss is the spread, not fewer town people.
+- **The cloth share** rises 0.07 → 0.28 → 0.20 → 0.35, about half the record's pace after 1420.
+- **Not made the default.** Details: `docs/demand/d2d.md`.
+Kind: model mechanism, held off (designer's decision D132).
