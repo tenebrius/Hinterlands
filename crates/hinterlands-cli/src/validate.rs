@@ -331,10 +331,12 @@ pub const CHECKS: &[Check] = &[
         target: ">=25%",
         ok: |r| r.shock.as_ref().is_none_or(|s| s.plague_drop >= 0.25),
     },
+    // Re-founded at D168: England in 1600 stood at about 0.85 of its
+    // pre-plague peak (Broadberry et al.); 1.15 is D164's ceiling.
     Check {
         name: "recovery by 500",
-        target: ">=0.90",
-        ok: |r| r.shock.as_ref().is_none_or(|s| s.recovery >= 0.9),
+        target: "0.75-1.15",
+        ok: |r| r.shock.as_ref().is_none_or(|s| (0.75..=1.15).contains(&s.recovery)),
     },
     Check {
         name: "poor land deserted",
