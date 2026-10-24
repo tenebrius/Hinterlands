@@ -6,7 +6,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 
 - **Branch:** `claude/elegant-ride-g0sr1h`. Pull it first.
   - It contains `origin/main` as of 22 October (`e7c0344`).
-  - Last step: R28, the cached map (the first optimisation step).
+  - Last step: R29, fewer tree candidates (the second optimisation step).
 - **Done:**
   - **R9–R11, stages 1–3 of the real-scale overhaul:**
     - zoom to 1 m per point;
@@ -46,6 +46,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
     - **R26:** plot and court ground is not drawn (the owner's test, kept).
     - **R27:** trees, bushes and shadows are kept or left out whole, and there are no hedges inside a place's edge.
 - **R28, optimisation 1:** the rendered map is cached in a framebuffer and redrawn only when the camera, year, season, layers or look change. A still frame takes 50–100 ms in SwiftShader instead of 2.8–16 s. `?redraw=1` turns the cache off, to time the shader.
+- **R29, optimisation 2:** the tree search visits only the grid cells that can reach the pixel, colours only the tallest crown, asks clearance last and stops the shadow search at full shadow. Redraws about 42% faster in woods, 20–30% in towns.
 - **Now: optimisation, continued (the owner's instruction, 23 October).** The frames while moving are still full redraws. See "Optimisation" below.
 - **After that, waiting for the owner:**
   - **The reviewer's remaining proposals:**
@@ -62,7 +63,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 - **Frontend only:** `crates/hinterlands-web`. No change to core, mapgen or CLI.
 - **Checks:** the golden hash must stay `65aee272c30de1f9` (`just test`, `cargo run --release -p hinterlands-cli -- hash --years 500`), and `?selftest=500` in the browser must give the same.
 - **Engine:** stay on eframe/glow (WebGL2), with the detail in the relief shader.
-- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `30-`). Commit with a message naming it, and push to the branch.
+- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `31-`). Commit with a message naming it, and push to the branch.
 - **Sessions:**
   - **Implementer and designer:** do not message them. The overhaul goes to `main` as one batch only when the owner says so.
   - **Reviewer:** the owner allows working with the reviewer session `session_018DLnDSAggGPAKjRucQdQRd` (a second opinion on how things look). Its proposals are built only once the owner approves them.
@@ -73,6 +74,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 The owner deferred frame time until the look was right. That is now the task.
 
 - **Done: a. the cache (R28).** The full baseline of eight views and the times after it are in R28. Later steps time redraws with `?redraw=1`.
+- **Done: part of b/c/d for trees (R29).** R29 lists where a redraw's time goes. SwiftShader rewards fewer loop iterations, not skipping work inside them.
 - **Old baseline** (`node tools/frametime.mjs <url>`, headless Chromium with SwiftShader, 1,400 × 900, map 1, year 450, summer; only ratios are meaningful):
 
   | View (`at=`, look) | ms per frame |

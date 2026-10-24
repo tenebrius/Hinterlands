@@ -878,6 +878,58 @@ The owner's instruction of 23 October: optimise, without changing the picture. T
 
 Kind: rendering.
 
+## R29 — Optimisation 2: trees searched for fewer candidates
+
+The second step, for the frames R28's cache cannot save: those while the camera moves, the year plays or the look changes. Trees were most of their cost.
+
+- **Where the time went.** Redraw time (`?redraw=1`, storybook, 1 m, ms) with parts switched off in throwaway builds:
+
+  | Build | Wood by a stream | Liningbourne |
+  |---|---|---|
+  | R28 | 13,416 | 9,916 |
+  | no crowns at all | 1,467 | 3,533 |
+  | crown shadows off | 7,966 | 7,950 |
+  | tree clearance (`tree_clear`) always passes | 11,583 | 9,866 |
+
+  Crowns were about 90% of a wooded frame. Within that, the shadow search took about 40%, and `tree_clear` (R27) about 14%. The rest was the crown search itself. Every close-in pixel searched 3 grids × 9 candidate trees for its crown, and as many again for its shadow, though usually only about one candidate per grid can reach the pixel. Layer switches gave the same picture: towns about 3.5 s of Liningbourne's frame, roads 0.4 s, fields 0.7 s.
+- **What changed** (`country.frag`, `crowns_at` and `crown_top`). Every change only passes over work whose result the old code discarded, or reorders tests that have no side effects:
+  - **Fewer candidate cells.** A tree's centre lies within its cell's middle nine-tenths, and no crown is wider than 1.25 × `rmax` (plus half a pixel for coverage). So, along each of a grid's axes, the cells that could hold a crown reaching the pixel are known before any is hashed (`cell_range`). Each grid's 3 × 3 shrinks to about 2 × 2 in a wood. The cells are visited in the same order, so ties between equal crowns go the same way.
+  - **Far candidates** are passed over before their density (and in towns `grove_at`) is looked up.
+  - **One colour.** The search keeps only the tallest crown's geometry. Its species, stand, leaf clumps, light and ink are worked out once after the search, for that crown alone, not for every crown that took the lead.
+  - **Clearance last.** `tree_clear` is asked only of a crown that would be seen (or raise the shadow's top). Which crown wins is the same either way.
+  - **Shadow search stops early.** It stops once a top is high enough (1.501 m beyond the pixel's own top plus the offset) that the shadow is at full strength, whatever stands higher.
+- **The grids are not quite rotations.** The three grids' matrices are off unit scale by up to 4 × 10⁻⁵. Forty kilometres from the origin, that puts a point's place in a grid's frame out by more than a metre. A first version that ignored it dropped real trees: 757 pixels changed at crown edges in the wood at true scale. The cell bounds are therefore taken in the frame `tree_centre` maps back from, with distances there scaled by √s.
+  - **Check:** a float32 check of 900,000 random candidates found no cell wrongly left out.
+- **Frame time.** `?redraw=1`, median ms per frame, R28 and R29 timed one after the other for each view:
+
+  | View | Look | R28 | R29 |
+  |---|---|---|---|
+  | Liningbourne, 1 m | storybook | 11,166 | 8,266 |
+  | Liningbourne, 1 m | true scale | 11,600 | 9,233 |
+  | Wood by a stream, 1 m | storybook | 12,516 | 7,233 |
+  | Wood by a stream, 1 m | true scale | 12,333 | 7,283 |
+  | Liningbourne, 4 m | storybook | 8,650 | 5,900 |
+  | Liningbourne, 4 m | true scale | 7,683 | 6,183 |
+  | Liningbourne, 64 | storybook | 2,783 | 3,467 |
+  | Liningbourne, 64 | true scale | 3,817 | 2,650 |
+
+  - **Close in:** a wooded frame is about 42% faster, and a town 20–30%.
+  - **At 64 points per cell** no single crowns are drawn, so nothing changes there. The two figures show SwiftShader's run-to-run noise, about ±25%.
+  - **Still frames** stay cached (R28).
+  - **Partial versions:** only the bounded cells (the last change) paid off in SwiftShader. Skipping far candidates one by one, and colouring only the winner, measured within noise on their own, because what dominated was the fixed cost of visiting every candidate. They stay in because they also save work on graphics cards.
+- **Picture unchanged** (R28 against R29, all eight views, pixel by pixel):
+  - **Wood views:** identical.
+  - **Liningbourne views:** 0.4–1.6% of pixels differ, all in the smoke plumes and, at 64 points per cell, the moving trade dots (`30-trees-upland-town-4m-diff`).
+  - **Repeatability:** repeating a screenshot of the same build gives no difference.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches (30.0 ms/year).
+  - Clippy is unchanged (7 warnings).
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`30-trees-*`): `wood-1m-true` and `upland-town-1m-true` (as R28's, unchanged), and `upland-town-4m-diff` (the differing pixels, all smoke, in white).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -920,6 +972,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R26: `27-no-yards-upland-town-1m`/`-1m-true`, `27-no-yards-city-1300-1m` and `27-no-yards-village-1m` (plot ground not drawn).
 - R27: `28-artefacts-city-1300-1m-before`/`-after`, `28-artefacts-upland-town-1m`, `28-artefacts-village-1m`, `28-artefacts-small-town-1m` and `28-artefacts-wood-road-1m` (whole trees, no cut hedges).
 - R28: `29-cache-upland-town-1m-before`/`-after`, `29-cache-wood-1m-before`/`-after` and `29-cache-upland-town-4m-diff` (the cached map; only smoke differs).
+- R29: `30-trees-wood-1m-true`, `30-trees-upland-town-1m-true` and `30-trees-upland-town-4m-diff` (fewer tree candidates; only smoke differs).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
