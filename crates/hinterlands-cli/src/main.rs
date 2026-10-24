@@ -474,6 +474,7 @@ fn main() {
         "stores" => probe::cmd_stores(&args),
         "cloth" => probe::cmd_cloth(&args),
         "clothpace" => probe::cmd_clothpace(&args),
+        "putout" => probe::cmd_putout(&args),
         "diag" => probe::cmd_diag(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),

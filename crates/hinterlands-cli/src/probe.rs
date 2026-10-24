@@ -1753,3 +1753,62 @@ pub fn cmd_clothpace(args: &Args) {
         y0 += 10;
     }
 }
+
+/// The farm purses gaining most from putting-out (D145): spinning and weaving
+/// coin summed over 1400-1550 by place, the top `--top` (10) with their
+/// share of all of it, people in 1550, their land (mean yield of their fields
+/// against the region's, pasture share of their used land) and whether they
+/// are a mill town; then the region's yield mean and the farm purses' gain
+/// as a share of their income in that window.
+pub fn cmd_putout(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let top = args.u64("top", 10) as usize;
+    let mut sum: std::collections::BTreeMap<u32, f32> = Default::default();
+    while sim.state.year < 450 {
+        sim.step(1);
+        if sim.state.year >= 300 {
+            for s in &sim.state.settlements {
+                if s.cloth_work_in > 0.0 {
+                    *sum.entry(s.id).or_insert(0.0) += s.cloth_work_in;
+                }
+            }
+        }
+    }
+    let st = &sim.state;
+    let t = &sim.terrain;
+    let total: f32 = sum.values().sum();
+    let fields: Vec<f32> = st
+        .settlements
+        .iter()
+        .flat_map(|s| s.fields.iter().map(|&c| t.food_yield[c as usize]))
+        .collect();
+    let region_yield = fields.iter().sum::<f32>() / fields.len().max(1) as f32;
+    let mut rows: Vec<(u32, f32)> = sum.iter().map(|(&k, &v)| (k, v)).collect();
+    rows.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    println!(
+        "putout map {map} seed {seed} places {} total {total:.0} region_yield {region_yield:.3}",
+        rows.len()
+    );
+    println!("putout rank id share pop1550 market1550 yield_vs_region pasture_share mill_town");
+    for (r, &(id, v)) in rows.iter().take(top).enumerate() {
+        let Some(s) = st.settlements.iter().find(|s| s.id == id) else {
+            println!("putout {} {id} {:.3} gone", r + 1, v / total.max(1e-9));
+            continue;
+        };
+        let y = s.fields.iter().map(|&c| t.food_yield[c as usize]).sum::<f32>()
+            / s.fields.len().max(1) as f32;
+        let past = s.pasture.len() as f32 / (s.pasture.len() + s.fields.len()).max(1) as f32;
+        println!(
+            "putout {} {id} {:.3} {:.0} {:.0} {:.3} {:.3} {}",
+            r + 1,
+            v / total.max(1e-9),
+            s.pop,
+            s.market,
+            y / region_yield.max(1e-9),
+            past,
+            s.cloth_made > 0.0
+        );
+    }
+}
