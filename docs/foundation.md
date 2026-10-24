@@ -1976,6 +1976,30 @@ That separates the series' effect from map 3's geography. I decide the series af
 - Hatcher's 1450/1340 inside its gated band, which it fixes no more than now; the trough is left free.
 - The pre-1348 peak year within 20 years of now.
 
+### The preventive check, sources read: (b′), a sourced growth ceiling (D165)
+
+The source check (`docs/proposals/preventive-check-sources.md`) shows two things:
+- **The W&S lag is not settled.** It is about 50 years in W&S's reading and 12–16 in Olney's re-estimate.
+- **The medieval marriage pattern before 1550 is contested** (Smith and Poos for; Razi and Bailey 2024 against).
+
+What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a year in 1270–1300, 0.29% in 1450–90, 0.55% in 1490–1560 and 0.60% in 1560–1600. Nothing above about 0.6% was sustained before 1700. **The model's `r_grow` of 2.7% a year is 4–5 times any recorded rate.**
+
+**Decided: (b′).**
+- **Natural growth in all eras answers the food ratio over a ten-year average,** up to a ceiling `r_grow_pc` of **1.0% a year.** That is the round upper bound above Broadberry's sustained national rates, named as such.
+  - A local population can outgrow the national mean, which is why the ceiling is not Broadberry's 0.6%.
+  - Migration and founding are unchanged, so new land still fills by settlement as well as by births.
+- **The lag is dropped,** since its length is unsourced.
+- **No switch at a date.** If colonisation before the plague slows too much, report it with the peak year and the 1300 population. Applying a ceiling only from 1348 would be a script, and it is declined.
+- **Build behind a switch (off) and run the 9-run exploration.** Report before the gate if it looks likely to fail. Otherwise gate on 40 seeds, and make it the default if it passes.
+
+**Pre-registered, reported only, as in D164. The mechanism is the growth ceiling, which fixes the rate of rise and leaves the trough free (rule 12).**
+- 1600 at 1.15 × the pre-plague peak or less.
+- Recovery in 1480–1590 at 0.5–0.75% a year.
+- Hatcher's 1450/1340 within its gated band.
+- The pre-1348 peak year within 20 years of now.
+
+**Expected:** the trough part of the overshoot, about two thirds, is not fixed by this. If 1600 stays above 1.15, the trough is the next question.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
