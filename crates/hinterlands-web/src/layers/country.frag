@@ -477,10 +477,6 @@ vec2 tree_centre(int g, ivec2 c, float cs, int sg) {
     return transpose(GRID_ROT[g]) * ((vec2(c) + 0.05 + 0.9 * vec2(hash(c, sg), hash(c, sg + 1))) * cs);
 }
 
-// The most a place's groves add to a tree's density: 0.9 x grove_at, which
-// is at most 0.57 (R31), with a little slack.
-const float GROVE_MAX = 0.5131;
-
 // The largest crown radius from rmin..rmax (lone trees grow by up to a
 // quarter), with a little slack for rounding (R29).
 float crown_reach(float rmin, float rmax) {
@@ -538,29 +534,16 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
                 if (length(d) > reach) {
                     continue;
                 }
-                // This tree's widest crown (lone trees grow by up to a
-                // quarter): one that cannot reach the pixel is passed over
-                // before its density is looked up (R31).
-                float base = mix(rmin, rmax, hash(c, sg + 3));
-                float dd = length(d);
-                if (dd > 1.25 * base + 0.5 * m) {
-                    continue;
-                }
-                float h = hash(c, sg + 2);
                 float keep = clamp(dens + dot(dgrad, ctr - pm), 0.0, 1.0);
-                // The groves' density is looked up only where it can decide
-                // the tree (R31): it never lifts `keep` past GROVE_MAX.
-                if (g_grove_on && keep < GROVE_MAX) {
-                    if (h >= GROVE_MAX) {
-                        continue;
-                    }
+                if (g_grove_on) {
                     keep = max(keep, 0.9 * grove_at(ctr * g_unit));
                 }
-                if (h >= keep) {
+                if (hash(c, sg + 2) >= keep) {
                     continue;
                 }
                 // Trees standing alone (where few are kept) grow broad.
-                float r = base * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
+                float r = mix(rmin, rmax, hash(c, sg + 3)) * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
+                float dd = length(d);
                 // Only a crown that covers the pixel competes to be seen
                 // (R27): one just beyond it hid its neighbours' crowns.
                 if (dd > r + 0.5 * m) {
@@ -627,23 +610,15 @@ float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float r
                 if (length(pm - ctr) > reach) {
                     continue;
                 }
-                float base = mix(rmin, rmax, hash(c, sg + 3));
-                float dd = length(pm - ctr);
-                if (dd >= 1.25 * base) {
-                    continue;
-                }
-                float h = hash(c, sg + 2);
                 float keep = clamp(dens + dot(dgrad, ctr - here), 0.0, 1.0);
-                if (g_grove_on && keep < GROVE_MAX) {
-                    if (h >= GROVE_MAX) {
-                        continue;
-                    }
+                if (g_grove_on) {
                     keep = max(keep, 0.9 * grove_at(ctr * g_unit));
                 }
-                if (h >= keep) {
+                if (hash(c, sg + 2) >= keep) {
                     continue;
                 }
-                float r = base * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
+                float r = mix(rmin, rmax, hash(c, sg + 3)) * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
+                float dd = length(pm - ctr);
                 if (dd < r) {
                     float t = sqrt(r * r - dd * dd) + r * 0.9 + 2.0 * hash(c, sg + 4);
                     // Clearance only for a crown that would raise the top (R29).
