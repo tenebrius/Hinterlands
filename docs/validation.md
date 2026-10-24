@@ -27,6 +27,11 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 **Outside trade (D126, superseded by D139):** the band is 3–50% of market inflow. The ceiling guards against an export colony, a region whose market is mostly outside trade; it was 30% from L1 (D110) and 20% from v5. Exports per head against England's (about 14 d c. 1300) are reported.
 
+**Seed counts (D146, owner-approved):**
+- Exploration (screens, attribution runs, traces, trial settings) uses at most 20 seeds a map, often fewer.
+- The gate that makes a change the default always runs 40 seeds a map.
+- A result at 20 seeds is never reported as a pass or fail of the gate.
+
 **From D120 (22 October 2026) the gate runs 40 seeds a map:** `hinterlands validate --maps 3 --seeds 40`. Every per-run check must hold in 75% of the runs (30 of 40) on every map, and the contingency check is computed over the 40. Where the accepted model itself is below 30/40 (at D120: road length 300–500 on map 1, 29/40), a stage passes that check if it is no worse than the accepted model's count. Runs passing every check are reported, not gated. The rule as it stood before D120 follows.
 
 `hinterlands validate --maps 3 --seeds 20` runs maps 1–3, 20 seeds each. v1 passes when (D21):

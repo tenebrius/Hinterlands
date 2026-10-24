@@ -1701,6 +1701,10 @@ If the merge changes the golden, the cause is found and reported before anything
 - coin by channel;
 - the urban share.
 
+### Seed counts (owner, 24 October 2026; D146)
+
+Exploration runs (screens, attribution, traces, trial settings) use at most 20 seeds a map, which roughly halves their time. The gate that makes a change the default stays at 40 seeds (D120), because at 20 a check near 75% passes or fails by one seed.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
