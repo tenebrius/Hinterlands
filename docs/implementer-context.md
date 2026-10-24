@@ -61,6 +61,7 @@ Last updated: 2026-10-23. Paused by Divish after D139 step 1 (D140). Main: D1b +
   - `ironprice` (split by port reach);
   - `specialists`, `outside`, `stores`, `demand` (D0 tables).
 - **Report tables:** `tools/cloth/d2.py DIR` (cloth and money probe outputs), `tools/demand/d0.py`.
+- **Graphics merges:** the graphics session runs the browser selftest on the merged tree; do not repeat it (owner, 24 October). Check the golden natively, `just test` and `just validate`.
 - **Browser selftest:**
   - `just web`;
   - `python3 -m http.server 8765 --directory /home/user/Hinterlands/dist` in the background (use an absolute path);
