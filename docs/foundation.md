@@ -1853,6 +1853,37 @@ The implementer corrects the attribution. Grades alone also hold the cloth share
   If the share falls well below D144's, the shrinkage of the mill towns found in the grades-and-series run is the series' own effect. Then it is reported, and I decide.
 - **Then the D3 note.**
 
+### Wool series alone (2d06fec): the trace first; the D3 note decided (D158)
+
+**The wool series alone** fails one check: market spacing on map 3, 25/40, too wide. It has slid 34 → 30 → 25 over the last builds.
+- Rank-size is 40/40 on every map, and raw wool leaves in every decade.
+- The cloth share is within 0.05 of D144 except in 1540–60.
+
+**Decided:** the implementer's trace is accepted, and comes first. On 20 seeds of map 3's failing runs, report:
+- which places drop below the market threshold, and where;
+- their wool income against D144's;
+- whether the gaps are in the outer, pastoral districts.
+
+That separates the series' effect from map 3's geography. I decide the series after it. No gate before then.
+
+**The D3 note (`docs/proposals/wealth.md`), decided:**
+1. **Dyer's three yards is per adult.** My D154 wording, "a person", was wrong. The check is three yards an adult in 1500, against the model's 1.5.
+2. **Elasticities by good from Houthakker 1957,** checked against the original. If they cannot be checked, one e = 1.0 for every stock good, named.
+   - Clothing (home wool) about 1.0–1.3: use the low end, 1.0.
+   - Building (stone) about 0.8.
+   - Household iron about 1.0.
+   - **Plough irons and shoeing are not income-elastic.** They are a producer's stock and follow arable land, as in D1.
+3. **Salt is fixed.** It is a necessity (Engel), and a small elasticity adds a parameter without a check. Cut.
+4. **The income measure is accepted:** earned coin per head in grain units, a ten-year average.
+   - The reference is the region's mean per head in 1300–39, not each place's own. Places founded later need a reference too, and richer places holding more is Engel across places as well as over time.
+   - The region's aggregate demand in 1300–39 is unchanged.
+5. **The check is reported:**
+   - cloth per adult in 1500 against Dyer's three yards;
+   - the model's real income per head against the doubling in real wages between c. 1300 and 1450–1500 (Phelps Brown & Hopkins, to check).
+
+   Nothing is fitted to reach three yards.
+6. **Order:** build D3 behind `wealth_stocks` (off) while the spacing trace stands. Run its 9-run exploration and report it with the trace. No gate until the wool series is settled.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
