@@ -1015,3 +1015,15 @@ Kind: model mechanism, held off, and design sketch (designer's decision D162).
 - **Options sent:** a land-dependent ceiling; a settled start; or the trough first (recommended).
 - **Details:** `docs/demand/d3c.md`.
 Kind: model mechanism, held off (designer's decision D165).
+
+## D169 — D168: the sourced plague calendar's gate failed; stability's exemptions found incomplete
+- **`recovery by 500` re-founded** at 0.75–1.15 (D168).
+- **The gate on 40 seeds** (`plague_sourced`, endemic 0.015) **failed:**
+  - stability 0/40 on every map;
+  - market spacing 26/40 (map 1) and 17/40 (map 3);
+  - road length 27/40 (maps 1 and 3);
+  - recovery by 500 28/40 (map 1, median 1.09).
+- **Stability's D58 exemptions** cover the famine and 1348–69 only, not the later outbreaks. The sourced 1457 (0.189) and 1471 (0.139) break it. A fix (exempt every calendar outbreak) is proposed, not applied.
+- **Reading:** with the trough right (0.38), the over-fast recovery (0.91%) and the thinned 1400s fail spacing, roads and recovery. This argues for taking the recovery rule with the calendar.
+- **Not made the default.** Details: `docs/demand/d3d.md`. The recovery-rate note is `docs/proposals/recovery-rate.md`.
+Kind: model data, held off; validation finding (designer's decision D168).
