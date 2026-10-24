@@ -912,3 +912,16 @@ Kind: validation measure and model default (designer's decisions D141, D142).
   - f = 0.3 is the designer's calibration (the Medici costing gives 0.23–0.35).
 - **Not made the default.** The golden stays `fc16de69c1855b30`. Details: `docs/demand/d2i.md`.
 Kind: model mechanism, held off (designer's decision D145).
+
+## D149 — D148: rank-size attribution (exploration) and the raw-wool note
+- **Attribution, map 1, 20 seeds (exploration under D146, not a gate):**
+  - the payment split alone, with capacity frozen at D144's rule, keeps the rank-size slope: 19/20, median −0.906 (D144 19/20, −0.936);
+  - the growing stock with all of the making cost kept in the towns still fails: 6/20, −0.731 (D145 3/20, −0.745).
+
+  So the cloth boom, not the payment split, flattens map 1's hierarchy.
+- **The note** (`docs/proposals/raw-wool.md`) compares wool grades with bounded cloth demand, and recommends grades:
+  - the sourced price ratios are the 1499 within-district ratios, 100 : 70 : 49, and the 1475 county lists (1.9 : 1);
+  - the one calibration is a clip's grade shares, at the start;
+  - bounded demand would feed the customs series into the cloth share it is tested on.
+- **Details:** `docs/demand/d2j.md`.
+Kind: exploration and design note (designer's decision D148).
