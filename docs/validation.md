@@ -21,6 +21,8 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 ## Pass rule
 
+**Recovery (D168):** population by year 500 at 0.75–1.15 of the pre-plague peak (England about 0.85 in 1600; Broadberry et al.), replacing at least 0.90.
+
 **Over 2,000 (D135):** reported, not gated: the count and the urban share (people in places over 2,000) against England's c. 10% c. 1300. The hierarchy is gated by rank-size, largest share and over 5,000.
 
 **Outside trade (D139):** gated as exports (grain, wool and cloth to the ports) over the region's total output in the model, 1–35%, against England's c. 6–7% c. 1300 (Broadberry et al. 2015). The share of market inflow and exports per head are reported.

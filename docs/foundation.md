@@ -2016,6 +2016,35 @@ What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a 
   - the gated Hatcher band, and whether 0.40 sits inside it.
 - The recovery part comes after the trough, in option 1's form: full growth where land is free and a settled rate where it is taken. That form follows from this result, and it waits.
 
+### The trough note (5081595): the sourced plague calendar is gated; the recovery check is re-founded (D168)
+
+**Accepted.**
+- **The outbreak calendar is verified against Gottfried, Shrewsbury and Creighton.** 1428, 1457 and 1467 are added, and the sourced list is 1375–1479 (13 outbreaks).
+- **Mortality.** 1457 and 1471 are set at the Christ Church monks' rates (Hatcher 1986), named as upper bounds. The other years keep the rule. The record shows that mortality did not fall after 1450.
+- **`endemic_mortality` 0.015 is kept and recorded as half sourced and half compensating.**
+  - The monks' excess over a normal rate is about 0.005–0.008.
+  - The rest stands in for fertility that the growth rule overstates (D165), and it goes when the recovery rate is fixed. It is not re-tuned now.
+- **The exploration:**
+  - the sourced calendar puts the trough at 0.38 of the peak, against the record's 0.40;
+  - 1450/1340 is 0.49 (0.42–0.58);
+  - the 1600 overshoot falls from 1.30 to 1.04.
+
+  The calendar alone makes no trough, which shows that the endemic term is doing work the growth rule should do.
+
+**The recovery check is re-founded: 0.75–1.15 of the pre-plague peak by year 500, gated** (was at least 0.90).
+- The reason stands without this run. England stood at about 0.85 of its peak in 1600 (Broadberry et al.: 4.11m against 4.81m), which the old floor would fail. The old check was set in v4, before the record was used.
+- **The floor of 0.75** guards against a region that never recovers.
+- **The ceiling of 1.15** was pre-registered at D164, before this result, as the limit of an acceptable overshoot. It now becomes gated.
+
+**Gate:** the sourced calendar (`plague_sourced`) with endemic 0.015, on 40 seeds, every check, with the re-founded recovery band. If it passes, it becomes the default.
+
+**Pre-registered, reported only:**
+- the trough between 0.33 and 0.48 of the peak;
+- 1450/1340 within D114's 0.40–0.65;
+- recovery in 1480–1590 reported against the record's 0.59% a year.
+
+**Next, if it passes: the recovery rate,** option 1's form as a note. That is full growth where land is free and a settled rate where it is taken. It is the remaining third of the overshoot, and it would retire the compensating half of the endemic term.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
