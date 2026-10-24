@@ -1705,6 +1705,33 @@ If the merge changes the golden, the cause is found and reported before anything
 
 Exploration runs (screens, attribution, traces, trial settings) use at most 20 seeds a map, which roughly halves their time. The gate that makes a change the default stays at 40 seeds (D120), because at 20 a check near 75% passes or fails by one seed.
 
+### Putting-out result (c58d5c2): the pace is right early, but nothing keeps raw wool leaving (D148)
+
+**What it showed.** The gate fails on rank-size on map 1 (9/40, median −0.76). Map 3's spacing holds at 30/40.
+- **Early on, the stock grows at about the record's pace.** The customs record shows cloth exports ×3 from the 1360s to the 1390s (13.1k → 39.2k cloths). The model's cloth wool rises ×4 from the 1360s to the 1400s, at W's own ε and unfitted.
+- **Then the clip binds.** From 1390 every pound of wool goes to cloth: the share is 1.00, raw wool exports stop, and home wool falls below need. The record had the share at about 0.4 in the 1420s and raw wool still leaving. This is the all-or-nothing risk I named.
+- **Coin triples** (302k against 113k in 1600), the price level reaches 1.88, and the 1600 population falls to 73k (D144 84k).
+- **The earners are mill towns' own farmers** on good land, not pastoral districts.
+- `putting_out` stays off, and the golden is unchanged.
+
+**Reading.** The growth rule is not the fault. The fault is that the model has one wool at one price, so wherever cloth's netback beats wool's, all of it goes to cloth once capacity allows. In the record two things kept raw wool leaving through the fifteenth century:
+- **(a) Quality.** The finest wools fetched raw-export prices far above the middling wool English cloth used. Lloyd's 1294 list, already in L0, gives a mean of £5.02 a sack and the best abbey wools £8.80.
+- **(b) Market access for English cloth.** It was not unlimited: there were Flemish bans, and the Hanse conflicts that made the 1450s–60s dip in the record.
+
+**Next, one round, no code to the model:**
+1. **Attribution of map 1's rank-size,** at 20 seeds (D146), with `putting_out` on in each run:
+   - f = 1.0, so the making cost stays in town, against f = 0.3;
+   - capacity frozen at D144's rule, with the making cost paid to the farms.
+
+   This separates the payment split from the cloth boom.
+2. **A short note comparing (a) and (b)** as the mechanism that keeps raw wool leaving. For each:
+   - the sources (Lloyd 1973's price list by house and region; Munro and Carus-Wilson & Coleman on market access);
+   - how it would sit in the model: for (a), grades assigned to pasture by land or geology, with the ports paying a grade price for raw wool while cloth's netback is the same for every grade; for (b), a bounded port demand for cloth;
+   - what it would fix;
+   - what it would need calibrated.
+
+   It should prefer the mechanism with the stronger source and the fewer calibrations. I decide before any code.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
