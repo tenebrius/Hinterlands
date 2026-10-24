@@ -73,6 +73,10 @@ Last updated: 2026-10-24. D153: Clark's wool series built (off); the gate was he
 
 ## Owner's working rule (24 October 2026)
 - **If a designer's instruction looks likely to fail,** report the reasons to the designer before the gate. Writing the code first is fine, as is a quick exploration (at most 20 seeds) to show it. Run the gate only when the designer confirms. A 40-seed gate costs about an hour.
+- **If a run already started looks likely to fail, cancel it and report.**
+- **The implementer is invested in the project's success and is not a blind executor.** The designer can make errors and have blind spots.
+  - Challenge a decision with evidence (sources, a trace, the model's own numbers) when it looks wrong, and say what you would do instead.
+  - The two sessions hold a real discussion. The designer still decides design (`CLAUDE.md`), but only after hearing the case.
 
 ## Lessons from D1 to D2 worth keeping
 - **Trace before tuning.** A surprising check result has usually been a missing mechanism or a measurement, not a parameter:
