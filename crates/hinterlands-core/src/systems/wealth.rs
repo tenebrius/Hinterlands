@@ -1,5 +1,5 @@
 //! Wealth raises stocks (D3, D158). Each place's real income per head, in
-//! grain units, is the food its own fields give its people, up to their need,
+//! grain units, is the food its own fields give its people (uncapped, D162)
 //! plus the coin its grain, wool and cloth earned over the grain price; it is
 //! averaged over `wealth_years`. Against the region's 1300-1339 mean y0, a
 //! place's stocks of home cloth, household iron and building stone are scaled
@@ -26,8 +26,8 @@ pub fn run(state: &mut State, _t: &Terrain, p: &Params, _rng: &mut Rng) {
         if pop <= 0.0 {
             continue;
         }
-        let need = pop * p.food_per_person;
-        let own = s.food_prod.max(0.0).min(need);
+        // Own food counts uncapped (D162): food above need is income in kind.
+        let own = s.food_prod.max(0.0);
         // Coin over the local grain price is grain units (D97).
         let price = if s.price[0] > 0.0 { s.price[0] } else { p.port_world_price };
         let earned = (s.grain_earned + s.wool_got + s.cloth_margin).max(0.0);

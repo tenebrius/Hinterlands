@@ -1956,3 +1956,54 @@ pub fn cmd_wealth(args: &Args) {
         }
     }
 }
+
+/// Land per worker (D162), by decade from 1300: people, arable acres a head,
+/// output (own harvest) a head in food units, the share of places (and of
+/// people) at the full growth rate (food ratio at `food_cap` or above), and
+/// the pasture share of used land.
+pub fn cmd_landwork(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let p = sim.params.clone();
+    println!("landwork map seed decade pop arable_acres_head output_head full_growth_places full_growth_people pasture_share");
+    while sim.state.year < 500 {
+        let y0 = sim.state.year;
+        let mut acc = [0f64; 6];
+        for _ in 0..10 {
+            sim.step(1);
+            let st = &sim.state;
+            let pop: f32 = st.settlements.iter().map(|s| s.pop.max(0.0)).sum();
+            let ar: f32 = st.settlements.iter().map(|s| s.arable_km2).sum::<f32>() * 247.1;
+            let out: f32 = st.settlements.iter().map(|s| s.food_prod).sum();
+            let n = st.settlements.len().max(1) as f32;
+            let full = st.settlements.iter().filter(|s| s.food_ratio >= p.food_cap).count() as f32;
+            let fullp: f32 = st
+                .settlements
+                .iter()
+                .filter(|s| s.food_ratio >= p.food_cap)
+                .map(|s| s.pop.max(0.0))
+                .sum();
+            let past: usize = st.settlements.iter().map(|s| s.pasture.len()).sum();
+            let fields: usize = st.settlements.iter().map(|s| s.fields.len()).sum();
+            acc[0] += pop as f64 / 10.0;
+            acc[1] += (ar / pop.max(1.0)) as f64 / 10.0;
+            acc[2] += (out / pop.max(1.0)) as f64 / 10.0;
+            acc[3] += (full / n) as f64 / 10.0;
+            acc[4] += (fullp / pop.max(1.0)) as f64 / 10.0;
+            acc[5] += (past as f32 / (past + fields).max(1) as f32) as f64 / 10.0;
+        }
+        if y0 >= 200 {
+            println!(
+                "landwork {map} {seed} {} {:.0} {:.3} {:.3} {:.3} {:.3} {:.3}",
+                1100 + y0,
+                acc[0],
+                acc[1],
+                acc[2],
+                acc[3],
+                acc[4],
+                acc[5]
+            );
+        }
+    }
+}

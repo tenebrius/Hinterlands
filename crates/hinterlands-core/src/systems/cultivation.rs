@@ -66,6 +66,21 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                     produce += t.food_yield[ci] * ppc;
                 }
             }
+        } else if p.labour_land {
+            // D162: fields are kept while the farmers can work them; only land
+            // beyond `acres_per_farmer` a farming head is released.
+            let farmers = (s.pop - s.market.max(0.0)).max(0.0);
+            let cell_acres = t.grid.cell_km * t.grid.cell_km * 247.1;
+            let workable = farmers * p.acres_per_farmer / cell_acres.max(1e-6);
+            while let Some(&last) = s.fields.last() {
+                if s.fields.len() as f32 > workable.max(1.0) {
+                    s.fields.pop();
+                    owner[last as usize] = NONE;
+                    produce -= t.food_yield[last as usize] * ppc;
+                } else {
+                    break;
+                }
+            }
         } else {
             while let Some(&last) = s.fields.last() {
                 let y = t.food_yield[last as usize] * ppc;

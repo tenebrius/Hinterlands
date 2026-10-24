@@ -990,3 +990,16 @@ Kind: trace and model mechanism, held off (designer's decision D158).
 - **The land-per-worker note** is `docs/proposals/land-per-worker.md`.
 - **Details:** `docs/demand/d2o.md`.
 Kind: model data and default (designer's decision D160).
+
+## D163 — D162: labour-led land rule built (off), exploration; the preventive check sketched
+- **Built:** `labour_land` (off). Fields are claimed to need as before, but released only above `acres_per_farmer` × farmers, with 6.18 = 247.1 / `arable_labour` (no new calibration; the virgate gives about 6.7).
+- **D3's income counts own food uncapped** (D162).
+- **Exploration (9 runs, not a gate):** arable a head 1450/1300 is 0.89 (test × 1.5–1.65: missed). The model's farmers already work about 5 acres in 1300, so the cap binds at the plague.
+  - Hatcher 0.52 (0.55 off).
+  - 1600 against the peak: 1.07 (1.30 off).
+  - Villages at full growth: 0.07 in 1450 (0.15 off).
+- **Reading:** land per head in 1300 is already near the record's post-plague level, so the rule cannot raise it without fitting.
+- **The overshoot:** about 0.3 of its 0.45 comes from the trough (0.53 against the record's 0.40), and only about 0.15 from the recovery (0.64–0.77% against 0.59% a year).
+- **(b), the preventive check, is sketched** in `docs/proposals/preventive-check.md`.
+- **Details:** `docs/demand/d3b.md`.
+Kind: model mechanism, held off, and design sketch (designer's decision D162).

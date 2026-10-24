@@ -129,6 +129,8 @@ define_params! {
         people_per_prime_cell: f32 = 150.0, [50, 400], "People fed by one cell of prime land";
         r_cult: f32 = 1.3, [1, 12], "Travel-cost radius of cultivation";
         cult_margin: f32 = 1.2, [1, 2], "Fields are claimed until produce covers need times this";
+        labour_land: bool = false, [0, 1], "Land kept by labour (D162): fields are still claimed to need, but released only when they exceed what the farmers can work, acres_per_farmer a head, so survivors keep vacant land after a plague";
+        acres_per_farmer: f32 = 6.18, [0.5, 50], "Arable a farming person can work, acres: 247.1 / arable_labour (40 a km2, L0); the virgate household gives about 6.7 (30 acres, 4.5 people) (D162)";
         release_hysteresis: f32 = 0.1, [0, 0.5], "Fields are released only when produce exceeds the target by this share";
         min_field_yield: f32 = 0.1, [0, 0.8], "Cells below this yield are never cultivated";
         clear_rate: f32 = 0.2, [0, 1], "Forest lost per year on a cultivated cell";
