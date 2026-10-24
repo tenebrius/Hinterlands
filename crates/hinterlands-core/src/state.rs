@@ -457,6 +457,9 @@ pub struct Flow {
     /// Wool to an outside port (L1, D107), carried on the seller's path.
     #[serde(default)]
     pub wool: bool,
+    /// Export cloth from a mill to an outside port (D2; view only, v8).
+    #[serde(default)]
+    pub cloth: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -586,7 +589,7 @@ pub struct State {
     pub grazed: Vec<u32>,
     /// This year's wool shipments: (seller id, partner index, value).
     #[serde(default)]
-    pub wool_ship: Vec<(u32, u32, f32)>,
+    pub wool_ship: Vec<(u32, u32, f32, bool)>,
     /// Coin the fallow flock's wool fetched at the ports this year (D2, D123).
     #[serde(default)]
     pub fallow_wool: f32,

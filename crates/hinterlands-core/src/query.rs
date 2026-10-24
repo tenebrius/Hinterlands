@@ -169,3 +169,47 @@ pub fn site_report(snap: &Snapshot, t: &Terrain, p: &Params, cell: usize) -> Sit
         nearest,
     }
 }
+
+/// The outside port (its index in `snap.ports`) whose cell is within
+/// `radius_km` of `cell`, nearest first.
+pub fn port_near(snap: &Snapshot, t: &Terrain, cell: usize, radius_km: f32) -> Option<usize> {
+    snap.ports
+        .iter()
+        .enumerate()
+        .map(|(k, &c)| (t.grid.dist_km(c as usize, cell), k))
+        .filter(|(d, _)| *d <= radius_km)
+        .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)))
+        .map(|(_, k)| k)
+}
+
+/// An outside port's trade this year, from the snapshot's flows (v8): salt,
+/// iron and stone and imports supplied, grain, wool and cloth bought.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PortTrade {
+    pub goods: [f32; 3],
+    pub imports: f32,
+    pub grain: f32,
+    pub wool: f32,
+    pub cloth: f32,
+}
+
+pub fn port_trade(snap: &Snapshot, k: usize) -> PortTrade {
+    let mut r = PortTrade::default();
+    for f in &snap.flows {
+        if crate::state::port_of(f.to) != Some(k) || f.payment || f.relief {
+            continue;
+        }
+        if f.cloth {
+            r.cloth += f.amount;
+        } else if f.wool {
+            r.wool += f.amount;
+        } else if f.import {
+            r.imports += f.amount;
+        } else if let Some(g) = f.good {
+            r.goods[g as usize] += f.amount;
+        } else {
+            r.grain += f.amount;
+        }
+    }
+    r
+}

@@ -491,6 +491,7 @@ pub fn trade(
                 import: false,
                 relief: false,
                 wool: false,
+                cloth: false,
             });
         }
     }

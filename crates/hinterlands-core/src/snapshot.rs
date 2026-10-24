@@ -62,6 +62,16 @@ pub struct SettlementView {
     /// Cells grazed for wool (L1); left out when zero.
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub pasture: u32,
+    /// Coin its wool fetched this year, lords' and farmers' shares (D2, v8);
+    /// left out when zero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub wool_got: f32,
+    /// Export cloth made this year at its mill, lb of wool (D2, v8).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub cloth_made: f32,
+    /// The cloth's margin over its wool this year, coin (D2, v8).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub cloth_margin: f32,
 }
 
 fn is_zero_u32(x: &u32) -> bool {
@@ -119,6 +129,10 @@ pub struct FlowView {
     /// Wool to an outside port (L1); left out of the bytes when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub wool: bool,
+    /// Export cloth from a mill to an outside port (D2, v8); left out of the
+    /// bytes when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cloth: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -191,6 +205,9 @@ impl Snapshot {
                 purse: s.purse,
                 mpurse: s.mpurse,
                 pasture: s.pasture.len() as u32,
+                wool_got: s.wool_got,
+                cloth_made: s.cloth_made,
+                cloth_margin: s.cloth_margin,
             })
             .collect();
         let flows = state
@@ -210,6 +227,7 @@ impl Snapshot {
                     import: f.import,
                     relief: f.relief,
                     wool: f.wool,
+                    cloth: f.cloth,
                 })
             })
             .collect();

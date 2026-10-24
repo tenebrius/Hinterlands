@@ -1,6 +1,7 @@
 //! Wool (L4; drawing only): the model's pasture (L1) for the countryside
-//! layers, and wool going down to the outside ports as a seventh colour of
-//! route, fleece cream.
+//! layers, wool going to the outside ports and the mills as a seventh colour
+//! of route, fleece cream, and export cloth from the mills to the ports in
+//! violet, with a violet ring round each main cloth town (D2, v8).
 
 use super::lines::chaikin;
 use super::{DrawCtx, Layer, Swatch};
@@ -12,6 +13,10 @@ use hinterlands_core::terrain::Terrain;
 
 pub const WOOL: Color32 = Color32::from_rgb(214, 200, 160);
 const WOOL_EDGE: Color32 = Color32::from_rgb(120, 104, 70);
+/// Violet-dyed broadcloth: a hue no other layer uses (grain prices and
+/// imports are already reds).
+pub const CLOTH: Color32 = Color32::from_rgb(118, 72, 178);
+const INK: Color32 = Color32::from_rgb(40, 34, 30);
 /// Most wool flows drawn.
 const MAX_DRAWN: usize = 40;
 
@@ -52,10 +57,14 @@ impl Layer for WoolLayer {
         "wool"
     }
     fn name(&self) -> &'static str {
-        "Wool to the ports"
+        "Wool and cloth"
     }
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
-        vec![(Swatch::Line(WOOL, 3.0), "Wool carried to the ports")]
+        vec![
+            (Swatch::Line(WOOL, 3.0), "Wool to the ports and the mills"),
+            (Swatch::Line(CLOTH, 3.0), "Cloth from the mills to the ports"),
+            (Swatch::Dot(CLOTH), "Cloth town: a ring round each main cloth maker"),
+        ]
     }
     fn draw(&mut self, d: &DrawCtx) {
         let v = d.view;
@@ -86,12 +95,36 @@ impl Layer for WoolLayer {
                 .map(|&p| d.camera.to_screen(d.rect, p))
                 .collect();
             let w = (0.4 + f.amount.sqrt() * 0.08).min(3.5) * (z / 6.0).clamp(0.6, 2.0);
+            let (fill, edge) = if f.cloth {
+                (CLOTH, INK)
+            } else {
+                (WOOL, WOOL_EDGE)
+            };
             d.painter.add(Shape::line(
                 line.clone(),
-                Stroke::new(w + 1.2, WOOL_EDGE.gamma_multiply(0.5 * fade)),
+                Stroke::new(w + 1.2, edge.gamma_multiply(0.5 * fade)),
             ));
             d.painter
-                .add(Shape::line(line, Stroke::new(w, WOOL.gamma_multiply(fade))));
+                .add(Shape::line(line, Stroke::new(w, fill.gamma_multiply(fade))));
+        }
+        // Cloth towns: a violet ring, as specialists get their good's, round
+        // the places making at least a tenth of the largest maker's cloth
+        // (most mills make a little; a ring on each would hide the rest).
+        let most = snap
+            .settlements
+            .iter()
+            .map(|s| s.cloth_made)
+            .fold(0.0f32, f32::max);
+        for s in snap
+            .settlements
+            .iter()
+            .filter(|s| s.cloth_made > 0.0 && s.cloth_made >= 0.1 * most)
+        {
+            let c = d.camera.cell_center(d.rect, g.w, s.anchor as usize);
+            let r = (z * 0.75).clamp(7.0, 16.0);
+            d.painter
+                .circle_stroke(c, r, Stroke::new(2.5, INK.gamma_multiply(0.7)));
+            d.painter.circle_stroke(c, r, Stroke::new(1.6, CLOTH));
         }
     }
 }

@@ -130,7 +130,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     }
 
     // Wool to the ports (L1), and export cloth (D2), on the sellers' paths.
-    for &(from, k, amount) in &state.wool_ship {
+    for &(from, k, amount, cloth) in &state.wool_ship {
         let Some(i) = idx_of
             .get(from as usize)
             .copied()
@@ -160,6 +160,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 import: false,
                 relief: false,
                 wool: true,
+                cloth,
             });
         }
     }
@@ -406,6 +407,7 @@ fn relief(state: &mut State, p: &Params, idx_of: &[u32]) {
             import: false,
             relief: true,
             wool: false,
+            cloth: false,
         });
     }
     let mut lost = 0f32;
@@ -647,6 +649,7 @@ fn goods(
             import: false,
             relief: false,
             wool: false,
+            cloth: false,
         });
         let pay = worth * scale[i];
         if pay <= 0.0 {
@@ -670,6 +673,7 @@ fn goods(
             import: false,
             relief: false,
             wool: false,
+            cloth: false,
         });
     }
     for (site, s) in state.sites.iter_mut().zip(sold) {

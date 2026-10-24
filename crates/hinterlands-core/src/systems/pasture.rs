@@ -327,9 +327,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         wool_total += gross;
         // Shipped value in grain units at the world price, for road loads.
         let value = gross / p.port_world_price.max(1e-6);
-        state.wool_ship.push((id, k1, value));
+        state.wool_ship.push((id, k1, value, false));
         if k2 != NONE {
-            state.wool_ship.push((partner_id, k2, value));
+            state.wool_ship.push((partner_id, k2, value, false));
         }
     }
     let _ = wool_total;
@@ -766,6 +766,7 @@ fn wool_market(
                 state.settlements[i].id,
                 sellers[k].k1,
                 q / p.port_world_price.max(1e-6),
+                false,
             ));
             continue;
         }
@@ -813,6 +814,7 @@ fn wool_market(
                 state.settlements[i].id,
                 pi as u32,
                 q / p.port_world_price.max(1e-6),
+                false,
             ));
         }
     }
@@ -909,7 +911,7 @@ fn wool_market(
         if let Some(k1) = k1 {
             state
                 .wool_ship
-                .push((id, k1, gross / p.port_world_price.max(1e-6)));
+                .push((id, k1, gross / p.port_world_price.max(1e-6), true));
         }
         if payout > 0.0 {
             paid_out += payout;

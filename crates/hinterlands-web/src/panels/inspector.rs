@@ -81,6 +81,21 @@ impl Panel for Inspector {
                     ui.label(format!("{} cells grazed for wool", s.pasture));
                     ui.end_row();
                 }
+                if s.wool_got > 0.0 {
+                    ui.label("Wool sold");
+                    ui.label(format!("{:.1} coin this year", s.wool_got));
+                    ui.end_row();
+                }
+                // Export cloth (D2): a mill buys wool and sends broadcloth to
+                // the ports.
+                if s.cloth_made > 0.0 {
+                    ui.label("Cloth town");
+                    ui.label(format!(
+                        "{:.0} lb of wool made into cloth; margin {:.1} coin",
+                        s.cloth_made, s.cloth_margin
+                    ));
+                    ui.end_row();
+                }
                 let trend = if s.pop_50_ago > 0.0 {
                     (s.pop / s.pop_50_ago - 1.0) * 100.0
                 } else {
@@ -100,6 +115,10 @@ impl Panel for Inspector {
                     ui.label(format!("  {name} ({pop:.0} people): {f:.0}/yr"));
                 }
             }
+            ui.separator();
+        }
+        if let Some(k) = query::port_near(snap, t, cell, 2.0) {
+            port_trade(ui, snap, k);
             ui.separator();
         }
         ui.strong(format!(
@@ -172,4 +191,29 @@ impl Panel for Inspector {
         }
         Vec::new()
     }
+}
+
+/// An outside port's trade this year (v5, D1, D2): what it supplied and what
+/// it bought, in grain units at the world price, from this year's flows.
+fn port_trade(ui: &mut egui::Ui, snap: &hinterlands_core::snapshot::Snapshot, k: usize) {
+    use hinterlands_core::state::Good;
+    let t = query::port_trade(snap, k);
+    ui.strong(format!("Outside port {}", k + 1));
+    egui::Grid::new("port").num_columns(2).show(ui, |ui| {
+        let mut row = |name: &str, v: f32| {
+            if v > 0.0 {
+                ui.label(name);
+                ui.label(format!("{v:.1}"));
+                ui.end_row();
+            }
+        };
+        row("Salt supplied", t.goods[Good::Salt as usize]);
+        row("Iron supplied", t.goods[Good::Iron as usize]);
+        row("Stone supplied", t.goods[Good::Stone as usize]);
+        row("Imports supplied", t.imports);
+        row("Grain bought", t.grain);
+        row("Wool bought", t.wool);
+        row("Cloth bought", t.cloth);
+    });
+    ui.weak("Values a year, at the world price; flows below the view's threshold are left out.");
 }
