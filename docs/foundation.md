@@ -1821,6 +1821,20 @@ They rest on wool and cloth prices both following their own series, which the im
 
 The cloth lag stays a reported miss. The model's direction is right and its pace is short after 1420 while capacity is tied to W.
 
+### Grades and the wool series: gate on sources (D155)
+
+The 9-run exploration shows the cloth share above D144's to 1500 and below it after: 0.37–0.41 against 0.40–0.58 in 1510–1600. With wool cheaper on Clark's series, the mill towns, and so their capacity, are smaller. Good wool keeps leaving raw, and coin and population are close to D144's.
+
+**Decided: (a), gate grades and the wool series together, and make both the default if the gate passes.**
+- **Dropping a sourced series because it moves one reported statistic away from the record would be choosing by result,** and rule 15 says competing prices follow their own series.
+- **D144's closer share after 1500 came from wool held at a price the record does not have.**
+- **The post-1500 cloth share is accepted as a known miss,** short of the record's 0.55–0.85.
+  - The cause is now clear: with capacity tied to mill-town W, the industry cannot grow faster than its towns.
+  - The record's growth came through labour that the model, after D154, does not give cloth.
+- If the 20-seed rank-size exploration now running on map 1 shows a likely failure, report it before the gate.
+
+**Then D3,** with the note first (D154).
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
