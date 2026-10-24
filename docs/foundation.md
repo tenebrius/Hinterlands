@@ -2109,6 +2109,34 @@ Running it would spend an hour to learn nothing.
 - **The spacing note is widened.** It covers map 1 as well as map 3, road length 300–500, and why the sourced calendar's deeper trough thins the places over 500 and lets the roads fade.
 - **Then** the calendar is re-gated together with whatever the note leads to.
 
+### Spacing and roads re-founded on what they were meant to measure (D174)
+
+**The trace (`docs/proposals/spacing-roads.md`).**
+- The sourced calendar loses places over 500 in proportion to the population: 0.86 and 0.81 of them, against 0.80 of the people.
+- The places lost are ordinary ones, neither outer nor pastoral.
+- Map 3 is weaker because its people sit just under 500.
+- Road length from 1400 to 1600 now spans the trough (1470s) and the recovery, so roads rebuild as the population more than doubles.
+
+**The reading is accepted. Both checks measure something other than their name:**
+- "market spacing" measures the density of places over 500, not markets;
+- "road length 300–500" reads real recovery as churn.
+
+Both were set when 1600 stood at 1.3–1.46 times the peak. Each revision below has a reason that stands without this run, as over 2,000 did at D135.
+
+**1. Market spacing is measured among market places,** those with W at least `market_min`, the model's own market function. The band stays 8–15 km.
+- The referents: Bracton's 6⅔ miles between markets; Everitt's about 760 market towns in 1500–1640, about one per 70 square miles, or 10–13 km apart (to check); Dyer's small market towns of 300–1,000.
+- The old measure is reported beside it.
+- Map 3's 56/80 reference is replaced by the re-read below.
+
+**2. Roads: persistence, not net length.**
+- The check becomes **the share of road cells at year 300 that are still road at year 500, at least 0.90.** New roads may be added.
+- The implementer proposed length per head. I chose persistence because it is what the check was for (D54; Dalgaard et al. on road persistence). A network that fades in the trough and is rebuilt elsewhere should still fail. One that keeps its roads and adds more as people return should pass. Length per head would pass a network that halves when its population does, and roads did not.
+- Net length 300–500 is reported.
+
+**Order:**
+1. **Re-read the default (D161's model) under both new measures on 40 seeds,** and report against the old ones. If the default fails a new measure, stop and report: the measure, not the model, is then in question.
+2. **Re-gate `plague_sourced`** (endemic 0.015, the stability fix) under the new measures. If it passes, it becomes the default. Map 1's recovery stays the known miss, gated at 0.75–1.15.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

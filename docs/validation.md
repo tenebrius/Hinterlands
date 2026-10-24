@@ -21,6 +21,10 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 ## Pass rule
 
+**Market spacing (D174):** the median nearest-neighbour distance among market places (W ≥ `market_min`), 8–15 km. The old measure (places over 500) is reported.
+
+**Roads (D174):** persistence, the share of year-300 road cells still road at year 500, at least 0.90. Net length change is reported.
+
 **Recovery (D168):** population by year 500 at 0.75–1.15 of the pre-plague peak (England about 0.85 in 1600; Broadberry et al.), replacing at least 0.90.
 
 **Over 2,000 (D135):** reported, not gated: the count and the urban share (people in places over 2,000) against England's c. 10% c. 1300. The hierarchy is gated by rank-size, largest share and over 5,000.
