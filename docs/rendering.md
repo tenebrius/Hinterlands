@@ -959,6 +959,31 @@ The owner approved trying it after R29: towns cost about 3.5 s of Liningbourne's
 
 Kind: rendering.
 
+## R31 — Optimisation 4, tried and reverted: the groves' density looked up less often
+
+- **Why.** A throwaway build with `grove_at` returning 0 redrew Liningbourne in 5,466 ms against 7,650, and Dewermouth in 5,200 against 8,400 (storybook, 1 m). A build without the town scan took 5,950 and 6,383. So the groves looked like the towns' main cost.
+- **What was tried** (commit `dfd5727`, reverted in the commit after it). In both tree searches:
+  - a candidate's own widest crown was tested before its density;
+  - `grove_at` was looked up only where it could decide the tree. It never lifts the density past 0.513 (0.9 × 0.57), so a hash at or above that, and above the base density, fails whatever the groves, and a base density at or above it passes.
+- **Result.**
+  - **Picture:** unchanged. Ten views differ from R29 only in smoke.
+  - **Frame time:** within noise, from −15% to +13% (ms, `?redraw=1`, R29 against R31):
+
+    | View | Look | R29 | R31 |
+    |---|---|---|---|
+    | Liningbourne, 1 m | storybook | 8,433 | 7,200 |
+    | Liningbourne, 1 m | true scale | 8,550 | 8,400 |
+    | Liningbourne, 4 m | storybook | 6,033 | 6,833 |
+    | Liningbourne, 4 m | true scale | 6,000 | 6,433 |
+    | Dewermouth, 1 m | storybook | 7,483 | 7,450 |
+    | Dewermouth, 1 m | true scale | 7,816 | 7,500 |
+    | Wood by a stream, 1 m | storybook | 7,666 | 7,416 |
+    | Wood by a stream, 1 m | true scale | 7,583 | 7,583 |
+
+  - **Why the profile misled:** setting the groves' density to 0 also removed the groves' trees, whose crowns, shadows and clearance are the real cost, not the density lookups. Reverted, as no gain was measured.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
