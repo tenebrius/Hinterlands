@@ -2045,6 +2045,38 @@ What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a 
 
 **Next, if it passes: the recovery rate,** option 1's form as a note. That is full growth where land is free and a settled rate where it is taken. It is the remaining third of the overshoot, and it would retire the compensating half of the endemic term.
 
+### The plague-calendar gate (8555c22): stability's exemptions extended; recovery rule built with the calendar (D170)
+
+**What failed:**
+- stability 0/40 on every map;
+- market spacing on maps 1 and 3 (26/40, 17/40);
+- roads on maps 1 and 3 (27/40);
+- recovery on map 1 (28/40; median 1.09, 12 runs above 1.15).
+
+**1. Stability: the exemptions follow D58's own principle, to every calendar outbreak.**
+- D58 exempted the famine and the plagues of 1348, 1361 and 1369, and each following year, because the check measures instability from the model's own dynamics, not from imposed shocks.
+- The later outbreaks were never exempted. They slipped under 5% a year only while their mortality was small. The sourced 1457 (0.189) and 1471 (0.139) expose the gap.
+- From now on every outbreak in the calendar, and the year after it, is exempt. This reason stands without this run.
+
+**2. Spacing, roads and map 1's recovery are real failures.** The trough is now right, and the recovery after it is too fast (0.91% a year against the record's 0.59%). That is the remaining part D167 named. `plague_sourced` stays off until the recovery rule is with it.
+
+**3. The recovery-rate note (`docs/proposals/recovery-rate.md`), decided:**
+- **Free land means land never cleared** (an `ever_owned` flag per cell), not land that is now unowned. Otherwise every field the plague emptied would count as frontier. The free share is a count of cells in each place's reach, with no new calibration.
+- **The growth ceiling:** `r_max = r_grow_pc + (r_grow − r_grow_pc) × free share`.
+  - The frontier rate stays `r_grow` 2.7%, which includes migration into new land, and the filling to 1340 is unchanged.
+  - The settled rate `r_grow_pc` is 1.0%, the named bound of D165.
+- **Endemic mortality goes to its sourced part, 0.007** (the midpoint of the monks' excess of 0.005–0.008; Hatcher 1986), in the same change. Its compensating half was standing in for exactly the growth this rule now bounds, so the two are removed together.
+- **Build it behind its switch with `plague_sourced` and the new exemptions.** Run the 9-run exploration, and report before the gate if it looks likely to fail. Otherwise gate on 40 seeds, and make all of it the default if it passes.
+
+**Pre-registered, reported only:**
+- **The trough** at 0.33–0.48 of the peak, from the calendar.
+- **1450/1340** within 0.40–0.65.
+- **Recovery in 1480–1590** at 0.4–0.8% a year, from the settled rate on cleared land. The record's 0.59% is inside.
+- **Year 500** at 0.75–1.15 of the peak (gated).
+- **The peak year** within 20 years of now. The frontier rate is unchanged.
+
+**Map 3's spacing is the named risk.** If it is the only failure, it is reported against its 56/80 reference, paired, before anything is decided.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
