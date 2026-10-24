@@ -306,6 +306,17 @@ pub struct Settlement {
     /// market's inflow by trade.
     #[serde(default)]
     pub cloth_margin: f32,
+    /// A mill's cloth capacity under putting-out, lb of wool a year (D145):
+    /// a stock growing with its value added.
+    #[serde(default)]
+    pub cloth_cap: f32,
+    /// Whether the by-employment bound held the capacity this year (D145).
+    #[serde(default)]
+    pub cloth_cap_bound: bool,
+    /// Coin the farm purse earned spinning and weaving for the mills this
+    /// year (D145).
+    #[serde(default)]
+    pub cloth_work_in: f32,
     /// Arable land, km² (D1: plough iron), written by cultivation.
     #[serde(default)]
     pub arable_km2: f32,
@@ -373,6 +384,9 @@ impl Settlement {
             cloth_made: 0.0,
             cloth_wool_cost: 0.0,
             cloth_margin: 0.0,
+            cloth_cap: 0.0,
+            cloth_cap_bound: false,
+            cloth_work_in: 0.0,
             arable_km2: 0.0,
             works: 0,
             w_last: 0.0,
@@ -564,10 +578,12 @@ pub struct State {
     /// netback at its port, the best cloth netback (a mill's bid less wool
     /// carriage to it), the price realised; then the clip share whose cloth
     /// netback beats its wool netback, wool's port price, the milled-weighted
-    /// median mill bid and the price mills paid; and the growers' wool
-    /// receipts, coin.
+    /// median mill bid and the price mills paid; the growers' wool
+    /// receipts, coin; and (D145) the mills' value added, coin, the mills
+    /// held by the by-employment bound, the making cost paid to farm purses,
+    /// coin, and the by-employment bound summed over the mills, lb.
     #[serde(default)]
-    pub cloth_trace: [f32; 12],
+    pub cloth_trace: [f32; 16],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -754,7 +770,7 @@ impl State {
             wool_ship: Vec::new(),
             fallow_wool: 0.0,
             cloth_stats: [0.0; 5],
-            cloth_trace: [0.0; 12],
+            cloth_trace: [0.0; 16],
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

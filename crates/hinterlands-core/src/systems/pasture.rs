@@ -41,7 +41,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     state.wool_ship.clear();
     state.fallow_wool = 0.0;
     state.cloth_stats = [0.0; 5];
-    state.cloth_trace = [0.0; 12];
+    state.cloth_trace = [0.0; 16];
     let m = state.settlements.len();
     for s in state.settlements.iter_mut() {
         s.wool_in = 0.0;
@@ -442,7 +442,19 @@ fn wool_market(
         s.cloth_made = 0.0;
         s.cloth_wool_cost = 0.0;
         s.cloth_margin = 0.0;
+        s.cloth_work_in = 0.0;
+        s.cloth_cap_bound = false;
     }
+    // Putting-out (D145): from `putting_out_from` a mill's capacity is its
+    // own stock, started from `cloth_lb_per_w` × W.
+    let putting_out = p.putting_out && state.year >= p.putting_out_from;
+    let base_cap = |s: &crate::state::Settlement| -> f32 {
+        if putting_out && s.cloth_cap > 0.0 {
+            s.cloth_cap
+        } else {
+            p.cloth_lb_per_w * s.market
+        }
+    };
     let mut idx_of = vec![usize::MAX; state.next_id as usize];
     for (i, s) in state.settlements.iter().enumerate() {
         idx_of[s.id as usize] = i;
@@ -466,7 +478,7 @@ fn wool_market(
             // D(p) = cap min(1, (bid / p)^e): its capacity up to its bid.
             elast[m + j] = p.elast_mill;
             mill_bid[j] = bid;
-            d0[m + j] = p.cloth_lb_per_w * s.market * vw;
+            d0[m + j] = base_cap(s) * vw;
         }
     }
     // Arcs: (seller, buyer node, transport).
@@ -703,6 +715,47 @@ fn wool_market(
         state.fallow_wool += r * x.lb_f / lb;
     }
     state.cloth_stats[4] = d0[..m].iter().sum::<f32>() / vw;
+    // Putting-out (D145): the farm adults in each mill's reach, split among
+    // the mills that reach them by capacity and closeness (exp(−β c)).
+    let mut labour: Vec<Vec<(usize, f32)>> = vec![Vec::new(); m];
+    let mut labour_of = vec![0f32; m];
+    if putting_out {
+        let adults: Vec<f32> = state
+            .settlements
+            .iter()
+            .map(|s| p.adult_share * (s.pop - s.market).max(0.0))
+            .collect();
+        let mut raw: Vec<(usize, usize, f32)> = Vec::new();
+        let mut denom = vec![0f32; m];
+        for j in 0..m {
+            if d0[m + j] <= 0.0 {
+                continue;
+            }
+            let c0 = d0[m + j] / vw;
+            let mut add = |i: usize, cost: f32| {
+                let w = c0 * libm::expf(-p.beta * cost);
+                if w > 0.0 {
+                    raw.push((j, i, w));
+                    denom[i] += w;
+                }
+            };
+            add(j, 0.0);
+            for q in &state.settlements[j].reach.partners {
+                if let Some(&i) = idx_of.get(q.id as usize) {
+                    if i != usize::MAX && i != j {
+                        add(i, q.cost);
+                    }
+                }
+            }
+        }
+        for &(j, i, w) in &raw {
+            let a = w / denom[i].max(1e-9) * adults[i];
+            labour[j].push((i, a));
+            labour_of[j] += a;
+        }
+    }
+    let payout_share = (1.0 - p.finishing_share).clamp(0.0, 1.0);
+    let (mut value_added, mut paid_out) = (0f32, 0f32);
     // Mills make export cloth and sell it at the nearest port.
     for j in 0..m {
         if milled[j] <= 0.0 {
@@ -714,14 +767,58 @@ fn wool_market(
         let s = &mut state.settlements[j];
         s.cloth_made = milled[j];
         s.cloth_wool_cost = mill_paid[j];
+        // Spinning and weaving are paid to the farm purses whose labour the
+        // mill draws (D145); fulling and finishing stay in the town.
+        let payout = if putting_out && labour_of[j] > 0.0 {
+            payout_share * make * milled[j]
+        } else {
+            0.0
+        };
         // The proceeds less the wool, paid to its sellers above (D137).
-        s.mpurse += gross - mill_paid[j];
-        s.cloth_margin = (gross - mill_paid[j]).max(0.0);
+        s.mpurse += gross - mill_paid[j] - payout;
+        s.cloth_margin = (gross - mill_paid[j] - payout).max(0.0);
+        value_added += cloth_net[j] * milled[j] - mill_paid[j];
         state.money.cloth_in += gross;
         if let Some(k1) = k1 {
             state
                 .wool_ship
                 .push((id, k1, gross / p.port_world_price.max(1e-6)));
+        }
+        if payout > 0.0 {
+            paid_out += payout;
+            for &(i, a) in &labour[j] {
+                let c = payout * a / labour_of[j];
+                state.settlements[i].purse += c;
+                state.settlements[i].cloth_work_in += c;
+            }
+        }
+    }
+    // Putting-out (D145): each mill's capacity grows with its value added
+    // (cloth at the port less carriage, less its wool) against an upkeep a
+    // lb, at W's epsilon, Rihll–Wilson's rule; it is bounded by the
+    // by-employment of the farm adults in its reach.
+    let (mut bound_n, mut bound_lb) = (0f32, 0f32);
+    if putting_out {
+        let upkeep = p.cloth_upkeep_d_lb * to_coin;
+        for j in 0..m {
+            let s = &state.settlements[j];
+            if d0[m + j] <= 0.0 && s.cloth_cap <= 0.0 {
+                continue;
+            }
+            let c0 = if d0[m + j] > 0.0 { d0[m + j] / vw } else { s.cloth_cap };
+            let va = cloth_net[j] * milled[j] - mill_paid[j];
+            let mut c1 = (c0 + p.epsilon * (va - upkeep * c0) / vw).max(0.0);
+            let bound = p.by_employment_lb * labour_of[j];
+            let s = &mut state.settlements[j];
+            if d0[m + j] > 0.0 {
+                bound_lb += bound;
+                if c1 > bound {
+                    c1 = bound;
+                    s.cloth_cap_bound = true;
+                    bound_n += 1.0;
+                }
+            }
+            s.cloth_cap = c1;
         }
     }
     // The cloth-pace trace (D135), in d a lb; reported only.
@@ -791,5 +888,9 @@ fn wool_market(
         wmed(bids),
         wmed(paid),
         receipts.iter().sum(),
+        value_added,
+        bound_n,
+        paid_out,
+        bound_lb,
     ];
 }

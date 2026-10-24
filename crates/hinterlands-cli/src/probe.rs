@@ -1671,7 +1671,7 @@ pub fn cmd_clothpace(args: &Args) {
     let to = args.u64("to", 450) as u32;
     let p = sim.params.clone();
     let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
-    println!("clothpace map seed decade mills_bidding mills_at_cap cap_lb milled_lb use_share mill_towns mill_w w_growth region_w_growth margin_d_per_w wool_nb_d cloth_nb_d realised_d cloth_beats_share wool_port_d cloth_d mill_bid_d mill_paid_d paid_over_realised_min paid_over_realised_max grower_coin");
+    println!("clothpace map seed decade mills_bidding mills_at_cap cap_lb milled_lb use_share mill_towns mill_w w_growth region_w_growth margin_d_per_w wool_nb_d cloth_nb_d realised_d cloth_beats_share wool_port_d cloth_d mill_bid_d mill_paid_d paid_over_realised_min paid_over_realised_max grower_coin va_per_cap_d mills_bound paid_to_farms labour_bound_lb");
     while sim.state.year < from {
         sim.step(1);
     }
@@ -1687,7 +1687,7 @@ pub fn cmd_clothpace(args: &Args) {
             .collect();
         let w0: f32 = towns.iter().map(|t| t.1).sum();
         let region0: f32 = sim.state.settlements.iter().map(|s| s.market).sum();
-        let mut acc = [0f32; 12];
+        let mut acc = [0f32; 16];
         let mut margin = 0f32;
         // The price mills paid against the sellers' clearing price, each year (D137).
         let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
@@ -1721,7 +1721,7 @@ pub fn cmd_clothpace(args: &Args) {
             .sum();
         let region1: f32 = sim.state.settlements.iter().map(|s| s.market).sum();
         println!(
-            "clothpace {map} {seed} {} {:.1} {:.1} {:.0} {:.0} {:.3} {} {:.0} {:.3} {:.3} {:.2} {:.2} {:.2} {:.2} {:.3} {:.2} {:.2} {:.2} {:.2} {:.3} {:.3} {:.0}",
+            "clothpace {map} {seed} {} {:.1} {:.1} {:.0} {:.0} {:.3} {} {:.0} {:.3} {:.3} {:.2} {:.2} {:.2} {:.2} {:.3} {:.2} {:.2} {:.2} {:.2} {:.3} {:.3} {:.0} {:.3} {:.1} {:.0} {:.0}",
             1100 + y0,
             acc[0],
             acc[1],
@@ -1744,7 +1744,11 @@ pub fn cmd_clothpace(args: &Args) {
             acc[10],
             lo,
             hi,
-            acc[11]
+            acc[11],
+            if acc[2] > 0.0 { acc[12] / acc[2] / to_coin.max(1e-9) } else { f32::NAN },
+            acc[13],
+            acc[14],
+            acc[15]
         );
         y0 += 10;
     }
