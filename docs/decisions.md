@@ -1074,3 +1074,11 @@ Kind: validation reference and gate result (designer's decision D176).
 - **`hinterlands params`** prints f32 defaults in short form and writes the page header.
 - **Implementer's readings:** "the main cloth towns" (a tenth of the largest); port trade from the snapshot's flows, so flows below `FLOW_VIEW_MIN` are left out.
 Kind: release and view (designer's decision D178).
+
+## D181 — D180: the growth-rule note; the browser's time named
+- **The note:** `docs/proposals/growth-rule.md`. No code.
+- **Its finding:** in the model only births add people; founding, the pull, the drain and resettlement move them. So frontier growth through migration and founding cannot fill a region from 500 people at a settled birth rate (0.6% gives about 2.1k by 1340, against about 60k). It needs more births on frontier land, settlers from outside, or a settled start.
+- **Recommended:** a settled start. The fill from ten hamlets runs as a spin-up; the clock reads 1100 when the region reaches Domesday's share of 1290 (about 0.36); births then follow each place's food ratio at most at 1%; endemic falls to its sourced part (about 0.007). Paired with the sourced calendar.
+- **Raised before any result:** the paired spacing and roads references come from an overshooting default.
+- **The browser's 92 ms a year:** `port_reach` and `cloth` (D136) each add about 12–13 ms natively (42 → 75 ms with both); the browser runs about 1.2 × native.
+Kind: design note for the designer (D180).
