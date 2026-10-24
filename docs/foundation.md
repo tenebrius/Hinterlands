@@ -2199,6 +2199,32 @@ The effects are small, but they are real, and they go the wrong way.
 
    It touches the rule every check rests on, so it is a major piece of work, and Divish is told before it starts.
 
+### v8 released (27e123f); the growth-rule note starts (D180)
+
+**Accepted.**
+- `just validate` passes on 40 seeds. Runs passing every check: 17 / 28 / 10.
+- The golden is `6db34602d4431473`, the same in the browser. The model is unchanged; the snapshot gains wool, cloth and a cloth flag.
+- The view, the README, the parameters and the screenshots are done.
+- **Noted:** the browser now takes 92.4 ms a year, against about 47 at v7. It is reported only (D91), but the cause is to be named in the growth-rule report.
+
+**Divish has been told** that the growth rule is a major redesign (D178), and has not asked to hold it. The note starts now. No code before I decide.
+
+**The note covers:**
+- **The current rule.** How `r_grow`, the food ratio, migration and founding combine, and why one rate does both colonisation and recovery.
+- **The separation.** Frontier growth (founding and migration into land never cleared) against settled natural increase, without depending on how reaches overlap. For example, settled increase answers the place's own food ratio at a sourced rate, while frontier growth runs through migration and founding, which the model already has.
+- **Sources:**
+  - colonisation rates (Hallam on the fens; Domesday to 1300 at about 0.5% a year nationally);
+  - settled increase (Broadberry's 0.27–0.60%);
+  - migration in the record (Poos; Dyer).
+- **What it does to:**
+  - filling to 1340 (pre-registered: the peak year within 20 years);
+  - the recovery rate (record 0.59%);
+  - endemic mortality's compensating half (to be retired);
+  - the sourced calendar (to be re-gated);
+  - land per head, and so D3;
+  - every gated check, the hierarchy above all.
+- **A staged plan:** small, proven, gated, with the explorations it would run first.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
