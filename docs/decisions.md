@@ -1083,7 +1083,7 @@ Kind: release and view (designer's decision D178).
 - **The browser's 92 ms a year:** `port_reach` and `cloth` (D136) each add about 12–13 ms natively (42 → 75 ms with both); the browser runs about 1.2 × native.
 Kind: design note for the designer (D180).
 
-## D183 — D182: sources stated; validate re-founded; S0 measured; (C) built (off); S1 missed, stopped
+## D184 — D182: sources stated; validate re-founded; S0 measured; (C) built (off); S1 missed, stopped
 - **Sources:**
   - `settled_phi` 0.36 = 1.71 million (1086) over 4.75 million (1290, Broadberry et al. Table 18);
   - Everitt's 760 English market towns over about 130,300 km² give a hexagonal spacing of 14.1 km;
