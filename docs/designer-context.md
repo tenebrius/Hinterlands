@@ -166,6 +166,7 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D167:** growth ceiling fails (region reaches 5k; colonisation needs high rates). Spec error 17: a settled-country rate applied to a frontier. Trough first: a note on a sourced plague calendar and endemic baseline (Hatcher, Gottfried, monastic life tables), then explore. The recovery part comes later as a land-dependent ceiling.
 - **D165:** (b′) chosen. A natural growth ceiling of 1.0%/yr in all eras on a ten-year food ratio (Broadberry: nothing above 0.6% sustained; the model's r_grow is 2.7%). No lag, no date switch. Explore, then gate.
 - **D164:**
   - Land rule set aside: the model's farmers already work about 5 acres in 1300, because of low yields; a note on pre-plague land per head comes later. D3 stays off.
@@ -263,6 +264,8 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 
 16. **I asserted a series I had not seen.** D152 said English wool prices rose in the sixteenth century. Against wheat, Clark's series falls (0.49 by 1500, 0.35 by 1590). The implementer caught it before a run. Rule: before a decision rests on what a series does, have the series in hand.
 
+17. **I put a settled kingdom's growth rate on a frontier.** D165 capped growth at 1% a year from Broadberry's national rates, but the model's region is colonised from almost empty (×37 by 1340), and it reached only 5k people. This is rule 3 again: match each mechanism to the scale and setting its evidence was measured in.
+
 Judgement rules that now stand:
 
 - **Pass rates, not single runs.** Each check passes in at least 75 % of 20 seeds on every map. A single seed on a range edge is noise.
@@ -304,4 +307,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D165: growth ceiling (b′) chosen.
+Last updated: 2026-10-24 — D167: growth ceiling explored and set aside; trough note.

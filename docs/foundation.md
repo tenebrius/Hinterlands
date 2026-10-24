@@ -2000,6 +2000,22 @@ What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a 
 
 **Expected:** the trough part of the overshoot, about two thirds, is not fixed by this. If 1600 stays above 1.15, the trough is the next question.
 
+### The growth ceiling fails at colonisation; the trough next (D167)
+
+**What the exploration showed.** With a 1% ceiling the region reaches only about 5k people by 1340, against 62k. Hatcher collapses to 0.22, and the 1590s fall to 0.61 of the peak. The model's region starts almost empty and is colonised: about ×37 between 1150 and 1340. Broadberry's 0.27–0.60% are the rates of a settled country.
+
+**Specification error 17, mine.** I applied a rate measured for a settled kingdom to a colonising frontier. This is rule 3 again: match each mechanism to the scale at which its evidence was measured. `growth_ceiling` stays built and off, recorded as explored.
+
+**Decided: option 3, the trough, first.** It is about two thirds of the 1600 overshoot, and it is gated.
+- The model's trough is 0.53 of the peak, against the record's 0.40 (1.90m against 4.81m; Broadberry et al.).
+- The model reaches its trough through the calendar's recurrences (1361, 1369 and those of 1400–79, marked unverified at D114) plus `endemic_mortality` 0.015, which was tuned at D114 to Hatcher's band.
+- **A note before any code,** covering:
+  - each national outbreak after 1348 and its mortality, from sources: Hatcher 1977; Gottfried 1978; Hatcher's monastic life tables (Canterbury) and Harvey's for Westminster. It verifies or replaces the unverified 1400–79 entries;
+  - the endemic baseline those life tables imply, against 0.015;
+  - what a sourced calendar gives for the trough and for 1450/1340, in a 9-run exploration with the calendar alone;
+  - the gated Hatcher band, and whether 0.40 sits inside it.
+- The recovery part comes after the trough, in option 1's form: full growth where land is free and a settled rate where it is taken. That form follows from this result, and it waits.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
