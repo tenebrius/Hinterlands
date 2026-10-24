@@ -893,7 +893,7 @@ Kind: rendering (frontend merge).
 - **Details:** `docs/demand/d2h.md`.
 Kind: validation measure and model default (designer's decisions D141, D142).
 
-## D146 — D145 putting-out built: gate failed on rank-size (map 1), stopped
+## D147 — D145 putting-out built: gate failed on rank-size (map 1), stopped
 - **Built per D145, behind `putting_out` (off):**
   - each mill's cloth capacity is a stock, growing with its value added at W's ε, with κ_c = 1.64 d a lb (median of 9 runs, 1350–59);
   - it is bounded at s = 25 lb a farm adult in reach;
