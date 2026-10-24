@@ -483,18 +483,22 @@ float crown_reach(float rmin, float rmax) {
     return 1.25 * max(rmin, rmax) * 1.001 + 1e-3;
 }
 
-// Whether candidate cell c of grid g may hold a tree centre within `reach`
-// metres of pm: its centre lies within the cell's middle nine-tenths (R29).
-// The grid's rotations are not exactly of unit scale (s, their squared
-// scale, is off by up to 4e-5, a metre and more this far from the origin), so
-// the point is taken into the frame `tree_centre` maps back from, and the
-// distance scaled by the square root of s, with slack for rounding.
-bool cell_near(int g, vec2 pm, ivec2 c, float cs, float reach) {
+// The candidate cells of grid g, within the 3 x 3 about b, that may hold a
+// tree centre within `reach` metres of pm (R29): a centre lies within its
+// cell's middle nine-tenths, so a cell is passed over when that band lies
+// further than `reach` along either of the grid's axes. The rotations are
+// not exactly of unit scale (s, their squared scale, is off by up to 4e-5, a
+// metre and more this far from the origin), so the point is taken into the
+// frame `tree_centre` maps back from, and distances there scaled by the
+// square root of s, with slack for rounding. Returns the first and last
+// cells along each axis.
+ivec4 cell_range(int g, vec2 pm, ivec2 b, float cs, float reach) {
     float s = dot(GRID_ROT[g][0], GRID_ROT[g][0]);
     vec2 q = GRID_ROT[g] * pm / (s * cs);
-    vec2 lo = vec2(c) + 0.05;
-    vec2 off = max(max(lo - q, q - (lo + 0.9)), 0.0) * cs;
-    return sqrt(s) * length(off) <= reach + 0.01 * cs;
+    float rr = (reach + 0.01 * cs) / (cs * sqrt(s));
+    ivec2 lo = max(b - 1, ivec2(ceil(q - rr - 0.95)));
+    ivec2 hi = min(b + 1, ivec2(floor(q + rr - 0.05)));
+    return ivec4(lo, hi);
 }
 
 // Trees about `cellm` metres apart. A tree stands where `dens` (the density at
@@ -521,12 +525,10 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
         float cs = cellm * GRID_SIZE[g] * 1.7320508;
         int sg = salt + 40 * g;
         ivec2 b = ivec2(floor(GRID_ROT[g] * pm / cs));
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                ivec2 c = b + ivec2(dx, dy);
-                if (!cell_near(g, pm, c, cs, reach)) {
-                    continue;
-                }
+        ivec4 cr = cell_range(g, pm, b, cs, reach);
+        for (int y = cr.y; y <= cr.w; y++) {
+            for (int x = cr.x; x <= cr.z; x++) {
+                ivec2 c = ivec2(x, y);
                 vec2 ctr = tree_centre(g, c, cs, sg);
                 vec2 d = pm - ctr;
                 if (length(d) > reach) {
@@ -600,12 +602,10 @@ float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float r
         float cs = cellm * GRID_SIZE[g] * 1.7320508;
         int sg = salt + 40 * g;
         ivec2 b = ivec2(floor(GRID_ROT[g] * pm / cs));
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                ivec2 c = b + ivec2(dx, dy);
-                if (!cell_near(g, pm, c, cs, reach)) {
-                    continue;
-                }
+        ivec4 cr = cell_range(g, pm, b, cs, reach);
+        for (int y = cr.y; y <= cr.w; y++) {
+            for (int x = cr.x; x <= cr.z; x++) {
+                ivec2 c = ivec2(x, y);
                 vec2 ctr = tree_centre(g, c, cs, sg);
                 if (length(pm - ctr) > reach) {
                     continue;
