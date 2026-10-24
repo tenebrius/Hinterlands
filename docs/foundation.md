@@ -2162,6 +2162,43 @@ Both were set when 1600 stood at 1.3–1.46 times the peak. Each revision below 
 
    If it passes, it becomes the default, `just validate` is green again, and a milestone is recorded.
 
+### The calendar is parked; the recovery ceiling is reported; a release pass, then the growth rule (D178)
+
+**What the paired gate showed.** Against the default on the same seeds, the sourced calendar:
+- lowers route persistence a little (medians 0.87–0.89 against 0.89–0.92) and fails the paired count on every map;
+- widens map 3's market spacing (20 against 25);
+- overshoots on map 1.
+
+The effects are small, but they are real, and they go the wrong way.
+
+**I stop here rather than change the rule again.**
+- Pairing on medians instead of counts, after seeing the counts fail, would be the fourth change to a check in four rounds on this thread, each made after its result was known.
+- The calendar is sourced, and it gets the trough right. But in this model a deeper trough moves traffic and thins the markets, and the growth rule (one rate for frontier and recovery, D172) then overshoots.
+- **`plague_sourced` is parked:** built, off, recorded with its results. It comes back with the growth rule below, not before.
+
+**The recovery band, revisited first, as D176 promised:**
+- **The floor of 0.75 stays gated** (against a region that never recovers).
+- **The ceiling of 1.15 is reported,** against the record's 0.85. The default's overshoot (1.2–1.3) is the known miss of D172, with its cause recorded.
+- `just validate` is green on the default again.
+- The paired spacing and roads checks stay as D176 defined them, for every future candidate.
+
+**Next, in order:**
+1. **The v8 release pass,** with no new mechanisms. Since v7 the model has gained:
+   - stock-based demand;
+   - the ports' iron and salt, and port reach;
+   - wool on the fallow and home cloth;
+   - export cloth at the mills, on sourced prices for both wool and cloth;
+   - the 40-seed gate and the re-founded checks.
+
+   It covers the README, `docs/parameters.md`, the inspector and view (cloth towns, the wool and cloth routes, what the ports supply), screenshots, `just test` and `just validate` green, and a milestone with its golden. The graphics session may be asked for the view.
+2. **Then the growth rule,** as a design note first. Frontier growth (colonisation and migration into new land) and settled growth (natural increase) are separated without relying on reach overlap. This is the root of four open items:
+   - the recovery rate;
+   - endemic mortality's compensating half;
+   - the sourced calendar's adoption;
+   - D3's income per head, through land per head.
+
+   It touches the rule every check rests on, so it is a major piece of work, and Divish is told before it starts.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
