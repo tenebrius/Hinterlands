@@ -8,7 +8,7 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 | --- | --- | --- |
 | Determinism | FNV-1a hash of the bincode snapshot after 500 years; the canonical run (map 1, seed 1) is run twice and must match. The browser build must match the native hash (`?selftest=N`). | identical |
 | Settlement count | Settlements alive at the end. | 150–350 |
-| Over 2,000 / over 5,000 | Settlements with population strictly above 2,000 / 5,000. The median of over 5,000 across the 20 seeds is reported (gated at ≥ 2 from D20 until v2, D48). | 5–12 / 1–5; median reported |
+| Over 2,000 / over 5,000 | Settlements with population strictly above 2,000 / 5,000. The median of over 5,000 across the 20 seeds is reported (gated at ≥ 2 from D20 until v2, D48). | reported (D135; was 5–12), with the urban share / 1–5; median reported |
 | Largest share | Largest population divided by total population. | < 0.25 |
 | Rank-size slope | Ordinary least squares slope of ln(population) on ln(rank) over the 30 largest settlements (all, if fewer than 30; undefined below 3). | −1.3 to −0.8 |
 | Market-town spacing | For each settlement over 500, straight-line distance between anchor cell centres to the nearest other settlement over 500; the median of these. | 8–15 km |
@@ -20,6 +20,14 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 | Performance | Mean time of one simulated year in the release wasm build in a browser, measured over a 500-year run. Native time is reported by `hinterlands bench` as a proxy. Gated at < 50 ms until v7; reported only since D91 (owner). | reported |
 
 ## Pass rule
+
+**Over 2,000 (D135):** reported, not gated: the count and the urban share (people in places over 2,000) against England's c. 10% c. 1300. The hierarchy is gated by rank-size, largest share and over 5,000.
+
+**Outside trade (D139):** gated as exports (grain, wool and cloth to the ports) over the region's total output in the model, 1–35%, against England's c. 6–7% c. 1300 (Broadberry et al. 2015). The share of market inflow and exports per head are reported.
+
+**Outside trade (D126, superseded by D139):** the band is 3–50% of market inflow. The ceiling guards against an export colony, a region whose market is mostly outside trade; it was 30% from L1 (D110) and 20% from v5. Exports per head against England's (about 14 d c. 1300) are reported.
+
+**From D120 (22 October 2026) the gate runs 40 seeds a map:** `hinterlands validate --maps 3 --seeds 40`. Every per-run check must hold in 75% of the runs (30 of 40) on every map, and the contingency check is computed over the 40. Where the accepted model itself is below 30/40 (at D120: road length 300–500 on map 1, 29/40), a stage passes that check if it is no worse than the accepted model's count. Runs passing every check are reported, not gated. The rule as it stood before D120 follows.
 
 `hinterlands validate --maps 3 --seeds 20` runs maps 1–3, 20 seeds each. v1 passes when (D21):
 

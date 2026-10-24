@@ -19,7 +19,7 @@ Read `docs/foundation.md` (the brief and acceptance test) and `docs/decisions.md
 - Commit messages name the milestone and system, e.g. `M2 cultivation: release hysteresis`.
 
 ## Designer–implementer channel
-Two Claude sessions work on this repo: the implementer and the designer (`docs/designer-context.md`). They message each other with the `send_message` tool (claude-code-remote), using the session IDs recorded in `docs/designer-context.md`.
+Two Claude sessions work on this repo: the implementer (`docs/implementer-context.md`) and the designer (`docs/designer-context.md`); each reads its own file at the start of a session. They message each other with the `send_message` tool (claude-code-remote), using the session IDs recorded in `docs/designer-context.md`.
 - The repo is the record; a message is a notice. Commit and push to `main` first, then send a short summary naming the commit. Nothing is decided only in a message.
 - Implementer → designer: after each pre-registered run or milestone, and for any point the working agreement says to raise.
 - Designer → implementer: the decision on each report: what is approved, the tables to report, the stop condition.

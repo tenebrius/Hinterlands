@@ -7,9 +7,9 @@ default:
 test:
     cargo test --release
 
-# The full validation table: 3 maps x 20 seeds x 500 years
+# The full validation table: 3 maps x 40 seeds x 500 years (D120)
 validate *ARGS:
-    cargo run --release -p hinterlands-cli -- validate --maps 3 --seeds 20 {{ARGS}}
+    cargo run --release -p hinterlands-cli -- validate --maps 3 --seeds 40 {{ARGS}}
 
 # One headless run with metrics every 50 years
 run *ARGS:

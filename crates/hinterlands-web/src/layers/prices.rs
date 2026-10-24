@@ -30,9 +30,15 @@ impl Layer for PricesLayer {
     }
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
         vec![
-            (Swatch::Fill(CHEAP), "Grain cheap (a quarter of the world price)"),
+            (
+                Swatch::Fill(CHEAP),
+                "Grain cheap (a quarter of the world price)",
+            ),
             (Swatch::Fill(MID), "Grain at the world price"),
-            (Swatch::Fill(DEAR), "Grain dear (four times the world price)"),
+            (
+                Swatch::Fill(DEAR),
+                "Grain dear (four times the world price)",
+            ),
         ]
     }
     fn draw(&mut self, d: &DrawCtx) {

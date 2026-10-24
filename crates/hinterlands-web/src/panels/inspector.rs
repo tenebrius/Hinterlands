@@ -69,7 +69,11 @@ impl Panel for Inspector {
                 }
                 if s.mstore > 0.0 {
                     ui.label("Market store");
-                    ui.label(format!("{:.0} ({:.2} of a year's need)", s.mstore, s.mstore / s.need.max(1.0)));
+                    ui.label(format!(
+                        "{:.0} ({:.2} of a year's need)",
+                        s.mstore,
+                        s.mstore / s.need.max(1.0)
+                    ));
                     ui.end_row();
                 }
                 if s.pasture > 0 {

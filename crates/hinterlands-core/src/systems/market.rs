@@ -356,6 +356,11 @@ pub fn goods_trade(
             .map(|j| j as usize)
     };
     let theta = p.beta / p.market_tau.max(1e-9);
+    // The outside ports sell salt and iron as they sell imports (D1, D121;
+    // England imported much of its iron and its bay salt: Childs 1981,
+    // Bridbury 1955).
+    let port_sells = |g: usize| (p.port_goods || p.demand_stocks) && (g == 1 || g == 2);
+    state.port_supply = [0.0; 4];
     // Everything bought: (buyer, supplier node, quantity, buyer price,
     // supplier price, transport, buyer's partner index or NONE for own use,
     // good index 1..=4).
@@ -422,11 +427,21 @@ pub fn goods_trade(
                 let Some(i) = node_of(q.id) else { continue };
                 let ok = if g == 4 {
                     i >= m
+                } else if i >= m {
+                    port_sells(g)
                 } else {
-                    i < m && cap[i] > 0.0
+                    cap[i] > 0.0
                 };
                 if ok {
                     arcs.push((i, j, tau * q.cost, k as u32));
+                }
+            }
+            // The nearest port beyond reach, at the full travel cost (D1b, D124).
+            if p.port_reach && port_sells(g) {
+                if let Some(q) = &s.reach.port {
+                    if let Some(i) = node_of(q.id) {
+                        arcs.push((i, j, tau * q.cost, crate::state::FAR_PORT));
+                    }
                 }
             }
         }
@@ -520,6 +535,13 @@ pub fn goods_trade(
             if i < m && g < 4 {
                 sold_by[i][g - 1] += q;
             }
+            if g == 1 || g == 2 {
+                let k = 2 * (g - 1);
+                state.port_supply[k + 1] += q;
+                if i >= m {
+                    state.port_supply[k] += q;
+                }
+            }
             buys.push(Buy {
                 buyer: j,
                 from: i,
@@ -573,7 +595,9 @@ pub fn goods_trade(
                 // The market people's food comes first (D93): goods get what
                 // is left of the market's purse after last year's food bill.
                 let b = if s.price[0] > 0.0 { s.price[0] } else { 1.0 };
-                let food = crate::systems::marketplace::market_demand(p, s.market.max(0.0).min(s.pop), b) * b;
+                let food =
+                    crate::systems::marketplace::market_demand(p, s.market.max(0.0).min(s.pop), b)
+                        * b;
                 s.purse.max(0.0) + (s.mpurse - food).max(0.0)
             };
             if bill[i] > budget {
@@ -593,7 +617,7 @@ pub fn goods_trade(
         let buyer = &state.settlements[b.buyer];
         let pay = b.pj * b.q * scale[b.buyer];
         paid[b.buyer] += pay;
-        let to = buyer.reach.partners[b.k as usize].id;
+        let to = buyer.reach.partner(b.k).id;
         let good = (b.g < 4).then(|| Good::ALL[b.g - 1]);
         // The goods come in on the buyer's path; the payment goes out on it.
         flows.push(Flow {
@@ -621,7 +645,9 @@ pub fn goods_trade(
             // The market pays from what its people's food leaves (D93); the
             // farmers pay their share of salt and iron.
             let bp = if bs.price[0] > 0.0 { bs.price[0] } else { 1.0 };
-            let food = crate::systems::marketplace::market_demand(p, bs.market.max(0.0).min(bs.pop), bp) * bp;
+            let food =
+                crate::systems::marketplace::market_demand(p, bs.market.max(0.0).min(bs.pop), bp)
+                    * bp;
             let from_m = (pay * share_m).min((bs.mpurse - food).max(0.0));
             let from_f = (pay * (1.0 - share_m)).min(bs.purse.max(0.0));
             let pay = from_m + from_f;
@@ -680,6 +706,10 @@ pub fn goods_trade(
         s.goods_in = g;
     }
     state.outside_trade.1 = imported;
+    // W at this year's purchase, for next year's new building (D1).
+    for s in state.settlements.iter_mut() {
+        s.w_last = s.market.max(0.0);
+    }
     state.market_unmet = unmet;
     paid
 }

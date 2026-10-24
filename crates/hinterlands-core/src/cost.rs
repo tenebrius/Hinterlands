@@ -454,6 +454,43 @@ impl Dijkstra {
         }
     }
 
+    /// Run from `src` with no bound until the first of `targets` is settled;
+    /// returns it, or `None` if none is reachable (D1b, D124).
+    pub fn run_nearest(&mut self, g: &CostGrid, src: u32, targets: &[u32]) -> Option<u32> {
+        if self.dist.len() != 2 * g.n {
+            *self = Self::new(g.n);
+        }
+        self.reset();
+        self.dist[src as usize] = 0.0;
+        self.touched.push(src);
+        self.heap.push(Reverse((0f32.to_bits(), src)));
+        let mut found = None;
+        while let Some(Reverse((dbits, u))) = self.heap.pop() {
+            let du = f32::from_bits(dbits);
+            if du > self.dist[u as usize] {
+                continue;
+            }
+            if targets.contains(&u) {
+                found = Some(u);
+                break;
+            }
+            for &(v, c) in g.edges(u) {
+                let nd = du + c;
+                let dv = &mut self.dist[v as usize];
+                if nd < *dv {
+                    if *dv == INF {
+                        self.touched.push(v);
+                    }
+                    *dv = nd;
+                    self.pred[v as usize] = u;
+                    self.heap.push(Reverse((nd.to_bits(), v)));
+                }
+            }
+        }
+        self.heap.clear();
+        found
+    }
+
     /// Node path from the last source to `target`, source first. Empty if unreached.
     pub fn path_to(&self, target: u32) -> Vec<u32> {
         if self.dist[target as usize] == INF {

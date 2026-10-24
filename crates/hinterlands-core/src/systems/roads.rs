@@ -39,7 +39,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         let Some(si) = state.index_of(f.from) else {
             continue;
         };
-        let path = &state.settlements[si].reach.partners[f.partner_idx as usize].path;
+        let path = &state.settlements[si].reach.partner(f.partner_idx).path;
         let land: Vec<usize> = path
             .iter()
             .filter(|&&node| node < n)
@@ -92,7 +92,7 @@ fn cell_load(state: &State, t: &Terrain) -> Vec<f32> {
         let Some(si) = state.index_of(f.from) else {
             continue;
         };
-        for &node in &state.settlements[si].reach.partners[f.partner_idx as usize].path {
+        for &node in &state.settlements[si].reach.partner(f.partner_idx).path {
             if node < n {
                 load[node as usize] += f.amount;
             }

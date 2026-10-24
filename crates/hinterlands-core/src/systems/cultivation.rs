@@ -93,6 +93,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 .map(|&c| t.food_yield[c as usize] * ppc * harvest[c as usize])
                 .sum();
         }
+        s.arable_km2 = s.fields.len() as f32 * cell_km2;
         s.food_prod = if s.mill {
             produce * (1.0 + p.mill_bonus)
         } else {

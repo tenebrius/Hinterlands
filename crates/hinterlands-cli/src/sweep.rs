@@ -121,7 +121,6 @@ pub fn miss(r: &crate::validate::RunResult) -> f32 {
     };
     let m = &r.m;
     out(m.count as f32, 150.0, 350.0)
-        + out(m.over_2000 as f32, 5.0, 12.0)
         + out(m.over_5000 as f32, 1.0, 5.0)
         + out(m.largest_share, 0.0, 0.25)
         + out(m.rank_slope, -1.3, -0.8)

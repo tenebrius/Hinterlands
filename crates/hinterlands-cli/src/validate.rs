@@ -45,6 +45,14 @@ pub struct RunResult {
     /// v5 (D64): grain bought by the outside ports plus imports sold, as a
     /// share of all gross market inflow, the last year; NaN with ports off.
     pub outside_share: f32,
+    /// Exports a head c. 1300, pence (D126): grain, wool and cloth the ports
+    /// paid for, the mean over years 195-204, against England's about 14 d.
+    pub exports_1300: f32,
+    /// Exports over output (D139): grain, wool and cloth the ports paid for,
+    /// over the region's output (the harvest at its price, the wool clip at
+    /// the port price, goods sold at their price, and cloth), the last year;
+    /// NaN with ports off.
+    pub exports_output: f32,
     /// S2′ (D80): relief arrived per year, the share of deficit met outside
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
     /// year; `None` with relief off.
@@ -68,7 +76,7 @@ pub struct RunResult {
     /// the mean harvest (mean, max); median price gap over transport on
     /// market pairs in the last year.
     pub price_ac: f32,
-    pub carry: (f32, f32),
+    pub carry: (f32, f32, f32),
     pub gap_ratio: f32,
     /// D95: share of the farmers' shortfall met by their purses (normal
     /// years, 1315–17), and with relief added in 1315–17; mean purse over need
@@ -198,7 +206,7 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     let mut on_goods = vec![false; t.n()];
     for f in &st.flows {
         let Some(s) = st.get(f.from) else { continue };
-        let q = &s.reach.partners[f.partner_idx as usize];
+        let q = &s.reach.partner(f.partner_idx);
         if f.payment {
             arrived += f.amount * (1.0 - p.transport_loss * q.cost).max(0.0);
         }
@@ -259,11 +267,7 @@ pub const CHECKS: &[Check] = &[
         target: "150-350",
         ok: |r| (150..=350).contains(&r.m.count),
     },
-    Check {
-        name: "over 2,000",
-        target: "5-12",
-        ok: |r| (5..=12).contains(&r.m.over_2000),
-    },
+    // Over 2,000 is reported, not gated, since D135.
     Check {
         name: "over 5,000",
         target: "1-5",
@@ -343,12 +347,14 @@ pub const CHECKS: &[Check] = &[
         ok: |r| r.shock.as_ref().is_none_or(|s| s.overlap_off >= 0.5),
     },
     // v5 gate (D64; passes trivially with outside ports off).
+    // Outside trade (D139): exports over the region's output, against
+    // England's 6-7% c. 1300 (Broadberry et al. 2015); below 1% the region is
+    // closed, above about a third an export colony. The share of market
+    // inflow (3-50% from D126) is reported.
     Check {
-        name: "outside trade",
-        target: "3-30%",
-        // Revised after failure (D110): with wool, the chief export, the
-        // 20% ceiling set for grain and imports alone no longer holds.
-        ok: |r| r.outside_share.is_nan() || (0.03..=0.30).contains(&r.outside_share),
+        name: "exports / output",
+        target: "1-35%",
+        ok: |r| r.exports_output.is_nan() || (0.01..=0.35).contains(&r.exports_output),
     },
     // v7 gate (D88): Clark (1999) on the market grain prices.
     Check {
@@ -455,6 +461,7 @@ pub fn run_one(
     // Regional stores over need at the end of each year (index = year).
     let mut store_share: Vec<f32> = Vec::new();
     let mut pop_200 = f32::NAN;
+    let mut exports_acc = (0f64, 0f64);
     let mut waste_acc = (0f32, 0f32);
     let mut price_marks = [f32::NAN; 10];
     let mut money_marks = [f32::NAN; 5];
@@ -486,6 +493,14 @@ pub fn run_one(
         if sim.state.year == 200 {
             pop_200 = sim.state.total_pop();
         }
+        if (195..=204).contains(&sim.state.year) {
+            let l = sim.state.money;
+            let pence = (l.port_in + l.wool_in + l.cloth_in) as f64
+                * (params.wheat_s_bu * 12.0 * params.bu_per_person) as f64
+                / params.port_world_price.max(1e-6) as f64;
+            exports_acc.0 += pence;
+            exports_acc.1 += sim.state.total_pop() as f64;
+        }
         if !params.market_grain && sim.state.year >= 100 {
             let y = sim.state.year;
             let rows: Vec<(u32, f32, f32, f32)> = sim
@@ -509,9 +524,16 @@ pub fn run_one(
         if !params.market_grain {
             let y = sim.state.year;
             let l = sim.state.money;
-            for (k, v) in [l.port_in, l.planted_in, l.imports_out, l.luxury_out, l.wear, l.removed]
-                .into_iter()
-                .enumerate()
+            for (k, v) in [
+                l.port_in,
+                l.planted_in,
+                l.imports_out,
+                l.luxury_out,
+                l.wear,
+                l.removed,
+            ]
+            .into_iter()
+            .enumerate()
             {
                 coin[k] += v;
             }
@@ -523,16 +545,33 @@ pub fn run_one(
                 }
             }
             if y == 240 || y == 350 {
-                let used = sim.state.owner.iter().filter(|&&o| o != hinterlands_core::state::NONE).count();
-                let grazed = sim.state.grazed.iter().filter(|&&g| g != hinterlands_core::state::NONE).count();
+                let used = sim
+                    .state
+                    .owner
+                    .iter()
+                    .filter(|&&o| o != hinterlands_core::state::NONE)
+                    .count();
+                let grazed = sim
+                    .state
+                    .grazed
+                    .iter()
+                    .filter(|&&g| g != hinterlands_core::state::NONE)
+                    .count();
                 let share = grazed as f32 / (used + grazed).max(1) as f32;
                 pasture[if y == 240 { 0 } else { 1 }] = share;
                 if y == 350 {
                     let st = &sim.state;
-                    let big: Vec<_> = st.settlements.iter().filter(|s| s.market >= params.market_min).collect();
+                    let big: Vec<_> = st
+                        .settlements
+                        .iter()
+                        .filter(|s| s.market >= params.market_min)
+                        .collect();
                     let mut cells: Vec<(f32, f32, bool)> = Vec::new();
                     for c in 0..st.owner.len() {
-                        let past = st.grazed.get(c).is_some_and(|&g| g != hinterlands_core::state::NONE);
+                        let past = st
+                            .grazed
+                            .get(c)
+                            .is_some_and(|&g| g != hinterlands_core::state::NONE);
                         if st.owner[c] == hinterlands_core::state::NONE && !past {
                             continue;
                         }
@@ -792,7 +831,10 @@ pub fn run_one(
         pasture,
         pasture_cost,
         pasture_yield,
-        wool_coin: (wool_acc[0] / wool_acc[1].max(1e-6), wool_acc[2] / wool_acc[3].max(1e-6)),
+        wool_coin: (
+            wool_acc[0] / wool_acc[1].max(1e-6),
+            wool_acc[2] / wool_acc[3].max(1e-6),
+        ),
         w_wool,
         price_marks,
         money_marks,
@@ -854,10 +896,45 @@ pub fn run_one(
                 .count() as u32;
             (moves.iter().sum::<f32>() / moves.len().max(1) as f32, kept)
         },
+        exports_1300: if exports_acc.1 > 0.0 {
+            (exports_acc.0 / exports_acc.1) as f32
+        } else {
+            f32::NAN
+        },
+        exports_output: if params.outside_ports {
+            let st = &sim.state;
+            let l = st.money;
+            let to_coin = params.port_world_price
+                / (params.wheat_s_bu * 12.0 * params.bu_per_person).max(1e-6);
+            let grain_p = |s: &hinterlands_core::state::Settlement| {
+                if s.price[0] > 0.0 {
+                    s.price[0]
+                } else {
+                    params.port_world_price
+                }
+            };
+            let harvest: f32 = st.settlements.iter().map(|s| s.food_prod * grain_p(s)).sum();
+            let goods: f32 = st
+                .sites
+                .iter()
+                .filter_map(|x| {
+                    let i = st.index_of(x.holder)?;
+                    let p = st.settlements[i].price[1 + x.good.index()];
+                    Some(x.sold * if p > 0.0 { p } else { 1.0 })
+                })
+                .sum();
+            let wool = st.cloth_stats[0] * st.cloth_trace[8] * to_coin;
+            let exports = l.port_in + l.wool_in + l.cloth_in;
+            exports / (harvest + goods + wool + l.cloth_in).max(1e-6)
+        } else {
+            f32::NAN
+        },
         outside_share: if params.outside_ports {
             let (g, i) = sim.state.outside_trade;
-            // Wool is trade with the outside too (D108), in grain units.
-            let w = sim.state.money.wool_in / params.port_world_price.max(1e-6);
+            // Wool is trade with the outside too (D108), and export cloth (D2),
+            // in grain units.
+            let w = (sim.state.money.wool_in + sim.state.money.cloth_in)
+                / params.port_world_price.max(1e-6);
             let inflow: f32 = sim.state.settlements.iter().map(|s| s.market_in).sum();
             (g + i + w) / (inflow + w).max(1.0)
         } else {
@@ -981,6 +1058,11 @@ fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> 
     near as f32 / places.len().max(1) as f32
 }
 
+/// The accepted model's counts on 40 seeds where it is itself below 30/40
+/// (D120): (map seed, check, runs passing). A stage passes such a check if it
+/// is no worse. From R's two halves (`docs/retune/r.md`).
+const NO_WORSE: &[(u64, &str, usize)] = &[(1, "road length 300-500", 29)];
+
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
 }
@@ -1047,16 +1129,16 @@ pub fn cmd_validate(args: &Args) {
     let mut results = results.into_inner().unwrap();
     results.sort_by_key(|r| (r.map_seed, r.sim_seed));
 
-    // Determinism: rerun the canonical run of the first map.
-    let det = run_one(&terrains[0].1, &params, terrains[0].0, 1, years);
+    // Determinism: rerun the first run of the first map.
+    let det = run_one(&terrains[0].1, &params, terrains[0].0, first_seed, years);
     let det_ok = results
         .iter()
-        .find(|r| r.map_seed == terrains[0].0 && r.sim_seed == 1)
+        .find(|r| r.map_seed == terrains[0].0 && r.sim_seed == first_seed)
         .is_some_and(|r| r.hash == det.hash);
 
     let mut all_ok = det_ok;
     println!(
-        "determinism (map {}, seed 1): {}",
+        "determinism (map {}, seed {first_seed}): {}",
         terrains[0].0,
         if det_ok { "ok" } else { "FAIL" }
     );
@@ -1073,7 +1155,6 @@ pub fn cmd_validate(args: &Args) {
             let value = |r: &RunResult| -> f32 {
                 match c.name {
                     "settlements" => r.m.count as f32,
-                    "over 2,000" => r.m.over_2000 as f32,
                     "over 5,000" => r.m.over_5000 as f32,
                     "largest share" => r.m.largest_share,
                     "rank-size slope" => r.m.rank_slope,
@@ -1097,7 +1178,7 @@ pub fn cmd_validate(args: &Args) {
                         }
                     }
                     "road length 300-500" => r.road_change,
-                    "outside trade" => r.outside_share,
+                    "exports / output" => r.exports_output,
                     "unsold at markets" => r.waste,
                     "pasture outward" => r.pasture_cost.0 - r.pasture_cost.1,
                     "pasture on poor land" => r.pasture_yield.0 - r.pasture_yield.1,
@@ -1132,7 +1213,13 @@ pub fn cmd_validate(args: &Args) {
             vals.sort_by(|a, b| a.total_cmp(b));
             let med = vals.get(vals.len() / 2).copied().unwrap_or(f32::NAN);
             // v1 rule (D21): each check passes in at least 75% of the seeds on every map.
-            let rate_ok = pass * 4 >= rs.len() * 3;
+            // v1 rule (D21), and D120's no-worse rule on 40 seeds: where the
+            // accepted model is itself short, no worse than its count.
+            let floor = NO_WORSE
+                .iter()
+                .find(|f| f.0 == *map_seed && f.1 == c.name && rs.len() == 40)
+                .map(|f| f.2);
+            let rate_ok = pass * 4 >= rs.len() * 3 || floor.is_some_and(|f| pass >= f);
             let reported = c.name == "sites producing" && rs.iter().all(|r| r.goods.market);
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
@@ -1195,6 +1282,49 @@ pub fn cmd_validate(args: &Args) {
             "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
             "over 5,000 median", "(reported)", "", over5_median, "", ""
         );
+        // Reported, not gated, since D135: the count over 2,000 and the urban
+        // share against England's c. 10% c. 1300.
+        let mut over2: Vec<u32> = rs.iter().map(|r| r.m.over_2000).collect();
+        over2.sort();
+        let mut urban: Vec<f32> = rs.iter().map(|r| r.m.urban_share).collect();
+        urban.sort_by(|a, b| a.total_cmp(b));
+        println!(
+            "{:<20} {:>12} {:>10} {:>10} {:>10} {:>8}",
+            "over 2,000",
+            "(reported)",
+            canon.map_or(String::new(), |r| r.m.over_2000.to_string()),
+            over2.get(over2.len() / 2).copied().unwrap_or(0),
+            format!("{}-{}", over2.first().unwrap_or(&0), over2.last().unwrap_or(&0)),
+            ""
+        );
+        println!(
+            "{:<20} {:>12} {:>10} {:>10.3} {:>10} {:>8}",
+            "urban share >2,000",
+            "(Eng. ~0.10)",
+            canon.map_or(String::new(), |r| format!("{:.3}", r.m.urban_share)),
+            urban.get(urban.len() / 2).copied().unwrap_or(f32::NAN),
+            "",
+            ""
+        );
+        // The share of market inflow, gated 3-50% from D126 to D139; reported.
+        if rs.iter().any(|r| r.outside_share.is_finite()) {
+            let mut v: Vec<f32> = rs.iter().map(|r| r.outside_share).collect();
+            v.sort_by(|a, b| a.total_cmp(b));
+            let inside = rs
+                .iter()
+                .filter(|r| (0.03..=0.50).contains(&r.outside_share))
+                .count();
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
+                "outside trade",
+                "(rep. 3-50%)",
+                canon.map_or(f32::NAN, |r| r.outside_share),
+                v.get(v.len() / 2).copied().unwrap_or(f32::NAN),
+                inside,
+                rs.len(),
+                ""
+            );
+        }
         println!(
             "{:<20} {:>12} {:>10} {:>10.1} {:>10} {:>8}",
             "largest to mouth km",
@@ -1313,6 +1443,14 @@ pub fn cmd_validate(args: &Args) {
                 med(rs.iter().map(|r| r.top10_churn.0).collect()),
                 med(rs.iter().map(|r| r.top10_churn.1 as f32).collect())
             );
+            println!(
+                "{:<20} {:>12} exports a head c. 1300 (grain, wool, cloth to the ports): median {:.1} d, p10 {:.1}, p90 {:.1} (England about 14 d; D126)",
+                "D126 exports",
+                "(reported)",
+                med(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect()),
+                pct(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect(), 0.1),
+                pct(rs.iter().map(|r| r.exports_1300).filter(|x| x.is_finite()).collect(), 0.9)
+            );
         }
         if rs.iter().any(|r| r.relief.is_some()) {
             let at = |k: usize| {
@@ -1367,7 +1505,10 @@ pub fn cmd_validate(args: &Args) {
                 a(&|r| r.purse_level[1][3])
             );
         }
-        if rs.iter().any(|r| r.price_marks.iter().any(|p| p.is_finite())) {
+        if rs
+            .iter()
+            .any(|r| r.price_marks.iter().any(|p| p.is_finite()))
+        {
             let a = |f: &dyn Fn(&RunResult) -> f32| {
                 med(rs.iter().map(|r| f(r)).filter(|x| x.is_finite()).collect())
             };
@@ -1422,12 +1563,13 @@ pub fn cmd_validate(args: &Args) {
         }
         if rs.iter().any(|r| r.price_ac.is_finite()) {
             println!(
-                "{:<20} {:>12} grain price autocorrelation (detrended) {:.2}; market stores after cheap years: mean {:.2}, max {:.2} of a mean harvest; pair price gap / transport {:.2}",
+                "{:<20} {:>12} grain price autocorrelation (detrended) {:.2}; market stores (of a mean harvest): cheapest tenth of years {:.3}, all years {:.3}, peak {:.2}; pair price gap / transport {:.2}",
                 "M3 stores",
                 "(reported)",
                 med(rs.iter().map(|r| r.price_ac).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.carry.0).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.carry.1).filter(|x| x.is_finite()).collect()),
+                med(rs.iter().map(|r| r.carry.2).filter(|x| x.is_finite()).collect()),
                 med(rs.iter().map(|r| r.gap_ratio).filter(|x| x.is_finite()).collect())
             );
         }
@@ -1594,10 +1736,10 @@ fn clark(rows: &[(u32, u32, f32, f32, f32)]) -> (f32, f32, f32) {
 /// Lag-1 autocorrelation of the log regional price less its centred 21-year
 /// moving average, and the market stores at the end of cheap years (price
 /// below 0.8 of that trend) as a share of the mean harvest: (mean, max).
-fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32)) {
+fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32, f32)) {
     let n = series.len();
     if n < 30 {
-        return (f32::NAN, (f32::NAN, f32::NAN));
+        return (f32::NAN, (f32::NAN, f32::NAN, f32::NAN));
     }
     let lp: Vec<f64> = series.iter().map(|s| (s.0.max(1e-6) as f64).ln()).collect();
     let mut dev = Vec::new();
@@ -1617,17 +1759,27 @@ fn price_series(series: &[(f32, f32, f32)]) -> (f32, (f32, f32)) {
     }
     let ac = if den > 0.0 { num / den } else { f64::NAN };
     let mean_h = series.iter().map(|s| s.2 as f64).sum::<f64>() / n as f64;
-    let after: Vec<f64> = trend
+    // Stores (D124): the mean held in the cheapest tenth of years by price
+    // against trend, the mean over all years, and the peak, of a mean harvest.
+    let mut by_dev: Vec<(f64, f64)> = trend
         .iter()
-        .filter(|(t, tr)| (series[*t].0 as f64) < 0.8 * tr)
-        .map(|(t, _)| series[*t].1 as f64 / mean_h.max(1.0))
+        .map(|(t, tr)| {
+            (
+                series[*t].0 as f64 / tr.max(1e-9),
+                series[*t].1 as f64 / mean_h.max(1.0),
+            )
+        })
         .collect();
-    let carry = if after.is_empty() {
-        (0.0, 0.0)
+    by_dev.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let tenth = (by_dev.len() / 10).max(1).min(by_dev.len());
+    let carry = if by_dev.is_empty() {
+        (0.0, 0.0, 0.0)
     } else {
+        let all: Vec<f64> = by_dev.iter().map(|x| x.1).collect();
         (
-            (after.iter().sum::<f64>() / after.len() as f64) as f32,
-            after.iter().cloned().fold(0.0, f64::max) as f32,
+            (by_dev[..tenth].iter().map(|x| x.1).sum::<f64>() / tenth as f64) as f32,
+            (all.iter().sum::<f64>() / all.len() as f64) as f32,
+            all.iter().cloned().fold(0.0, f64::max) as f32,
         )
     };
     (ac as f32, carry)
@@ -1639,4 +1791,13 @@ fn median_of(mut v: Vec<f32>) -> f32 {
     }
     v.sort_by(|a, b| a.total_cmp(b));
     v[v.len() / 2]
+}
+
+/// The `q` quantile of a list (nearest rank); NaN when empty.
+fn pct(mut v: Vec<f32>, q: f32) -> f32 {
+    if v.is_empty() {
+        return f32::NAN;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    v[((v.len() - 1) as f32 * q).round() as usize]
 }

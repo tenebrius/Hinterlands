@@ -12,6 +12,9 @@ pub const NONE: u32 = u32::MAX;
 pub const OUTSIDE: u32 = u32::MAX - 1;
 /// Most outside ports a map can have (one per side).
 pub const MAX_PORTS: u32 = 4;
+/// Partner index of a settlement's nearest port beyond `c_max` (D1b, D124):
+/// see `Reach::port` and `Reach::partner`.
+pub const FAR_PORT: u32 = u32::MAX - 1;
 
 /// The grain market's yearly record (S2, D78): the solver's residual and
 /// passes, grain unsold, the region's harvest, and places capped by budget.
@@ -60,6 +63,9 @@ pub struct MoneyLedger {
     pub luxury_out: f32,
     pub wear: f32,
     pub removed: f32,
+    /// What the ports paid for export cloth (D2).
+    #[serde(default)]
+    pub cloth_in: f32,
 }
 
 /// The outside port a partner id names, if it is one.
@@ -178,9 +184,24 @@ pub struct Reach {
     /// Settlements within `c_max`, by id.
     pub partners: Vec<Partner>,
     pub refreshed: u32,
+    /// With `port_reach` (D1b, D124), the nearest outside port at any cost when
+    /// none is among the partners: goods traded with the outside are carried
+    /// to and from it at the full travel cost.
+    #[serde(default)]
+    pub port: Option<Partner>,
 }
 
 impl Reach {
+    /// The partner at a flow's partner index, the far port included.
+    #[inline]
+    pub fn partner(&self, k: u32) -> &Partner {
+        if k == FAR_PORT {
+            self.port.as_ref().expect("far port")
+        } else {
+            &self.partners[k as usize]
+        }
+    }
+
     #[inline]
     pub fn cost_to_cell(&self, cell: usize) -> f32 {
         let q = self.cost_field[cell];
@@ -274,6 +295,26 @@ pub struct Settlement {
     /// Year this place last made the chronicle for grass (L4), or 0.
     #[serde(default)]
     pub grass_logged: u32,
+    /// Export cloth made this year, lb of wool content (D2; a mill
+    /// settlement's, from the wool it bought), written by pasture.
+    #[serde(default)]
+    pub cloth_made: f32,
+    /// What its wool cost the mill this year, coin (D2).
+    #[serde(default)]
+    pub cloth_wool_cost: f32,
+    /// The export cloth's margin over its wool this year (D2), counted to the
+    /// market's inflow by trade.
+    #[serde(default)]
+    pub cloth_margin: f32,
+    /// Arable land, km² (D1: plough iron), written by cultivation.
+    #[serde(default)]
+    pub arable_km2: f32,
+    /// Resource sites this place works (D1: tools), written by production.
+    #[serde(default)]
+    pub works: u32,
+    /// W when goods were last bought (D1: new building as W grows).
+    #[serde(default)]
+    pub w_last: f32,
     #[serde(default)]
     pub income: f32,
     #[serde(default)]
@@ -329,6 +370,12 @@ impl Settlement {
             pasture: Vec::new(),
             wool_in: 0.0,
             grass_logged: 0,
+            cloth_made: 0.0,
+            cloth_wool_cost: 0.0,
+            cloth_margin: 0.0,
+            arable_km2: 0.0,
+            works: 0,
+            w_last: 0.0,
             income: 0.0,
             capped: false,
             fee_earned: 0.0,
@@ -491,6 +538,10 @@ pub struct State {
     pub port_grain: Vec<f32>,
     #[serde(default)]
     pub grain_stats: GrainStats,
+    /// Salt and iron bought from the outside ports and in all this year
+    /// (D1): salt from ports, salt in all, iron from ports, iron in all.
+    #[serde(default)]
+    pub port_supply: [f32; 4],
     /// This year's coin in and out (D97).
     #[serde(default)]
     pub money: MoneyLedger,
@@ -500,6 +551,23 @@ pub struct State {
     /// This year's wool shipments: (seller id, partner index, value).
     #[serde(default)]
     pub wool_ship: Vec<(u32, u32, f32)>,
+    /// Coin the fallow flock's wool fetched at the ports this year (D2, D123).
+    #[serde(default)]
+    pub fallow_wool: f32,
+    /// Wool this year (D2), lb: the clip, to the mills (all exported as
+    /// cloth), to the ports, used at home for home cloth, home need.
+    #[serde(default)]
+    pub cloth_stats: [f32; 5],
+    /// The wool market this year, for the cloth-pace trace (D135; reported
+    /// only): mills bidding, mills at capacity, capacity lb, wool milled lb,
+    /// then in d a lb at the clip-weighted median seller: the raw-wool
+    /// netback at its port, the best cloth netback (a mill's bid less wool
+    /// carriage to it), the price realised; then the clip share whose cloth
+    /// netback beats its wool netback, wool's port price, the milled-weighted
+    /// median mill bid and the price mills paid; and the growers' wool
+    /// receipts, coin.
+    #[serde(default)]
+    pub cloth_trace: [f32; 12],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -680,9 +748,13 @@ impl State {
             grain_level: 0.0,
             port_grain: Vec::new(),
             grain_stats: GrainStats::default(),
+            port_supply: [0.0; 4],
             money: MoneyLedger::default(),
             grazed: vec![NONE; n],
             wool_ship: Vec::new(),
+            fallow_wool: 0.0,
+            cloth_stats: [0.0; 5],
+            cloth_trace: [0.0; 12],
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

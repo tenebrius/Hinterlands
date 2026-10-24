@@ -164,7 +164,10 @@ impl Panel for Chronicle {
                 LogKind::Planted => format!("{}. Lord's town planted at {}.", e.year, e.name),
                 LogKind::Ships => format!("{}. Larger ships now sail the coast.", e.year),
                 LogKind::Grass { .. } => {
-                    format!("{}. The fields of {} are put down to grass.", e.year, e.name)
+                    format!(
+                        "{}. The fields of {} are put down to grass.",
+                        e.year, e.name
+                    )
                 }
                 LogKind::Murrain { .. } => {
                     format!("{}. Murrain among the sheep of {}.", e.year, e.name)

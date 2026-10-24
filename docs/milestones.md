@@ -615,3 +615,66 @@ Development stops here, by the owner's decision (D117).
   - the famine dip (0.19 against a target of 0.10–0.16);
   - store carry-over peaking at 0.44–0.45 of a harvest;
   - the murrain figures (approximate, after Slavin).
+
+## R — The robustness re-tune (D119)
+- **Diagnosis at the current setting:** road length 300–500, over 2,000, top-10 vs off and market spacing bind. Runs passing every check: 8 / 13 / 8.
+- **Searched:** a one-lever screen (24 settings), then a joint grid (`k_maint` × `road_keep_load`, 8 more), each on 3 maps × seeds 1–20.
+- **Best feasible:** `k_maint` 1.2 (13 / 14 / 9; minimum 9, total 36).
+- **Confirmation on seeds 21–40:** `k_maint` 1.2 minimum 7, total 29, against the current setting's minimum 8, total 33. **The current setting is kept.**
+- **Pre-registered** (≥ 12 on every map on seeds 1–20): **not met.**
+- **On fresh seeds the current setting has two gated checks at 14/20:** road length on map 1 and over 2,000 on map 3. The gate's margin is about one seed in twenty.
+- **Golden unchanged, `65aee272c30de1f9`.**
+- **Details:** `docs/retune/r.md`.
+
+## D120 — The gate on 40 seeds
+- **`just validate` now runs `--seeds 40`.** Each check needs 30/40 on every map.
+- **The accepted model's reference** (R's two halves summed) is in `docs/retune/r.md`. Every gated check is at 30/40 or better except road length 300–500 on map 1, at 29/40.
+- **No-worse rule:** where the accepted model is short, a stage passes if it is no worse. In `validate`, `NO_WORSE` holds road length 300–500 on map 1 at 29/40.
+- **Runs passing every check** (reported, not gated): 19 / 27 / 16 of 40.
+
+## D1 — Ports sell iron and salt; demand from stocks (D121)
+- **Step 1 (`port_goods`, today's demand):**
+  - hash `f0bb88df5439f2d9`;
+  - iron from ports 36–58% (map 3 100%), salt 2–37%.
+- **Step 2 (`demand_stocks`):**
+  - salt 15 lb a person (a calibration);
+  - iron from ploughs, households and working sites;
+  - stone from repair plus growth of W;
+  - the D71 iron calibration is retired.
+- **The gate passes, with every check on 40 seeds** (`just validate`, `target/retune/d1_40.txt`):
+  - runs passing every check: 27 / 28 / 17 (reference 19 / 27 / 16);
+  - map 1 road length 32/40, so `NO_WORSE` is not needed.
+- **`demand_stocks` is now the default.** Golden `4a9737eafc305561`, the same in the browser at 47.5 ms a year (`?selftest=500`).
+- **Pre-registered:**
+  - **specialist median under 500:** missed on map 1 (1,009 / 418 / 407);
+  - **town iron price between 1 and parity:** missed narrowly, 1.04–1.06 against 1.003;
+  - **coin:** the coin stock falls 10–25% and wool exports rise 25%, but the price level does not fall;
+  - **outside trade:** inside the band in the medians (0.225 / 0.233 / 0.268; map 3 35/40).
+- **Ports supply** 80–90% of the iron. Their share of the salt rises from 0.12 in 1350 to 0.71 in 1600.
+- **Store carry-over** has fallen to about 0.
+- **Details:** `docs/demand/d1.md`.
+
+## D1b + D2 — Port reach and cloth the default (D135)
+- **Rule change (D135):** over 2,000 is reported, not gated, with the urban share against England's c. 0.10.
+- **The gate passes with every gated check on 40 seeds,** `just validate` with `port_reach` and `cloth` on (`target/d2/v135.txt`):
+  - runs passing every check: 25 / 36 / 28 (D1: 27 / 28 / 17, with over 2,000 gated then);
+  - the lowest gated checks are market spacing on map 3 (34/40) and pasture 1450>1340 on map 1 (35/40);
+  - over 2,000, reported: medians 6 / 6 / 5 (ranges 4–9, 5–9, 3–8);
+  - urban share in 1600: 0.356 / 0.369 / 0.373.
+- **Params:** defaults, now with `port_reach` true and `cloth` true. `cloth_lb_per_w` is 2.5, the making cost 2.7 d, cloth 5.7 d, home wool elasticity 0.3.
+- **Golden `5e773d6f60251a23`,** the same in the browser at 96.6 ms a year (`?selftest=500`).
+- **Pre-registrations missed at D133,** recorded as missed:
+  - map 3's 1600 population −11% against D1b's (10% allowed);
+  - coin above D1b's from 1550;
+  - cloth share about half the record's after 1420.
+- **Details:** `docs/demand/d2d.md` (the gate run's mechanism results), `docs/demand/d2e.md` (this gate and the cloth trace).
+
+## D139 step 1 — Mills pay the clearing price; outside trade on output
+- **Rule change (D139):** outside trade is gated as exports over output, 1–35% in 1600. The share of market inflow is reported.
+- **The gate passes on 40 seeds,** defaults (`target/d2/v139_step1.txt`):
+  - runs passing every check: 23 / 37 / 25;
+  - exports / output medians: 0.066 / 0.078 / 0.073;
+  - the lowest checks: spacing 33/40 (map 1), 34/40 (map 3).
+- **Params:** defaults, with `cloth_price_late` off.
+- **Golden `2e6856056e73a1c6`,** the same in the browser at 98.7 ms a year (`?selftest=500`).
+- **Details:** `docs/demand/d2g.md`.

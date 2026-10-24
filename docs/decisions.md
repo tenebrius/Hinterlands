@@ -729,3 +729,137 @@ Kind: tuning (designer's decision D110).
 - **Tried on map 3, per seed** (over 2,000 / spacing): `k_maint` 1.4 (17 / 20), `market_share` 0.32 (19 / 17), `shadow_drain` 0.045 (18 / 19).
 - **Chosen:** the drain, as the smallest change that holds spacing. The gate passes (`docs/wool/l2-l4.md`).
 Kind: tuning (within D110's levers).
+
+## D122 — D1: stock-based demand is the default; the ports sell iron and salt (D121)
+- **Built per D121:**
+  - `port_goods` (ports sell salt and iron at price 1, paid as coin out with imports);
+  - `demand_stocks` (salt, iron and stone from stocks; it also turns on the port supply).
+- **The gate passed on 40 seeds,** so `demand_stocks` is on by default. The D71 iron calibration (`demand_iron` per head) is unused while it is on.
+- **Readings made in building:**
+  - stone growth is W against the previous year's W (`w_last`, written by `goods_trade`);
+  - working sites are those of the holder with output above 0;
+  - arable is the holder's fields × cell area.
+- **Calibrations:**
+  - salt 15 lb a person: no source found, Bridbury 1955 not consulted;
+  - household iron 1 d, site iron 24 d;
+  - the plough-iron part of 36 d a plough;
+  - stone repair 2% a year.
+- **Results:** `docs/demand/d1.md`.
+Kind: model mechanism and default (designer's decision D121).
+
+## D125 — D1b: port reach built; its gate failed, stopped (D124)
+- **Built:** `port_reach` (off) gives every settlement with no port in reach an arc to its nearest port, at the full travel cost, for salt and iron. A bounded-to-the-first-port Dijkstra finds the port at each reach refresh.
+- **The gate on 40 seeds failed**, on outside trade (14/40 on map 2, 5/40 on map 3), over 2,000 on map 3 (25/40) and road length on map 1 (28/40).
+- **Both pre-registrations were met:** specialists' median size is 79 / 47 / 33, and iron costs about 1.06 in the formerly portless places.
+- **Not made the default.** D2 is built behind `cloth` (off) and not gated.
+- **Details:** `docs/demand/d1b.md`.
+Kind: model mechanism, held off (designer's decision D124).
+
+## D127 — D1b + D2 gated together: failed, stopped (D126)
+- **Built per D126:**
+  - `cloth` (fallow flock, wool and export cloth by port reach, mills in two tiers, home cloth in goods trade, export cloth, duties as coin out);
+  - outside trade at 3–50%, with exports a head reported.
+- **The gate on 40 seeds, both switches on, failed:**
+  - rank-size on map 1 (20/40);
+  - market spacing on maps 2 and 3 (15 and 20/40, too wide);
+  - top-10 vs off on map 3 (21/40);
+  - over 2,000 (27/40), recovery (25/40), stability (29/40) and roads (29/40) on map 2;
+  - pasture 1450>1340 on map 1 (27/40).
+- **Runs passing every check:** 6 / 5 / 4.
+- **Neither switch is made the default.**
+- **Implementer's readings in building:**
+  - the two-tier mill bid;
+  - the scarcity signal for unsupplied home cloth;
+  - home cloth paid by head from both purses, like salt and iron;
+  - export cloth's margin counted to the mill's market inflow.
+- **The wool-share test (D126.4):** the making cost implied by Munro's Flemish shares is 1.4–2.7 d a lb, mostly below 2.62–3.77.
+- **Details:** `docs/demand/d2.md`.
+Kind: model mechanism, held off (designer's decision D126).
+
+## D129 — D2 corrected: attribution run and gate; failed, stopped (D128)
+- **Built per D128:**
+  - home cloth from wool bought at home, made by households;
+  - export cloth the only chain;
+  - wool's outlets split by the S1 entropy form.
+- **Implementer's readings:**
+  - a mill demands its capacity up to its bid and falls with `elast_mill` 20 above it;
+  - the wool market solves with four times the goods' passes, sellers last.
+- **The attribution run** (no mills, no home cloth) fails over 2,000 on maps 1 and 3 and outside trade on map 2. Map 2's recovery is 40/40.
+- **The corrected D2 gate fails:**
+  - outside trade on map 1 (29/40);
+  - over 2,000 (23/40), spacing (25/40) and stability (28/40) on map 3.
+  - Map 2 passes every check.
+- **Not made the default.** Details: `docs/demand/d2c.md`.
+Kind: model mechanism, held off (designer's decision D128).
+
+## D131 — D2 with mill capacity bound: gate failed, stopped (D130)
+- **Built:**
+  - mill capacity binds (over-capacity wool to the sellers' ports);
+  - `cloth_lb_per_w` 0.1, a calibration of the start (cloth 0.099 of the wool leaving in 1350–59).
+- **The gate failed:** over 2,000 and top-10 on map 1; over 2,000 and spacing on map 3. Map 2 passes every check.
+- **The cloth share follows the customs record's shape** (0.05 → 0.50 → 0.54 → 0.60) but on almost no wool leaving. After 1342 unit-elastic home demand absorbs 3–4 times the home need, and the coin stock falls by two thirds.
+- **The map 3 diagnosis:** D2's loss at the top is fewer people (1600: 61k against 87–90k). D1b's is the spread.
+- **Not made the default.** Details: `docs/demand/d2b.md`.
+Kind: model mechanism, held off (designer's decision D130).
+
+## D133 — D1b + D2 without duties: gate failed on map 3's over 2,000 only (D132)
+- **Built per D132:**
+  - no duties;
+  - making cost 2.7 d (Munro, Ypres);
+  - home wool elasticity 0.3;
+  - `cloth_lb_per_w` 2.5, the largest with a 1350–59 cloth share at or under 0.10.
+- **The gate fails on one check:** over 2,000 on map 3 (22/40; D1b alone 25/40).
+- **Runs passing every check:** 23 / 36 / 14, against 15 / 10 / 2 for D1b alone.
+- **Map 3's share of people in places over 2,000 in 1600** is 0.366 (D1b 0.349). The loss is the spread, not fewer town people.
+- **The cloth share** rises 0.07 → 0.28 → 0.20 → 0.35, about half the record's pace after 1420.
+- **Not made the default.** Details: `docs/demand/d2d.md`.
+Kind: model mechanism, held off (designer's decision D132).
+
+## D136 — D1b + D2 the default; over 2,000 reported; the cloth pace traced (D135)
+- **Built per D135:**
+  - `validate` reports over 2,000 (count) and the urban share (people in places over 2,000 in 1600) against England's c. 0.10, and no longer gates over 2,000;
+  - `Metrics.urban_share` is added; `sweep`'s score drops over 2,000.
+- **The gate on 40 seeds, D1b + D2 on, passed.** Runs passing every gated check: 25 / 36 / 28. Over 2,000: medians 6 / 6 / 5. Urban share: 0.356 / 0.369 / 0.373.
+- **`port_reach` and `cloth` are on by default.** Golden `5e773d6f60251a23`, the same in the browser.
+- **The D133 misses stay missed:** map 3's population (−11%), coin from 1550, and the cloth pace.
+- **The cloth trace** (9 runs, no change): mill capacity binds in every mill from the 1370s, so the cloth share follows the mill towns' W, which grows at about the region's rate.
+  - Mills pay sellers far below the clearing price, from 1450 mostly nothing, because a mill pays from its market purse before its cloth is sold. This is reported, not changed.
+  - **A later English cloth price is sourced:** Munro's all-ports export values, flat to about 1470, then about 1.25–1.36 times the 1371–1450 mean in the 1480s–90s and 1.7–1.9 times in the 1500s–10s, nominal.
+- **Implementer's readings:**
+  - the urban share is taken in the final year;
+  - "mill towns" are the places that milled in the year before each decade;
+  - the netbacks are taken at the clip-weighted median seller.
+- **Details:** `docs/demand/d2e.md`.
+Kind: model default and validation rule (designer's decision D135).
+
+## D138 — D137 built: gate failed on outside trade, stopped
+- **Built per D137** on the branch (0eb62f1), not on main:
+  - mills pay the sellers' clearing price out of the cloth proceeds;
+  - from 1450 the cloth price follows Munro's all-ports export values deflated by Clark's wheat price (`cloth_price_late`), at 1.009–1.661 against the 1371–1450 level, held after 1513.
+- **The gate on 40 seeds failed on outside trade on every map:** 19 / 5 / 18 of 40, medians 0.50–0.53 (D136: 40/40 each).
+  - With the payment fix alone (`cloth_price_late` off, 10 seeds) it passes 10/10, at medians 0.42–0.45. So the later price takes it over the ceiling: cloth coming in doubles by 1600.
+- **Pre-registered:**
+  - the price mills pay is within 10% in most years but reaches 1.14 in some years after 1490;
+  - growers' coin rises only after 1450;
+  - mill towns' W falls only in 1450–80;
+  - the cloth share around 1500 stays below the record (0.33–0.40), but reaches 0.58 by 1540.
+- **Implementer's readings:**
+  - the series' points sit at the middle of their decades, linear between them;
+  - before 1450 the factor is 1.0.
+- **Main stays at D136.** Details: `docs/demand/d2f.md`.
+Kind: model mechanism and data, held off (designer's decision D137).
+
+## D140 — D139 step 1: the payment fix passes and is the default; paused before step 3
+- **Built per D139:**
+  - mills pay the clearing price out of the cloth proceeds;
+  - outside trade is gated as exports over output, 1–35% in 1600. The old share of market inflow is reported.
+- **The gate on 40 seeds passed:**
+  - exports / output medians 0.066 / 0.078 / 0.073 (40/40 each);
+  - runs passing every check 23 / 37 / 25;
+  - the old share stays inside 3–50% in 39 / 39 / 40 runs.
+- **The payment fix is the default.** Golden `2e6856056e73a1c6`, the same in the browser.
+- `cloth_price_late` is built and off.
+- **Not run, by the pause:** step 3 (the later price's gate) and the putting-out note.
+- **Implementer's reading:** output counts milled wool in the clip and in the cloth, as D139 lists them.
+- **Details:** `docs/demand/d2g.md`.
+Kind: model mechanism, default and validation rule (designer's decision D139).

@@ -2,6 +2,42 @@
 
 Read this at the start of a session when acting as the **designer** for Hinterlands. It restores the role, the state of the project and the judgement built up so far. The brief itself is `docs/foundation.md`; this file is what sits around it.
 
+## Resuming after a context clear (state at D134)
+
+Read this section first, then `docs/foundation.md` from "Development resumes (D119)" to the end, which holds every decision since.
+
+**State (see the status bullets below for later rounds).**
+- Paused by Divish after the D132 report.
+- The default model is D1:
+  - stock-based demand for salt, iron and stone;
+  - ports sell iron and salt;
+  - golden `4a9737eafc305561`.
+- Built but off: `port_reach` (D1b) and `cloth` (D2: the fallow flock, home wool, export cloth at the mills, the entropy split of wool, capacity `cloth_lb_per_w` 2.5, making cost 2.7 d, no duties).
+- The gate (D120): 40 seeds a map, 30/40 per check, outside trade 3–50% (D126). Runs passing every check are reported, not gated.
+
+**The last result (34de135, `docs/demand/d2d.md`).**
+- The gate fails only over 2,000 on map 3 (22/40). Runs passing every check: 23 / 36 / 14.
+- The cloth share is about 0.25 in 1400 (met). It is 0.19–0.22 in 1450 and 0.33–0.35 in 1500, against a record of about 0.5 and 0.7.
+
+**Two decisions are waiting, in this order. My leanings are not yet decided.**
+1. **The over-2,000 band on map 3.**
+   - Map 3 keeps its town people: 0.37 of its people are in places over 2,000 in 1600, as in D1. But it has a bigger top place and smaller ranks 5–8, so the count falls below 5 in 4 of 10 runs.
+   - The band (5–12, from v1) has no source, and D1 passed it only with the artefact iron towns.
+   - Leaning: judge the band against a sourced urban hierarchy (England in 1300 and 1600: the urban share and the number of towns of 2,000+ per head; Dyer, Campbell, Wrigley), or replace the count with the urban share. Decide on the sources, not on the run; rule: revise only with a reason that stands alone.
+2. **The cloth pace after 1420** is half the record's.
+   - Candidates: capacity growth tied to the mill towns' W is too slow; or the cloth price, which is flat at Munro's 1371–1450 value while English cloth prices rose after 1450.
+   - First ask for a trace (capacity against use by decade, mill W growth, netbacks of cloth against wool). Do not tune `cloth_lb_per_w`; it is calibrated at the start only.
+
+**After those two:** gate D1b and D2 as the default, then D3 (wealth raises stocks; cloth per head rises with income, with Dyer's three yards in 1500 as its check). Growth after 1480 is still noted.
+
+**Working rules, beyond the ones above.**
+- Every pre-registration names its mechanism and says which quantity that mechanism fixes and which it leaves free (rules 5 and 12). The implementer confirms the mechanism is in the code before the run.
+- A calibration may fix a start or a level, never the path that is the test (D130, D132).
+- Never pre-register a gain inside the run-to-run noise (rule 11). At 40 seeds a count moves by about ±3.
+- **Decision numbers:** the implementer writes D-numbers in `docs/decisions.md` for builds (D125, D127, D129, D131, D133). The designer takes the next free number in `docs/foundation.md`. Check both files before numbering.
+- Each round: pull main, read the implementer's report doc, record the decision in `docs/foundation.md`, update this file, commit and push to main and the branch `claude/sharp-lovelace-azqxcu`, then send one message to the implementer naming the commit.
+- The proposal session (`session_01MrMcFJCCYku1zTBbBkDVfp`) sends owner proposals (`docs/proposals/`). Decide them in the foundation and reply "no reply needed".
+
 ## The role
 
 There are two roles on this project and they are kept separate.
@@ -100,6 +136,50 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
 - **D114 PASSED (a92c5bb):** endemic mortality 0.015; 1450/1340 within 0.45–0.64 (met, 60/60); golden `b4f78a0e4adf502b`. Noted: 1600 population too high (fast r_grow after 1480); carry-over peaks at 0.44. D115: v7 release pass (README, parameters, watching panel, prices, purses and stores visible, screenshots, freeze).
 - **Kent geology (73bfde3), the last change:** BGS chalk ×0.6 and marsh ×0.35; pasture on the Downs 0.53 and the Marsh 0.60 against the Weald 0.10 (pre-registration met); small-town AUC 0.50 → 0.57, the best yet. map-geology.json becomes Kent's standard setting.
 - **DEVELOPMENT RESUMES (Divish, 22 October 2026; D119).** Order: R, the robustness re-tune (pre-registered in foundation: maximin of all-check runs, every gated check at 15/20 or better, a screen of 6 levers × 4 values, a joint grid, then confirmation on seeds 21–40 against the current setting; expect 12 or more on every map), then D0–D3. Stages are switched off until their gate passes, then they become the default in the core.
+- **R done (a7d6943), D120:** current setting kept (`k_maint` 1.2 led on seeds 1–20, lost on 21–40); the pre-registered ≥12 missed (my error 11). The gate moves to 40 seeds (30/40; no-worse rule where the accepted model is short: road length map 1 at 29/40). D0 sent: diagnostic, no feedback, sources per D105, pre-registered iron falling after 1348 and stone in growing towns. Road persistence is the mechanism candidate if road length is still weak after D2.
+- **D0 done (39b3dbb), D121:** both pre-registrations met. Stock iron is 30–40× today's: 0.0013 was fitted to coppiced supply (D71), not a demand; the missing piece was outside supply. D1: (1) ports sell iron and salt at price 1 like imports (Childs 1981; Bridbury 1955), built first at today's demand; (2) stock demand for iron, salt and stone, switch `demand_stocks`. Pre-registered: specialist median under 500, iron price between 1 and port parity, outside trade inside 3–30% (not revised before seen). The cloth note may come with D1 (D0: home cloth needs 3–5× the wool at Dyer's 1500 figure).
+- **D1 done (c96bd73), D123:** accepted. Gate passed on 40 seeds; all-check runs 27/28/17 (reference 19/27/16); golden `4a9737eafc305561`; ports supply 80–90% of iron. Traces before D2: map 1 specialists by good (salt towns acceptable), iron-price outliers 16–21, store carry-over ~0, map 3 outside trade. Cloth decided: 1.5 yd constant (D3 gives the rise), one cloth good by wool content, fallow flock as step 1, ports buy export cloth, and the wool subsidy (~1/3, 1340s) against the cloth custom (1347) as the wedge. Pre-registered: cloth share of wool under 0.4 in 1300–40 and over 0.6 in 1450–1500; at least half of cloth from W 100–2,000.
+- **D123 traces (8ed969e), D124:**
+  - Map 1's large specialists are iron mines in districts no port reaches, selling at 20–30 (my D121 fault: no carriage beyond reach). Fixed by option (a), an arc from every settlement to its nearest port at full travel cost for outside-traded goods (D1b, gated, pre-registered specialist median under 500). Wool and export cloth use the same rule from D2.
+  - Stores: the measure lost its sample; re-read on the cheapest decile against trend; no claim ahead of goods.
+  - Accepted: fallow flock (3.6 lb a person in 1300) and the cloth prices and duties (Munro, Barnes).
+  - D1b then D2, reported together.
+- **D1b (95d6737) failed the gate, D126:**
+  - Pre-registrations met: specialists 79/47/33, inland iron 1.06.
+  - Outside-trade ceiling re-founded at 50% (scale: a county-sized region is not a nation, Alesina et al. 2000; the definition now holds every sourced channel; 'export colony' means more than half).
+  - D1b and D2 are gated together, since D1b removed artefact middle towns and cloth is the mechanism for real ones.
+  - The cloth-share pre-registration is built in by the 3.2 d making-cost bracket, so it is now reported. The independent test is a sourced wool share of broadcloth value against the 2.62–3.77 bracket.
+- **D1b + D2 (94b2e8c) failed, D128:**
+  - All-check runs 6/5/4; spacing too wide, rank-size flat, recovery low on map 2.
+  - My spec error 13: home cloth made at mill towns transferred everyone's clothing bill to them, against D118.2.
+  - Corrected: home cloth is made where it is worn (wool demand at home); the chain is export cloth only; wool's outlets are split by the entropy form (share 1.00 is too sharp).
+  - Munro's shares put the making cost below the bracket, so 3.2 d stands in for a pre-1340 quality gap.
+  - Exports per head 10 d against England's 14 d weaken the scale reason for the 50% ceiling; it stands on the export-colony reason.
+  - Attribution run (wool without mills) first, then the corrected D2.
+- **Corrected D2 (8aac792) failed narrowly, D130:**
+  - Map 2 passes every check; map 1 fails only outside trade, by one run; map 3 fails over 2,000, spacing and stability.
+  - The cloth share jumps from 0.17 to 1.00 in 1350, against the record's two-century rise (about 0.05 in the 1350s to 0.85 in the 1540s).
+  - Fix: mill capacity binds and grows with W. Calibrate the 1350s start (≤0.10) only; the path is the test (±0.15 of the record at 1400, 1450 and 1500).
+  - Outside trade not revised (its denominator lacks the internal economy; decide later between share and exports per head if it binds again).
+  - Map 3 diagnosis requested: population, pasture, the top 15, spacing side, stability.
+- **Capacity-bound D2 (d786d8b) failed, D132:**
+  - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
+  - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
+  - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **PAUSED at D141 (9c84611):** payment fix default, golden `2e6856056e73a1c6`, exports/output 0.066–0.078. On resuming: (1) output counts milled wool twice, so count cloth by value added; (2) gate the later cloth price; (3) putting-out note.
+- **PAUSE ordered by Divish (23 October):** development pauses after the implementer's running D139 test finishes. Record its result, then stop; no putting-out note until resumed.
+- **D137 result (134fa79), D139:**
+  - The payment fix passes alone: adopt it, gated.
+  - The later cloth price breaks outside trade (medians 0.50–0.53) but moves the cloth share to the record's level about 40 years late.
+  - Outside trade re-founded: exports over total output, 1–35%, England about 6–7% (third change; it now has a referent).
+  - Then the later price is gated; then a putting-out design note.
+- **D2 default (c7f9312), D137:**
+  - Gate passed (25/36/28); golden `5e773d6f60251a23`.
+  - Trace: capacity follows mill W, which barely answers the margin. Mills paid sellers about nothing (a defect: they paid from the purse before the proceeds).
+  - D137: mills pay the clearing price from the proceeds; Munro's later cloth price, deflated by Clark's wheat; gate.
+  - Pre-registered: the cloth share stays below the record. If it does, the missing mechanism is putting-out labour entering cloth for its returns, as a design note first.
+- **RESUMED by Divish, 23 October (D135):** over-2,000 made reported (floor 5 is several times England's per-head rate of about one town per 80–100k in 1377; the model's urban share is 0.33–0.37 against England's 10%; the hierarchy is gated by rank-size, largest share and over 5,000). D1b and D2 become the default after a formal re-validate. Then the cloth pace trace (capacity, mill W growth, netbacks, cloth price after 1450).
+- **PAUSED by Divish after the D132 report (D134).** The no-duty D2 (34de135) fails only map 3's over 2,000 (22/40); cloth runs at half the record's pace after 1420. Open on resuming: the over-2,000 band (map 3's spread) and the cloth pace. The model is at D1.
 - **For when development resumes (D118):** Divish's demand proposal (`docs/proposals/demand.md`) accepted: demand as replacement of stocks plus growth; chains only where a separate trade sits between (cloth first and alone, at fulling-mill towns); wealth raises stocks; building stock from W; milling toll left out. Order on resuming: robustness re-tune, then D0–D3.
 - **DEVELOPMENT STOPS (Divish, 22 October 2026; D117):** after Kent geology. The robustness re-tune, the cloth note and Tudor growth are not done, and are kept as the next steps if development resumes.
 - **v7 RELEASED (1a94a88):** README rewritten for the trade economy; parameters regenerated; watching panel with seven phases; prices, purses and stores in the inspector, plus a grain-price layer (red in 1316); screenshots in `docs/screenshots/v7/`; golden `65aee272c30de1f9`, 45.9 ms/year wasm. Kent: largest near Gravesend 14/20, inland spacing 13.2 km (real 10.6). Kent geology next.
@@ -128,6 +208,14 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 9. **I forbade the right quantity because it looked like an old fault.** M2 counted only grain sold, because grain arriving resembled P3. But arriving grain is food supply, and food supply is what makes a town grow. P3's fault was permanent waste, not counting arrivals. Rule: before ruling a quantity out, say what it means economically, and test the fault itself (here: waste ≤ 10%) instead of banning the quantity.
 
 10. **I asked hunger to do competition's job.** Three M4 builds tried to keep spacing with ever cleverer hunger averages. Spacing was being propped up by famine culling all along. Rule: when a change breaks a check, find the mechanism that is supposed to produce that check's result, and fix it there.
+
+11. **I pre-registered a gain inside the noise.** R expected 12 or more runs passing every check on every map, up from 8/13/8, from levers tuned at every milestone. At 20 seeds those counts move ±2 by the draw alone, so the best of 24 settings looked better by chance and lost on fresh seeds. Earlier tunings (D111, D113) had answered one-seed shortfalls. Rules: before pre-registering a gain or setting a gate, compute the run-to-run noise at the sample size; pick among many settings only with a confirmation on fresh seeds; and do not tune to answer a shortfall smaller than the noise.
+
+12. **I predicted from the textbook mechanism without asking which prices the model leaves free.** D121 expected Hume's falling price level. But the region takes its prices from outside (wool, grain at port parity, iron and salt at the port), so it adjusts through coin and quantities: the monetary approach (McCloskey & Zecher 1976). The same slip, a cap on price read as a cap on size, may explain the map 1 specialists. Rule: when pre-registering, say which quantity the mechanism fixes and which it leaves free.
+
+13. **I let a chain into the home.** D123 accepted home cloth made at mill towns and bought by everyone, against the owner's own rule (D118.2: a chain only where a separate trade in another place sits between). Everyday cloth was spun and woven at home and in the village, so the build moved a quarter of everyone's food value to a hundred small places on streams, and spacing, rank-size and recovery broke. This is rule 7 again: for each flow, ask who actually traded with whom, and check each new flow against the rules already decided.
+
+14. **I taxed a price that had already been taxed.** D123 applied the wool subsidy and custom to the port's wool price, but that price is Lloyd's and Clark's English price, paid to growers after the duties. Wool's value was halved, the clip was pushed onto households, coin drained, and map 3 lost a third of its people. I also read the gap it made against Munro as a missing mechanism. Rule: before applying a levy, cost or margin to a price series, ask on which side of it the series was observed.
 
 Judgement rules that now stand:
 
@@ -170,4 +258,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-22 — development resumed (D119); R (robustness re-tune) sent to the implementer.
+Last updated: 2026-10-23 — paused at D141 after the D139 step 1 result.
