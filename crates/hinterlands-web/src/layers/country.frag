@@ -477,6 +477,22 @@ vec2 tree_centre(int g, ivec2 c, float cs, int sg) {
     return transpose(GRID_ROT[g]) * ((vec2(c) + 0.05 + 0.9 * vec2(hash(c, sg), hash(c, sg + 1))) * cs);
 }
 
+// The largest crown radius from rmin..rmax (lone trees grow by up to a
+// quarter), with a little slack for rounding (R29).
+float crown_reach(float rmin, float rmax) {
+    return 1.25 * max(rmin, rmax) * 1.001 + 1e-3;
+}
+
+// Whether candidate cell c of a grid (q: the point in that grid's units)
+// may hold a tree centre within `reach` metres: its centre lies within the
+// cell's middle nine-tenths (R29). Rotation keeps distances, so this is
+// measured in the grid's own frame, with slack for rounding.
+bool cell_near(vec2 q, ivec2 c, float cs, float reach) {
+    vec2 lo = vec2(c) + 0.05;
+    vec2 off = max(max(lo - q, q - (lo + 0.9)), 0.0) * cs;
+    return length(off) <= reach + 0.01 * cs;
+}
+
 // Trees about `cellm` metres apart. A tree stands where `dens` (the density at
 // the point, with its gradient per metre `dgrad`, so a crown is kept or not as
 // a whole) beats its own number; radius rmin..rmax metres. env: wetness,
@@ -485,15 +501,25 @@ vec2 tree_centre(int g, ivec2 c, float cs, int sg) {
 Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt, vec4 env) {
     Crown best = Crown(vec3(0.0), 0.0, -1.0, -1);
     float m = mpx();
+    // No crown reaches the pixel from further than this (R29): candidates
+    // beyond it are passed over before their density is looked up.
+    float reach = crown_reach(rmin, rmax) + 0.5 * m;
     for (int g = 0; g < 3; g++) {
         float cs = cellm * GRID_SIZE[g] * 1.7320508;
         int sg = salt + 40 * g;
-        ivec2 b = ivec2(floor(GRID_ROT[g] * pm / cs));
+        vec2 q = GRID_ROT[g] * pm / cs;
+        ivec2 b = ivec2(floor(q));
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 ivec2 c = b + ivec2(dx, dy);
+                if (!cell_near(q, c, cs, reach)) {
+                    continue;
+                }
                 vec2 ctr = tree_centre(g, c, cs, sg);
                 vec2 d = pm - ctr;
+                if (length(d) > reach) {
+                    continue;
+                }
                 float keep = clamp(dens + dot(dgrad, ctr - pm), 0.0, 1.0);
                 if (g_grove_on) {
                     keep = max(keep, 0.9 * grove_at(ctr * g_unit));
@@ -542,14 +568,22 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
 // which trees stand.
 float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt) {
     float best = -1.0;
+    float reach = crown_reach(rmin, rmax);
     for (int g = 0; g < 3; g++) {
         float cs = cellm * GRID_SIZE[g] * 1.7320508;
         int sg = salt + 40 * g;
-        ivec2 b = ivec2(floor(GRID_ROT[g] * pm / cs));
+        vec2 q = GRID_ROT[g] * pm / cs;
+        ivec2 b = ivec2(floor(q));
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 ivec2 c = b + ivec2(dx, dy);
+                if (!cell_near(q, c, cs, reach)) {
+                    continue;
+                }
                 vec2 ctr = tree_centre(g, c, cs, sg);
+                if (length(pm - ctr) > reach) {
+                    continue;
+                }
                 float keep = clamp(dens + dot(dgrad, ctr - here), 0.0, 1.0);
                 if (g_grove_on) {
                     keep = max(keep, 0.9 * grove_at(ctr * g_unit));
