@@ -876,3 +876,19 @@ Kind: model mechanism, default and validation rule (designer's decision D139).
   - `just test` passes.
   - `just validate` (3 maps, 40 seeds) is identical to D140's run line for line, apart from timings (`target/d2/v142_merge.txt` against `v139_step1.txt`).
 Kind: rendering (frontend merge).
+
+## D144 — D141 steps 1 and 2: exports over output by value added; the later cloth price the default
+- **Step 1.** Exports over output counts cloth by its value added (cloth less its wool at the port price).
+  - Medians in 1600: 0.067 / 0.079 / 0.074, against 0.066 / 0.078 / 0.073.
+  - The model is unchanged.
+- **Step 2.** `cloth_price_late` (Munro deflated by Clark's wheat, from 1450) is gated on 40 seeds and **passes**:
+  - exports / output 0.084 / 0.094 / 0.088, 40/40 each;
+  - runs passing every check 22 / 35 / 20;
+  - map 3's market spacing is at 30/40.
+- **The later price is the default.** Golden `fc16de69c1855b30`, the same in the browser.
+- **Pre-registered:**
+  - exports over output inside 5–25% (medians): met;
+  - the cloth share reaches the record's level about 40 years late (0.58 by 1540): met.
+- **Implementer's reading:** the milled wool deducted from cloth is valued at the port wool price, the price at which the clip is counted.
+- **Details:** `docs/demand/d2h.md`.
+Kind: validation measure and model default (designer's decisions D141, D142).

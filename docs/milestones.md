@@ -678,3 +678,13 @@ Development stops here, by the owner's decision (D117).
 - **Params:** defaults, with `cloth_price_late` off.
 - **Golden `2e6856056e73a1c6`,** the same in the browser at 98.7 ms a year (`?selftest=500`).
 - **Details:** `docs/demand/d2g.md`.
+
+## D141 — The later cloth price the default; exports over output by value added
+- **The gate passes on 40 seeds** with `cloth_price_late` on (`target/d2/v141_late.txt`):
+  - runs passing every check: 22 / 35 / 20;
+  - exports / output: 0.084 / 0.094 / 0.088;
+  - the lowest check is market spacing on map 3, at 30/40.
+- **Measure (D141):** exports over output counts cloth by its value added.
+- **Params:** defaults, now with `cloth_price_late` on.
+- **Golden `fc16de69c1855b30`,** the same in the browser at 100.9 ms a year (`?selftest=500`).
+- **Details:** `docs/demand/d2h.md`.
