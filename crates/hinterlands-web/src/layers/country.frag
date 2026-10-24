@@ -505,6 +505,15 @@ bool cell_near(int g, vec2 pm, ivec2 c, float cs, float reach) {
 Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt, vec4 env) {
     Crown best = Crown(vec3(0.0), 0.0, -1.0, -1);
     float m = mpx();
+    // The search keeps only the tallest crown's geometry; its colour is
+    // worked out once, after it (R29).
+    ivec2 bc = ivec2(0);
+    int bsg = 0;
+    vec2 bctr = vec2(0.0);
+    vec2 bd = vec2(0.0);
+    float br = 0.0;
+    float bdd = 0.0;
+    float bz = 0.0;
     // No crown reaches the pixel from further than this (R29): candidates
     // beyond it are passed over before their density is looked up.
     float reach = crown_reach(rmin, rmax) + 0.5 * m;
@@ -535,41 +544,56 @@ Crown crowns_at(vec2 pm, float cellm, float dens, vec2 dgrad, float rmin, float 
                 float dd = length(d);
                 // Only a crown that covers the pixel competes to be seen
                 // (R27): one just beyond it hid its neighbours' crowns.
-                if (dd > r + 0.5 * m || !tree_clear(ctr * g_unit, r * g_unit)) {
+                if (dd > r + 0.5 * m) {
                     continue;
                 }
                 float z = sqrt(max(r * r - dd * dd, 0.0));
                 float top = z + r * 0.9 + 2.0 * hash(c, sg + 4);
-                if (top <= best.top) {
+                // Clearance is looked up only for a crown that would be seen
+                // (R29); the order of the two tests does not change which.
+                if (top <= best.top || !tree_clear(ctr * g_unit, r * g_unit)) {
                     continue;
                 }
-                // Trees of a kind grow in stands: the pick drifts over some 150 m.
-                float pick = fract(hash(c, sg + 5) * 0.6 + vnoise(ctr / 150.0, salt + 6));
-                int sp = env.w > 1.5 ? 6 : env.w > 0.5 ? 5 : species(env, pick);
-                float v = hash(c, sg + 7);
-                vec3 n = normalize(vec3(d, max(z, 0.2 * r)));
-                float lit = clamp(dot(n, SUN3), 0.0, 1.0);
-                vec3 col = leaf(sp, v) * (0.55 + 0.65 * lit);
-                // Clumps of leaves.
-                col *= 0.86 + 0.28 * vnoise((pm + vec2(c) * 13.7) / 1.3, salt + 8) * fine(1.3);
-                float cover = clamp((r - dd) / m + 0.5, 0.0, 1.0);
-                // Its outline in ink (R14).
-                col = mix(col, col * 0.35, (1.0 - smoothstep(0.0, max(0.3, 1.3 * m), r - dd)) * u_ink);
-                if (u_field_season == 3 && sp != 5) {
-                    cover *= 0.75;
-                }
-                best = Crown(col, cover, top, sp);
+                best.top = top;
+                bc = c;
+                bsg = sg;
+                bctr = ctr;
+                bd = d;
+                br = r;
+                bdd = dd;
+                bz = z;
             }
         }
     }
-    return best;
+    if (best.top < 0.0) {
+        return best;
+    }
+    // Trees of a kind grow in stands: the pick drifts over some 150 m.
+    float pick = fract(hash(bc, bsg + 5) * 0.6 + vnoise(bctr / 150.0, salt + 6));
+    int sp = env.w > 1.5 ? 6 : env.w > 0.5 ? 5 : species(env, pick);
+    float v = hash(bc, bsg + 7);
+    vec3 n = normalize(vec3(bd, max(bz, 0.2 * br)));
+    float lit = clamp(dot(n, SUN3), 0.0, 1.0);
+    vec3 col = leaf(sp, v) * (0.55 + 0.65 * lit);
+    // Clumps of leaves.
+    col *= 0.86 + 0.28 * vnoise((pm + vec2(bc) * 13.7) / 1.3, salt + 8) * fine(1.3);
+    float cover = clamp((br - bdd) / m + 0.5, 0.0, 1.0);
+    // Its outline in ink (R14).
+    col = mix(col, col * 0.35, (1.0 - smoothstep(0.0, max(0.3, 1.3 * m), br - bdd)) * u_ink);
+    if (u_field_season == 3 && sp != 5) {
+        cover *= 0.75;
+    }
+    return Crown(col, cover, best.top, sp);
 }
 
 // The highest crown top near a point, for shadows.
 // `here` is the pixel where `dens` and `dgrad` were taken (R27): a tree's
 // density is extrapolated from there, so a crown and its shadow agree on
 // which trees stand.
-float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt) {
+// The search stops once the top is past `full` (R29): from there the shadow
+// it casts is at full strength, whatever stands higher.
+float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float rmin, float rmax, int salt,
+                float full) {
     float best = -1.0;
     float reach = crown_reach(rmin, rmax);
     for (int g = 0; g < 3; g++) {
@@ -595,8 +619,15 @@ float crown_top(vec2 pm, vec2 here, float cellm, float dens, vec2 dgrad, float r
                 }
                 float r = mix(rmin, rmax, hash(c, sg + 3)) * mix(1.25, 1.0, smoothstep(0.1, 0.5, keep));
                 float dd = length(pm - ctr);
-                if (dd < r && tree_clear(ctr * g_unit, r * g_unit)) {
-                    best = max(best, sqrt(r * r - dd * dd) + r * 0.9 + 2.0 * hash(c, sg + 4));
+                if (dd < r) {
+                    float t = sqrt(r * r - dd * dd) + r * 0.9 + 2.0 * hash(c, sg + 4);
+                    // Clearance only for a crown that would raise the top (R29).
+                    if (t > best && tree_clear(ctr * g_unit, r * g_unit)) {
+                        best = t;
+                        if (best >= full) {
+                            return best;
+                        }
+                    }
                 }
             }
         }
@@ -611,7 +642,10 @@ vec3 draw_crowns(vec3 c, vec2 pm, float cellm, float dens, vec2 dgrad, float rmi
     Crown cr = crowns_at(pm, cellm, dens, dgrad, rmin, rmax, salt, env);
     float own = max(cr.top, 0.0) * cr.cover;
     float sh = 0.4 * (rmin + rmax);
-    float lit = crown_top(pm + SUN * sh, pm, cellm, dens, dgrad, rmin, rmax, salt);
+    // A top this far above the pixel's own casts full shadow (the smoothstep
+    // below reaches 1 at 1.5; a little more for rounding).
+    float full = own + sh * 0.7 + 1.501;
+    float lit = crown_top(pm + SUN * sh, pm, cellm, dens, dgrad, rmin, rmax, salt, full);
     float shadow = smoothstep(0.0, 1.5, lit - own - sh * 0.7);
     c = mix(c, under, floorc);
     c *= 1.0 - 0.38 * shadow;
