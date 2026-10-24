@@ -1082,3 +1082,34 @@ Kind: release and view (designer's decision D178).
 - **Raised before any result:** the paired spacing and roads references come from an overshooting default.
 - **The browser's 92 ms a year:** `port_reach` and `cloth` (D136) each add about 12–13 ms natively (42 → 75 ms with both); the browser runs about 1.2 × native.
 Kind: design note for the designer (D180).
+
+## D183 — D182: sources stated; validate re-founded; S0 measured; (C) built (off); S1 missed, stopped
+- **Sources:**
+  - `settled_phi` 0.36 = 1.71 million (1086) over 4.75 million (1290, Broadberry et al. Table 18);
+  - Everitt's 760 English market towns over about 130,300 km² give a hexagonal spacing of 14.1 km;
+  - the band (±25%, Bracton's 10.7 km as the floor) is **10.7–17.6 km**.
+- **Validate:**
+  - spacing among market places is gated at 10.7–17.6 km;
+  - road persistence is reported;
+  - `PAIRED` is empty.
+- **S0** (15 runs):
+  - only births add people;
+  - 6% of farmable land is in use at the 1290s;
+  - the peak is 1348 in every run, still growing;
+  - the trigger falls at years 142–145;
+  - the 1290 density median is 3.58 a farmable km² (`settled_ref_density`).
+- **Built (off):** `settled_start` (spin-up in `Sim::new`, `State::renumber`), with `settled_phi`, `settled_ref_density` and `spinup_max_years`. Golden unchanged.
+- **S1** (9 runs a variant; endemic 0.007, the sourced calendar) **missed:**
+  - Hatcher 0.26–0.29;
+  - 1600 at 0.28–0.39 of the peak;
+  - the peak year 1315;
+  - 1340/1100 at 2.76–3.19.
+
+  Recovery 0.52–0.77% a year met its band. S2 is not run.
+- **Causes:**
+  - **(a)** the famine sheds 19% and settled growth does not regain it by 1348;
+  - **(b)** endemic's sourced part double-counts the sourced outbreaks (endemic 0 gives Hatcher 0.50–0.54);
+  - **(c)** births run at only a third of the cap, because need-led claims hold food ratios near 1.05–1.1 with 2–6% of land in use.
+- **Proposed:** births at a sourced rate when fed (a gate, not a ramp), endemic 0 with the sourced calendar, re-explored as S1b under pre-registration.
+- **Details:** `docs/demand/g1.md`.
+Kind: sources, validation rule, model mechanism held off, exploration (designer's decision D182).

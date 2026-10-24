@@ -86,6 +86,10 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         };
         let (ratio_g, r_max) = if let Some(r) = r_free {
             (ratio, r)
+        } else if p.settled_start {
+            // D182: after the spin-up, births follow the place's own food
+            // ratio at a settled rate (the spin-up runs without the switch).
+            (ratio, p.r_grow_pc)
         } else if p.growth_ceiling {
             s.ratio_avg = if s.ratio_avg > 0.0 {
                 s.ratio_avg + (ratio - s.ratio_avg) / 10.0

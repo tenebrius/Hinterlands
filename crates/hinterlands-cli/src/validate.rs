@@ -322,10 +322,13 @@ pub const CHECKS: &[Check] = &[
     },
     Check {
         name: "market spacing",
-        target: "8-15 km",
+        target: "10.7-17.6 km",
         // D174: among market places (W at least market_min), not places of
-        // more than 500 people; the old measure is reported.
-        ok: |r| (8.0..=15.0).contains(&r.market_spacing_km),
+        // more than 500 people; the old measure is reported. D182: against
+        // Everitt's 760 English market towns c. 1500-1640 over England's
+        // 130,300 km2, 171 km2 each, a hexagonal spacing of 14.1 km, ±25%,
+        // with Bracton's 6 2/3 miles (10.7 km) as the floor.
+        ok: |r| (10.7..=17.6).contains(&r.market_spacing_km),
     },
     Check {
         name: "siting",
@@ -446,14 +449,8 @@ pub const CHECKS: &[Check] = &[
         target: "<=10%",
         ok: |r| r.waste.is_nan() || r.waste <= 0.10,
     },
-    // v3 gate (D54; passes trivially with traffic roads off).
-    // D174: persistence, not length: the year-300 road cells still road at
-    // the end; new roads are allowed. Net length change is reported.
-    Check {
-        name: "road persistence",
-        target: ">=0.90 ±2",
-        ok: |r| r.road_persist.is_nan() || r.road_persist >= 0.90,
-    },
+    // D182: road persistence is reported, not gated (no source gives road
+    // churn per cell); see the reported rows.
 ];
 
 pub fn run_one(
@@ -1165,14 +1162,9 @@ const NO_WORSE: &[(u64, &str, usize)] = &[];
 /// D176: paired no-worse checks until a sourced band exists. On seeds 1-40 a
 /// map passes if its count is at least the accepted default's count on the
 /// same seeds minus 2. The counts are the default's (D161), read at D176.
-const PAIRED: &[(u64, &str, usize)] = &[
-    (1, "market spacing", 25),
-    (2, "market spacing", 35),
-    (3, "market spacing", 25),
-    (1, "road persistence", 23),
-    (2, "road persistence", 35),
-    (3, "road persistence", 17),
-];
+// D182: spacing is gated absolutely and roads are reported, so nothing is
+// paired; D176's references were spacing 25 / 35 / 25 and roads 23 / 35 / 17.
+const PAIRED: &[(u64, &str, usize)] = &[];
 
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
@@ -1451,6 +1443,18 @@ pub fn cmd_validate(args: &Args) {
                 canon.map_or(f32::NAN, |r| r.road_persist_cells),
                 med(rs.iter().map(|r| r.road_persist_cells).collect()),
                 "",
+                ""
+            );
+            let rp: Vec<f32> = rs.iter().map(|r| r.road_persist).collect();
+            let rp_ok = rp.iter().filter(|x| x.is_nan() || **x >= 0.90).count();
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
+                "road persistence",
+                "(rep. >=.90±2)",
+                canon.map_or(f32::NAN, |r| r.road_persist),
+                med(rp),
+                rp_ok,
+                rs.len(),
                 ""
             );
             let rc: Vec<f32> = rs.iter().map(|r| r.road_change).collect();

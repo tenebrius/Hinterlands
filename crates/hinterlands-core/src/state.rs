@@ -681,6 +681,31 @@ pub struct State {
     pub food_cache: FoodCache,
 }
 
+impl State {
+    /// Start the clock at the current year (D182): every stored year moves back
+    /// by the spin-up's length, the weather already used is dropped so that
+    /// 1100 gets fresh weather, and the founding cache is cleared.
+    pub fn renumber(&mut self, t: &Terrain, p: &crate::Params) {
+        let e = self.year;
+        let back = |y: &mut u32| *y = y.saturating_sub(e);
+        for s in &mut self.settlements {
+            back(&mut s.founded);
+            back(&mut s.last_fed);
+            back(&mut s.grass_logged);
+            back(&mut s.reach.refreshed);
+        }
+        back(&mut self.famine_until);
+        if !self.harvest_nodes.is_empty() {
+            let per_year = crate::systems::harvest::node_count(t, p);
+            let used = (e as usize * per_year).min(self.harvest_nodes.len());
+            self.harvest_nodes.drain(..used);
+        }
+        self.food_cache = FoodCache::default();
+        self.log.clear();
+        self.year = 0;
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct FoodCache {
     pub value: Vec<f32>,

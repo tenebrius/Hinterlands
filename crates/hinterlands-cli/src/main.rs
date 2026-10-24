@@ -480,6 +480,7 @@ fn main() {
         "spacetrace" => probe::cmd_spacetrace(&args),
         "wealth" => probe::cmd_wealth(&args),
         "landwork" => probe::cmd_landwork(&args),
+        "growthtrace" => probe::cmd_growthtrace(&args),
         "diag" => probe::cmd_diag(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),

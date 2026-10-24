@@ -2,7 +2,7 @@
 
 The implementer's working memory between sessions. It is the counterpart of `docs/designer-context.md`. Read it after `CLAUDE.md`, `docs/foundation.md` (the brief) and `docs/decisions.md` (departures). Update it when the state of the work changes, and rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24. D181: growth-rule note sent (settled start recommended; paired references to be settled first). No code before the designer decides.
+Last updated: 2026-10-25. D183: Everitt band 10.7-17.6 km gated, roads reported; (C) built off (`settled_start`); S1 missed (famine peak, double-counted endemic, births a third of the cap); S1b proposed. Waiting for the designer.
 
 ## Who and how
 - **This session is the implementer:** `session_014BA7MX2NmHLKnGyB3DXHv5`.

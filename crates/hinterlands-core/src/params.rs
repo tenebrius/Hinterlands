@@ -193,6 +193,10 @@ define_params! {
         free_land_region: bool = false, [0, 1], "Under free_land_growth, the free share is the region's farmable land never cleared, not each place's reach (D170 exploration)";
         growth_ceiling: bool = false, [0, 1], "Natural growth answers the food ratio over a ten-year average, at most r_grow_pc a year (D165, after Broadberry's sustained English rates)";
         r_grow_pc: f32 = 0.01, [0, 0.1], "Most natural growth a year under growth_ceiling: a named round upper bound above Broadberry's national rates (0.27-0.60%; D165)";
+        settled_start: bool = false, [0, 1], "Growth rule (C), D182: the fill from the first hamlets runs as a spin-up without events; the clock reads 1100 once the region holds settled_phi of its 1290 level; from then on births follow each place's own food ratio, at most r_grow_pc a year";
+        settled_phi: f32 = 0.36, [0, 1], "Domesday's share of the 1290 population: 1.71 million in 1086 against 4.75 million in 1290 (Broadberry et al. 2015; 2010 working paper Table 18 for 1290; D182)";
+        settled_ref_density: f32 = 3.58, [0.1, 100], "The region's 1290 level, people per km2 of farmable land: a named calibration, the median of the default's 1290 population over S0's 15 runs (3.43-3.89; D182); it fixes the start only";
+        spinup_max_years: u32 = 400, [0, 2000], "Longest spin-up before 1100 under settled_start, in years (a guard; the trigger came at 142-145 years in S0)";
         food_cap: f32 = 1.2, [1, 2], "Food ratio above which surplus adds no natural growth";
         epsilon: f32 = 0.13734761, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
         k_maint: f32 = 1.3, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";

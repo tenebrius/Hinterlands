@@ -2007,3 +2007,116 @@ pub fn cmd_landwork(args: &Args) {
         }
     }
 }
+
+/// S0 of the growth rule (D182): the default's change in people by decade,
+/// split into births, shedding, events (plague, endemic), founding and
+/// failure, with the share of farmable land in use; then the year the
+/// region first reaches `phi` of its 1290 level (year 190).
+pub fn cmd_growthtrace(args: &Args) {
+    use hinterlands_core::systems;
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let phi: f32 = args.str("phi").and_then(|x| x.parse().ok()).unwrap_or(0.36);
+    let p = sim.params.clone();
+    let t = sim.terrain.clone();
+    let farmable = (0..t.n())
+        .filter(|&c| t.is_land(c) && t.food_yield[c] >= p.min_field_yield)
+        .count()
+        .max(1) as f32;
+    let total = |st: &hinterlands_core::State| -> f32 { st.settlements.iter().map(|s| s.pop).sum() };
+    let mut pops = vec![total(&sim.state)];
+    println!("growthtrace map seed decade pop births shed events founding failure land_in_use");
+    let mut acc = [0f32; 5];
+    while sim.state.year < 500 {
+        let st = &mut sim.state;
+        let rng = &mut sim.rng;
+        st.log.clear();
+        st.money = Default::default();
+        let p0 = total(st);
+        systems::events::run(st, &t, &p, rng);
+        let events = std::mem::take(&mut st.events);
+        for e in &events {
+            e.apply(st, &t, &p);
+        }
+        hinterlands_core::reach::refresh_due(st, &t, &p);
+        systems::harvest::run(st, &t, &p, rng);
+        systems::cultivation::run(st, &t, &p, rng);
+        systems::pasture::run(st, &t, &p, rng);
+        systems::production::run(st, &t, &p, rng);
+        systems::trade::run(st, &t, &p, rng);
+        systems::market::run(st, &t, &p, rng);
+        systems::wealth::run(st, &t, &p, rng);
+        let p2 = total(st);
+        let before: Vec<f32> = st.settlements.iter().map(|s| s.pop).collect();
+        systems::growth::run(st, &t, &p, rng);
+        // Births as growth writes them (no ceiling, no free-land rule).
+        let births: f32 = st
+            .settlements
+            .iter()
+            .zip(&before)
+            .map(|(s, &b)| {
+                let c = s.food_ratio.min(p.food_cap);
+                let r = if p.settled_start { p.r_grow_pc } else { p.r_grow };
+                if c > 1.0 {
+                    r * (c - 1.0) / (p.food_cap - 1.0).max(1e-6) * b
+                } else {
+                    0.0
+                }
+            })
+            .sum();
+        let p3 = total(st);
+        systems::founding::run(st, &t, &p, rng);
+        let p4 = total(st);
+        systems::failure::run(st, &t, &p, rng);
+        let p5 = total(st);
+        systems::roads::run(st, &t, &p, rng);
+        hinterlands_core::footprint::update(st, &t, &p);
+        st.year += 1;
+        acc[0] += births;
+        acc[1] += births - (p3 - p2);
+        acc[2] += p0 - p2;
+        acc[3] += p4 - p3;
+        acc[4] += p5 - p4;
+        pops.push(p5);
+        if st.year % 10 == 0 {
+            let fields: usize = st.settlements.iter().map(|s| s.fields.len()).sum();
+            println!(
+                "growthtrace {map} {seed} {} {:.0} {:.0} {:.0} {:.0} {:.0} {:.0} {:.3}",
+                1100 + st.year - 10,
+                p5,
+                acc[0],
+                acc[1],
+                acc[2],
+                acc[3],
+                acc[4],
+                fields as f32 / farmable
+            );
+            acc = [0.0; 5];
+        }
+    }
+    // The pre-registered S1 numbers (D182): 1340/1100, the peak year,
+    // Hatcher (1450/1340), recovery 1480-1590 a year, 1600 against the peak.
+    let peak_s1 = (0..=260).max_by(|&a, &b| pops[a].total_cmp(&pops[b])).unwrap();
+    println!(
+        "growths1 {map} {seed} p1100 {:.0} r1340_1100 {:.2} peak_year {} hatcher {:.3} recovery {:.4} end_vs_peak {:.3}",
+        pops[0],
+        pops[240] / pops[0].max(1.0),
+        1100 + peak_s1,
+        pops[350] / pops[240].max(1.0),
+        (pops[490] / pops[380].max(1.0)).ln() / 110.0,
+        pops[500] / pops[peak_s1].max(1.0)
+    );
+    let target = phi * pops[190];
+    let trig = pops.iter().position(|&x| x >= target).unwrap_or(usize::MAX);
+    let peak = (0..=260).max_by(|&a, &b| pops[a].total_cmp(&pops[b])).unwrap();
+    println!(
+        "growthtrigger {map} {seed} farmable_km2 {:.0} pop1290 {:.0} target {:.0} year {} peak_year {} peak {:.0}",
+        farmable * t.grid.cell_km * t.grid.cell_km,
+        pops[190],
+        target,
+        trig,
+        1100 + peak,
+        pops[peak]
+    );
+}

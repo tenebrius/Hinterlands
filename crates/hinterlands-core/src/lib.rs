@@ -64,6 +64,30 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     state.year += 1;
 }
 
+/// Growth rule (C), D182: run the fill from the first hamlets with today's rule
+/// and no events until the region holds `settled_phi` of its 1290 level
+/// (`settled_ref_density` per km2 of farmable land), then start the clock: the
+/// state is renumbered so that year 0 is 1100.
+pub fn spin_up(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
+    let mut q = p.clone();
+    q.settled_start = false;
+    q.events_mode = 0;
+    let km2 = t.grid.cell_km * t.grid.cell_km;
+    let farmable = (0..t.n())
+        .filter(|&c| t.is_land(c) && t.food_yield[c] >= p.min_field_yield)
+        .count() as f32
+        * km2;
+    let target = p.settled_phi * p.settled_ref_density * farmable;
+    while state.year < p.spinup_max_years {
+        let pop: f32 = state.settlements.iter().map(|s| s.pop).sum();
+        if pop >= target {
+            break;
+        }
+        step_year(state, t, &q, rng);
+    }
+    state.renumber(t, p);
+}
+
 /// The simulation and everything needed to advance it: the only door the viewer
 /// and the CLI use.
 #[derive(Clone)]
@@ -84,6 +108,9 @@ impl Sim {
         let mut rng = rng_from_seed(sim_seed);
         // The weather is drawn first, so a seed keeps it whatever else draws (D75).
         systems::harvest::init(&mut state, &terrain, &params, &mut rng);
+        if params.settled_start {
+            spin_up(&mut state, &terrain, &params, &mut rng);
+        }
         Self {
             terrain,
             terrain_hash,

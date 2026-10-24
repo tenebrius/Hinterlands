@@ -26,7 +26,7 @@ fn step_km(t: &Terrain, p: &Params) -> f32 {
 }
 
 /// Node values for one year.
-fn node_count(t: &Terrain, p: &Params) -> usize {
+pub fn node_count(t: &Terrain, p: &Params) -> usize {
     let s = step_km(t, p);
     nodes(t.grid.w, t.grid.cell_km, s) * nodes(t.grid.h, t.grid.cell_km, s)
 }
