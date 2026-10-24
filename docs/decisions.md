@@ -892,3 +892,23 @@ Kind: rendering (frontend merge).
 - **Implementer's reading:** the milled wool deducted from cloth is valued at the port wool price, the price at which the clip is counted.
 - **Details:** `docs/demand/d2h.md`.
 Kind: validation measure and model default (designer's decisions D141, D142).
+
+## D146 — D145 putting-out built: gate failed on rank-size (map 1), stopped
+- **Built per D145, behind `putting_out` (off):**
+  - each mill's cloth capacity is a stock, growing with its value added at W's ε, with κ_c = 1.64 d a lb (median of 9 runs, 1350–59);
+  - it is bounded at s = 25 lb a farm adult in reach;
+  - (1 − f) = 0.7 of the making cost is paid to those farm purses.
+- **The gate on 40 seeds failed:** rank-size slope on map 1, 9/40 (median −0.756; D144 37/40).
+  - Every other gated check is 30/40 or better.
+  - Map 3's spacing is 30/40, as D144.
+  - Runs passing every check: 6 / 17 / 17.
+- **Pre-registered:**
+  - the cloth share is 1.00 from 1400 (0.89 in 1390): missed in both windows and in the 0.95 ceiling. The wool supply binds, raw wool exports stop and home wool falls below need;
+  - capacity / W is flat at about 15–17 over 1420–1500: missed;
+  - map 3's spacing no worse: met.
+- **Readings:**
+  - κ_c is set on value added, because π net of the making cost is about 0 at the start;
+  - labour is split by capacity × exp(−β c), which puts the mills' own farmers first, so the top gainers are mill towns on good land, not pastoral districts;
+  - f = 0.3 is the designer's calibration (the Medici costing gives 0.23–0.35).
+- **Not made the default.** The golden stays `fc16de69c1855b30`. Details: `docs/demand/d2i.md`.
+Kind: model mechanism, held off (designer's decision D145).
