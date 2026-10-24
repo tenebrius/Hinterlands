@@ -2263,6 +2263,36 @@ The effects are small, but they are real, and they go the wrong way.
 
 Divish asks to pause at the next opportunity. The implementer finishes the step in hand (S0 or the Everitt band, whichever is running), commits and pushes it, reports it, and stops. Nothing new starts. On resuming, D182's plan continues from where it stopped.
 
+### S0 and S1 recorded; paused (D185)
+
+The pause reached the implementer after S1 had finished (D184, `docs/demand/g1.md`). Recorded as found; nothing is decided while paused.
+
+**The sources are in hand:**
+- the start ratio φ = 1.71 / 4.75 = 0.36 (Broadberry et al.);
+- Everitt's 760 market towns over about 130,300 km² give a hexagonal spacing of 14.1 km;
+- **the spacing band is 10.7–17.6 km** (±25%, with Bracton's floor);
+- roads are reported. The default has not yet been read under the new band.
+
+**S0:**
+- only births add people;
+- 6% of farmable land is in use in the 1290s;
+- the peak falls in 1348, with the population still growing;
+- the trigger comes at year 142–145.
+
+**S1 missed** (endemic 0.007, the sourced calendar, (C) on):
+- Hatcher 0.26–0.29;
+- 1600 at 0.28–0.39 of the peak;
+- the peak year 1315;
+- 1340/1100 at 2.76–3.19;
+- recovery at 0.52–0.77%, which met its band.
+
+**The causes, as the implementer reads them:**
+- the famine sheds 19%, and settled growth cannot regain it before 1348;
+- **endemic's "sourced part" counts the sourced outbreaks twice.** The monks' crude death rate already includes the crisis years, so its excess over a normal rate is not mortality between outbreaks. With endemic at 0, Hatcher is 0.50–0.54, inside the band. This is my D170 reading, and it is recorded as a likely error, to be confirmed on resuming;
+- births run at only about a third of the cap, because claims made to need hold food ratios near 1.05–1.1.
+
+**First on resuming:** decide the implementer's S1b. Births at a sourced settled rate whenever a place is fed (a gate, not a ramp; Broadberry 0.50–0.60%), endemic at 0 with the sourced calendar, and the same five pre-registered bands.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
