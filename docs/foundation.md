@@ -1665,6 +1665,42 @@ If the merge changes the golden, the cause is found and reported before anything
 2. **The later cloth price** (`cloth_price_late`), gated on 40 seeds.
 3. **The putting-out design note,** to the designer before any code.
 
+### D142 done (fad4223); the putting-out note decided (D145)
+
+**Accepted.**
+- **The graphics merge** (D143) leaves the golden, the tests and validate unchanged.
+- **Exports over output, with cloth by value added:** 0.067–0.079.
+- **The later cloth price** passes its gate and is the default. The golden is `fc16de69c1855b30`.
+  - Runs passing every check: 22 / 35 / 20.
+  - Exports over output: 0.084–0.094.
+  - The cloth share reaches the record's level about 40 years late (0.58 in 1540), as pre-registered.
+  - **Watch:** market spacing on map 3 is at the floor, 30/40.
+
+**The putting-out note (`docs/proposals/putting-out.md`), decided:**
+1. **Capacity becomes a stock that grows with its margin** (the note's mechanism), not the static rural term. The record's rise came while population was flat, so it must answer returns, and the variant cannot.
+2. **ε_c is W's own ε, unfitted. κ_c is calibrated at the start only:** capacity in 1350–59 equal to today's 2.5 lb × W. As in D130 and D132, the calibration fixes the start and the path is the test.
+3. **The by-employment bound s** is kept as a ceiling at the low end of the bracket, 25 lb a rural adult a year, named as a calibration. It is replaced by a medieval figure if Oldland or Munro gives one. The report says whether, where and when it binds.
+4. **The finishing share f** comes from Munro's costings: dyeing and dressing were 18–19% of total cost at Ypres. Fulling and finishing are kept in the mill town at their share of the making cost, with the rest (spinning and weaving) paid to the farm purses in reach. If the split cannot be read from Munro, use f = 0.3 as a calibration.
+5. **Order: now.** The later price is settled and is the default, so the new mechanism is read against D144.
+6. **The pace is set by ε_c and κ_c,** unfitted.
+   - **The check on it:** cloth exports per decade, 1420–1500, against the customs record (Carus-Wilson & Coleman). Source the decadal growth before the run, and report it beside the model's. It is a check, not a target.
+   - **A risk named in advance:** if the bound never binds and the margin stays high, capacity could run until the wool supply binds, which would bring back an all-or-nothing share.
+
+**Gate:** 40 seeds, every gated check, with `putting_out` on. If it fails, stop and report per check, with spacing on map 3 beside D144.
+
+**Pre-registered, reported only.** Each names its mechanism and what it leaves free (rule 12).
+- **The cloth share** is 0.35–0.65 in 1440–60 and 0.55–0.85 in 1490–1510. This rests on capacity answering the margin. The ±0.15 is around the record.
+- **The cloth share stays below 0.95 in every decade.** This rests on capacity growing at W's speed, not instantly.
+- **Capacity over mill-town W rises across 1420–1500.** This rests on the stock being decoupled from W.
+- **Market spacing on map 3 is no worse than D144's 30/40.** The making cost moves coin to the hinterland, which is the named risk to spacing.
+
+**Reported:**
+- cloth exports per decade against the record;
+- where and when s binds;
+- the farm purses gaining most, and their land;
+- coin by channel;
+- the urban share.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
