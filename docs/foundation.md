@@ -2259,6 +2259,10 @@ The effects are small, but they are real, and they go the wrong way.
 
 **Performance:** port reach and cloth cost about 12–13 ms each natively. Reported, and accepted (D91).
 
+### Pause (owner, 25 October 2026; D183)
+
+Divish asks to pause at the next opportunity. The implementer finishes the step in hand (S0 or the Everitt band, whichever is running), commits and pushes it, reports it, and stops. Nothing new starts. On resuming, D182's plan continues from where it stopped.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
