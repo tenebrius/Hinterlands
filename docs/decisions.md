@@ -951,3 +951,17 @@ Kind: model mechanism, held off (designer's decision D150).
 - **Working rule (owner, 24 October):** when a designer's instruction looks likely to fail, the implementer reports its reasons to the designer before the run, after writing the code if need be, and runs only when told to.
 - **Not made the default.** Details: `docs/demand/d2l.md`.
 Kind: model data, held off (designer's decision D152).
+
+## D157 — D156: Clark's wool series alone; gate failed on map 3's market spacing, stopped
+- **Built:** `wool_series` alone (D152; off).
+- **The gate on 40 seeds failed on one check:** map 3's market spacing, 25/40 (median 14.1 km, too wide; D144 30/40, at the floor).
+  - Every other check is 30/40 or better.
+  - Rank-size is 40/40 on every map.
+  - Runs passing every check: 24 / 33 / 15.
+- **Pre-registered:**
+  - map 1's rank-size: met;
+  - raw wool every decade: met;
+  - the cloth share after 1500 within 0.05 of D144's: missed in 1540–60 (0.48–0.52 against 0.58–0.59).
+- **Reading (not traced):** cheaper wool after 1450 thins the outer districts' places over 500.
+- **Not made the default.** Details: `docs/demand/d2m.md`. The D3 note is `docs/proposals/wealth.md`.
+Kind: model data, held off (designer's decision D156).
