@@ -1,5 +1,6 @@
 //! Growth (D15): rural natural increase from the food ratio, at most `r_grow` a
-//! year, plus the Rihll–Wilson term `epsilon * (D_j - K * W_j)` (Rihll & Wilson
+//! year (with `growth_ceiling`, D165: from its ten-year average, at most
+//! `r_grow_pc`), plus the Rihll–Wilson term `epsilon * (D_j - K * W_j)` (Rihll & Wilson
 //! 1987; Harris & Wilson 1978) on the non-farming population `W_j`, where the
 //! inflow `D_j` is net food imports plus `through_weight` times non-food trade
 //! received and trade passing through. A positive term is met by migrants drawn
@@ -17,7 +18,7 @@
 //! through-traffic weight.
 //! For `resettle_years` after a plague, people leave places on poorer land than
 //! their partners' for the partner with the most vacant land per head (D61).
-//! Writes: pop, food_ratio, last_fed, low_years, smoothed_loss, history, market;
+//! Writes: pop, food_ratio, ratio_avg, last_fed, low_years, smoothed_loss, history, market;
 //! under v2 also avg_goods_in, avg_inflow, kind and the log entry for it.
 
 use crate::params::Params;
@@ -44,9 +45,21 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         }
         // Natural term: r_grow at a full surplus, zero when exactly fed, and a
         // shortfall loss spread over `loss_years`.
-        let capped = ratio.min(p.food_cap);
+        // D165: under `growth_ceiling` births answer the food ratio over ten
+        // years, and natural growth is at most `r_grow_pc` a year.
+        let (ratio_g, r_max) = if p.growth_ceiling {
+            s.ratio_avg = if s.ratio_avg > 0.0 {
+                s.ratio_avg + (ratio - s.ratio_avg) / 10.0
+            } else {
+                ratio
+            };
+            (s.ratio_avg, p.r_grow_pc)
+        } else {
+            (ratio, p.r_grow)
+        };
+        let capped = ratio_g.min(p.food_cap);
         let gain = if capped > 1.0 {
-            p.r_grow * (capped - 1.0) / (p.food_cap - 1.0).max(1e-6)
+            r_max * (capped - 1.0) / (p.food_cap - 1.0).max(1e-6)
         } else {
             0.0
         };

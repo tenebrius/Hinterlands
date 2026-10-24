@@ -331,6 +331,9 @@ pub struct Settlement {
     /// The stocks' multiplier from income per head (D3): (y / y0)^e.
     #[serde(default = "one")]
     pub wealth_mult: f32,
+    /// The food ratio, a ten-year average (D165), written by growth.
+    #[serde(default)]
+    pub ratio_avg: f32,
     /// Arable land, km² (D1: plough iron), written by cultivation.
     #[serde(default)]
     pub arable_km2: f32,
@@ -405,6 +408,7 @@ impl Settlement {
             grain_earned: 0.0,
             wealth_y: 0.0,
             wealth_mult: 1.0,
+            ratio_avg: 0.0,
             arable_km2: 0.0,
             works: 0,
             w_last: 0.0,

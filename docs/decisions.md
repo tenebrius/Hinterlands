@@ -1003,3 +1003,15 @@ Kind: model data and default (designer's decision D160).
 - **(b), the preventive check, is sketched** in `docs/proposals/preventive-check.md`.
 - **Details:** `docs/demand/d3b.md`.
 Kind: model mechanism, held off, and design sketch (designer's decision D162).
+
+## D166 — D165: the growth ceiling built (off); exploration shows the region never fills; no gate
+- **Built:** `growth_ceiling` (off): births answer the ten-year food ratio, at most `r_grow_pc` 1%, in all eras.
+- **Exploration (9 runs, not a gate):**
+  - the 1340 peak falls from 62k to 4.9k people;
+  - Hatcher 0.22 (band 0.33–0.50);
+  - 1600 is 0.61 × the peak, on a region of 5k.
+- **The gate was not run,** by the owner's rule: it would fail on every map.
+- **Reading:** the region fills from hamlets at about 1.5% a year (frontier colonisation), which a national 1% ceiling forbids. The endemic mortality tuned against 2.7% growth then outruns births.
+- **Options sent:** a land-dependent ceiling; a settled start; or the trough first (recommended).
+- **Details:** `docs/demand/d3c.md`.
+Kind: model mechanism, held off (designer's decision D165).

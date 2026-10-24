@@ -189,6 +189,8 @@ define_params! {
         growth_enabled: bool = true, [0, 1], "Run the growth system";
         r_grow: f32 = 0.027, [0, 0.1], "Yearly natural growth at a full food surplus";
         r_shrink: f32 = 0.02, [0, 0.2], "Yearly decline per unit of food shortfall";
+        growth_ceiling: bool = false, [0, 1], "Natural growth answers the food ratio over a ten-year average, at most r_grow_pc a year (D165, after Broadberry's sustained English rates)";
+        r_grow_pc: f32 = 0.01, [0, 0.1], "Most natural growth a year under growth_ceiling: a named round upper bound above Broadberry's national rates (0.27-0.60%; D165)";
         food_cap: f32 = 1.2, [1, 2], "Food ratio above which surplus adds no natural growth";
         epsilon: f32 = 0.13734761, [0, 0.5], "Response rate of size to inflow (Rihll-Wilson)";
         k_maint: f32 = 1.3, [0.2, 3], "Inflow needed per person to hold size (Rihll-Wilson K)";

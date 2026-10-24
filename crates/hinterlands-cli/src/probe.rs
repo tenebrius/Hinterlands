@@ -1993,7 +1993,7 @@ pub fn cmd_landwork(args: &Args) {
             acc[4] += (fullp / pop.max(1.0)) as f64 / 10.0;
             acc[5] += (past as f32 / (past + fields).max(1) as f32) as f64 / 10.0;
         }
-        if y0 >= 200 {
+        if y0 >= args.u64("from", 200) as u32 {
             println!(
                 "landwork {map} {seed} {} {:.0} {:.3} {:.3} {:.3} {:.3} {:.3}",
                 1100 + y0,
