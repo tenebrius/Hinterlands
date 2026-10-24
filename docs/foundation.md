@@ -2137,6 +2137,31 @@ Both were set when 1600 stood at 1.3–1.46 times the peak. Each revision below 
 1. **Re-read the default (D161's model) under both new measures on 40 seeds,** and report against the old ones. If the default fails a new measure, stop and report: the measure, not the model, is then in question.
 2. **Re-gate `plague_sourced`** (endemic 0.015, the stability fix) under the new measures. If it passes, it becomes the default. Map 1's recovery stays the known miss, gated at 0.75–1.15.
 
+### The new measures fail the default; they become paired no-worse checks until sourced bands exist (D176)
+
+**The safeguard worked.** D174 said to re-read the default first and stop if it failed a new measure, and it did:
+- **Road persistence** at year 300 → 500 is 0.56–0.59, and 0.78–0.80 within one cell. Net length moves only 3–6%, but by v3(b)'s own design the network keeps its size while moving: paths move with traffic, and unused cells decay. A cell-level 0.90 is unreachable with these roads, and I set it without asking what the model's roads do. That is an error of mine, rule 4 again: check a filter against what it admits before trusting it.
+- **Spacing among market places** fails map 1 on the default (median 16.1 km), because fewer places reach W ≥ 100 than reach 500 people.
+- **The recovery band (D168) fails the default** (1.15–1.29). It was re-founded for the calendar's gate without a re-read, so `just validate` has been red on the default since D168. That decision was mine.
+
+**Decided:**
+1. **Neither new measure has a sourced band at the model's scale yet.** Bracton's and Everitt's distances are for markets, not for this model's W threshold. No source gives medieval road churn per kilometre cell. So until a band is sourced, both are **paired no-worse checks against the accepted default.**
+   - The candidate runs on the same seeds as the default.
+   - It passes if its count is at least the default's minus 4 out of 80 (D160's margin), or minus 2 out of 40.
+   - Absolute values are reported against Bracton and Everitt (spacing) and against v3's 0.42 abandoned (roads).
+   - Road persistence is measured on routes with a tolerance of ±2 cells, which is (a) in its simple form. The full segment graph waits for a source that justifies it.
+2. **The old spacing (over 500) and net road length** are reported, not gated. As the trace showed, they measured density and recovery, not markets and churn.
+3. **The recovery band of 0.75–1.15 stays.** The default's overshoot of 1.2–1.3 is the known miss, and the sourced calendar brings it to about 1.03.
+   - `just validate` stays red on the default until the calendar is adopted.
+   - No milestone is recorded meanwhile, per the hard rule.
+   - If the calendar's gate fails, the band is the first thing I revisit, before anything else is built.
+4. **Gate `plague_sourced`** (endemic 0.015, the stability fix) on 40 seeds:
+   - the paired default runs on the same seeds;
+   - spacing and roads are judged no-worse;
+   - every other check as before, with recovery at 0.75–1.15.
+
+   If it passes, it becomes the default, `just validate` is green again, and a milestone is recorded.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
