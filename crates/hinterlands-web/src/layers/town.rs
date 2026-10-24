@@ -2668,15 +2668,9 @@ fn intersect(p1: Vec2, p2: Vec2, q1: Vec2, q2: Vec2) -> Option<Vec2> {
 
 /// The shapes as textures: the shapes, five texels each (the last three a
 /// market place's six corners from its centre, R22); per map cell, where its
-/// squares start in the square table (-1 if it has none); per square, where
-/// its sub-squares' lists start in the index and how many shapes it lists,
-/// how much of it is built over, and whether it is town land; the index.
-///
-/// Each square is cut into `FINE` x `FINE` sub-squares (R30). In the index, a
-/// square's entry starts with a (start, count) pair per sub-square, row by
-/// row, then their lists. A sub-square lists, in the square's order, only
-/// the shapes of its square that can change a pixel in it (`matters`), so
-/// the shader scans fewer and draws the same.
+/// squares start in the square table (-1 if it has none); per square, its
+/// entries in the index list, how much of it is built over, and whether it is
+/// town land; the index.
 pub struct ShapeData {
     pub shp: Vec<f32>,
     pub shp_size: (i32, i32),
@@ -2693,81 +2687,12 @@ pub struct ShapeData {
 const ROW: usize = super::ways::ROW;
 /// Squares of about this many metres index the shapes.
 const SQUARE_M: f32 = 62.5;
-/// Sub-squares per square along a side (R30), as in `town.frag`.
-const FINE: i32 = 4;
 
-/// The shortest distance from a point to a box.
-fn box_dist(p: Vec2, lo: Vec2, hi: Vec2) -> f32 {
-    (lo - p).max(p - hi).max(Vec2::ZERO).length()
-}
-
-/// The longest distance from a point to a box (at one of its corners).
-fn box_far(p: Vec2, lo: Vec2, hi: Vec2) -> f32 {
-    (p - lo).abs().max((hi - p).abs()).length()
-}
-
-/// Which shapes of a square can change a pixel in its sub-square `lo..hi`
-/// (metres, with slack for rounding), keeping their order (R30). A shape
-/// can only change a pixel through what `town_scan` and `town_sd_at` take
-/// from it:
-/// - its cover, roof or shadow: within half a pixel (pixels are under 15 m
-///   when towns are drawn) of the shape, or of it moved by its shadow;
-/// - the distance to the nearest building or open ground, which the shader
-///   only compares with distances under `far` (trees' clearance and the
-///   woodland floor);
-/// - the nearest ground shape and the rank taken from it, which follow
-///   every shape that becomes the nearest so far, in list order: a ground
-///   shape that is no nearer anywhere in the sub-square than one before it
-///   always is, never does.
-///
-/// Market places are always kept (their outline's distance is not bounded
-/// here). Greens and round towers use the shader's ellipse distance, which
-/// can run under the true distance, so they are bounded from their centre.
-fn matters(shapes: &[Shape], list: &[u32], lo: Vec2, hi: Vec2, far: f32) -> Vec<u32> {
-    let mut out = Vec::new();
-    // The farthest the nearest ground shape so far can be, anywhere in the
-    // sub-square.
-    let mut nearest = f32::INFINITY;
-    for &i in list {
-        let s = &shapes[i as usize];
-        let ground = s.kind < BUILDING && s.kind != DITCH;
-        let plotlike = s.kind == PLOT || s.kind == COURT;
-        // Half a 15 m pixel, the shadow's offset (0.6 of the height, in the
-        // whole metres the shader reads) and a metre's slack.
-        let shift = 0.6 * (s.height.round() + 1.0);
-        let k = if plotlike { 8.5 } else { 8.5f32.max(far) };
-        // The least the shader's distance can be anywhere in the sub-square.
-        let least = if s.kind == GREEN || s.kind == WALL_TOWER {
-            let (mx, mn) = (s.h.x.max(s.h.y), s.h.x.min(s.h.y).max(1e-3));
-            (box_dist(s.c, lo, hi) / mx - 1.0) * mn
-        } else {
-            let (blo, bhi) = s.bounds();
-            (blo - hi).max(lo - bhi).max(Vec2::ZERO).length()
-        };
-        // A shadow lies `shift` from its shape, which moves the shader's
-        // distance (the ellipse's too) by no more than `shift`.
-        let keep = s.q.is_some() || least < k + shift || (ground && least <= nearest + 0.5);
-        if ground {
-            nearest = nearest.min(box_far(s.c, lo, hi) + 0.01);
-        }
-        if keep {
-            out.push(i);
-        }
-    }
-    out
-}
-
-pub fn layout(t: &Terrain, shapes: &[Shape], z: f32, trees: f32) -> ShapeData {
+pub fn layout(t: &Terrain, shapes: &[Shape], z: f32) -> ShapeData {
     let g = t.grid;
     let cell_m = g.cell_km * 1000.0;
     let sub = (cell_m / SQUARE_M).round().max(1.0) as i32;
     let sq_m = cell_m / sub as f32;
-    let fine_m = sq_m / FINE as f32;
-    // The longest distance the shader compares with the distance to the
-    // nearest building or open ground: the woodland floor's 20 m, the trees'
-    // clearance shortcut's 14 m (times the building scale) and the largest
-    // crown and its clearance, 13 m (times the tree scale), and slack.
-    let far = (20.0 * trees).max(14.0 * z).max(13.0 * trees) + 0.5;
     let mut lists: BTreeMap<(i32, i32), Vec<u32>> = BTreeMap::new();
     let mut cover: BTreeMap<(i32, i32), f32> = BTreeMap::new();
     let (wmax, hmax) = (g.w as i32 * sub, g.h as i32 * sub);
@@ -2854,26 +2779,8 @@ pub fn layout(t: &Terrain, shapes: &[Shape], z: f32, trees: f32) -> ShapeData {
                 let cov = cover.get(&key).copied().unwrap_or(0.0).min(1.0);
                 let town = land.get(&key).copied().unwrap_or(0.0);
                 sq.extend_from_slice(&[idx.len() as f32, list.len() as f32, cov, town]);
-                if list.is_empty() {
-                    continue;
-                }
-                let head = idx.len();
-                idx.resize(head + 2 * (FINE * FINE) as usize, 0.0);
-                for fy in 0..FINE {
-                    for fx in 0..FINE {
-                        let lo = Vec2::new(
-                            key.0 as f32 * sq_m + fx as f32 * fine_m,
-                            key.1 as f32 * sq_m + fy as f32 * fine_m,
-                        ) - Vec2::splat(0.5);
-                        let hi = lo + Vec2::splat(fine_m + 1.0);
-                        let kept = matters(shapes, list, lo, hi, far);
-                        let f = head + 2 * (fy * FINE + fx) as usize;
-                        idx[f] = idx.len() as f32;
-                        idx[f + 1] = kept.len() as f32;
-                        idx.extend(kept.iter().map(|&i| i as f32));
-                        most = most.max(kept.len());
-                    }
-                }
+                idx.extend(list.iter().map(|&i| i as f32));
+                most = most.max(list.len());
             }
         }
     }

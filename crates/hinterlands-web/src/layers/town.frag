@@ -63,24 +63,6 @@ struct Town {
     float bnear;
 };
 
-// The shapes listed for pm's sub-square (R30): `FINE` x `FINE` to a square,
-// as in town.rs. A square's entry in the index starts with a (start,
-// count) pair per sub-square; `sq` is its texel in the square table.
-const int FINE = 4;
-void shape_list(vec2 pm, vec4 sq, out int start, out int n) {
-    start = 0;
-    n = 0;
-    if (sq.g < 0.5) {
-        return;
-    }
-    vec2 q = pm / u_cell_m * u_ssub;
-    ivec2 f = clamp(ivec2(floor((q - floor(q)) * float(FINE))), ivec2(0), ivec2(FINE - 1));
-    int j = int(sq.r) + 2 * (f.y * FINE + f.x);
-    start = int(way_texel(u_sidx, j >> 2)[j & 3]);
-    j += 1;
-    n = min(int(way_texel(u_sidx, j >> 2)[j & 3]), SHAPE_MAX);
-}
-
 // Metres from pm to the nearest building, wall or open ground (not plots)
 // listed for its square (R27).
 float town_sd_at(vec2 pm) {
@@ -90,9 +72,8 @@ float town_sd_at(vec2 pm) {
         return 1e9;
     }
     vec4 sq = way_texel(u_ssq, e);
-    int start;
-    int n;
-    shape_list(pm, sq, start, n);
+    int start = int(sq.r);
+    int n = min(int(sq.g), SHAPE_MAX);
     float best = 1e9;
     for (int k = 0; k < SHAPE_MAX; k++) {
         if (k >= n) {
@@ -126,9 +107,8 @@ Town town_scan(vec2 pm) {
         return T;
     }
     vec4 sq = way_texel(u_ssq, e);
-    int start;
-    int n;
-    shape_list(pm, sq, start, n);
+    int start = int(sq.r);
+    int n = min(int(sq.g), SHAPE_MAX);
     float m = mpx();
     float nearest = 1e9;
     for (int k = 0; k < SHAPE_MAX; k++) {
