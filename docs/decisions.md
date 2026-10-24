@@ -940,3 +940,14 @@ Kind: exploration and design note (designer's decision D148).
 - **Reading:** to 1480 the grades keep good wool raw. From 1490 Munro's later cloth price lifts the single cloth netback (about 6 d a lb) above good wool's price (about 3.3 d), and every grade goes to cloth.
 - **Not made the default.** The golden stays `fc16de69c1855b30`. Details: `docs/demand/d2k.md`.
 Kind: model mechanism, held off (designer's decision D150).
+
+## D153 — D152: Clark's wool series built (off); the gate held back after a 9-run exploration
+- **Built:** `wool_series`, the port's wool price following Clark's wool against wheat by decade for the whole run (1290–1309 = 1). Both price series are in the code.
+- **The series falls after 1450:** 0.54–0.62 in 1450–90, and 0.35–0.50 in 1500–90, against the 0.75 the model held. Munro's deflated cloth rises over the same years.
+- **The gate was stopped after a few minutes, by the owner's working rule.** A 9-run exploration (not a gate) was run instead, with grades, putting-out and the series together:
+  - the cloth share is 0.49–0.60 to 1470, 0.90 in 1480, 0.99 in 1490 and 1.00 from 1500;
+  - good wool leaves raw while its price (3.4–4.2 d) is above cloth's netback (3.0 d), to the 1440s;
+  - coin in 1600 is 2.5 × D144's.
+- **Working rule (owner, 24 October):** when a designer's instruction looks likely to fail, the implementer reports its reasons to the designer before the run, after writing the code if need be, and runs only when told to.
+- **Not made the default.** Details: `docs/demand/d2l.md`.
+Kind: model data, held off (designer's decision D152).
