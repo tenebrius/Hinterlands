@@ -166,6 +166,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D164:**
+  - Land rule set aside: the model's farmers already work about 5 acres in 1300, because of low yields; a note on pre-plague land per head comes later. D3 stays off.
+  - Preventive check (b) chosen, for all eras, sources checked first (W&S lag; Smith and Poos before 1541). Explore, then gate.
+  - Pre-registered: 1600 ≤ 1.15 × peak; recovery 0.5–0.75%/yr; Hatcher in band; peak year within 20 years.
 - **D162:**
   - Wool series default (golden `5de3d525bb23a427`, map 3 spacing reference 56/80).
   - Land note: a labour-led land rule (`acres_per_farmer`, calibrated to 1300 arable per head, virgate as a plausibility check). D3's referent is GDP per head (×1.4–1.6, so 2.1–2.4 yd at e = 1; Dyer's 3 reported).
@@ -299,4 +303,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D162: wool series default; land rule explored with a preventive-check sketch.
+Last updated: 2026-10-24 — D164: land rule set aside; preventive check chosen.

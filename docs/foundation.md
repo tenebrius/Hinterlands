@@ -1951,6 +1951,31 @@ That separates the series' effect from map 3's geography. I decide the series af
 3. The land rule's gate.
 4. D3's gate.
 
+### Land rule explored; the preventive check chosen (D164)
+
+**The labour-led land rule is set aside: built, off, recorded as explored.**
+- At the sourced 6.18 acres a farmer (`arable_labour`, so no new calibration), arable per head falls to 0.89 of 1300 in 1450, against the record's ×1.65.
+- The reason is a finding about the model: **its farmers already work about 5 acres each in 1300, near the record's post-plague level,** because its yield per acre is low. So survivors cannot hold more.
+- Reaching ×1.5 would need about 9–10 acres a farmer, which would be fitting.
+- **The question beneath, pre-plague land per head** (the yield raster, `people_per_prime_cell`), is noted for its own note later. It is not touched now.
+- **Consequence for D3:** output per head barely rises in the model (1.17 against 1.11), so wealth-led stocks would add little. `wealth_stocks` stays off until income per head can rise.
+
+**The overshoot, decomposed (rule off):** the trough is 0.53 of the peak against the record's 0.40, and the recovery is 0.64–0.77% a year against 0.59%. About two thirds of the 0.45 overshoot comes from the trough and one third from the recovery.
+
+**Decided: (b), the preventive check** (`docs/proposals/preventive-check.md`), not (a). It is sourced, and it moves both parts the right way, where re-tuning endemic mortality would worsen the overshoot.
+1. **Sources are checked before any code:** the Wrigley & Schofield lag between real wages and nuptiality, and the English evidence before 1541 (Smith; Poos), since the medieval marriage pattern is debated. If the medieval evidence does not support the mechanism before 1541, report that first.
+2. **For all eras, not from a date.** A mechanism that switches on in 1348 would be a script.
+   - `marriage_lag` comes from W&S.
+   - `r_grow_pc` comes from a source (Broadberry et al., Table 18), or is named.
+   - Where the pre-plague rise to the peak moves, it is reported. Nothing is re-fitted to restore it.
+3. **Build it behind its switch (off) and run the 9-run exploration.** Under the report-before-gate rule, report if the gate looks likely to fail. Otherwise gate on 40 seeds, and make it the default if it passes.
+
+**Pre-registered, reported only. The mechanism is the lagged birth response (rule 5).**
+- Population in 1600 at 1.15 × the pre-plague peak or less (now 1.30–1.46).
+- Recovery from 1480 to 1590 at 0.5–0.75% a year.
+- Hatcher's 1450/1340 inside its gated band, which it fixes no more than now; the trough is left free.
+- The pre-1348 peak year within 20 years of now.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
