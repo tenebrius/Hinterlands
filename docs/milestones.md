@@ -688,3 +688,12 @@ Development stops here, by the owner's decision (D117).
 - **Params:** defaults, now with `cloth_price_late` on.
 - **Golden `fc16de69c1855b30`,** the same in the browser at 100.9 ms a year (`?selftest=500`).
 - **Details:** `docs/demand/d2h.md`.
+
+## D160 — Clark's wool series the default
+- **Paired re-gate:**
+  - map 3's spacing is 56/80 on seeds 1–80 (D144 60/80; the rule is at least 56);
+  - every other check is 30/40 or better on seeds 1–40 and on seeds 41–80.
+- **Runs passing every check:** 24 / 33 / 15 (seeds 1–40) and 25 / 35 / 20 (seeds 41–80).
+- **Params:** defaults, now with `wool_series` on.
+- **Golden `5de3d525bb23a427`,** the same in the browser at 94.7 ms a year (`?selftest=500`).
+- **Details:** `docs/demand/d2o.md`.

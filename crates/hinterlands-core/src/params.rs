@@ -265,7 +265,7 @@ define_params! {
         cloth_d_lb: f32 = 5.7, [0, 50], "Price of export cloth, pence a lb of wool content: about 2 pounds a broadcloth of 84 lb, 1371-1450 (Munro, English customs valuations; D124)";
         cloth_cost_d_lb: f32 = 2.7, [0, 50], "Cost of making cloth, pence a lb of wool content: Munro, Ypres 1500 (wool 52% of a broadcloth's total cost) at 5.7 d a lb; Leuven 1434 would give 2.1 (D132)";
         cloth_price_late: bool = true, [0, 1], "From 1450 the export cloth price follows Munro's all-ports customs values deflated by Clark's wheat price (D137; default from D141)";
-        wool_series: bool = false, [0, 1], "The port's wool price follows Clark's wool series against wheat by decade for the whole run, in place of wool_fall (D152)";
+        wool_series: bool = true, [0, 1], "The port's wool price follows Clark's wool series against wheat by decade for the whole run, in place of wool_fall (D152; default from D160)";
         wool_grades: bool = false, [0, 1], "Wool grades within the clip (D150): good, middle and refuse wool, each sold at the port at its own price; the mills pay one price for all";
         wool_grade_mid: f32 = 0.70, [0, 1], "Middle wool's price against good wool's (Munro: Leominster 1499, 100 : 70 : 49; D150)";
         wool_grade_low: f32 = 0.49, [0, 1], "Refuse wool's price against good wool's (Munro: Leominster 1499; D150)";

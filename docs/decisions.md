@@ -981,3 +981,12 @@ Kind: model data, held off (designer's decision D156).
   - Clark's real wages: farm ×2.34, building labourers ×2.05 in 1500.
 - **Reading:** cultivation holds output per head near need, so income per head cannot double. Details: `docs/demand/d3a.md`.
 Kind: trace and model mechanism, held off (designer's decision D158).
+
+## D161 — D160: the wool series passes the paired re-gate and is the default
+- **Map 3's market spacing on 80 seeds:** the series 56/80 (25 + 31), against D144's 60/80 (30 + 30). The rule, at least 60 − 4, passes at the margin.
+- **Every other gated check is 30/40 or better** on seeds 1–40 and on seeds 41–80.
+- **`wool_series` is the default** (Clark's wool against wheat for the whole run). Golden `5de3d525bb23a427`, the same in the browser.
+- **Map 3's spacing reference is now 56/80.** It is the next robustness target after D3 (D160).
+- **The land-per-worker note** is `docs/proposals/land-per-worker.md`.
+- **Details:** `docs/demand/d2o.md`.
+Kind: model data and default (designer's decision D160).
