@@ -41,7 +41,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     state.wool_ship.clear();
     state.fallow_wool = 0.0;
     state.cloth_stats = [0.0; 5];
-    state.cloth_trace = [0.0; 16];
+    state.cloth_trace = [0.0; 19];
     let m = state.settlements.len();
     for s in state.settlements.iter_mut() {
         s.wool_in = 0.0;
@@ -292,6 +292,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 k1,
                 lb_p: lb_cell * p.sheep_per_acre * cells as f32,
                 lb_f: lb_cell * p.fallow_share * p.sheep_per_fallow_acre * field_cells as f32,
+                g: 0,
+                r: 1.0,
             });
             continue;
         }
@@ -396,6 +398,11 @@ struct Seller {
     k1: u32,
     lb_p: f32,
     lb_f: f32,
+    /// Grade (D150): 0 good, 1 middle, 2 refuse; 0 without grades.
+    g: usize,
+    /// The port's price for this grade against the clip's mean (1 without
+    /// grades).
+    r: f32,
 }
 
 /// The wool market (D2, D128). Wool has three outlets, split by the S1
@@ -423,10 +430,40 @@ fn wool_market(
     state: &mut State,
     p: &Params,
     route: &[Option<(f32, u32, u32)>],
-    sellers: &[Seller],
+    clips: &[Seller],
     fall: f32,
 ) {
     let m = state.settlements.len();
+    // Wool grades (D150): each clip is sorted into good, middle and refuse
+    // wool, sold as three lots. The port pays each its grade's price, scaled
+    // so that the clip's mean stays at the English price; home use and the
+    // mills pay one price for all.
+    let graded: Vec<Seller>;
+    let sellers: &[Seller] = if p.wool_grades {
+        let sh = [
+            p.wool_grade_share_good,
+            p.wool_grade_share_mid,
+            (1.0 - p.wool_grade_share_good - p.wool_grade_share_mid).max(0.0),
+        ];
+        let rel = [1.0, p.wool_grade_mid, p.wool_grade_low];
+        let mean = (sh[0] * rel[0] + sh[1] * rel[1] + sh[2] * rel[2]).max(1e-6);
+        graded = clips
+            .iter()
+            .flat_map(|x| {
+                (0..3).map(move |g| Seller {
+                    i: x.i,
+                    k1: x.k1,
+                    lb_p: x.lb_p * sh[g],
+                    lb_f: x.lb_f * sh[g],
+                    g,
+                    r: rel[g] / mean,
+                })
+            })
+            .collect();
+        &graded
+    } else {
+        clips
+    };
     let to_coin = p.port_world_price / (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
     // Coin a lb: wool at the English price (Lloyd, Clark's fall), cloth at
     // Munro's customs valuation, and the cost of making cloth. Both prices are
@@ -511,7 +548,9 @@ fn wool_market(
             }
         }
         if let Some((c, _, _)) = route[x.i] {
-            arcs.push((k, port, tau_w * c));
+            // The grade's price over the clip's mean enters as a lower
+            // transport (D150); 0 without grades.
+            arcs.push((k, port, tau_w * c - (x.r - 1.0)));
         }
     }
     if arcs.is_empty() {
@@ -625,6 +664,7 @@ fn wool_market(
             flow[port_arc[k]] += over;
         }
     }
+    let mut graded_raw = [0f32; 3];
     for (a, &(k, b, t)) in arcs.iter().enumerate() {
         let _ = t;
         let q = flow[a];
@@ -633,10 +673,15 @@ fn wool_market(
         }
         let i = sellers[k].i;
         let lb = q / vw;
-        let want = buy[b] * q;
+        let want = if b == port {
+            (buy[b] + (sellers[k].r - 1.0)) * q
+        } else {
+            buy[b] * q
+        };
         if b == port {
-            // The port pays the English price.
+            // The port pays the English price, by grade (D150).
             let r = (sup[k] * q).clamp(0.0, want);
+            graded_raw[sellers[k].g] += lb;
             receipts[k] += r;
             state.settlements[i].mpurse += want - r;
             state.settlements[i].wool_in += want - r;
@@ -696,9 +741,15 @@ fn wool_market(
             ));
         }
     }
+    // Graded lots back to their clips (D150).
+    let receipts: Vec<f32> = if p.wool_grades {
+        receipts.chunks(3).map(|c| c.iter().sum()).collect()
+    } else {
+        receipts
+    };
     // Sellers: the lords' share of the pasture's part, the farmers' the rest
     // less the toll.
-    for (k, x) in sellers.iter().enumerate() {
+    for (k, x) in clips.iter().enumerate() {
         let lb = x.lb_p + x.lb_f;
         if lb <= 0.0 {
             continue;
@@ -843,7 +894,7 @@ fn wool_market(
         if w <= 0.0 || by_from[k].is_empty() {
             continue;
         }
-        let wn = route[x.i].map_or(f32::NAN, |r| (1.0 - tau_w * r.0) * d);
+        let wn = route[x.i].map_or(f32::NAN, |r| (x.r - tau_w * r.0) * d);
         let cn = by_from[k]
             .iter()
             .filter(|&&a| arcs[a].1 >= m && arcs[a].1 < port)
@@ -892,5 +943,8 @@ fn wool_market(
         bound_n,
         paid_out,
         bound_lb,
+        graded_raw[0],
+        graded_raw[1],
+        graded_raw[2],
     ];
 }

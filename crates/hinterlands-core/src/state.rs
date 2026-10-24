@@ -581,9 +581,10 @@ pub struct State {
     /// median mill bid and the price mills paid; the growers' wool
     /// receipts, coin; and (D145) the mills' value added, coin, the mills
     /// held by the by-employment bound, the making cost paid to farm purses,
-    /// coin, and the by-employment bound summed over the mills, lb.
+    /// coin, and the by-employment bound summed over the mills, lb; and
+    /// (D150) raw wool to the ports by grade, good, middle and refuse, lb.
     #[serde(default)]
-    pub cloth_trace: [f32; 16],
+    pub cloth_trace: [f32; 19],
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -770,7 +771,7 @@ impl State {
             wool_ship: Vec::new(),
             fallow_wool: 0.0,
             cloth_stats: [0.0; 5],
-            cloth_trace: [0.0; 16],
+            cloth_trace: [0.0; 19],
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

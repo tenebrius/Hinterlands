@@ -262,6 +262,11 @@ define_params! {
         cloth_d_lb: f32 = 5.7, [0, 50], "Price of export cloth, pence a lb of wool content: about 2 pounds a broadcloth of 84 lb, 1371-1450 (Munro, English customs valuations; D124)";
         cloth_cost_d_lb: f32 = 2.7, [0, 50], "Cost of making cloth, pence a lb of wool content: Munro, Ypres 1500 (wool 52% of a broadcloth's total cost) at 5.7 d a lb; Leuven 1434 would give 2.1 (D132)";
         cloth_price_late: bool = true, [0, 1], "From 1450 the export cloth price follows Munro's all-ports customs values deflated by Clark's wheat price (D137; default from D141)";
+        wool_grades: bool = false, [0, 1], "Wool grades within the clip (D150): good, middle and refuse wool, each sold at the port at its own price; the mills pay one price for all";
+        wool_grade_mid: f32 = 0.70, [0, 1], "Middle wool's price against good wool's (Munro: Leominster 1499, 100 : 70 : 49; D150)";
+        wool_grade_low: f32 = 0.49, [0, 1], "Refuse wool's price against good wool's (Munro: Leominster 1499; D150)";
+        wool_grade_share_good: f32 = 0.3333333, [0, 1], "Good wool's share of a clip (a named prior, equal thirds: no sorting proportions found; D150)";
+        wool_grade_share_mid: f32 = 0.3333333, [0, 1], "Middle wool's share of a clip (a named prior, equal thirds; D150)";
         putting_out: bool = false, [0, 1], "Putting-out (D145): each mill's cloth capacity is a stock growing with its value added at W's epsilon, bounded by the farm households' by-employment in reach, with spinning and weaving paid to their purses";
         putting_out_from: u32 = 250, [0, 2000], "Year the capacity stock starts, from cloth_lb_per_w x W (1350; D145)";
         cloth_upkeep_d_lb: f32 = 1.64, [0, 50], "Value added a lb of capacity at which a mill's capacity holds, pence (calibration of the start, D145: the median over 9 runs of value added a lb of capacity in 1350-59 at cloth_lb_per_w x W)";
