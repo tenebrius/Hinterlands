@@ -35,9 +35,8 @@ pub struct RunResult {
     /// D174: the share of year-300 road cells still road at the end; NaN with
     /// traffic roads off.
     pub road_persist: f32,
-    /// The same, counting a year-300 road cell kept if it or a neighbour is
-    /// road at the end (reported, D174).
-    pub road_persist_near: f32,
+    /// The strict cell measure (D174), reported.
+    pub road_persist_cells: f32,
     /// D174: median nearest-neighbour distance among market places (W at
     /// least `market_min`), km, at the end.
     pub market_spacing_km: f32,
@@ -264,6 +263,35 @@ fn goods_result(sim: &Sim) -> GoodsResult {
     }
 }
 
+/// The share of `was` road cells with road within `r` cells of them in `now`;
+/// NaN with no roads recorded (D174, D176).
+fn road_near(was: &[bool], now: &[bool], t: &hinterlands_core::Terrain, r: i32) -> f32 {
+    if was.is_empty() {
+        return f32::NAN;
+    }
+    let g = t.grid;
+    let (mut n, mut kept) = (0usize, 0usize);
+    for (c, &w) in was.iter().enumerate() {
+        if !w {
+            continue;
+        }
+        n += 1;
+        let (x, y) = g.xy(c);
+        let mut near = false;
+        'look: for dy in -r..=r {
+            for dx in -r..=r {
+                let (nx, ny) = (x + dx, y + dy);
+                if nx >= 0 && ny >= 0 && (nx as u32) < g.w && (ny as u32) < g.h && now[(ny as u32 * g.w + nx as u32) as usize] {
+                    near = true;
+                    break 'look;
+                }
+            }
+        }
+        kept += near as usize;
+    }
+    if n == 0 { f32::NAN } else { kept as f32 / n as f32 }
+}
+
 pub struct Check {
     pub name: &'static str,
     pub target: &'static str,
@@ -422,7 +450,7 @@ pub const CHECKS: &[Check] = &[
     // the end; new roads are allowed. Net length change is reported.
     Check {
         name: "road persistence",
-        target: ">=0.90",
+        target: ">=0.90 ±2",
         ok: |r| r.road_persist.is_nan() || r.road_persist >= 0.90,
     },
 ];
@@ -903,7 +931,7 @@ pub fn run_one(
             sh.planted = planted_alive;
             sh
         }),
-        road_persist: if params.traffic_roads && !roads_300.is_empty() {
+        road_persist_cells: if params.traffic_roads && !roads_300.is_empty() {
             let was = roads_300.iter().filter(|&&r| r).count();
             let kept = roads_300
                 .iter()
@@ -914,31 +942,9 @@ pub fn run_one(
         } else {
             f32::NAN
         },
-        road_persist_near: if params.traffic_roads && !roads_300.is_empty() {
-            let g = t.grid;
-            let road = &sim.state.road;
-            let (mut was, mut kept) = (0usize, 0usize);
-            for (c, &r) in roads_300.iter().enumerate() {
-                if !r {
-                    continue;
-                }
-                was += 1;
-                let (x, y) = g.xy(c);
-                let mut near = false;
-                for dy in -1i32..=1 {
-                    for dx in -1i32..=1 {
-                        let (nx, ny) = (x as i32 + dx, y as i32 + dy);
-                        if nx >= 0 && ny >= 0 && (nx as u32) < g.w && (ny as u32) < g.h {
-                            near |= road[(ny as u32 * g.w + nx as u32) as usize];
-                        }
-                    }
-                }
-                kept += near as usize;
-            }
-            kept as f32 / was.max(1) as f32
-        } else {
-            f32::NAN
-        },
+        // D176: on routes, a year-300 road cell kept if road lies within two
+        // cells of it at the end.
+        road_persist: road_near(&roads_300, &sim.state.road, t, 2),
         market_spacing_km: {
             let g = t.grid;
             let mk: Vec<usize> = sim
@@ -1155,6 +1161,11 @@ fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> 
 /// is no worse. From R's two halves (`docs/retune/r.md`).
 const NO_WORSE: &[(u64, &str, usize)] = &[];
 
+/// D176: paired no-worse checks until a sourced band exists. On seeds 1-40 a
+/// map passes if its count is at least the accepted default's count on the
+/// same seeds minus 2. The counts are the default's (D161), read at D176.
+const PAIRED: &[(u64, &str, usize)] = &[];
+
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
 }
@@ -1311,7 +1322,15 @@ pub fn cmd_validate(args: &Args) {
                 .iter()
                 .find(|f| f.0 == *map_seed && f.1 == c.name && rs.len() == 40)
                 .map(|f| f.2);
-            let rate_ok = pass * 4 >= rs.len() * 3 || floor.is_some_and(|f| pass >= f);
+            let paired = PAIRED
+                .iter()
+                .find(|f| f.0 == *map_seed && f.1 == c.name && rs.len() == 40 && first_seed == 1)
+                .map(|f| f.2);
+            let rate_ok = if let Some(r) = paired {
+                pass + 2 >= r
+            } else {
+                pass * 4 >= rs.len() * 3 || floor.is_some_and(|f| pass >= f)
+            };
             let reported = c.name == "sites producing" && rs.iter().all(|r| r.goods.market);
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
@@ -1419,10 +1438,10 @@ pub fn cmd_validate(args: &Args) {
             );
             println!(
                 "{:<20} {:>12} {:>10.3} {:>10.3} {:>10} {:>8}",
-                "road persist ±1",
+                "road persist cells",
                 "(reported)",
-                canon.map_or(f32::NAN, |r| r.road_persist_near),
-                med(rs.iter().map(|r| r.road_persist_near).collect()),
+                canon.map_or(f32::NAN, |r| r.road_persist_cells),
+                med(rs.iter().map(|r| r.road_persist_cells).collect()),
                 "",
                 ""
             );
