@@ -1884,6 +1884,41 @@ That separates the series' effect from map 3's geography. I decide the series af
    Nothing is fitted to reach three yards.
 6. **Order:** build D3 behind `wealth_stocks` (off) while the spacing trace stands. Run its 9-run exploration and report it with the trace. No gate until the wool series is settled.
 
+### The spacing trace and the D3 exploration (2c2c2c9): a paired re-gate for the series; D3 waits on a note on land per worker (D160)
+
+**1. The wool series: no traceable effect on spacing.**
+- Over 20 seeds of map 3, spacing is over 15 km in 6 runs with the series and 5 without.
+- Places over 500 number 23 against 24, and the median spacing is 14.1 km in both.
+- The runs diverge from the first century, and the places lost are ordinary ones.
+- The gate's 25/40 against 30/40 is a resample of a check sitting on its edge. Map 3's spacing is the model's most fragile check whatever the setting (34, 30, 25).
+
+**Decided: a paired re-gate, not a fresh draw.** One re-gate on seeds 41–80 alone would be shopping for a pass.
+- Run D144 (series off) and the series, both on seeds 41–80.
+- Judge map 3's spacing on all 80 seeds, against D144's own count on the same 80. The series passes that check if its count is at least D144's minus 4, which is about one standard deviation of an 80-seed count. This is D120's no-worse rule, measured paired and with twice the sample.
+- Every other check must pass at 30/40 on seeds 1–40, as before.
+- If the gate passes, the series becomes the default, and the 80-seed count becomes the reference for map 3's spacing.
+- **Map 3's spacing is now the named next target for robustness,** a mechanism question (too few market towns in its outer districts), after D3.
+
+**2. D3: the exploration shows the model cannot yet be richer after the plague.**
+- Income per head in the model is 1.24 × the reference in 1370, 1.02 in 1500 and 0.87 in 1590. Clark's wage file has labourers' real wages at 2.3–2.75 × by 1450–1500.
+- Cloth per adult in 1500 is 1.54 yd against Dyer's 3.
+- **The implementer's reading is right, and no elasticity closes a gap of 1.0 against 2.3.** Cultivation claims fields until need is met, so output per head stays at need by construction. After the plague the model abandons land rather than letting its survivors farm more of it. In the record survivors engrossed holdings, worked more land each, and ate and dressed better (Dyer 1989; Campbell 2000).
+- **The departure is accepted:** own food (income in kind) counts in income. So is e = 1.0 as the named fallback, since Houthakker was not reachable.
+- **`wealth_stocks` stays built and off.** D3 waits.
+
+**Next, a note before any code: land per worker after the plague.** For the designer, covering:
+- the cultivation margin rule, and why it stops at need;
+- land per worker and holding sizes before and after 1348, with sources (Campbell, Dyer, Hatcher);
+- how output per head should rise with land per worker, with diminishing returns and a sourced labour share or yield response;
+- where the surplus above need goes: consumption, and then D3's income;
+- how this interacts with the growth rule (`r_grow`), Hatcher's population path (gated, and it must hold), the famine, pasture and the hierarchy;
+- whether it also bears on the overshoot in 1600 (population 1.43–1.46 × the pre-plague peak, D114).
+
+**Order:**
+1. The series' paired re-gate.
+2. The land-per-worker note.
+3. D3 after the note is decided.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

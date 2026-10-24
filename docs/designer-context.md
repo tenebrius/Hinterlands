@@ -166,6 +166,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D160:**
+  - Spacing trace: no traceable series effect (resample). Paired re-gate on seeds 41–80 for D144 and the series; map 3 spacing judged on 80 seeds against D144's own count minus 4.
+  - D3 exploration: income per head 1.02 in 1500 against labourers' 2.3; cultivation stops at need, so survivors get no more land. D3 waits on a land-per-worker note (margin rule, holdings, output per head, growth, Hatcher, the 1600 overshoot).
+  - Map 3 spacing is the next robustness target after D3.
 - **D158:**
   - The wool series alone fails map 3 spacing (25/40; it slid 34 → 30 → 25). A trace of map 3's failing runs comes first.
   - D3 decided: Dyer is 3 yd an adult; Houthakker elasticities (clothing 1.0, stone 0.8, household iron 1.0; plough iron not income-elastic); salt fixed; income per head against the region's 1300–39 mean; checks reported, not fitted.
@@ -291,4 +295,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D158: map 3 spacing trace; D3 decided, built off and explored.
+Last updated: 2026-10-24 — D160: paired re-gate of the wool series; land-per-worker note before D3.
