@@ -48,7 +48,8 @@ For the graphics session picking this work up after a context reset (rewritten 2
 - **R28, optimisation 1:** the rendered map is cached in a framebuffer and redrawn only when the camera, year, season, layers or look change. A still frame takes 50–100 ms in SwiftShader instead of 2.8–16 s. `?redraw=1` turns the cache off, to time the shader.
 - **R29, optimisation 2:** the tree search visits only the grid cells that can reach the pixel, colours only the tallest crown, asks clearance last and stops the shadow search at full shadow. Redraws about 42% faster in woods, 20–30% in towns.
 - **R30, R31 (tried, reverted):** shorter town shape lists (sub-squares) and fewer grove-density lookups. Both were exact but gained nothing measurable, so the code is R29's. In a town, the cost is the trees' crowns, shadows and clearance themselves.
-- **Now: optimisation, continued (the owner's instruction, 23 October).** The frames while moving are still full redraws. See "Optimisation" below.
+- **R32:** a frame-rate meter, `?fps=1` (with `&redraw=1` for the cost of a moving frame). The owner stopped the optimisation stage here (24 October), to read frame times on real hardware.
+- **Open options, not started (need the owner's choice):** half resolution while moving; reusing the cache when panning (redraw only the exposed strips); levels of detail (changes the picture).
 - **After that, waiting for the owner:**
   - **The reviewer's remaining proposals:**
     - roofs by period, wealth and clusters;
@@ -64,7 +65,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 - **Frontend only:** `crates/hinterlands-web`. No change to core, mapgen or CLI.
 - **Checks:** the golden hash must stay `65aee272c30de1f9` (`just test`, `cargo run --release -p hinterlands-cli -- hash --years 500`), and `?selftest=500` in the browser must give the same.
 - **Engine:** stay on eframe/glow (WebGL2), with the detail in the relief shader.
-- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `31-`). Commit with a message naming it, and push to the branch.
+- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `32-`). Commit with a message naming it, and push to the branch.
 - **Sessions:**
   - **Implementer and designer:** do not message them. The overhaul goes to `main` as one batch only when the owner says so.
   - **Reviewer:** the owner allows working with the reviewer session `session_018DLnDSAggGPAKjRucQdQRd` (a second opinion on how things look). Its proposals are built only once the owner approves them.
@@ -172,7 +173,7 @@ The owner deferred frame time until the look was right. That is now the task.
   - `at=X,Y,Z`: the map point in cells, and points per cell (1000 is 1 m per point).
   - Full-zoom shots take up to a few minutes in SwiftShader.
   - Run several in parallel with `&` and `wait`.
-- **Frame time:** `node tools/frametime.mjs "<same url>"`. Since R28 a still view is cached; add `&redraw=1` to time the shader.
+- **Frame time:** `node tools/frametime.mjs "<same url>"`. Since R28 a still view is cached; add `&redraw=1` to time the shader. In a browser, `?fps=1` shows the frame rate on the map (R32).
 - **Shader errors** show only in the browser console: "relief shader unavailable, drawing cells instead". GLSL reserved words, `patch` among them, have bitten before.
 - **Planner logs:** `Plan::summary` logs households and houses at info level. Switch it to `warn` temporarily to see it.
 - **Clippy:** `cargo clippy --target wasm32-unknown-unknown`. The web crate has 7 warnings; keep it there.

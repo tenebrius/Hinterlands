@@ -984,6 +984,23 @@ Kind: rendering.
 
 Kind: rendering.
 
+## R32 — A frame-rate meter (`?fps=1`)
+
+At the owner's request, the optimisation stage stops after R29 (R30 and R31 tried and reverted) with a meter, so frame times can be read on real hardware rather than in SwiftShader.
+
+- **`?fps=1`** shows, in the map's upper-right corner:
+  - frames a second and milliseconds a frame, averaged over the last second (or the last frame, if it took longer);
+  - whether the map is cached while still (R28) or, with `?redraw=1`, redrawn every frame.
+- **How it measures:** between the starts of successive frames, so it counts the browser's and the graphics card's time too. While it is on, frames are asked for continuously.
+- **Reading it:**
+  - **Still view:** the default shows what a still view costs.
+  - **`&redraw=1`:** shows what every frame costs while panning, zooming or playing years.
+- **In SwiftShader** (this container, no graphics card): about 10 fps cached at 1 m (Liningbourne, storybook), and 0.3 fps (3.6 s a frame) redrawn at 64 points per cell.
+- **No change to the map.** The golden hash is unchanged (`65aee272c30de1f9`), and clippy is unchanged.
+- **Screenshot:** `31-fps-meter-upland-town-1m`.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -1027,6 +1044,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R27: `28-artefacts-city-1300-1m-before`/`-after`, `28-artefacts-upland-town-1m`, `28-artefacts-village-1m`, `28-artefacts-small-town-1m` and `28-artefacts-wood-road-1m` (whole trees, no cut hedges).
 - R28: `29-cache-upland-town-1m-before`/`-after`, `29-cache-wood-1m-before`/`-after` and `29-cache-upland-town-4m-diff` (the cached map; only smoke differs).
 - R29: `30-trees-wood-1m-true`, `30-trees-upland-town-1m-true` and `30-trees-upland-town-4m-diff` (fewer tree candidates; only smoke differs).
+- R32: `31-fps-meter-upland-town-1m` (the frame-rate meter, `?fps=1`).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 

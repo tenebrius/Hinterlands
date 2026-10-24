@@ -73,6 +73,9 @@ pub struct App {
     panels: Vec<Box<dyn Panel>>,
     /// Fractional years owed to the clock.
     owed: f64,
+    /// `?fps=1`: when each of the last second's frames began (ms), and at
+    /// least the last two, for the frame-rate meter in the map's corner.
+    fps: Option<std::collections::VecDeque<f64>>,
 }
 
 impl App {
@@ -184,6 +187,7 @@ impl App {
             layers,
             panels: panels::all(),
             owed: 0.0,
+            fps: (url_param("fps") == Some(1)).then(std::collections::VecDeque::new),
         }
     }
 
@@ -262,6 +266,9 @@ impl App {
             layers::draw_legend(&d, &self.layers);
         }
         crate::scale::draw_bar(&painter, rect, cam.zoom, g.cell_km);
+        if let Some(times) = &self.fps {
+            draw_fps(&painter, rect, times);
+        }
         out
     }
 }
@@ -269,6 +276,16 @@ impl App {
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if let Some(times) = &mut self.fps {
+            // Measured between frames, so it counts the browser's and the
+            // graphics card's time too; frames are asked for continuously.
+            let now = web_time_now();
+            times.push_back(now);
+            while times.len() > 2 && times.front().is_some_and(|&t| now - t > 1000.0) {
+                times.pop_front();
+            }
+            ctx.request_repaint();
+        }
         // Advance the clock, never spending more than ~40 ms of a frame on the model.
         if self.view.playing {
             let dt = ctx.input(|i| i.stable_dt).min(0.1) as f64;
@@ -371,6 +388,39 @@ pub fn pick_save_file() {
             PENDING_LOAD.with(|p| *p.borrow_mut() = Some(bytes));
         }
     }
+}
+
+/// The frame-rate meter (`?fps=1`): frames a second and milliseconds a
+/// frame over the last second (or the last frame, if slower), in the map's upper-right corner, and whether
+/// the relief is redrawn every frame (`?redraw=1`) or cached (R28).
+fn draw_fps(painter: &egui::Painter, rect: egui::Rect, times: &std::collections::VecDeque<f64>) {
+    let (Some(first), Some(last)) = (times.front(), times.back()) else {
+        return;
+    };
+    let n = times.len().saturating_sub(1);
+    let text = if n == 0 {
+        "measuring…".to_string()
+    } else {
+        let ms = (last - first) / n as f64;
+        format!("{:.1} fps   {ms:.0} ms a frame", 1000.0 / ms)
+    };
+    let mode = if url_param("redraw") == Some(1) {
+        "map redrawn every frame"
+    } else {
+        "map cached while still"
+    };
+    let at = egui::pos2(rect.right() - 12.0, rect.top() + 10.0);
+    let font = crate::style::serif(14.0);
+    let galley = painter.layout_no_wrap(format!("{text}\n{mode}"), font, crate::style::INK);
+    let r = egui::Align2::RIGHT_TOP
+        .anchor_size(at, galley.size())
+        .expand(5.0);
+    painter.rect_filled(
+        r,
+        3.0,
+        egui::Color32::from_rgba_unmultiplied(250, 247, 240, 225),
+    );
+    painter.galley(r.min + egui::vec2(5.0, 5.0), galley, crate::style::INK);
 }
 
 /// `?selftest=N` in the page URL.
