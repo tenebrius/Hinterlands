@@ -72,7 +72,11 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     // Coin a pasture cell's wool fetches at the port.
     // Wool fell against wheat after the plague, in a straight line from
     // `wool_fall_from` to `wool_fall_to` (Clark 2004; D109).
-    let fall = if state.year <= p.wool_fall_from {
+    // With `wool_series` (D152) the port's wool price follows Clark's series
+    // against wheat for the whole run instead.
+    let fall = if p.wool_series {
+        1.0 - wool_price_factor(state.year)
+    } else if state.year <= p.wool_fall_from {
         0.0
     } else if state.year >= p.wool_fall_to {
         p.wool_fall
@@ -351,6 +355,74 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
             state.log.push(entry);
         }
     }
+}
+
+/// Clark's wool price against wheat (2004, appendix tables 1 and 2: wool
+/// d a lb over wheat s a bushel, the ratio of the decade's means over the
+/// years with both), over its 1290-1309 mean, the decade of Lloyd's 1294
+/// price (D152). Points sit at the middle of each decade, as model years,
+/// 1200s to 1590s.
+const WOOL_SERIES: [(f32, f32); 40] = [
+    (105.0, 1.046),
+    (115.0, 0.772),
+    (125.0, 0.638),
+    (135.0, 1.082),
+    (145.0, 0.985),
+    (155.0, 0.731),
+    (165.0, 1.179),
+    (175.0, 0.929),
+    (185.0, 1.129),
+    (195.0, 0.813),
+    (205.0, 1.187),
+    (215.0, 0.763),
+    (225.0, 1.050),
+    (235.0, 0.927),
+    (245.0, 0.865),
+    (255.0, 0.567),
+    (265.0, 0.702),
+    (275.0, 0.875),
+    (285.0, 0.944),
+    (295.0, 0.831),
+    (305.0, 0.872),
+    (315.0, 0.828),
+    (325.0, 0.863),
+    (335.0, 0.709),
+    (345.0, 0.864),
+    (355.0, 0.543),
+    (365.0, 0.701),
+    (375.0, 0.543),
+    (385.0, 0.618),
+    (395.0, 0.587),
+    (405.0, 0.489),
+    (415.0, 0.657),
+    (425.0, 0.467),
+    (435.0, 0.455),
+    (445.0, 0.496),
+    (455.0, 0.417),
+    (465.0, 0.447),
+    (475.0, 0.467),
+    (485.0, 0.393),
+    (495.0, 0.352),
+];
+
+/// The port's wool price against Lloyd's (D152): linear between the decades
+/// of `WOOL_SERIES`, held at the first before 1205 and at the last after 1595.
+pub fn wool_price_factor(year: u32) -> f32 {
+    let y = year as f32;
+    let (first, last) = (WOOL_SERIES[0], WOOL_SERIES[WOOL_SERIES.len() - 1]);
+    if y <= first.0 {
+        return first.1;
+    }
+    if y >= last.0 {
+        return last.1;
+    }
+    for w in WOOL_SERIES.windows(2) {
+        let ((y0, v0), (y1, v1)) = (w[0], w[1]);
+        if y <= y1 {
+            return v0 + (v1 - v0) * (y - y0) / (y1 - y0);
+        }
+    }
+    last.1
 }
 
 /// Munro's mean value a cloth exported from all English ports (`EngclothPrices2.xls`,
