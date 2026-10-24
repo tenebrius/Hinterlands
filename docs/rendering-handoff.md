@@ -6,7 +6,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 
 - **Branch:** `claude/elegant-ride-g0sr1h`. Pull it first.
   - It contains `origin/main` as of 22 October (`e7c0344`).
-  - Last step: R27 (commit `743327c`), then this handoff and `tools/frametime.mjs`.
+  - Last step: R28, the cached map (the first optimisation step).
 - **Done:**
   - **R9–R11, stages 1–3 of the real-scale overhaul:**
     - zoom to 1 m per point;
@@ -45,7 +45,8 @@ For the graphics session picking this work up after a context reset (rewritten 2
       - suburbs along the approach roads.
     - **R26:** plot and court ground is not drawn (the owner's test, kept).
     - **R27:** trees, bushes and shadows are kept or left out whole, and there are no hedges inside a place's edge.
-- **Next: optimisation (the owner's instruction, 23 October).** See "Optimisation" below.
+- **R28, optimisation 1:** the rendered map is cached in a framebuffer and redrawn only when the camera, year, season, layers or look change. A still frame takes 50–100 ms in SwiftShader instead of 2.8–16 s. `?redraw=1` turns the cache off, to time the shader.
+- **Now: optimisation, continued (the owner's instruction, 23 October).** The frames while moving are still full redraws. See "Optimisation" below.
 - **After that, waiting for the owner:**
   - **The reviewer's remaining proposals:**
     - roofs by period, wealth and clusters;
@@ -61,7 +62,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 - **Frontend only:** `crates/hinterlands-web`. No change to core, mapgen or CLI.
 - **Checks:** the golden hash must stay `65aee272c30de1f9` (`just test`, `cargo run --release -p hinterlands-cli -- hash --years 500`), and `?selftest=500` in the browser must give the same.
 - **Engine:** stay on eframe/glow (WebGL2), with the detail in the relief shader.
-- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `29-`). Commit with a message naming it, and push to the branch.
+- **Records:** record each step in `docs/rendering.md` as the next R number (R28, …), with screenshots in `docs/screenshots/overhaul/` (next prefix `30-`). Commit with a message naming it, and push to the branch.
 - **Sessions:**
   - **Implementer and designer:** do not message them. The overhaul goes to `main` as one batch only when the owner says so.
   - **Reviewer:** the owner allows working with the reviewer session `session_018DLnDSAggGPAKjRucQdQRd` (a second opinion on how things look). Its proposals are built only once the owner approves them.
@@ -71,7 +72,8 @@ For the graphics session picking this work up after a context reset (rewritten 2
 
 The owner deferred frame time until the look was right. That is now the task.
 
-- **Baseline** (`node tools/frametime.mjs <url>`, headless Chromium with SwiftShader, 1,400 × 900, map 1, year 450, summer; only ratios are meaningful):
+- **Done: a. the cache (R28).** The full baseline of eight views and the times after it are in R28. Later steps time redraws with `?redraw=1`.
+- **Old baseline** (`node tools/frametime.mjs <url>`, headless Chromium with SwiftShader, 1,400 × 900, map 1, year 450, summer; only ratios are meaningful):
 
   | View (`at=`, look) | ms per frame |
   |---|---|
@@ -79,9 +81,8 @@ The owner deferred frame time until the look was right. That is now the task.
   | wood by a stream, `40,60.5,1000`, storybook | 13,733 |
   | Liningbourne, true scale, 1 m (R24) | 6,250 |
 
-  Measure all three again first, plus 4 m (`at=…,250`) and the old deepest zoom (`at=…,64`), to have a full before.
 - **Where the time goes**, per pixel, from reading the shader:
-  - **Every frame is redrawn**, even when nothing moves: the season cycles over time unless fixed, and smoke animates. The biggest saving is probably a cached render, a framebuffer redrawn only when the camera, year, season or look changes.
+  - **Every frame was redrawn**, even when nothing moved (fixed by R28's cache).
   - **Trees** (`country.frag`: `crowns_at`, `crown_top`, `draw_crowns`):
     - three jittered grids × 9 candidates, searched twice (crown and shadow);
     - since R27 each candidate near the pixel calls `tree_clear`, which may scan up to 160 road segments (`road_sd_at`) and 160 town shapes (`town_sd_at`).
@@ -168,7 +169,7 @@ The owner deferred frame time until the look was right. That is now the task.
   - `at=X,Y,Z`: the map point in cells, and points per cell (1000 is 1 m per point).
   - Full-zoom shots take up to a few minutes in SwiftShader.
   - Run several in parallel with `&` and `wait`.
-- **Frame time:** `node tools/frametime.mjs "<same url>"`.
+- **Frame time:** `node tools/frametime.mjs "<same url>"`. Since R28 a still view is cached; add `&redraw=1` to time the shader.
 - **Shader errors** show only in the browser console: "relief shader unavailable, drawing cells instead". GLSL reserved words, `patch` among them, have bitten before.
 - **Planner logs:** `Plan::summary` logs households and houses at info level. Switch it to `warn` temporarily to see it.
 - **Clippy:** `cargo clippy --target wasm32-unknown-unknown`. The web crate has 7 warnings; keep it there.

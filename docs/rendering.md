@@ -274,7 +274,7 @@ The countryside drawn as it would look from the air at a metre a pixel. Each thi
   | 1 m, wood | — | 2,533 |
   | 4 m, Asherfield | — | 3,250 |
 
-  At full zoom stage 2 costs about four times stage 1. Most of it is the parcel tessellation (with both parcels' data for hedges), and the three tree grids, each searched twice for shadows. These are the first targets when optimisation comes: the planned cache of the rendered map, levels of detail, and a parcel texture built on the CPU.
+  At full zoom stage 2 costs about four times stage 1. Most of it is the parcel tessellation (with both parcels' data for hedges), and the three tree grids, each searched twice for shadows. These are the first targets when optimisation comes: the planned cache of the rendered map (built in R28), levels of detail, and a parcel texture built on the CPU.
 - **Checks.** The golden hash is unchanged (`65aee272c30de1f9`), `just test` passes, and `?selftest=500` matches. No change to the core, mapgen or CLI.
 
 Kind: rendering.
@@ -836,6 +836,48 @@ The owner's screenshots after R26 showed hedges, bushes and trees cut off, both 
 
 Kind: rendering.
 
+## R28 — Optimisation 1: the rendered map cached, redrawn only on change
+
+The owner's instruction of 23 October: optimise, without changing the picture. This first step is the largest saving: the relief shader no longer runs every frame.
+
+- **Before.** The whole relief shader ran every frame, even when nothing moved, because the smoke (and the cycling season, when not fixed) asks egui to repaint continuously.
+- **The cache** (`relief.rs`, `Gpu::paint`).
+  - **Off-screen:** the relief is drawn into a framebuffer of its own (an RGBA8 texture the size of the map's viewport in pixels).
+  - **Each frame:** a small shader copies it to the screen with `texelFetch` at `gl_FragCoord`, one texel to one pixel, so nothing is filtered or resampled.
+  - **When it is drawn again:** whenever anything it depends on changes:
+    - any texture upload (a new year, a new look, roads and towns laid out again);
+    - any uniform (`Frame`, now `PartialEq`), which covers the camera, the season, the layers, the look and the ink;
+    - the viewport's size.
+  - **On top:** smoke, symbols, labels and everything else egui draws are unchanged, still drawn every frame over the copy.
+- **`?redraw=1`** turns the cache off and draws the relief every frame, so later steps can time the shader itself.
+- **Frame time** (SwiftShader, median ms per frame, 1,400 × 900, map 1, year 450, summer; cached frames over 30 frames, the rest over 8):
+
+  | View (`at=`) | Look | Before | R28 | R28, `?redraw=1` |
+  |---|---|---|---|---|
+  | Liningbourne, `74.5,36.5,1000` (1 m) | storybook | 15,933 | 50 | 10,800 |
+  | Liningbourne, 1 m | true scale | 12,266 | 50 | — |
+  | Wood by a stream, `40,60.5,1000` | storybook | 12,233 | 50 | 13,350 |
+  | Wood by a stream, 1 m | true scale | 13,349 | 50 | — |
+  | Liningbourne, `…,250` (4 m) | storybook | 9,683 | 83 | — |
+  | Liningbourne, 4 m | true scale | 8,300 | 83 | — |
+  | Liningbourne, `…,64` | storybook | 2,833 | 100 | — |
+  | Liningbourne, 64 | true scale | 2,767 | 100 | — |
+
+  - **Still:** a still frame now costs only egui (panels, smoke, symbols), 50–100 ms in SwiftShader, against 2.8–16 s.
+  - **Moving:** while the camera moves, the year plays or the look changes, every frame is still a full redraw, which costs as before (`?redraw=1`). SwiftShader's times vary by about ±20% from run to run on this machine. Those frames are the target of the next steps.
+  - **Baseline:** the "before" column is this session's full baseline at R27. It ran slower than the handoff's (12,066 ms for Liningbourne in storybook) because the machine differs.
+- **Picture unchanged** (before and after screenshots of all eight views, compared pixel by pixel with PIL):
+  - **Wood views:** identical at storybook; at true scale one pixel differs by 1 in one channel.
+  - **Liningbourne views:** 0.4–1.7% of pixels differ, all of them in the smoke plumes over the chimneys (`29-cache-upland-town-4m-diff` marks them). Nothing else differs.
+  - **Pan:** a drag redraws the relief in step with the symbols and labels.
+- **Checks.**
+  - The golden hash is unchanged (`65aee272c30de1f9`), and `just test` passes.
+  - `?selftest=500` matches (29.8 ms/year).
+  - No change to the core, mapgen or CLI.
+- **Screenshots** (`29-cache-*`): `upland-town-1m-before`/`-after` (Liningbourne, storybook), `wood-1m-before`/`-after`, and `upland-town-4m-diff` (the differing pixels, all smoke, in white).
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
@@ -877,6 +919,7 @@ Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before
 - R25: `26-walls-upland-town-1m`/`-3m`/`-1m-true`, `26-walls-city-1300-1m`/`-2m` and `26-walls-small-town-3m` (walls first, the wall, stalls, cartouche, suburbs).
 - R26: `27-no-yards-upland-town-1m`/`-1m-true`, `27-no-yards-city-1300-1m` and `27-no-yards-village-1m` (plot ground not drawn).
 - R27: `28-artefacts-city-1300-1m-before`/`-after`, `28-artefacts-upland-town-1m`, `28-artefacts-village-1m`, `28-artefacts-small-town-1m` and `28-artefacts-wood-road-1m` (whole trees, no cut hedges).
+- R28: `29-cache-upland-town-1m-before`/`-after`, `29-cache-wood-1m-before`/`-after` and `29-cache-upland-town-4m-diff` (the cached map; only smoke differs).
 
 ## Next: the real-scale overhaul (in progress: stages 1–3 are R9–R11)
 
@@ -924,7 +967,7 @@ These were measured, or looked up, during the planning:
 4. **No change of graphics engine.** It stays on eframe with glow (WebGL2), with the dense detail per pixel in the relief shader. egui shapes are kept for labels, symbols and moving things.
    - **Possible later:** wgpu only if compute shaders or mass instancing are ever needed. It would mean porting GLSL to WGSL, a few days' work.
    - **Ruled out:** a game engine such as Bevy.
-5. **Cache the rendered map** off-screen while the camera and year are unchanged; only moving things are drawn every frame.
+5. **Cache the rendered map** off-screen while the camera and year are unchanged; only moving things are drawn every frame. Done in R28.
 
 ### Components
 - **Scale framework:** the zoom range, scale bands, and every size in metres via `cell_km`.
