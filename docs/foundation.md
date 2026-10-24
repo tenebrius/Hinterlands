@@ -2077,6 +2077,24 @@ What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a 
 
 **Map 3's spacing is the named risk.** If it is the only failure, it is reported against its 56/80 reference, paired, before anything is decided.
 
+### The recovery rule explored and set aside; the calendar re-gated; the recovery rate a known miss (D172)
+
+**What the exploration showed.**
+- **Per place's reach, the free-land rule slows colonisation by 40%.** Neighbours' reaches overlap, so a place's free share falls while the region is still filling.
+- **Per region it barely binds,** because the marginal land is never cleared.
+- So in this model frontier growth and recovery share one rate, and land alone cannot separate them.
+- `ever_owned`, `free_land_growth` and `free_land_region` stay built and off, and are recorded as explored.
+- **The stability exemptions are live,** under D170.
+
+**Decided:**
+1. **Option 1: re-gate `plague_sourced` with endemic 0.015 and the stability fix** on 40 seeds. If it passes, it becomes the default. If map 3's spacing is the only failure, it is reported paired against 56/80 first.
+2. **The date switch is declined again.** A settled rate from 1348 would script the outcome (D165).
+3. **The recovery rate is accepted as a known miss:** about 0.9–1.0% a year against the record's 0.59%. 1600 still sits inside the gated 0.75–1.15.
+   - **The cause is recorded:** one growth rate serves both colonisation and recovery. Endemic 0.015 is half compensation for it.
+   - **What would fix it** is a growth rule with separate frontier and settled terms that does not depend on reach overlap. That is a redesign of growth, which every check rests on, and it is not scheduled.
+
+**After the gate:** with the population path settled, the next step is the list's first open item. That is map 3's spacing, too few market towns in the outer districts, as a mechanism note.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.

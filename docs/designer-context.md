@@ -166,6 +166,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D172:**
+  - Recovery rule explored and set aside (reach overlap slows colonisation; per region it doesn't bind).
+  - Re-gate the sourced calendar with endemic 0.015 and the stability fix. Date switch declined. Recovery rate (0.9–1.0% against 0.59%) is a known miss, caused by one growth rate for frontier and recovery.
+  - Next: a note on map 3's spacing.
 - **D170:**
   - The calendar gate failed (stability 0/40 from unexempted outbreaks; spacing, roads, map 1 recovery). Stability's exemptions extended to every calendar outbreak (D58's principle).
   - Recovery rule decided: free land means never cleared; r_max blends frontier 2.7% and settled 1.0% by the free share; endemic falls to its sourced 0.007 in the same change.
@@ -314,4 +318,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D170: stability exemptions; recovery rule with the calendar and endemic 0.007.
+Last updated: 2026-10-24 — D172: calendar re-gated; recovery rate a known miss; map 3 spacing next.
