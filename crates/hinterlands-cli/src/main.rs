@@ -475,6 +475,8 @@ fn main() {
         "cloth" => probe::cmd_cloth(&args),
         "clothpace" => probe::cmd_clothpace(&args),
         "putout" => probe::cmd_putout(&args),
+        "spacetrace" => probe::cmd_spacetrace(&args),
+        "wealth" => probe::cmd_wealth(&args),
         "diag" => probe::cmd_diag(&args),
         "towns" => probe::cmd_towns(&args),
         "marketplaces" => probe::cmd_marketplaces(&args),

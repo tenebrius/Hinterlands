@@ -1815,3 +1815,144 @@ pub fn cmd_putout(args: &Args) {
         );
     }
 }
+
+/// Map 3's spacing trace (D158): in 1600, every place of 200 people or more
+/// with its anchor, people, W, the coin its wool fetched summed over
+/// 1450-1600 and over 1300-1449, its pasture share of used land, its fields'
+/// mean yield against the region's, and its distance to the nearest place over
+/// 2,000 and to the largest place; then the median nearest-neighbour distance
+/// among places over 500, as validate reads it.
+pub fn cmd_spacetrace(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let mut late: std::collections::BTreeMap<u32, f32> = Default::default();
+    let mut early: std::collections::BTreeMap<u32, f32> = Default::default();
+    while sim.state.year < 500 {
+        sim.step(1);
+        let y = sim.state.year;
+        for s in &sim.state.settlements {
+            if s.wool_got > 0.0 {
+                let e = if y >= 350 { &mut late } else if y >= 200 { &mut early } else { continue };
+                *e.entry(s.id).or_insert(0.0) += s.wool_got;
+            }
+        }
+    }
+    let st = &sim.state;
+    let t = &sim.terrain;
+    let g = t.grid;
+    let fields: Vec<f32> = st
+        .settlements
+        .iter()
+        .flat_map(|s| s.fields.iter().map(|&c| t.food_yield[c as usize]))
+        .collect();
+    let region_yield = fields.iter().sum::<f32>() / fields.len().max(1) as f32;
+    let big: Vec<usize> = st
+        .settlements
+        .iter()
+        .filter(|s| s.pop > 2000.0)
+        .map(|s| s.anchor as usize)
+        .collect();
+    let largest = st
+        .settlements
+        .iter()
+        .max_by(|a, b| a.pop.total_cmp(&b.pop))
+        .map(|s| s.anchor as usize);
+    let markets: Vec<usize> = st
+        .settlements
+        .iter()
+        .filter(|s| s.pop > 500.0)
+        .map(|s| s.anchor as usize)
+        .collect();
+    let mut nn: Vec<f32> = markets
+        .iter()
+        .map(|&a| {
+            markets
+                .iter()
+                .filter(|&&b| b != a)
+                .map(|&b| g.dist_km(a, b))
+                .fold(f32::INFINITY, f32::min)
+        })
+        .collect();
+    nn.sort_by(|a, b| a.total_cmp(b));
+    println!(
+        "spacetrace map {map} seed {seed} over500 {} spacing {:.2} region_yield {region_yield:.3}",
+        markets.len(),
+        nn.get(nn.len() / 2).copied().unwrap_or(f32::NAN)
+    );
+    println!("place id anchor x y pop market wool_late wool_early pasture yield_rel km_big km_largest");
+    for s in st.settlements.iter().filter(|s| s.pop >= 200.0) {
+        let a = s.anchor as usize;
+        let y = s.fields.iter().map(|&c| t.food_yield[c as usize]).sum::<f32>()
+            / s.fields.len().max(1) as f32;
+        let past = s.pasture.len() as f32 / (s.pasture.len() + s.fields.len()).max(1) as f32;
+        let kb = big
+            .iter()
+            .filter(|&&b| b != a)
+            .map(|&b| g.dist_km(a, b))
+            .fold(f32::INFINITY, f32::min);
+        println!(
+            "place {} {a} {} {} {:.0} {:.0} {:.0} {:.0} {:.3} {:.3} {:.1} {:.1}",
+            s.id,
+            a % g.w as usize,
+            a / g.w as usize,
+            s.pop,
+            s.market,
+            late.get(&s.id).copied().unwrap_or(0.0),
+            early.get(&s.id).copied().unwrap_or(0.0),
+            past,
+            y / region_yield.max(1e-9),
+            kb,
+            largest.map_or(f32::NAN, |l| g.dist_km(a, l))
+        );
+    }
+}
+
+/// D3 report (D158), by decade from 1300: the region's real income per head
+/// against its 1300-1339 mean (people-weighted), home cloth per adult in
+/// yards (`cloth_yd_adult` × the people-weighted multiplier), home wool use
+/// and need, people and the coin stock.
+pub fn cmd_wealth(args: &Args) {
+    let mut sim = make_sim(args);
+    let seed = sim.sim_seed;
+    let map = args.u64("map-seed", 1);
+    let p = sim.params.clone();
+    println!("wealth map seed decade y_rel cloth_yd_adult home_use_lb home_need_lb pop coin");
+    while sim.state.year < 500 {
+        let y0 = sim.state.year;
+        let mut acc = [0f64; 6];
+        for _ in 0..10 {
+            sim.step(1);
+            let st = &sim.state;
+            let pop: f32 = st.settlements.iter().map(|s| s.pop.max(0.0)).sum();
+            let yref = if st.wealth_ref.1 > 0 {
+                st.wealth_ref.0 / st.wealth_ref.1 as f32
+            } else {
+                f32::NAN
+            };
+            let ym: f32 = st.settlements.iter().map(|s| s.wealth_y * s.pop.max(0.0)).sum::<f32>()
+                / pop.max(1.0);
+            let mm: f32 = st.settlements.iter().map(|s| s.wealth_mult * s.pop.max(0.0)).sum::<f32>()
+                / pop.max(1.0);
+            let coin: f32 = st.settlements.iter().map(|s| s.purse + s.mpurse).sum();
+            acc[0] += (ym / yref) as f64 / 10.0;
+            acc[1] += (p.cloth_yd_adult * mm) as f64 / 10.0;
+            acc[2] += st.cloth_stats[3] as f64 / 10.0;
+            acc[3] += st.cloth_stats[4] as f64 / 10.0;
+            acc[4] += pop as f64 / 10.0;
+            acc[5] += coin as f64 / 10.0;
+        }
+        if y0 >= 200 {
+            println!(
+                "wealth {map} {seed} {} {:.3} {:.2} {:.0} {:.0} {:.0} {:.0}",
+                1100 + y0,
+                acc[0],
+                acc[1],
+                acc[2],
+                acc[3],
+                acc[4],
+                acc[5]
+            );
+        }
+    }
+}

@@ -317,6 +317,20 @@ pub struct Settlement {
     /// year (D145).
     #[serde(default)]
     pub cloth_work_in: f32,
+    /// Coin the place's wool fetched this year, lords' and farmers' shares
+    /// (reported only; D158 trace).
+    #[serde(default)]
+    pub wool_got: f32,
+    /// Coin the place's grain sales earned this year, farmers' and market's
+    /// (written by marketplace; D3).
+    #[serde(default)]
+    pub grain_earned: f32,
+    /// Real income per head, grain units, a ten-year average (D3, D158).
+    #[serde(default)]
+    pub wealth_y: f32,
+    /// The stocks' multiplier from income per head (D3): (y / y0)^e.
+    #[serde(default = "one")]
+    pub wealth_mult: f32,
     /// Arable land, km² (D1: plough iron), written by cultivation.
     #[serde(default)]
     pub arable_km2: f32,
@@ -387,6 +401,10 @@ impl Settlement {
             cloth_cap: 0.0,
             cloth_cap_bound: false,
             cloth_work_in: 0.0,
+            wool_got: 0.0,
+            grain_earned: 0.0,
+            wealth_y: 0.0,
+            wealth_mult: 1.0,
             arable_km2: 0.0,
             works: 0,
             w_last: 0.0,
@@ -585,6 +603,10 @@ pub struct State {
     /// (D150) raw wool to the ports by grade, good, middle and refuse, lb.
     #[serde(default)]
     pub cloth_trace: [f32; 19],
+    /// D3 (D158): the region's real income per head summed over 1300-1339 and
+    /// the years summed; the reference y0 is their ratio.
+    #[serde(default)]
+    pub wealth_ref: (f32, u32),
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -772,6 +794,7 @@ impl State {
             fallow_wool: 0.0,
             cloth_stats: [0.0; 5],
             cloth_trace: [0.0; 19],
+            wealth_ref: (0.0, 0),
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],
@@ -888,4 +911,8 @@ impl State {
         crate::reach::refresh_one(self, t, p, idx);
         id
     }
+}
+
+fn one() -> f32 {
+    1.0
 }

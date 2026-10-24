@@ -646,6 +646,7 @@ pub fn trade(
         // The toll on rent grain stays with the market it is paid to.
         s.mpurse += owed_m[j] * scale - paid_m[j] + carriage;
         s.purse += owed_f[j] * scale * (1.0 - p.toll) - paid_f[j];
+        s.grain_earned = owed_m[j] * scale + carriage + owed_f[j] * scale * (1.0 - p.toll);
         tolls += p.toll * owed_m[j] * scale;
         m_income += owed_m[j] * scale + carriage;
     }
@@ -653,6 +654,7 @@ pub fn trade(
     for &(_, j, q) in &surplus_arr {
         let t = p.toll * q * value[j] * scale;
         state.settlements[j].mpurse += t;
+        state.settlements[j].grain_earned += t;
         tolls += t;
         m_income += t;
     }
@@ -661,6 +663,7 @@ pub fn trade(
         let total: f32 = (0..m).map(|j| sold_here[j]).sum::<f32>().max(1e-9);
         for j in 0..m {
             state.settlements[j].mpurse += gap * sold_here[j] / total;
+            state.settlements[j].grain_earned += gap * sold_here[j] / total;
         }
     }
     state.money.port_in += port_in;

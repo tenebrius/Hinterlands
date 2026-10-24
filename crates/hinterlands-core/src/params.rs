@@ -259,6 +259,9 @@ define_params! {
         cloth_yd_adult: f32 = 1.5, [0, 10], "Home cloth an adult buys a year, yards, held constant until D3 (Dyer 1989, bracketed; D123)";
         adult_share: f32 = 0.6, [0, 1], "Adults per person (calibration; D0)";
         home_lb_per_yd: f32 = 2.0, [0, 10], "Wool in a yard of home cloth, lb: between kersey (1.6) and broadcloth (3.5) (statute of 1464/65; D123)";
+        wealth_stocks: bool = false, [0, 1], "D3 (D158): home cloth, household iron and building stone per head rise with real income per head, against the region's 1300-1339 mean";
+        wealth_elast: f32 = 1.0, [0, 3], "Income elasticity of the stocks (one e for all, named: Houthakker 1957 not checked against the original; D158)";
+        wealth_years: f32 = 10.0, [1, 50], "Years over which income per head is averaged (D3)";
         cloth_d_lb: f32 = 5.7, [0, 50], "Price of export cloth, pence a lb of wool content: about 2 pounds a broadcloth of 84 lb, 1371-1450 (Munro, English customs valuations; D124)";
         cloth_cost_d_lb: f32 = 2.7, [0, 50], "Cost of making cloth, pence a lb of wool content: Munro, Ypres 1500 (wool 52% of a broadcloth's total cost) at 5.7 d a lb; Leuven 1434 would give 2.1 (D132)";
         cloth_price_late: bool = true, [0, 1], "From 1450 the export cloth price follows Munro's all-ports customs values deflated by Clark's wheat price (D137; default from D141)";

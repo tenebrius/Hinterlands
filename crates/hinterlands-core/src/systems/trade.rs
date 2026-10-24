@@ -460,11 +460,14 @@ pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
     // works and buildings hold, in value units of a person-year of grain.
     if p.demand_stocks {
         let unit_d = (p.wheat_s_bu * 12.0 * p.bu_per_person).max(1e-6);
+        // D3 (D158): household iron and building stone rise with income per
+        // head; salt, plough and site iron do not.
+        let wm = if p.wealth_stocks { s.wealth_mult } else { 1.0 };
         return match g {
             Good::Salt => s.pop * p.salt_lb / p.salt_lb_per_d.max(1e-6) / unit_d,
             Good::Iron => {
                 (s.arable_km2 * p.ploughs_per_km2 * p.plough_iron_d
-                    + s.pop * p.household_iron_d
+                    + s.pop * p.household_iron_d * wm
                     + s.works as f32 * p.site_iron_d)
                     / unit_d
             }
@@ -476,7 +479,7 @@ pub fn demand(s: &crate::state::Settlement, p: &Params, g: Good) -> f32 {
                 } else {
                     0.0
                 };
-                p.demand_stone / p.stone_repair.max(1e-6) * (p.stone_repair * w + grew)
+                wm * p.demand_stone / p.stone_repair.max(1e-6) * (p.stone_repair * w + grew)
             }
         };
     }

@@ -965,3 +965,19 @@ Kind: model data, held off (designer's decision D152).
 - **Reading (not traced):** cheaper wool after 1450 thins the outer districts' places over 500.
 - **Not made the default.** Details: `docs/demand/d2m.md`. The D3 note is `docs/proposals/wealth.md`.
 Kind: model data, held off (designer's decision D156).
+
+## D159 — D158: map 3's spacing trace, and D3 built (off) with a 9-run exploration
+- **The trace** (map 3, 20 seeds, exploration): the series fails spacing in 6 runs, D144 in 5.
+  - Places over 500 in 1600: 23 against 24.
+  - The places lost are not outer or pastoral (no pasture, yield 1.36 against 1.47, the usual distances).
+  - My D157 reading is withdrawn. The gate's 25/40 against 30/40 is about 1.2 SD apart, on a check at its edge. Details: `docs/demand/d2n.md`.
+- **D3 built behind `wealth_stocks` (off):**
+  - income per head is own food up to need plus earned coin (grain, wool, cloth) over the grain price, a ten-year average, against the region's 1300–39 mean;
+  - home cloth, household iron and stone scale by (y / y₀)^1.0;
+  - Houthakker was not checked, so one e = 1.0 is named.
+- **D3 exploration (9 runs, not a gate):**
+  - income per head peaks at 1.24 × y₀ (1370), and is 1.02 in 1500 and 0.87 in 1590;
+  - cloth per adult in 1500 is 1.54 yd against Dyer's 3;
+  - Clark's real wages: farm ×2.34, building labourers ×2.05 in 1500.
+- **Reading:** cultivation holds output per head near need, so income per head cannot double. Details: `docs/demand/d3a.md`.
+Kind: trace and model mechanism, held off (designer's decision D158).

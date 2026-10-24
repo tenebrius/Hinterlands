@@ -553,6 +553,7 @@ fn wool_market(
         s.cloth_margin = 0.0;
         s.cloth_work_in = 0.0;
         s.cloth_cap_bound = false;
+        s.wool_got = 0.0;
     }
     // Putting-out (D145): from `putting_out_from` a mill's capacity is its
     // own stock, started from `cloth_lb_per_w` × W.
@@ -576,7 +577,9 @@ fn wool_market(
     let mut cloth_net = vec![0f32; m];
     let mut mill_bid = vec![0f32; m];
     for (j, s) in state.settlements.iter().enumerate() {
-        d0[j] = home_pp * s.pop.max(0.0) * vw;
+        // D3 (D158): home cloth per adult rises with income per head.
+        let wm = if p.wealth_stocks { s.wealth_mult } else { 1.0 };
+        d0[j] = home_pp * wm * s.pop.max(0.0) * vw;
         if !s.mill || s.market <= 0.0 || p.cloth_lb_per_w <= 0.0 {
             continue;
         }
@@ -832,6 +835,7 @@ fn wool_market(
         let farmers_share = r - lords;
         let toll = p.toll * farmers_share;
         let s = &mut state.settlements[x.i];
+        s.wool_got += r;
         s.mpurse += lords + toll;
         s.purse += farmers_share - toll;
         s.wool_in += lords + toll;

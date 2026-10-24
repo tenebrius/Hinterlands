@@ -55,6 +55,7 @@ pub fn step_year(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     systems::production::run(state, t, p, rng);
     systems::trade::run(state, t, p, rng);
     systems::market::run(state, t, p, rng);
+    systems::wealth::run(state, t, p, rng);
     systems::growth::run(state, t, p, rng);
     systems::founding::run(state, t, p, rng);
     systems::failure::run(state, t, p, rng);

@@ -14,3 +14,4 @@ pub mod pasture;
 pub mod production;
 pub mod roads;
 pub mod trade;
+pub mod wealth;
