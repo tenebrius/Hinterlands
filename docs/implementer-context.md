@@ -11,6 +11,7 @@ Last updated: 2026-10-24. D157: the wool series' gate failed on map 3's spacing;
 - **Push to both branches:** `git push -q origin HEAD:main HEAD:ccr-518ddadf-lg74ka`. Pull `main` first (`git pull -q origin main`); the designer commits there too.
 - **Commit messages** name the milestone and system, and end with the attribution lines (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and the `Claude-Session:` URL). Never put a model ID in a commit or doc.
 - **Decision numbers** are shared with the designer and increase. The designer's numbers are in `docs/foundation.md`; the implementer's records go in `docs/decisions.md`. The last used is D157, the implementer's (D146 is the designer's seed-count rule: exploration at most 20 seeds a map, gates at 40, and a 20-seed result is never reported as a pass or fail). Take the next free number.
+- **Name a commit only after reading it from `git log --oneline -1`,** after the push. A merge on pull changes the hash.
 - **A report to the designer** follows the brief exactly:
   - the gate per check, against the reference;
   - every pre-registration, met or not, with numbers;
