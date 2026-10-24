@@ -166,6 +166,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **Grades and putting-out (78edbaf) failed, D152:**
+  - Grades work to 1480 (share 0.55); from 1490 the later cloth price outbids every grade (share 1.00, boom back).
+  - Spec error 15 (mine): cloth followed its price series while wool was frozen after 1400.
+  - Fix: wool on Clark's series for the whole run; re-gate the three together with D150's pre-registrations.
 - **D149 (a399bf1), D150:**
   - The attribution shows the boom flattens map 1, not the payment split.
   - Decided: wool grades within the clip (Munro 100:70:49; mean kept at Lloyd's); grade shares from a source or equal thirds as a prior, never fitted to the path; one cloth netback for all grades.
@@ -231,6 +235,8 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 
 14. **I taxed a price that had already been taxed.** D123 applied the wool subsidy and custom to the port's wool price, but that price is Lloyd's and Clark's English price, paid to growers after the duties. Wool's value was halved, the clip was pushed onto households, coin drained, and map 3 lost a third of its people. I also read the gap it made against Munro as a missing mechanism. Rule: before applying a levy, cost or margin to a price series, ask on which side of it the series was observed.
 
+15. **I moved one price and froze its rival.** D137 put cloth on Munro's later price series, but wool stayed flat after Clark's fall ended in 1400. From 1490 cloth outbid every grade of wool, and the boom came back. Rule: when one price follows its historical series, every price it competes with follows its own series over the same years.
+
 Judgement rules that now stand:
 
 - **Pass rates, not single runs.** Each check passes in at least 75 % of 20 seeds on every map. A single seed on a range edge is noise.
@@ -272,4 +278,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D150 sent: wool grades, then putting-out re-gated with them.
+Last updated: 2026-10-24 — D152 sent: wool on Clark's series for the whole run; grades, putting-out and series gated together.

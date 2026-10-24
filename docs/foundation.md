@@ -1759,6 +1759,36 @@ The making cost going to rural households is therefore accepted as built. The ta
 - **The coin stock in 1600 is at most 1.5 times D144's,** for the same reason.
 - **Raw wool leaves in every decade, at no less than the good grade's share of the clip.**
 
+### Grades and putting-out (78edbaf): the grades work until one price outruns the other; my asymmetry (D152)
+
+**What it showed.**
+- **To 1480 the grades work.** Good wool stays raw, and the cloth share holds at 0.53–0.60, inside the record's band for 1440–60.
+- **From 1490 Munro's later cloth price** (deflated by wheat, up to ×1.66) lifts cloth's netback above even the good grade's price. Every grade goes to cloth, and the share is 1.00 from 1500.
+- **The boom comes back:** rank-size fails on maps 1 and 2, coin is 293k in 1600, and home wool falls below need.
+- **The equal-thirds prior is accepted as named.** Slavin confirms that the contracts set shares, but gives none.
+
+**The cause is mine (specification error 15).** At D137 I put cloth on its later price series and left wool on a price held flat after Clark's fall ends (1400). In the record both moved: English wool prices rose in the sixteenth century too. One price followed the record while its competitor was frozen, and the frozen one lost. My choice of one netback for all grades (D150.3) is not the fault: with both prices on their series, good wool's premium holds wherever the record holds it.
+
+**Corrected:**
+1. **The port's wool price follows Clark's wool series against wheat for the whole run,** as cloth follows Munro's against wheat. The 1350–1400 fall (D110) becomes the first segment of the same series, not a one-off.
+   - Decadal values from Clark 2004 (Agprice), held at the last value only where the data ends.
+   - The grade ratios scale with it.
+2. **Nothing else changes.** Grades stay as built, putting-out stays as built, there is still one netback, and the thirds are kept.
+3. **Gate grades, putting-out and the wool series together** on 40 seeds, every check. If it passes, all three become the default. If it fails, stop and report per check.
+
+**Pre-registered, reported only:** as in D150, unchanged.
+- The cloth share is below 0.95 in every decade; 0.35–0.65 in 1440–60; 0.55–0.85 in 1490–1510.
+- Map 1's rank-size is at 30/40 or better.
+- Coin in 1600 is at most 1.5 times D144's.
+- Raw wool is at least the good grade's share in every decade.
+
+They rest on wool and cloth prices both following their own series, which the implementer confirms in the code before the run (rule 5).
+
+**Reported:**
+- Clark's wool series against Munro's cloth series by decade, as used;
+- each grade's port price against cloth's netback by decade;
+- home wool against need.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
