@@ -63,6 +63,8 @@ impl Layer for WoolLayer {
         let g = v.terrain.grid;
         let n = v.terrain.n() as u32;
         let z = d.camera.zoom;
+        // Flow lines are map symbols: they fade out close in, with the routes.
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
         let on_map = |node: u32| -> Vec2 {
             let c = node % n;
             let c = v.sea_lane.get(c as usize).copied().unwrap_or(c);
@@ -71,7 +73,7 @@ impl Layer for WoolLayer {
         };
         let mut flows: Vec<_> = snap.flows.iter().filter(|f| f.wool).collect();
         flows.sort_by(|a, b| b.amount.total_cmp(&a.amount));
-        flows.truncate(MAX_DRAWN);
+        flows.truncate(if fade > 0.0 { MAX_DRAWN } else { 0 });
         flows.reverse();
         for f in flows {
             if f.path.len() < 2 {
@@ -86,9 +88,10 @@ impl Layer for WoolLayer {
             let w = (0.4 + f.amount.sqrt() * 0.08).min(3.5) * (z / 6.0).clamp(0.6, 2.0);
             d.painter.add(Shape::line(
                 line.clone(),
-                Stroke::new(w + 1.2, WOOL_EDGE.gamma_multiply(0.5)),
+                Stroke::new(w + 1.2, WOOL_EDGE.gamma_multiply(0.5 * fade)),
             ));
-            d.painter.add(Shape::line(line, Stroke::new(w, WOOL)));
+            d.painter
+                .add(Shape::line(line, Stroke::new(w, WOOL.gamma_multiply(fade))));
         }
     }
 }

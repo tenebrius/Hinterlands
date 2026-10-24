@@ -86,6 +86,8 @@ impl Layer for GoodsLayer {
         let g = t.grid;
         let n = t.n() as u32;
         let z = d.camera.zoom;
+        // Flow lines are map symbols: they fade out close in, with the routes.
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
         let on_screen = |cell: u32| -> Vec2 {
             let c = cell % n;
             let c = v.sea_lane.get(c as usize).copied().unwrap_or(c);
@@ -95,6 +97,9 @@ impl Layer for GoodsLayer {
         // Goods flows, thickest last so they read on top.
         let mut flows: Vec<_> = snap.flows.iter().filter(|f| f.good.is_some()).collect();
         flows.sort_by(|a, b| a.amount.total_cmp(&b.amount));
+        if fade <= 0.0 {
+            flows.clear();
+        }
         for f in flows {
             let Some(good) = f.good else { continue };
             if f.path.len() < 2 {
@@ -109,10 +114,12 @@ impl Layer for GoodsLayer {
             let w = (0.6 + f.amount.sqrt() * 0.18).min(4.0) * (z / 6.0).clamp(0.6, 2.0);
             d.painter.add(Shape::line(
                 line.clone(),
-                Stroke::new(w + 1.4, INK.gamma_multiply(0.6)),
+                Stroke::new(w + 1.4, INK.gamma_multiply(0.6 * fade)),
             ));
-            d.painter
-                .add(Shape::line(line, Stroke::new(w, colour(good))));
+            d.painter.add(Shape::line(
+                line,
+                Stroke::new(w, colour(good).gamma_multiply(fade)),
+            ));
         }
         // Specialists: a ring in the good's colour.
         for s in &snap.settlements {

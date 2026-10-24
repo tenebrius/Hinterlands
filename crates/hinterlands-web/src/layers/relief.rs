@@ -2,13 +2,16 @@
 //! cells instead of painting squares. Coast, shallows, hillshade and the forest
 //! canopy are derived per pixel from the cell values, and so are the farmed
 //! countryside (field strips, pasture, hedgerows, old fields), the built-up
-//! footprints of settlements with ruins and city walls, and the season tints,
-//! each drawn only while its own layer is on. If the shader cannot be
+//! footprints of settlements with ruins and city walls, the season tints, and,
+//! close in, roads and rivers at their true width (from `ways`) and the
+//! countryside at real scale (`country.frag`: furlongs, closes, hedges, single
+//! trees, downland), each drawn only while its own layer is on. If the shader cannot be
 //! built the layer falls back to the cell texture of `TerrainLayer`, and the
 //! countryside layers draw their cells as before.
 
 use super::countryside::{hash, strip_orientation};
 use super::terrain::TerrainLayer;
+use super::ways::Ways;
 use super::{DrawCtx, Layer, Swatch};
 use crate::view::{ViewState, NEVER};
 use eframe::egui_glow;
@@ -28,13 +31,31 @@ void main() {
 }
 "#;
 
+/// Copies the cached relief to the screen pixel for pixel (R28).
+const BLIT: &str = r#"
+precision highp float;
+uniform sampler2D u_cache;
+uniform ivec2 u_origin;
+out vec4 o_color;
+void main() {
+    o_color = texelFetch(u_cache, ivec2(gl_FragCoord.xy) - u_origin, 0);
+}
+"#;
+
 const FRAG: &str = include_str!("relief.frag");
+/// The real-scale countryside (R10), spliced into `FRAG` at its marker.
+const COUNTRY: &str = include_str!("country.frag");
+/// Towns at real scale (R11), spliced in at their marker.
+const TOWN_FRAG: &str = include_str!("town.frag");
 
 /// How far the coast distance field is searched, in cells.
 const COAST_REACH: i32 = 6;
 /// Years of farming before a field is hedged, and years an abandoned field stays visible.
 const ESTABLISHED: u32 = 50;
 const GHOST_YEARS: u32 = 200;
+
+/// Road and river pieces the shader reads per index square (as `WAY_MAX` in the shader).
+const MAX_WAYS: usize = 160;
 
 /// Set when the shader could not be built, so the cell layers take over again.
 static FAILED: AtomicBool = AtomicBool::new(false);
@@ -51,28 +72,63 @@ pub struct ReliefLayer {
     key: Option<(u64, u32)>,
     terrain_key: Option<u64>,
     fallback: TerrainLayer,
+    ways: Ways,
+    /// Squares of the road and river index per cell along a side.
+    way_sub: f32,
+    /// Squares of the town index per cell along a side.
+    shape_sub: f32,
+    /// The year the roads and towns were last laid out.
+    ways_year: Option<(u64, u32)>,
+    /// The look they were laid out for (R12).
+    ways_look: Option<[u32; 5]>,
+    /// `?redraw=1`: draw the relief every frame, bypassing the cache (R28), to time the shader.
+    redraw: Option<bool>,
 }
+
+/// The textures, by unit, and the sampler each is bound to.
+const LAND: usize = 0;
+const COVER: usize = 1;
+const PLOT: usize = 2;
+const TOWN: usize = 3;
+const WAYS: usize = 4;
+const WAY_CELL: usize = 5;
+const WAY_IDX: usize = 6;
+const GROUND: usize = 7;
+const SHAPES: usize = 8;
+const SHAPE_CELL: usize = 9;
+const SHAPE_SQ: usize = 10;
+const SHAPE_IDX: usize = 11;
+const SAMPLERS: [&str; 12] = [
+    "u_land", "u_cover", "u_plot", "u_town", "u_ways", "u_wcell", "u_widx", "u_ground", "u_shapes",
+    "u_scell", "u_ssq", "u_sidx",
+];
+/// Shapes the shader reads per index square (as `SHAPE_MAX` in the shader).
+const MAX_SHAPES: usize = 160;
+/// While the run plays, the roads and town plans are laid out again at most
+/// this often (years); paused, every year.
+const PLAYING_EVERY: u32 = 5;
 
 /// GL objects, owned behind a mutex because egui runs paint callbacks later in the frame.
 #[derive(Default)]
 struct Gpu {
     program: Option<glow::Program>,
     vao: Option<glow::VertexArray>,
-    land: Option<glow::Texture>,
-    cover: Option<glow::Texture>,
-    plot: Option<glow::Texture>,
-    town: Option<glow::Texture>,
-    /// Data waiting to be uploaded on the next paint.
-    land_data: Option<Vec<f32>>,
-    cover_data: Option<Vec<f32>>,
-    plot_data: Option<Vec<f32>>,
-    town_data: Option<Vec<f32>>,
-    size: (i32, i32),
+    tex: Vec<glow::Texture>,
+    /// Data waiting to be uploaded on the next paint: texture, size, texels.
+    pending: Vec<(usize, (i32, i32), Vec<f32>)>,
     failed: bool,
+    /// The rendered relief (R28): a framebuffer and its texture, the size in
+    /// pixels, and the frame it holds. It is drawn again only when the frame,
+    /// the size or the data change; otherwise it is copied to the screen.
+    blit: Option<glow::Program>,
+    fbo: Option<glow::Framebuffer>,
+    cache: Option<glow::Texture>,
+    cache_size: (i32, i32),
+    cached: Option<Frame>,
 }
 
 /// What the shader needs each frame.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 struct Frame {
     grid: [f32; 2],
     p0: [f32; 2],
@@ -87,6 +143,16 @@ struct Frame {
     show: [f32; 4],
     /// Settlements and buildings layers on (footprints; walls).
     town: [f32; 2],
+    /// True-width roads on, rivers on, flood widening of the rivers, footpaths on.
+    ways: [f32; 4],
+    /// Metres per cell.
+    cell_m: f32,
+    way_sub: f32,
+    shape_sub: f32,
+    /// The look (R12): roads, rivers, trees and buildings against true size.
+    look: [f32; 4],
+    /// Ink outlines (R14), 0..1.
+    ink: f32,
 }
 
 /// Per cell: elevation, signed distance to the coast in cells (land positive), yield, hillshade.
@@ -173,8 +239,12 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
     for i in 0..t.n() {
         let built = snap.built[i] != NONE;
         let owned = snap.owner[i] != NONE;
-        let forest = snap.forest[i] as f32 / 255.0;
-        let farmed = owned && !built;
+        // Woods stop at a place's plots (R11): a built cell keeps a quarter of
+        // its cover, as copses and trees round its edge.
+        let forest = snap.forest[i] as f32 / 255.0 * if built { 0.25 } else { 1.0 };
+        // Built cells count as farmland too: since R11 a place covers only part
+        // of its cell, and its fields run up to the backs of its plots.
+        let farmed = (owned || built) && t.is_land(i);
         let pasture = v.pasture[i] && !owned && !built;
         let ghost = if !owned && !built && t.is_land(i) && v.farm_last[i] != NEVER {
             let age = year.saturating_sub(v.farm_last[i] as u32);
@@ -202,16 +272,67 @@ fn year_data(v: &ViewState) -> (Vec<f32>, Vec<f32>) {
     (cover, plot)
 }
 
+/// Per cell for this year: wetness (a river or beside one, on flat ground, or a
+/// flood meadow), the year first farmed in this session / 100 (-1 if never),
+/// and the original forest cover.
+fn ground_data(v: &ViewState) -> Vec<f32> {
+    let t = &v.terrain;
+    let mut out = Vec::with_capacity(t.n() * 4);
+    for i in 0..t.n() {
+        let flat = 1.0 - ((t.slope[i] - 0.02) / 0.06).clamp(0.0, 1.0);
+        let by = if t.is_river(i) || t.is_nav(i) {
+            1.0
+        } else if t.touches(i, |j| t.is_river(j) || t.is_nav(j)) {
+            0.7
+        } else {
+            0.0
+        };
+        let wet = if t.is_land(i) { by * flat } else { 0.0 };
+        let first = if v.farm_first[i] == NEVER {
+            -1.0
+        } else {
+            v.farm_first[i] as f32 / 100.0
+        };
+        out.extend_from_slice(&[wet, first, t.forest0[i], 0.0]);
+    }
+    out
+}
+
 impl Gpu {
+    /// Queues texels for a texture, replacing any not yet uploaded.
+    fn queue(&mut self, k: usize, size: (i32, i32), data: Vec<f32>) {
+        self.pending.retain(|p| p.0 != k);
+        self.pending.push((k, size, data));
+    }
+
     unsafe fn init(&mut self, gl: &glow::Context) -> Result<(), String> {
         let header = if gl.version().is_embedded {
             "#version 300 es\n"
         } else {
             "#version 330\n"
         };
+        let frag = FRAG
+            .replace("// @include country.frag\n", COUNTRY)
+            .replace("// @include town.frag\n", TOWN_FRAG);
+        self.program = Some(Self::compile(gl, header, &frag)?);
+        self.blit = Some(Self::compile(gl, header, BLIT)?);
+        self.vao = Some(gl.create_vertex_array()?);
+        for _ in SAMPLERS {
+            self.tex.push(gl.create_texture()?);
+        }
+        self.fbo = Some(gl.create_framebuffer()?);
+        self.cache = Some(gl.create_texture()?);
+        Ok(())
+    }
+
+    unsafe fn compile(
+        gl: &glow::Context,
+        header: &str,
+        frag: &str,
+    ) -> Result<glow::Program, String> {
         let program = gl.create_program()?;
         let mut shaders = Vec::new();
-        for (kind, src) in [(glow::VERTEX_SHADER, VERT), (glow::FRAGMENT_SHADER, FRAG)] {
+        for (kind, src) in [(glow::VERTEX_SHADER, VERT), (glow::FRAGMENT_SHADER, frag)] {
             let s = gl.create_shader(kind)?;
             gl.shader_source(s, &format!("{header}{src}"));
             gl.compile_shader(s);
@@ -229,13 +350,7 @@ impl Gpu {
             gl.detach_shader(program, s);
             gl.delete_shader(s);
         }
-        self.program = Some(program);
-        self.vao = Some(gl.create_vertex_array()?);
-        self.land = Some(gl.create_texture()?);
-        self.cover = Some(gl.create_texture()?);
-        self.plot = Some(gl.create_texture()?);
-        self.town = Some(gl.create_texture()?);
-        Ok(())
+        Ok(program)
     }
 
     unsafe fn upload(gl: &glow::Context, tex: glow::Texture, size: (i32, i32), data: &[f32]) {
@@ -261,7 +376,15 @@ impl Gpu {
         );
     }
 
-    fn paint(&mut self, gl: &glow::Context, f: Frame) {
+    /// Draws the relief into the cache if it is out of date (or always, with
+    /// `redraw`), then copies the cache to the viewport egui has set.
+    fn paint(
+        &mut self,
+        gl: &glow::Context,
+        f: Frame,
+        vp: egui::epaint::ViewportInPixels,
+        redraw: bool,
+    ) {
         if self.failed {
             return;
         }
@@ -274,57 +397,123 @@ impl Gpu {
                     return;
                 }
             }
-            let (Some(program), Some(land), Some(cover), Some(plot), Some(town)) =
-                (self.program, self.land, self.cover, self.plot, self.town)
+            let (Some(program), Some(blit), Some(fbo), Some(cache)) =
+                (self.program, self.blit, self.fbo, self.cache)
             else {
                 return;
             };
-            for (tex, data) in [
-                (land, self.land_data.take()),
-                (cover, self.cover_data.take()),
-                (plot, self.plot_data.take()),
-                (town, self.town_data.take()),
-            ] {
-                if let Some(data) = data {
-                    Self::upload(gl, tex, self.size, &data);
+            if !self.pending.is_empty() {
+                self.cached = None;
+            }
+            for (k, size, data) in std::mem::take(&mut self.pending) {
+                Self::upload(gl, self.tex[k], size, &data);
+            }
+            let size = (vp.width_px, vp.height_px);
+            if size != self.cache_size {
+                gl.bind_texture(glow::TEXTURE_2D, Some(cache));
+                for p in [glow::TEXTURE_MIN_FILTER, glow::TEXTURE_MAG_FILTER] {
+                    gl.tex_parameter_i32(glow::TEXTURE_2D, p, glow::NEAREST as i32);
                 }
+                for p in [glow::TEXTURE_WRAP_S, glow::TEXTURE_WRAP_T] {
+                    gl.tex_parameter_i32(glow::TEXTURE_2D, p, glow::CLAMP_TO_EDGE as i32);
+                }
+                gl.tex_image_2d(
+                    glow::TEXTURE_2D,
+                    0,
+                    glow::RGBA8 as i32,
+                    size.0,
+                    size.1,
+                    0,
+                    glow::RGBA,
+                    glow::UNSIGNED_BYTE,
+                    glow::PixelUnpackData::Slice(None),
+                );
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+                gl.framebuffer_texture_2d(
+                    glow::FRAMEBUFFER,
+                    glow::COLOR_ATTACHMENT0,
+                    glow::TEXTURE_2D,
+                    Some(cache),
+                    0,
+                );
+                gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                self.cache_size = size;
+                self.cached = None;
             }
-            gl.use_program(Some(program));
             gl.bind_vertex_array(self.vao);
-            for (unit, tex) in [
-                (glow::TEXTURE3, town),
-                (glow::TEXTURE2, plot),
-                (glow::TEXTURE1, cover),
-                (glow::TEXTURE0, land),
-            ] {
-                gl.active_texture(unit);
-                gl.bind_texture(glow::TEXTURE_2D, Some(tex));
-            }
-            let at = |name: &str| gl.get_uniform_location(program, name);
-            gl.uniform_1_i32(at("u_land").as_ref(), 0);
-            gl.uniform_1_i32(at("u_cover").as_ref(), 1);
-            gl.uniform_1_i32(at("u_plot").as_ref(), 2);
-            gl.uniform_1_i32(at("u_town").as_ref(), 3);
-            gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
-            gl.uniform_1_f32(at("u_year").as_ref(), f.year);
-            gl.uniform_1_i32(at("u_season").as_ref(), f.season);
-            gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
-            gl.uniform_4_f32(
-                at("u_show").as_ref(),
-                f.show[0],
-                f.show[1],
-                f.show[2],
-                f.show[3],
-            );
-            gl.uniform_2_f32(at("u_grid").as_ref(), f.grid[0], f.grid[1]);
-            gl.uniform_2_f32(at("u_p0").as_ref(), f.p0[0], f.p0[1]);
-            gl.uniform_2_f32(at("u_p1").as_ref(), f.p1[0], f.p1[1]);
-            gl.uniform_1_f32(at("u_px").as_ref(), f.px);
             gl.disable(glow::BLEND);
+            if redraw || self.cached != Some(f) {
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+                gl.viewport(0, 0, size.0, size.1);
+                gl.disable(glow::SCISSOR_TEST);
+                self.draw_relief(gl, program, f);
+                gl.enable(glow::SCISSOR_TEST);
+                // egui paints to the screen's framebuffer (`intermediate_fbo` is None).
+                gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                gl.viewport(vp.left_px, vp.from_bottom_px, vp.width_px, vp.height_px);
+                self.cached = Some(f);
+            }
+            gl.use_program(Some(blit));
+            gl.active_texture(glow::TEXTURE0);
+            gl.bind_texture(glow::TEXTURE_2D, Some(cache));
+            gl.uniform_1_i32(gl.get_uniform_location(blit, "u_cache").as_ref(), 0);
+            gl.uniform_2_i32(
+                gl.get_uniform_location(blit, "u_origin").as_ref(),
+                vp.left_px,
+                vp.from_bottom_px,
+            );
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
             gl.enable(glow::BLEND);
             gl.bind_vertex_array(None);
         }
+    }
+
+    /// One full draw of the relief shader into the bound framebuffer.
+    unsafe fn draw_relief(&self, gl: &glow::Context, program: glow::Program, f: Frame) {
+        gl.use_program(Some(program));
+        // Bound from the last unit down, so unit 0 is left active as egui expects.
+        for k in (0..SAMPLERS.len()).rev() {
+            gl.active_texture(glow::TEXTURE0 + k as u32);
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.tex[k]));
+        }
+        let at = |name: &str| gl.get_uniform_location(program, name);
+        for (k, name) in SAMPLERS.iter().enumerate() {
+            gl.uniform_1_i32(at(name).as_ref(), k as i32);
+        }
+        gl.uniform_4_f32(
+            at("u_way_show").as_ref(),
+            f.ways[0],
+            f.ways[1],
+            f.ways[2],
+            f.ways[3],
+        );
+        gl.uniform_1_f32(at("u_cell_m").as_ref(), f.cell_m);
+        gl.uniform_1_f32(at("u_ink").as_ref(), f.ink);
+        gl.uniform_4_f32(
+            at("u_look").as_ref(),
+            f.look[0],
+            f.look[1],
+            f.look[2],
+            f.look[3],
+        );
+        gl.uniform_1_f32(at("u_wsub").as_ref(), f.way_sub);
+        gl.uniform_1_f32(at("u_ssub").as_ref(), f.shape_sub);
+        gl.uniform_2_f32(at("u_town_show").as_ref(), f.town[0], f.town[1]);
+        gl.uniform_1_f32(at("u_year").as_ref(), f.year);
+        gl.uniform_1_i32(at("u_season").as_ref(), f.season);
+        gl.uniform_1_i32(at("u_field_season").as_ref(), f.field_season);
+        gl.uniform_4_f32(
+            at("u_show").as_ref(),
+            f.show[0],
+            f.show[1],
+            f.show[2],
+            f.show[3],
+        );
+        gl.uniform_2_f32(at("u_grid").as_ref(), f.grid[0], f.grid[1]);
+        gl.uniform_2_f32(at("u_p0").as_ref(), f.p0[0], f.p0[1]);
+        gl.uniform_2_f32(at("u_p1").as_ref(), f.p1[0], f.p1[1]);
+        gl.uniform_1_f32(at("u_px").as_ref(), f.px);
+        gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
     }
 }
 
@@ -366,17 +555,66 @@ impl Layer for ReliefLayer {
             self.fallback.draw(d);
             return;
         }
+        let size = (t.grid.w as i32, t.grid.h as i32);
         if self.terrain_key != Some(v.terrain_version) {
-            gpu.land_data = Some(land_data(t));
-            gpu.size = (t.grid.w as i32, t.grid.h as i32);
+            gpu.queue(LAND, size, land_data(t));
             self.terrain_key = Some(v.terrain_version);
         }
         let key = (v.terrain_version, v.snapshot.year);
+        // A new look lays the roads and towns out again at once.
+        if self.ways_look != Some(v.look.key()) {
+            self.ways_look = Some(v.look.key());
+            self.ways_year = None;
+            self.key = None;
+        }
         if self.key != Some(key) {
             let (cover, plot) = year_data(v);
-            gpu.cover_data = Some(cover);
-            gpu.plot_data = Some(plot);
-            gpu.town_data = Some(town_data(v));
+            gpu.queue(COVER, size, cover);
+            gpu.queue(PLOT, size, plot);
+            gpu.queue(TOWN, size, town_data(v));
+            gpu.queue(GROUND, size, ground_data(v));
+            let due = match self.ways_year {
+                Some((tv, y)) => {
+                    tv != v.terrain_version
+                        || !v.playing
+                        || v.snapshot.year.abs_diff(y) >= PLAYING_EVERY
+                }
+                None => true,
+            };
+            if due {
+                let (w, shapes, plan) = self.ways.build(v);
+                let pops = v
+                    .snapshot
+                    .settlements
+                    .iter()
+                    .map(|s| (s.id, s.pop))
+                    .collect();
+                for line in plan.summary(&pops) {
+                    log::info!("{line}");
+                }
+                if w.most > MAX_WAYS {
+                    log::warn!(
+                        "an index square lists {} road and river pieces; the shader reads {MAX_WAYS}",
+                        w.most
+                    );
+                }
+                if shapes.most > MAX_SHAPES {
+                    log::warn!(
+                        "a town square lists {} shapes; the shader reads {MAX_SHAPES}",
+                        shapes.most
+                    );
+                }
+                gpu.queue(WAYS, w.seg_size, w.seg);
+                gpu.queue(WAY_CELL, w.cell_size, w.cell);
+                self.way_sub = w.sub;
+                gpu.queue(WAY_IDX, w.idx_size, w.idx);
+                gpu.queue(SHAPES, shapes.shp_size, shapes.shp);
+                gpu.queue(SHAPE_CELL, size, shapes.cell);
+                gpu.queue(SHAPE_SQ, shapes.sq_size, shapes.sq);
+                gpu.queue(SHAPE_IDX, shapes.idx_size, shapes.idx);
+                self.shape_sub = shapes.sub;
+                self.ways_year = Some((v.terrain_version, v.snapshot.year));
+            }
             self.key = Some(key);
         }
         drop(gpu);
@@ -402,14 +640,35 @@ impl Layer for ReliefLayer {
             field_season: v.season_index(d.time) as i32,
             show: ["fields", "strips", "grazing", "history"].map(|id| v.layer_on(id) as u8 as f32),
             town: ["settlements", "buildings"].map(|id| v.layer_on(id) as u8 as f32),
+            ways: [
+                v.layer_on("roads") as u8 as f32,
+                v.layer_on("rivers") as u8 as f32,
+                if v.layer_on("seasons") && v.season_index(d.time) == 0 {
+                    1.5
+                } else {
+                    1.0
+                },
+                v.layer_on("footpaths") as u8 as f32,
+            ],
+            cell_m: t.grid.cell_km * 1000.0,
+            way_sub: self.way_sub,
+            shape_sub: self.shape_sub,
+            look: [v.look.roads, v.look.rivers, v.look.trees, v.look.buildings],
+            ink: v.look.ink,
         };
         let gpu = self.gpu.clone();
+        let redraw = *self
+            .redraw
+            .get_or_insert_with(|| crate::app::url_param("redraw") == Some(1));
         d.painter.add(egui::PaintCallback {
             rect,
-            callback: Arc::new(egui_glow::CallbackFn::new(move |_info, painter| {
-                gpu.lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .paint(painter.gl(), frame);
+            callback: Arc::new(egui_glow::CallbackFn::new(move |info, painter| {
+                gpu.lock().unwrap_or_else(|e| e.into_inner()).paint(
+                    painter.gl(),
+                    frame,
+                    info.viewport_in_pixels(),
+                    redraw,
+                );
             })),
         });
     }

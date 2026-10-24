@@ -171,7 +171,7 @@ impl Layer for CountrysideLayer {
             ],
             Kind::Frontier => vec![(Swatch::Dot(STUMP), "Land being cleared")],
             Kind::Grazing => vec![
-                (Swatch::Fill(Color32::from_rgb(150, 190, 100)), "Pasture"),
+                (Swatch::Fill(Color32::from_rgb(153, 171, 105)), "Pasture"),
                 (Swatch::Dot(COPPICE), "Managed woodland"),
             ],
         }

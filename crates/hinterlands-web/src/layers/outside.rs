@@ -38,6 +38,8 @@ impl Layer for OutsideLayer {
         let g = v.terrain.grid;
         let n = v.terrain.n() as u32;
         let z = d.camera.zoom;
+        // Flow lines are map symbols: they fade out close in, with the routes.
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
         let on_map = |node: u32| -> Vec2 {
             let c = node % n;
             let c = v.sea_lane.get(c as usize).copied().unwrap_or(c);
@@ -48,7 +50,7 @@ impl Layer for OutsideLayer {
         // sea; the rest are small and follow the same lanes.
         let mut flows: Vec<_> = snap.flows.iter().filter(|f| f.import).collect();
         flows.sort_by(|a, b| b.amount.total_cmp(&a.amount));
-        flows.truncate(MAX_DRAWN);
+        flows.truncate(if fade > 0.0 { MAX_DRAWN } else { 0 });
         flows.reverse();
         for f in flows {
             if f.path.len() < 2 {
@@ -63,7 +65,7 @@ impl Layer for OutsideLayer {
             let w = (0.4 + f.amount.sqrt() * 0.12).min(3.0) * (z / 6.0).clamp(0.6, 2.0);
             d.painter.add(Shape::line(
                 line,
-                Stroke::new(w, IMPORTS.gamma_multiply(0.75)),
+                Stroke::new(w, IMPORTS.gamma_multiply(0.75 * fade)),
             ));
         }
         // A ship: a hull and a square sail.

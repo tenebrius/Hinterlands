@@ -35,7 +35,9 @@ fn width_km(flux: f32) -> f32 {
     (0.012 * flux.max(1.0).powf(0.4)).min(0.45)
 }
 
-fn chains(t: &Terrain) -> Vec<Chain> {
+/// Each unbroken run of river through cell centres, with the cell each point
+/// stands for; the last point of a run into the sea is on the shore.
+pub fn paths(t: &Terrain) -> Vec<(Vec<Vec2>, Vec<usize>)> {
     let g = t.grid;
     let n = t.n();
     let centre = |i: usize| {
@@ -69,25 +71,34 @@ fn chains(t: &Terrain) -> Vec<Chain> {
             }
             cur = j;
         }
-        if pts.len() < 2 {
-            continue;
+        if pts.len() >= 2 {
+            out.push((pts, cells));
         }
-        let width = cells
-            .iter()
-            .map(|&i| width_km(t.flux[i]) / g.cell_km)
-            .collect();
-        let navigable = cells
-            .iter()
-            .map(|&i| t.water[i] == Water::NavigableRiver)
-            .collect();
-        out.push(smooth(Chain {
-            pts,
-            width,
-            navigable,
-            bounds: Rect::NOTHING,
-        }));
     }
     out
+}
+
+fn chains(t: &Terrain) -> Vec<Chain> {
+    let g = t.grid;
+    paths(t)
+        .into_iter()
+        .map(|(pts, cells)| {
+            let width = cells
+                .iter()
+                .map(|&i| width_km(t.flux[i]) / g.cell_km)
+                .collect();
+            let navigable = cells
+                .iter()
+                .map(|&i| t.water[i] == Water::NavigableRiver)
+                .collect();
+            smooth(Chain {
+                pts,
+                width,
+                navigable,
+                bounds: Rect::NOTHING,
+            })
+        })
+        .collect()
 }
 
 /// Two rounds of Chaikin corner cutting, endpoints kept so chains still meet.
@@ -158,6 +169,12 @@ impl Layer for RiversLayer {
             self.quay_key = Some(year_key);
         }
         let z = d.camera.zoom;
+        // The channels drawn here are map symbols, wider than the real rivers;
+        // close in they fade out and the relief shader draws the true width.
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
         // Spring high water widens every channel.
         let flood = if v.layer_on("seasons") && v.season_index(d.time) == 0 {
             1.5
@@ -183,8 +200,9 @@ impl Layer for RiversLayer {
                             d.camera.to_screen(d.rect, c.pts[k - 1]),
                             d.camera.to_screen(d.rect, c.pts[k]),
                         );
-                        d.painter.line_segment([a, b], Stroke::new(w, QUAY));
-                        d.painter.circle_filled(b, w / 2.0, QUAY);
+                        let quay = QUAY.gamma_multiply(fade);
+                        d.painter.line_segment([a, b], Stroke::new(w, quay));
+                        d.painter.circle_filled(b, w / 2.0, quay);
                     }
                 }
             }
@@ -202,17 +220,23 @@ impl Layer for RiversLayer {
                 let p = d.camera.to_screen(d.rect, c.pts[k]);
                 if style.is_some_and(|old| old != s) {
                     run.push(p);
-                    flush(d, &mut run, style, stream_alpha);
+                    flush(d, &mut run, style, stream_alpha, fade);
                 }
                 style = Some(s);
                 run.push(p);
             }
-            flush(d, &mut run, style, stream_alpha);
+            flush(d, &mut run, style, stream_alpha, fade);
         }
     }
 }
 
-fn flush(d: &DrawCtx, run: &mut Vec<Pos2>, style: Option<(u32, bool)>, stream_alpha: f32) {
+fn flush(
+    d: &DrawCtx,
+    run: &mut Vec<Pos2>,
+    style: Option<(u32, bool)>,
+    stream_alpha: f32,
+    fade: f32,
+) {
     let Some((half_px, nav)) = style else {
         run.clear();
         return;
@@ -223,8 +247,9 @@ fn flush(d: &DrawCtx, run: &mut Vec<Pos2>, style: Option<(u32, bool)>, stream_al
             NAVIGABLE
         } else {
             STREAM.gamma_multiply(stream_alpha)
-        };
-        if w > 2.5 {
+        }
+        .gamma_multiply(fade);
+        if w > 2.5 && fade >= 1.0 {
             // Round the joints of wide channels.
             for p in run.iter() {
                 d.painter.circle_filled(*p, w / 2.0, colour);

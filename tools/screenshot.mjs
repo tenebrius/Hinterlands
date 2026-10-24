@@ -1,7 +1,9 @@
 // Headless check of the web build. Loads the page, performs actions, saves a
 // screenshot and prints console errors and self-test lines.
 // Usage: node tools/screenshot.mjs <url> <out.png> [action ...]
-//   actions: click:X,Y  move:X,Y  wheel:X,Y,DY  wait:MS  key:NAME  shot:FILE
+//   actions: click:X,Y  move:X,Y  wheel:X,Y,DY  drag:X1,Y1,X2,Y2  wait:MS  key:NAME  shot:FILE
+// Screenshots wait up to 5 minutes: full-zoom frames of large towns are slow
+// in the software renderer.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 let chromium;
@@ -23,10 +25,11 @@ for (const a of actions) {
   if (kind === 'click') { const [x, y] = arg.split(',').map(Number); await page.mouse.click(x, y); await page.waitForTimeout(300); }
   else if (kind === 'move') { const [x, y] = arg.split(',').map(Number); await page.mouse.move(x, y); await page.waitForTimeout(300); }
   else if (kind === 'wheel') { const [x, y, dy] = arg.split(',').map(Number); await page.mouse.move(x, y); for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, dy / 10); await page.waitForTimeout(60); } await page.waitForTimeout(800); }
+  else if (kind === 'drag') { const [x1, y1, x2, y2] = arg.split(',').map(Number); await page.mouse.move(x1, y1); await page.mouse.down(); for (let i = 1; i <= 20; i++) { await page.mouse.move(x1 + (x2 - x1) * i / 20, y1 + (y2 - y1) * i / 20); await page.waitForTimeout(16); } await page.mouse.up(); await page.waitForTimeout(500); }
   else if (kind === 'wait') await page.waitForTimeout(Number(arg));
   else if (kind === 'key') await page.keyboard.press(arg);
-  else if (kind === 'shot') await page.screenshot({ path: arg });
+  else if (kind === 'shot') await page.screenshot({ path: arg, timeout: 300000 });
 }
-await page.screenshot({ path: out });
+await page.screenshot({ path: out, timeout: 300000 });
 console.log(JSON.stringify({ errors }));
 await browser.close();

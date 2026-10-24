@@ -25,6 +25,8 @@ pub enum Msg {
     Load(Vec<u8>),
     /// Fix the drawn season (0 spring .. 3 winter), or `None` to follow the clock.
     SetSeason(Option<u8>),
+    /// The map's style close in (R12).
+    SetLook(crate::look::Look),
 }
 
 pub const SEASONS: [&str; 4] = ["Spring", "Summer", "Autumn", "Winter"];
@@ -116,6 +118,8 @@ pub struct ViewState {
     pub year_phase: f32,
     /// Each place's store over need last year, for the granary notes (S3).
     pub granary: crate::granary::Fill,
+    /// The map's style close in (R12).
+    pub look: crate::look::Look,
 }
 
 impl ViewState {
@@ -152,6 +156,7 @@ impl ViewState {
             season_fixed: None,
             year_phase: 0.0,
             granary: Default::default(),
+            look: Default::default(),
         };
         v.sea_lane = sea_lanes(&v.terrain);
         v.record();
@@ -372,6 +377,7 @@ pub fn update(v: &mut ViewState, sim: &mut SimHandle, msg: Msg) {
         }
         Msg::SetCamera(c) => v.camera = Some(c),
         Msg::SetSeason(s) => v.season_fixed = s,
+        Msg::SetLook(l) => v.look = l.clamped(),
         Msg::Save => {
             let file = crate::app::SaveFile::of(v, sim);
             v.status = crate::app::download(

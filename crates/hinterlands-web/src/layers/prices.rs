@@ -47,6 +47,12 @@ impl Layer for PricesLayer {
         let world = v.params.port_world_price.max(1e-3);
         let g = v.terrain.grid;
         let z = d.camera.zoom;
+        // A disc per place is a map symbol: close in it fades with the others,
+        // so the market place it marks can be seen.
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
         for s in &snap.settlements {
             if s.grain_price <= 0.0 {
                 continue;
@@ -60,7 +66,12 @@ impl Layer for PricesLayer {
             };
             let c = d.camera.cell_center(d.rect, g.w, s.anchor as usize);
             let r = (3.0 + s.pop.sqrt() * 0.06).min(12.0) * (z / 6.0).clamp(0.7, 2.0);
-            d.painter.circle(c, r, fill, Stroke::new(0.8, INK));
+            d.painter.circle(
+                c,
+                r,
+                fill.gamma_multiply(fade),
+                Stroke::new(0.8, INK.gamma_multiply(fade)),
+            );
         }
     }
 }

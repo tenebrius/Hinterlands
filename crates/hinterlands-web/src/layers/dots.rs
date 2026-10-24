@@ -187,6 +187,11 @@ impl Layer for DotsLayer {
             }
             self.key = Some(key);
         }
+        // The dots run on the route symbols, so they fade out with them.
+        let fade = crate::scale::symbol_alpha(d.camera.zoom, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
         let now = d.time as f32;
         // Sea ships stay in port in winter, as in ORBIS.
         let winter = v.season_index(d.time) == 3;
@@ -201,7 +206,7 @@ impl Layer for DotsLayer {
                         d.painter.circle_filled(
                             p,
                             (0.12 * d.camera.zoom).clamp(1.2, 3.5),
-                            leg.mode.color(),
+                            leg.mode.color().gamma_multiply(fade),
                         );
                     }
                 }

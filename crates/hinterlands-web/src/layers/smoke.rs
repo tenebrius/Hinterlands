@@ -21,7 +21,8 @@ pub struct SmokeLayer;
 impl SmokeLayer {
     /// One plume of puffs rising from `base`; `phase` staggers plumes.
     fn plume(d: &DrawCtx, base: egui::Pos2, phase: f32, dark: bool) {
-        let z = d.camera.zoom;
+        // Plumes are symbols: they stop growing at the old deepest zoom.
+        let z = crate::scale::symbol_zoom(d.camera.zoom);
         let rise = 0.9 * z;
         for k in 0..4 {
             // Each puff takes 4 s to rise and fade; four are in the air at once.

@@ -73,6 +73,9 @@ pub struct App {
     panels: Vec<Box<dyn Panel>>,
     /// Fractional years owed to the clock.
     owed: f64,
+    /// `?fps=1`: when each of the last second's frames began (ms), and at
+    /// least the last two, for the frame-rate meter in the map's corner.
+    fps: Option<std::collections::VecDeque<f64>>,
 }
 
 impl App {
@@ -109,8 +112,28 @@ impl App {
                 }
             }
         }
+        // `?look=storybook`, `true`, or five numbers (R12).
+        if let Some(l) = url_text("look").and_then(|s| crate::look::Look::parse(&s)) {
+            view::update(&mut view, &mut sim, Msg::SetLook(l));
+        }
         if let Some(k) = url_param("season") {
             view::update(&mut view, &mut sim, Msg::SetSeason(Some(k.min(3) as u8)));
+        }
+        // `?at=X,Y,Z` opens the view centred on map point (X, Y) in cells, at
+        // Z points per cell.
+        if let Some(at) = url_text("at") {
+            let n: Vec<f32> = at.split(',').filter_map(|x| x.parse().ok()).collect();
+            if let [x, y, z] = n[..] {
+                let max = crate::scale::max_zoom(view.terrain.grid.cell_km);
+                view::update(
+                    &mut view,
+                    &mut sim,
+                    Msg::SetCamera(Camera {
+                        center: egui::vec2(x, y),
+                        zoom: z.clamp(0.5, max),
+                    }),
+                );
+            }
         }
         // `?year=N` opens the run already advanced to year N.
         if let Some(year) = url_param("year") {
@@ -164,6 +187,7 @@ impl App {
             layers,
             panels: panels::all(),
             owed: 0.0,
+            fps: (url_param("fps") == Some(1)).then(std::collections::VecDeque::new),
         }
     }
 
@@ -190,7 +214,12 @@ impl App {
         if let Some(pos) = resp.hover_pos() {
             let scroll = ui.input(|i| i.smooth_scroll_delta.y);
             if scroll != 0.0 {
-                cam.zoom_at(rect, pos, (scroll * 0.002).exp());
+                cam.zoom_at(
+                    rect,
+                    pos,
+                    (scroll * 0.002).exp(),
+                    crate::scale::max_zoom(g.cell_km),
+                );
                 cam_changed = true;
             }
             let cell = cam.pick(rect, g.w, g.h, pos);
@@ -236,6 +265,10 @@ impl App {
         if self.view.layer_on("legend") {
             layers::draw_legend(&d, &self.layers);
         }
+        crate::scale::draw_bar(&painter, rect, cam.zoom, g.cell_km);
+        if let Some(times) = &self.fps {
+            draw_fps(&painter, rect, times);
+        }
         out
     }
 }
@@ -243,6 +276,16 @@ impl App {
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if let Some(times) = &mut self.fps {
+            // Measured between frames, so it counts the browser's and the
+            // graphics card's time too; frames are asked for continuously.
+            let now = web_time_now();
+            times.push_back(now);
+            while times.len() > 2 && times.front().is_some_and(|&t| now - t > 1000.0) {
+                times.pop_front();
+            }
+            ctx.request_repaint();
+        }
         // Advance the clock, never spending more than ~40 ms of a frame on the model.
         if self.view.playing {
             let dt = ctx.input(|i| i.stable_dt).min(0.1) as f64;
@@ -347,6 +390,39 @@ pub fn pick_save_file() {
     }
 }
 
+/// The frame-rate meter (`?fps=1`): frames a second and milliseconds a
+/// frame over the last second (or the last frame, if slower), in the map's upper-right corner, and whether
+/// the relief is redrawn every frame (`?redraw=1`) or cached (R28).
+fn draw_fps(painter: &egui::Painter, rect: egui::Rect, times: &std::collections::VecDeque<f64>) {
+    let (Some(first), Some(last)) = (times.front(), times.back()) else {
+        return;
+    };
+    let n = times.len().saturating_sub(1);
+    let text = if n == 0 {
+        "measuring…".to_string()
+    } else {
+        let ms = (last - first) / n as f64;
+        format!("{:.1} fps   {ms:.0} ms a frame", 1000.0 / ms)
+    };
+    let mode = if url_param("redraw") == Some(1) {
+        "map redrawn every frame"
+    } else {
+        "map cached while still"
+    };
+    let at = egui::pos2(rect.right() - 12.0, rect.top() + 10.0);
+    let font = crate::style::serif(14.0);
+    let galley = painter.layout_no_wrap(format!("{text}\n{mode}"), font, crate::style::INK);
+    let r = egui::Align2::RIGHT_TOP
+        .anchor_size(at, galley.size())
+        .expand(5.0);
+    painter.rect_filled(
+        r,
+        3.0,
+        egui::Color32::from_rgba_unmultiplied(250, 247, 240, 225),
+    );
+    painter.galley(r.min + egui::vec2(5.0, 5.0), galley, crate::style::INK);
+}
+
 /// `?selftest=N` in the page URL.
 fn selftest_years() -> Option<u32> {
     url_param("selftest")
@@ -369,7 +445,7 @@ fn url_params() -> Params {
     p
 }
 
-fn url_param(name: &str) -> Option<u32> {
+pub(crate) fn url_param(name: &str) -> Option<u32> {
     url_text(name)?.parse().ok()
 }
 

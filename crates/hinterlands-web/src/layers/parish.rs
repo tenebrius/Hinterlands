@@ -10,6 +10,7 @@
 //! parishes meet.
 
 use super::{lines, DrawCtx, Layer, Swatch};
+use crate::view::ViewState;
 use egui::{Color32, Pos2, Shape, Stroke, Vec2};
 use hinterlands_core::cost::{CostGrid, Dijkstra};
 use hinterlands_core::state::NONE;
@@ -21,7 +22,7 @@ const PATH: Color32 = Color32::from_rgb(238, 224, 186);
 const BOUNDARY: Color32 = Color32::from_rgba_premultiplied(70, 60, 80, 110);
 
 #[derive(Default)]
-struct Local {
+pub struct Local {
     /// Footpath segments (cell pairs, sorted), excluding road segments.
     paths: Vec<(u32, u32)>,
     /// Parish of each cell (settlement id), or NONE.
@@ -29,8 +30,14 @@ struct Local {
     key: Option<(u64, u32)>,
 }
 
-fn compute(d: &DrawCtx, local: &mut Local) {
-    let v = d.view;
+/// The footpath segments (cell pairs, sorted, roads left out), walked again
+/// every five years; the true-width paths in the relief shader use them too.
+pub fn footpaths<'a>(v: &ViewState, local: &'a mut Local) -> &'a [(u32, u32)] {
+    compute(v, local);
+    &local.paths
+}
+
+fn compute(v: &ViewState, local: &mut Local) {
     let key = (v.terrain_version, v.snapshot.year / 5);
     if local.key == Some(key) {
         return;
@@ -148,7 +155,7 @@ impl Layer for FootpathsLayer {
         if d.camera.zoom < 8.0 {
             return;
         }
-        compute(d, &mut self.0);
+        compute(d.view, &mut self.0);
         let v = d.view;
         if self.1.key != self.0.key {
             let g = v.terrain.grid;
@@ -164,7 +171,13 @@ impl Layer for FootpathsLayer {
             };
         }
         let z = d.camera.zoom;
-        let stroke = Stroke::new((0.05 * z).clamp(1.0, 2.2), PATH);
+        // A map symbol: it fades out close in with the roads' symbols. (Paths at
+        // true width belong with the fields, in the next stage of the overhaul.)
+        let fade = crate::scale::symbol_alpha(z, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
+        let stroke = Stroke::new((0.05 * z).clamp(1.0, 2.2), PATH.gamma_multiply(fade));
         let dash = (0.14 * z).clamp(3.0, 9.0);
         draw_dashed(d, &self.1.lines, stroke, dash, dash * 0.8);
     }
@@ -190,7 +203,7 @@ impl Layer for ParishLayer {
         if d.camera.zoom < 4.0 {
             return;
         }
-        compute(d, &mut self.0);
+        compute(d.view, &mut self.0);
         if self.1.key != self.0.key {
             let g = d.view.terrain.grid;
             let p = &self.0.parish;

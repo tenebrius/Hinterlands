@@ -22,7 +22,7 @@ const WATER: Color32 = Color32::from_rgba_premultiplied(144, 188, 210, 210);
 const CASED: f32 = 2.5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Class {
+pub enum Class {
     Water,
     Track,
     Road,
@@ -41,7 +41,8 @@ struct Chain {
 pub struct Network {
     edges: BTreeMap<(u32, u32, Class), f32>,
     pub pins: BTreeSet<u32>,
-    max: f32,
+    /// The largest flow on any segment.
+    pub max: f32,
 }
 
 #[derive(Default)]
@@ -117,14 +118,20 @@ pub fn network(v: &ViewState) -> Network {
     Network { edges, pins, max }
 }
 
+/// How busy a road is, 0..1: full at a tenth of the largest flow.
+pub fn busy(flow: f32, max: f32) -> f32 {
+    (flow / (MIN_SHARE * 5.0 * max)).clamp(0.0, 1.0)
+}
+
 /// Map position of a cell's centre, in cells.
 fn centre(v: &ViewState, cell: u32) -> Vec2 {
     let (x, y) = v.terrain.grid.xy(cell as usize);
     Vec2::new(x as f32 + 0.5, y as f32 + 0.5)
 }
 
-/// Splits the network into chains that run from pin to pin, then smooths each.
-fn chains(v: &ViewState, net: &Network) -> Vec<Chain> {
+/// Splits the network into runs of one kind from pin to pin, through cell
+/// centres, with the flow at each point (the mean of the segments either side).
+pub fn runs_of(v: &ViewState, net: &Network) -> Vec<(Class, Vec<Vec2>, Vec<f32>)> {
     let key = |a: u32, b: u32, c: Class| (a.min(b), a.max(b), c);
     let mut out = Vec::new();
     for class in [Class::Water, Class::Track, Class::Road] {
@@ -148,20 +155,30 @@ fn chains(v: &ViewState, net: &Network) -> Vec<Chain> {
                 })
                 .collect();
             let pts: Vec<Vec2> = cells.iter().map(|&c| centre(v, c)).collect();
+            out.push((class, pts, at));
+        }
+    }
+    out
+}
+
+/// The runs of the network, each smoothed.
+fn chains(v: &ViewState, net: &Network) -> Vec<Chain> {
+    runs_of(v, net)
+        .into_iter()
+        .map(|(class, pts, at)| {
             let (pts, flow) = lines::chaikin(&pts, &at, 2, |a, b, f| a + (b - a) * f);
             let mut bounds = Rect::NOTHING;
             for p in &pts {
                 bounds.extend_with(p.to_pos2());
             }
-            out.push(Chain {
+            Chain {
                 class,
                 pts,
                 flow,
                 bounds: bounds.expand(0.5),
-            });
-        }
-    }
-    out
+            }
+        })
+        .collect()
 }
 
 /// Draws a polyline whose width and colour vary along it, as runs of one style.
@@ -202,7 +219,7 @@ impl Layer for RoutesLayer {
         "routes"
     }
     fn name(&self) -> &'static str {
-        "Roads and trade routes"
+        "Roads and trade routes (map symbols)"
     }
     fn legend(&self) -> Vec<(Swatch, &'static str)> {
         vec![
@@ -220,7 +237,13 @@ impl Layer for RoutesLayer {
             self.max = net.max;
             self.key = Some(key);
         }
-        let z = d.camera.zoom;
+        // These are map symbols: past the old deepest zoom they keep their size
+        // and fade out, leaving the roads the relief shader draws at true width.
+        let fade = crate::scale::symbol_alpha(d.camera.zoom, v.layer_on("symbols"));
+        if fade <= 0.0 {
+            return;
+        }
+        let z = crate::scale::symbol_zoom(d.camera.zoom);
         let max = self.max;
         let width = |flow: f32| (flow / max).sqrt() * 0.5 * z;
         let view = Rect::from_min_max(
@@ -238,13 +261,18 @@ impl Layer for RoutesLayer {
 
         // Water routes first, under the roads.
         for c in of(Class::Water).filter(on_screen) {
-            runs(d, &screen(c), |k| (width(c.flow[k]).max(1.0), WATER), false);
+            runs(
+                d,
+                &screen(c),
+                |k| (width(c.flow[k]).max(1.0), WATER.gamma_multiply(fade)),
+                false,
+            );
         }
         // Land trade that does not follow a road: a dashed track.
         let dash = (0.25 * z).clamp(3.0, 10.0);
         for c in of(Class::Track).filter(on_screen) {
             let mean = c.flow.iter().sum::<f32>() / c.flow.len() as f32;
-            let stroke = Stroke::new(width(mean).max(0.8), TRACK);
+            let stroke = Stroke::new(width(mean).max(0.8), TRACK.gamma_multiply(fade));
             for s in Shape::dashed_line(&screen(c), stroke, dash, dash * 0.6) {
                 d.painter.add(s);
             }
@@ -252,9 +280,9 @@ impl Layer for RoutesLayer {
         // Roads, thickened by the trade they carry; roads that now carry little fade back.
         let base = (0.12 * z).clamp(1.0, 3.0);
         let road = |flow: f32| {
-            let busy = (flow / (MIN_SHARE * 5.0 * max)).clamp(0.0, 1.0);
+            let busy = busy(flow, max);
             let w = (base * (0.6 + 0.4 * busy)).max(width(flow));
-            (w, (90.0 + 165.0 * busy) as u8)
+            (w, ((90.0 + 165.0 * busy) * fade) as u8)
         };
         let roads: Vec<(&Chain, Vec<Pos2>)> = of(Class::Road)
             .filter(on_screen)

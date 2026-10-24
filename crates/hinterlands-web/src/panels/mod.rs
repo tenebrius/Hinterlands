@@ -8,6 +8,7 @@ mod events;
 mod goods;
 mod inspector;
 mod layers;
+mod look;
 mod params;
 mod stores;
 mod watching;
@@ -34,6 +35,7 @@ pub fn all() -> Vec<Box<dyn Panel>> {
         Box::new(chronicle::Chronicle::default()),
         Box::new(inspector::Inspector),
         Box::new(layers::Layers),
+        Box::new(look::LookPanel::default()),
         Box::new(charts::Charts),
         Box::new(events::EventsPanel),
         Box::new(goods::GoodsPanel),

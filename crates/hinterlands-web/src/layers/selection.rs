@@ -23,7 +23,7 @@ impl Layer for SelectionLayer {
         let c = d.camera.cell_center(d.rect, g.w, at);
         // A slow pulse, so the eye finds it.
         let pulse = 0.5 + 0.5 * (d.time * 3.0).sin() as f32;
-        let r = (0.9 * d.camera.zoom).max(12.0) + 3.0 * pulse;
+        let r = (0.9 * crate::scale::symbol_zoom(d.camera.zoom)).max(12.0) + 3.0 * pulse;
         d.painter.circle_stroke(
             c,
             r + 1.5,

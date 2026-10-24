@@ -87,11 +87,12 @@ fn label(
     if !placer.draw {
         return true;
     }
-    // The halo is the text traced at eight points round it.
-    let halo = Color32::from_rgba_unmultiplied(250, 246, 235, 150);
-    for k in 0..8 {
-        let a = k as f32 * std::f32::consts::FRAC_PI_4;
-        let off = egui::vec2(a.cos(), a.sin()) * 1.4;
+    // The halo is the text traced at points round it, thick and nearly
+    // opaque so a name reads over roofs and water alike (R25).
+    let halo = Color32::from_rgba_unmultiplied(250, 246, 235, 215);
+    for k in 0..12 {
+        let a = k as f32 * std::f32::consts::TAU / 12.0;
+        let off = egui::vec2(a.cos(), a.sin()) * 2.0;
         d.painter.add(
             TextShape::new(origin + off, galley.clone(), halo)
                 .with_angle(angle)
@@ -122,9 +123,38 @@ fn place_settlements(d: &DrawCtx, placer: &mut Placer) {
         if z < min_zoom {
             continue;
         }
-        let p = at(s.anchor) + egui::vec2(0.0, -(size * 0.5 + 0.35 * z.min(12.0)));
+        let mut p = at(s.anchor) + egui::vec2(0.0, -(size * 0.5 + 0.35 * z.min(12.0)));
         let col = Color32::from_rgb(35, 22, 16);
-        if label(d, placer, &s.name, p, size, col, false, 0.0) && s.rank >= Rank::Town {
+        // Close in, where the centre is a bridge or a market place, the name
+        // stands in a small cartouche above it on a leader line (R25).
+        let cartouche = z > 64.0 && placer.draw;
+        let size = if cartouche { size + 3.0 } else { size };
+        if cartouche {
+            let c = at(s.anchor);
+            p = c + egui::vec2(0.0, -90.0);
+            let w = size * 0.62 * s.name.chars().count() as f32 + 18.0;
+            let r = Rect::from_center_size(p, egui::vec2(w, size * 1.9));
+            if d.rect.intersects(r) && placer.free(r.expand(2.0)) {
+                let ink = Color32::from_rgb(60, 44, 32);
+                d.painter
+                    .line_segment([c, r.center_bottom()], egui::Stroke::new(1.2, ink));
+                d.painter.circle_filled(c, 3.0, ink);
+                d.painter
+                    .rect_filled(r, 3.0, Color32::from_rgba_unmultiplied(246, 238, 218, 235));
+                d.painter.rect_stroke(
+                    r,
+                    3.0,
+                    egui::Stroke::new(1.2, ink),
+                    egui::StrokeKind::Inside,
+                );
+                // The name itself is then drawn into the freed spot.
+                placer.taken.pop();
+            } else {
+                continue;
+            }
+        }
+        if label(d, placer, &s.name, p, size, col, false, 0.0) && s.rank >= Rank::Town && !cartouche
+        {
             let q = p + egui::vec2(0.0, size * 0.8);
             label(
                 d,
