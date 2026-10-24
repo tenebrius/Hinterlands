@@ -6,7 +6,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
 
 - **Branch:** `claude/elegant-ride-g0sr1h`. Pull it first.
   - It contains `origin/main` as of 22 October (`e7c0344`).
-  - Last step: R29, fewer tree candidates (the second optimisation step).
+  - Last step: R29, fewer tree candidates (the second optimisation step); R30 and R31 were tried and reverted.
 - **Done:**
   - **R9–R11, stages 1–3 of the real-scale overhaul:**
     - zoom to 1 m per point;
@@ -47,6 +47,7 @@ For the graphics session picking this work up after a context reset (rewritten 2
     - **R27:** trees, bushes and shadows are kept or left out whole, and there are no hedges inside a place's edge.
 - **R28, optimisation 1:** the rendered map is cached in a framebuffer and redrawn only when the camera, year, season, layers or look change. A still frame takes 50–100 ms in SwiftShader instead of 2.8–16 s. `?redraw=1` turns the cache off, to time the shader.
 - **R29, optimisation 2:** the tree search visits only the grid cells that can reach the pixel, colours only the tallest crown, asks clearance last and stops the shadow search at full shadow. Redraws about 42% faster in woods, 20–30% in towns.
+- **R30, R31 (tried, reverted):** shorter town shape lists (sub-squares) and fewer grove-density lookups. Both were exact but gained nothing measurable, so the code is R29's. In a town, the cost is the trees' crowns, shadows and clearance themselves.
 - **Now: optimisation, continued (the owner's instruction, 23 October).** The frames while moving are still full redraws. See "Optimisation" below.
 - **After that, waiting for the owner:**
   - **The reviewer's remaining proposals:**
