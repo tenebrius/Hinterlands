@@ -2,7 +2,7 @@
 
 The implementer's working memory between sessions. It is the counterpart of `docs/designer-context.md`. Read it after `CLAUDE.md`, `docs/foundation.md` (the brief) and `docs/decisions.md` (departures). Update it when the state of the work changes, and rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24. D177: the paired re-read is recorded (`PAIRED`); the sourced calendar's gate failed (roads, map 3's spacing, map 1's recovery). Validate is red on the default (recovery) by D176. Waiting for the designer.
+Last updated: 2026-10-24. D179: v8 released (D178): recovery gated at the floor, validate green on the default (17 / 28 / 10), golden `6db34602d4431473`, browser 92.4 ms a year. `plague_sourced` parked. Next: the growth-rule note (frontier against settled growth), after the designer tells Divish.
 
 ## Who and how
 - **This session is the implementer:** `session_014BA7MX2NmHLKnGyB3DXHv5`.

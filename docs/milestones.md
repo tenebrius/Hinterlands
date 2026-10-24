@@ -697,3 +697,15 @@ Development stops here, by the owner's decision (D117).
 - **Params:** defaults, now with `wool_series` on.
 - **Golden `5de3d525bb23a427`,** the same in the browser at 94.7 ms a year (`?selftest=500`).
 - **Details:** `docs/demand/d2o.md`.
+
+## v8 release — the recovery floor (D178); cloth and port trade in the view
+- **Rule change (D178):** recovery by 500 is gated at ≥ 0.75 of the pre-plague peak; the 1.15 ceiling and the record's 0.85 are reported.
+- **Validation passes on 40 seeds,** defaults (`target/d2/v178_def.txt`, copied to `docs/demand/v8-validate.txt`):
+  - runs passing every check: 17 / 28 / 10;
+  - paired checks at the D176 reference by construction: spacing 25 / 35 / 25, road persistence 23 / 35 / 17;
+  - recovery 40/40 on every map (medians 1.25 / 1.29 / 1.21; within 1.15: 5 / 4 / 15, the known miss of D172);
+  - exports / output medians 0.077 / 0.085 / 0.074;
+  - every other gated check 37/40 or better.
+- **Params:** defaults, unchanged since D160.
+- **Golden `6db34602d4431473`,** the same in the browser at 92.4 ms a year (`?selftest=500`). The model's metrics on map 1 seed 1 are identical to D160's; the hash moved only because the snapshot now carries each place's wool and cloth and a cloth flag on flows (D179).
+- **Release:** README on the model as it is, `docs/parameters.md` regenerated, the view (cloth routes and towns, ports' trade in the inspector), screenshots in `docs/screenshots/v8/` (1300, 1316, 1349, 1450, 1450 with a port's trade, 1600).

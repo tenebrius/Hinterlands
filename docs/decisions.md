@@ -1066,3 +1066,11 @@ Kind: validation measure; stopped for the designer (D174).
 - **Reading:** the 0.90 threshold sits at the default's median, so a 0.03 fall collapses the paired counts.
 - **Not made the default.** Details: `docs/demand/d3g.md`.
 Kind: validation reference and gate result (designer's decision D176).
+
+## D179 — v8 release pass (D178): recovery floor; cloth and port trade in the view
+- **Validate:** recovery by 500 gated at ≥ 0.75; the ceiling (within 1.15, a count) and the record's 0.85 are printed with the shocks line. The default passes on 40 seeds (17 / 28 / 10 runs pass every check).
+- **Snapshot (view only):** `SettlementView` gains `wool_got`, `cloth_made` and `cloth_margin`; `FlowView` and `Flow` gain `cloth` (export cloth from a mill to a port), carried in `wool_ship` as a fourth field. No system reads them; every metric on map 1 seed 1 is unchanged. Golden `6db34602d4431473` (was `5de3d525bb23a427`).
+- **Viewer:** the wool layer is "Wool and cloth": cloth routes in violet (reds are taken by grain prices and imports) and a violet ring round each place making at least a tenth of the largest maker's cloth (a ring on every mill hid the map). The inspector shows a place's wool sold and cloth, and an outside port's trade this year on hover: salt, iron, stone and imports supplied; grain, wool and cloth bought, from the flows above the view threshold.
+- **`hinterlands params`** prints f32 defaults in short form and writes the page header.
+- **Implementer's readings:** "the main cloth towns" (a tenth of the largest); port trade from the snapshot's flows, so flows below `FLOW_VIEW_MIN` are left out.
+Kind: release and view (designer's decision D178).

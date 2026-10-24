@@ -1,0 +1,183 @@
+determinism (map 1, seed 1): ok
+
+map 1: 40 runs of 500 years
+check                      target     seed 1     median       pass         
+settlements               150-350    301.000    299.000      40/40       ok
+over 5,000                    1-5      4.000      3.000      40/40       ok
+largest share               <0.25      0.132      0.112      40/40       ok
+rank-size slope        -1.3..-0.8     -1.106     -0.954      40/40       ok
+market spacing            8-15 km     16.155     13.601      25/40       ok
+siting                     >=0.70      1.000      1.000      40/40       ok
+failure rate            0.40-0.70      0.496      0.503      40/40       ok
+forest near cities          <0.30      0.000      0.000      40/40       ok
+stability                  <5%/yr      0.026      0.026      40/40       ok
+sites producing        (reported)      0.867      0.867      40/40       ok
+every good worked            true      1.000      1.000      40/40       ok
+largest not specialist         true      1.000      1.000      40/40       ok
+plague drop                 >=25%      0.397      0.383      40/40       ok
+recovery by 500            >=0.75      1.305      1.249      40/40       ok
+poor land deserted       low>high      0.546      0.492      40/40       ok
+top-10 vs off              >=0.50      0.700      0.600      37/40       ok
+exports / output            1-35%      0.082      0.077      40/40       ok
+Clark b_P                 0.8-1.2      1.019      1.025      40/40       ok
+Clark b_Y                 -0.15-0     -0.020     -0.023      40/40       ok
+Clark R2                   >=0.60      0.966      0.958      40/40       ok
+price level               0.3-2.5      0.393      0.424      40/40       ok
+pasture outward          far>near      0.219      0.146      40/40       ok
+pasture on poor land    poor>rich      0.429      0.501      40/40       ok
+pasture 1450>1340       1450>1340      0.007      0.042      38/40       ok
+unsold at markets           <=10%      0.000      0.000      40/40       ok
+road persistence        >=0.90 ±2      0.887      0.903      23/40       ok
+top-10 overlap              <=.80                  0.35                  ok
+largest varies         (reported)                  0.75                    
+river corridor city    (reported)                  0.95                    
+over 5,000 median      (reported)                     3                    
+over 2,000             (reported)          5          6        3-8         
+urban share >2,000   (Eng. ~0.10)      0.408      0.376                    
+spacing, over 500     (rep. 8-15)     15.033     11.543      33/40         
+road persist cells     (reported)      0.558      0.551                    
+road length 300-500   (rep. <10%)      0.043      0.058      32/40         
+outside trade        (rep. 3-50%)      0.493      0.457      39/40         
+largest to mouth km    (reported)                  40.3                    
+v2 (reported)                     specialists per run 2.9; size p10 16, median 79, p90 201, max 281
+                                  payment share of market inflow 0.000; iron forest 0.22 vs land 0.53; >2k on goods route 1.00
+v3 roads (reported)               share of road cells abandoned: median 0.42, max 0.47
+v4 shocks              (reported) plague drop 0.38, regained in 200 years; recovery 1.25 (record 0.85; within 1.15 5/40); total at end vs off 0.91; failure 248-300 low 0.52 / high 0.02 quarter; famine dip 0.18, regained in 15 years
+v4 planted             (reported) planted towns judged 200; alive 100 years after planting 0.76
+v4 silting             (reported) silted in 40 runs; rank before 13, 100 years after 24 (medians); lost rank in 25
+v5                     (reported) coastal share of people in places >2,000: 1300 -0.00, 1600 0.32; top ten of 1400 by 1600: mean rank change 25.9, still top ten 7
+D126 exports           (reported) exports a head c. 1300 (grain, wool, cloth to the ports): median 8.0 d, p10 6.7, p90 9.1 (England about 14 d; D126)
+S2' relief             (reported) relief arrived per year 20; deficit met: normal years 0.02, 1315-17 0.01 (all years: own store 0.00, relief 0.02); surplus lost above food_cap per year 0
+W1 weather             (reported) population at year 200 against no weather: median 0.86, within 20% in 40/40
+D95 purses             (reported) farmers' shortfall met by purses: normal years 0.22, 1315-17 0.16 (with relief 0.17); purse / need under 500 at 200/1314/1317/400: 1.70 1.72 1.31 1.85; over 2,000: 0.00 0.01 0.00 0.02
+D97 price              (reported) regional grain price at 50..500 (world 0.60): 0.50 0.42 0.52 0.89 0.83 1.03 1.00 1.12 1.43 1.61
+D97 money              (reported) coin stock / need at 100..500: 3.88 0.97 1.90 1.21 1.14; farmers' share 0.66 0.47 0.47 0.48 0.38; over the run, ports in 382967, planted 700, imports out 1722950, luxuries out 695195, wear 264235, removed 0
+L1 wool                (reported) pasture share of used land 1340 0.198, 1450 0.250; at 1450 beyond/within median cost 0.322/0.172, below/above median yield 0.501/0.000; wool's share of coin entering before 1348 0.61, after 0.89; W with wool (wool coin / grain drawn, large markets, 1500) 0.00
+M3 stores              (reported) grain price autocorrelation (detrended) 0.42; market stores (of a mean harvest): cheapest tenth of years 0.073, all years 0.028, peak 0.33; pair price gap / transport 1.61
+S3 stores              (reported) stores / need: years 100 0.00, 205-214 0.00, 214 0.00, 217 0.00 (drawn down 100%), 400 0.00
+v3 bridges             (reported) bridges per run 90; within 2 km of one: places >=1,000 0.60, all settlements 0.06
+v3 mills               (reported) share of settlements with a mill 0.38
+runs passing every check: 17/40   slowest run 553.43 ms/year (native)
+failing checks (runs failing / of which the only failure): road persistence 17/6; market spacing 15/5; top-10 vs off 3/0; pasture 1450>1340 2/1
+
+map 2: 40 runs of 500 years
+check                      target     seed 1     median       pass         
+settlements               150-350    290.000    305.000      40/40       ok
+over 5,000                    1-5      2.000      2.000      40/40       ok
+largest share               <0.25      0.149      0.149      40/40       ok
+rank-size slope        -1.3..-0.8     -0.957     -0.999      40/40       ok
+market spacing            8-15 km     11.662     13.038      35/40       ok
+siting                     >=0.70      1.000      1.000      40/40       ok
+failure rate            0.40-0.70      0.515      0.496      40/40       ok
+forest near cities          <0.30      0.000      0.000      40/40       ok
+stability                  <5%/yr      0.026      0.026      40/40       ok
+sites producing        (reported)      0.800      0.867      40/40       ok
+every good worked            true      1.000      1.000      39/40       ok
+largest not specialist         true      1.000      1.000      40/40       ok
+plague drop                 >=25%      0.385      0.384      40/40       ok
+recovery by 500            >=0.75      1.096      1.286      40/40       ok
+poor land deserted       low>high      0.433      0.441      40/40       ok
+top-10 vs off              >=0.50      0.700      0.700      39/40       ok
+exports / output            1-35%      0.090      0.085      40/40       ok
+Clark b_P                 0.8-1.2      1.025      1.031      40/40       ok
+Clark b_Y                 -0.15-0     -0.027     -0.024      40/40       ok
+Clark R2                   >=0.60      0.978      0.968      40/40       ok
+price level               0.3-2.5      0.449      0.433      40/40       ok
+pasture outward          far>near      0.122      0.122      40/40       ok
+pasture on poor land    poor>rich      0.614      0.565      40/40       ok
+pasture 1450>1340       1450>1340      0.119      0.091      40/40       ok
+unsold at markets           <=10%      0.000      0.000      40/40       ok
+road persistence        >=0.90 ±2      0.922      0.920      35/40       ok
+top-10 overlap              <=.80                  0.44                  ok
+largest varies         (reported)                  0.27                    
+river corridor city    (reported)                  0.55                    
+over 5,000 median      (reported)                     2                    
+over 2,000             (reported)          7          6       3-10         
+urban share >2,000   (Eng. ~0.10)      0.395      0.392                    
+spacing, over 500     (rep. 8-15)     13.342     12.445      38/40         
+road persist cells     (reported)      0.590      0.568                    
+road length 300-500   (rep. <10%)      0.049      0.059      37/40         
+outside trade        (rep. 3-50%)      0.456      0.469      36/40         
+largest to mouth km    (reported)                  51.0                    
+v2 (reported)                     specialists per run 3.3; size p10 20, median 42, p90 169, max 218
+                                  payment share of market inflow 0.000; iron forest 0.22 vs land 0.54; >2k on goods route 1.00
+v3 roads (reported)               share of road cells abandoned: median 0.41, max 0.44
+v4 shocks              (reported) plague drop 0.38, regained in 203 years; recovery 1.29 (record 0.85; within 1.15 4/40); total at end vs off 0.88; failure 248-300 low 0.45 / high 0.02 quarter; famine dip 0.19, regained in 16 years
+v4 planted             (reported) planted towns judged 200; alive 100 years after planting 0.85
+v4 silting             (reported) silted in 40 runs; rank before 5, 100 years after 6 (medians); lost rank in 21
+v5                     (reported) coastal share of people in places >2,000: 1300 -0.00, 1600 0.11; top ten of 1400 by 1600: mean rank change 14.8, still top ten 8
+D126 exports           (reported) exports a head c. 1300 (grain, wool, cloth to the ports): median 8.5 d, p10 7.5, p90 9.7 (England about 14 d; D126)
+S2' relief             (reported) relief arrived per year 23; deficit met: normal years 0.02, 1315-17 0.01 (all years: own store 0.00, relief 0.02); surplus lost above food_cap per year 0
+W1 weather             (reported) population at year 200 against no weather: median 0.87, within 20% in 39/40
+D95 purses             (reported) farmers' shortfall met by purses: normal years 0.27, 1315-17 0.17 (with relief 0.18); purse / need under 500 at 200/1314/1317/400: 1.96 1.84 1.60 2.17; over 2,000: 0.00 0.01 0.00 0.03
+D97 price              (reported) regional grain price at 50..500 (world 0.60): 0.50 0.44 0.49 0.98 0.84 1.08 1.06 1.18 1.46 1.59
+D97 money              (reported) coin stock / need at 100..500: 4.18 1.21 2.20 1.54 1.37; farmers' share 0.64 0.48 0.48 0.46 0.40; over the run, ports in 351842, planted 700, imports out 1633075, luxuries out 977164, wear 300770, removed 0
+L1 wool                (reported) pasture share of used land 1340 0.190, 1450 0.282; at 1450 beyond/within median cost 0.344/0.225, below/above median yield 0.565/0.000; wool's share of coin entering before 1348 0.65, after 0.92; W with wool (wool coin / grain drawn, large markets, 1500) 0.00
+M3 stores              (reported) grain price autocorrelation (detrended) 0.39; market stores (of a mean harvest): cheapest tenth of years 0.083, all years 0.035, peak 0.38; pair price gap / transport 1.66
+S3 stores              (reported) stores / need: years 100 0.00, 205-214 0.00, 214 0.00, 217 0.00 (drawn down 100%), 400 0.00
+v3 bridges             (reported) bridges per run 95; within 2 km of one: places >=1,000 0.64, all settlements 0.05
+v3 mills               (reported) share of settlements with a mill 0.40
+runs passing every check: 28/40   slowest run 171.02 ms/year (native)
+failing checks (runs failing / of which the only failure): market spacing 5/5; road persistence 5/5; every good worked 1/1; top-10 vs off 1/1
+
+map 3: 40 runs of 500 years
+check                      target     seed 1     median       pass         
+settlements               150-350    281.000    281.000      40/40       ok
+over 5,000                    1-5      2.000      2.000      40/40       ok
+largest share               <0.25      0.189      0.165      40/40       ok
+rank-size slope        -1.3..-0.8     -1.005     -1.005      40/40       ok
+market spacing            8-15 km     15.000     14.422      25/40       ok
+siting                     >=0.70      1.000      1.000      40/40       ok
+failure rate            0.40-0.70      0.527      0.529      40/40       ok
+forest near cities          <0.30      0.000      0.000      40/40       ok
+stability                  <5%/yr      0.026      0.026      40/40       ok
+sites producing        (reported)      0.800      0.800      40/40       ok
+every good worked            true      1.000      1.000      40/40       ok
+largest not specialist         true      1.000      1.000      40/40       ok
+plague drop                 >=25%      0.405      0.385      40/40       ok
+recovery by 500            >=0.75      1.238      1.212      40/40       ok
+poor land deserted       low>high      0.508      0.442      40/40       ok
+top-10 vs off              >=0.50      0.600      0.600      36/40       ok
+exports / output            1-35%      0.072      0.074      40/40       ok
+Clark b_P                 0.8-1.2      1.008      1.019      40/40       ok
+Clark b_Y                 -0.15-0     -0.026     -0.025      40/40       ok
+Clark R2                   >=0.60      0.971      0.965      40/40       ok
+price level               0.3-2.5      0.410      0.417      40/40       ok
+pasture outward          far>near      0.167      0.159      40/40       ok
+pasture on poor land    poor>rich      0.610      0.553      40/40       ok
+pasture 1450>1340       1450>1340      0.097      0.077      37/40       ok
+unsold at markets           <=10%      0.000      0.000      40/40       ok
+road persistence        >=0.90 ±2      0.927      0.894      17/40       ok
+top-10 overlap              <=.80                  0.35                  ok
+largest varies         (reported)                  0.55                    
+river corridor city    (reported)                  1.00                    
+over 5,000 median      (reported)                     2                    
+over 2,000             (reported)          5          4        2-9         
+urban share >2,000   (Eng. ~0.10)      0.409      0.395                    
+spacing, over 500     (rep. 8-15)     16.279     14.142      25/40         
+road persist cells     (reported)      0.575      0.536                    
+road length 300-500   (rep. <10%)      0.070      0.074      30/40         
+outside trade        (rep. 3-50%)      0.464      0.440      39/40         
+largest to mouth km    (reported)                  58.9                    
+v2 (reported)                     specialists per run 2.3; size p10 15, median 114, p90 234, max 317
+                                  payment share of market inflow 0.000; iron forest 0.21 vs land 0.55; >2k on goods route 1.00
+v3 roads (reported)               share of road cells abandoned: median 0.43, max 0.47
+v4 shocks              (reported) plague drop 0.38, regained in 215 years; recovery 1.21 (record 0.85; within 1.15 15/40); total at end vs off 0.82; failure 248-300 low 0.46 / high 0.02 quarter; famine dip 0.19, regained in 17 years
+v4 planted             (reported) planted towns judged 200; alive 100 years after planting 0.80
+v4 silting             (reported) silted in 40 runs; rank before 4, 100 years after 8 (medians); lost rank in 32
+v5                     (reported) coastal share of people in places >2,000: 1300 -0.00, 1600 0.09; top ten of 1400 by 1600: mean rank change 21.1, still top ten 7
+D126 exports           (reported) exports a head c. 1300 (grain, wool, cloth to the ports): median 8.7 d, p10 7.3, p90 9.9 (England about 14 d; D126)
+S2' relief             (reported) relief arrived per year 20; deficit met: normal years 0.02, 1315-17 0.01 (all years: own store 0.00, relief 0.02); surplus lost above food_cap per year 0
+W1 weather             (reported) population at year 200 against no weather: median 0.86, within 20% in 39/40
+D95 purses             (reported) farmers' shortfall met by purses: normal years 0.28, 1315-17 0.17 (with relief 0.18); purse / need under 500 at 200/1314/1317/400: 1.87 1.87 1.66 1.91; over 2,000: 0.01 0.03 0.00 0.02
+D97 price              (reported) regional grain price at 50..500 (world 0.60): 0.49 0.42 0.49 1.02 0.87 1.12 1.06 1.16 1.42 1.59
+D97 money              (reported) coin stock / need at 100..500: 4.51 1.17 2.09 1.37 1.14; farmers' share 0.64 0.46 0.49 0.50 0.41; over the run, ports in 350820, planted 700, imports out 1480179, luxuries out 743714, wear 251052, removed 0
+L1 wool                (reported) pasture share of used land 1340 0.205, 1450 0.276; at 1450 beyond/within median cost 0.348/0.201, below/above median yield 0.553/0.000; wool's share of coin entering before 1348 0.66, after 0.92; W with wool (wool coin / grain drawn, large markets, 1500) 0.00
+M3 stores              (reported) grain price autocorrelation (detrended) 0.39; market stores (of a mean harvest): cheapest tenth of years 0.083, all years 0.031, peak 0.36; pair price gap / transport 1.63
+S3 stores              (reported) stores / need: years 100 0.00, 205-214 0.00, 214 0.00, 217 0.00 (drawn down 100%), 400 0.00
+v3 bridges             (reported) bridges per run 44; within 2 km of one: places >=1,000 0.67, all settlements 0.05
+v3 mills               (reported) share of settlements with a mill 0.38
+runs passing every check: 10/40   slowest run 80.11 ms/year (native)
+failing checks (runs failing / of which the only failure): road persistence 23/9; market spacing 15/4; top-10 vs off 4/2; pasture 1450>1340 3/1
+
+validation PASSED
