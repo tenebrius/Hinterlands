@@ -355,6 +355,7 @@ define_params! {
         plague_recur_1: u32 = 261, [0, 2000], "First recurrence (historical; 1361)";
         plague_recur_2: u32 = 269, [0, 2000], "Second recurrence (historical; 1369)";
         plague_later: bool = true, [0, 1], "Hatcher's later national outbreaks, 1375-1479, in the Historical calendar (D108)";
+        plague_sourced: bool = false, [0, 1], "The later national outbreaks from the sources (Gottfried, Shrewsbury, Creighton; Hatcher 1986 for 1457 and 1471) in place of the D108 list (D167)";
         plague_later_first: f32 = 0.10, [0, 0.5], "Mortality of the first later outbreak (1375; D108)";
         plague_later_last: f32 = 0.06, [0, 0.5], "Mortality of the last later outbreak (1479; D108)";
         endemic_mortality: f32 = 0.015, [0, 0.2], "Yearly share of each place's people lost to endemic disease between outbreaks (Hatcher 1977; D114)";

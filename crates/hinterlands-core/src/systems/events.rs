@@ -21,6 +21,28 @@ use rand::Rng as _;
 /// placed relative to `plague_year` (1348).
 pub const LATER_PLAGUES: [u32; 10] = [1375, 1390, 1400, 1407, 1413, 1434, 1439, 1464, 1471, 1479];
 
+/// The national outbreaks after 1369 from the sources (D167): Gottfried 1978
+/// and 1983, Shrewsbury 1970 and Creighton, as listed by a secondary
+/// compilation (urbanrim.org.uk, "Plague in England"), each at the first year
+/// of its span; and Hatcher (1986) for 1457, severe at Canterbury "and other
+/// parts of the realm". With its mortality where a source gives one (Hatcher
+/// 1986, Christ Church monks: 1457 189 per 1,000, 1471 139), else 0.
+pub const SOURCED_PLAGUES: [(u32, f32); 13] = [
+    (1375, 0.0),
+    (1390, 0.0),
+    (1399, 0.0),
+    (1405, 0.0),
+    (1411, 0.0),
+    (1428, 0.0),
+    (1433, 0.0),
+    (1438, 0.0),
+    (1457, 0.189),
+    (1463, 0.0),
+    (1467, 0.0),
+    (1471, 0.139),
+    (1479, 0.0),
+];
+
 pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
     let y = state.year;
     // The endemic era (D114; Hatcher 1977): between the national outbreaks,
@@ -39,6 +61,21 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, rng: &mut Rng) {
                 Some(p.plague_mortality)
             } else if y == p.plague_recur_1 || y == p.plague_recur_2 {
                 Some(p.plague_mortality * p.plague_recur_share)
+            } else if p.plague_sourced {
+                // D167: the sourced calendar; a sourced mortality where there
+                // is one, else the later outbreaks' falling rule.
+                SOURCED_PLAGUES
+                    .iter()
+                    .position(|&(ad, _)| ad + p.plague_year == 1348 + y)
+                    .map(|k| {
+                        let m = SOURCED_PLAGUES[k].1;
+                        if m > 0.0 {
+                            m
+                        } else {
+                            let f = k as f32 / (SOURCED_PLAGUES.len() - 1).max(1) as f32;
+                            p.plague_later_first + (p.plague_later_last - p.plague_later_first) * f
+                        }
+                    })
             } else if let Some(k) = LATER_PLAGUES
                 .iter()
                 .position(|&ad| p.plague_later && ad + p.plague_year == 1348 + y)
