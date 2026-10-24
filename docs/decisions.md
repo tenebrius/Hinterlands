@@ -1055,3 +1055,14 @@ Kind: validation fix, model mechanism held off (designer's decision D170).
 - **My error:** D168's recovery band was not re-read on the default, which fails it.
 - **Not run:** the 40-seed re-read and the calendar gate. Details: `docs/demand/d3f.md`.
 Kind: validation measure; stopped for the designer (D174).
+
+## D177 — D176: paired re-read and the sourced calendar's gate; failed, stopped
+- **Validate:** road persistence on routes (±2 cells, ≥ 0.90); market spacing and roads paired no-worse against the default's 40-seed counts (spacing 25 / 35 / 25, roads 23 / 35 / 17; `PAIRED`).
+- **The default on 40 seeds** fails only recovery by 500 (5 / 4 / 15 of 40; 1600 at 1.21–1.29 × peak), as D176 accepted.
+- **The sourced calendar on the same seeds failed:**
+  - roads 8 / 13 / 5 against 23 / 35 / 17 (medians 0.869 / 0.890 / 0.855 against 0.903 / 0.920 / 0.894);
+  - map 3's spacing 20 against 25;
+  - map 1's recovery 28/40.
+- **Reading:** the 0.90 threshold sits at the default's median, so a 0.03 fall collapses the paired counts.
+- **Not made the default.** Details: `docs/demand/d3g.md`.
+Kind: validation reference and gate result (designer's decision D176).

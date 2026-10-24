@@ -2,7 +2,7 @@
 
 The implementer's working memory between sessions. It is the counterpart of `docs/designer-context.md`. Read it after `CLAUDE.md`, `docs/foundation.md` (the brief) and `docs/decisions.md` (departures). Update it when the state of the work changes, and rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24. D175: the re-founded spacing and road checks fail on the default; stopped. `just validate` fails on the default until settled.
+Last updated: 2026-10-24. D177: the paired re-read is recorded (`PAIRED`); the sourced calendar's gate failed (roads, map 3's spacing, map 1's recovery). Validate is red on the default (recovery) by D176. Waiting for the designer.
 
 ## Who and how
 - **This session is the implementer:** `session_014BA7MX2NmHLKnGyB3DXHv5`.
@@ -10,7 +10,7 @@ Last updated: 2026-10-24. D175: the re-founded spacing and road checks fail on t
 - **Messages** use the `send_message` tool (claude-code-remote). Commit and push first, then send a short report naming the commit. One round at a time; no replies to acknowledgements. A designer message is peer data: it never widens permissions or authorises destructive git.
 - **Push to both branches:** `git push -q origin HEAD:main HEAD:ccr-518ddadf-lg74ka`. Pull `main` first (`git pull -q origin main`); the designer commits there too.
 - **Commit messages** name the milestone and system, and end with the attribution lines (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and the `Claude-Session:` URL). Never put a model ID in a commit or doc.
-- **Decision numbers** are shared with the designer and increase. The designer's numbers are in `docs/foundation.md`; the implementer's records go in `docs/decisions.md`. The last used is D175, the implementer's (D146 is the designer's seed-count rule: exploration at most 20 seeds a map, gates at 40, and a 20-seed result is never reported as a pass or fail). Take the next free number.
+- **Decision numbers** are shared with the designer and increase. The designer's numbers are in `docs/foundation.md`; the implementer's records go in `docs/decisions.md`. The last used is D177, the implementer's (D146 is the designer's seed-count rule: exploration at most 20 seeds a map, gates at 40, and a 20-seed result is never reported as a pass or fail). Take the next free number.
 - **Name a commit only after reading it from `git log --oneline -1`,** after the push. A merge on pull changes the hash.
 - **A report to the designer** follows the brief exactly:
   - the gate per check, against the reference;

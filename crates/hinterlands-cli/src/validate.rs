@@ -1164,7 +1164,14 @@ const NO_WORSE: &[(u64, &str, usize)] = &[];
 /// D176: paired no-worse checks until a sourced band exists. On seeds 1-40 a
 /// map passes if its count is at least the accepted default's count on the
 /// same seeds minus 2. The counts are the default's (D161), read at D176.
-const PAIRED: &[(u64, &str, usize)] = &[];
+const PAIRED: &[(u64, &str, usize)] = &[
+    (1, "market spacing", 25),
+    (2, "market spacing", 35),
+    (3, "market spacing", 25),
+    (1, "road persistence", 23),
+    (2, "road persistence", 35),
+    (3, "road persistence", 17),
+];
 
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
