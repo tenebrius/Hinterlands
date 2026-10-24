@@ -8,7 +8,7 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 
 This section describes what is waiting to be merged; it is rewritten each time.
 
-- **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
+- **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68). **R9–R32 are merged as D143** (24 October).
 - **Up for merging (the owner's decision, 24 October): R9–R32**, the real-scale overhaul (stages 1–3), the map style, towns and roads (R12–R27), and the optimisation stage (R28–R32; R30 and R31 were tried and reverted). They are on `claude/elegant-ride-g0sr1h`, with `main` merged in (24 October). They take the next free D numbers when they merge.
 - **Checked on the merged tree:**
   - `just test` passes.

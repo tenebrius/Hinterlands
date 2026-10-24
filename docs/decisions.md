@@ -863,3 +863,16 @@ Kind: model mechanism and data, held off (designer's decision D137).
 - **Implementer's reading:** output counts milled wool in the clip and in the cloth, as D139 lists them.
 - **Details:** `docs/demand/d2g.md`.
 Kind: model mechanism, default and validation rule (designer's decision D139).
+
+## D143 — Rendering R9–R32 merged (real scale, map style, towns and roads, optimisation)
+- **What.** The graphics session's R9–R32 (branch `claude/elegant-ride-g0sr1h`, PR #1, head 0328a90) are merged into `main` (D142):
+  - real scale (R9–R11);
+  - map style, towns and roads (R12–R27);
+  - optimisation (R28 cached map, R29 faster trees, R32 the `?fps=1` meter; R30 and R31 tried and reverted).
+  - The entries are in `docs/rendering.md`.
+- **Scope.** Frontend only: `crates/hinterlands-web`, docs, screenshots and tools. No change to core, mapgen or the CLI. The new viewer code reads the snapshot and the static terrain only.
+- **Check (D142).**
+  - Golden `2e6856056e73a1c6`, natively and in `?selftest=500`.
+  - `just test` passes.
+  - `just validate` (3 maps, 40 seeds) is identical to D140's run line for line, apart from timings (`target/d2/v142_merge.txt` against `v139_step1.txt`).
+Kind: rendering (frontend merge).
