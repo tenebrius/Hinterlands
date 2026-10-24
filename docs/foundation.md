@@ -1919,6 +1919,38 @@ That separates the series' effect from map 3's geography. I decide the series af
 2. The land-per-worker note.
 3. D3 after the note is decided.
 
+### Wool series the default; the land-per-worker note decided (D162)
+
+**Accepted.**
+- **The paired re-gate passes,** at the margin: map 3's spacing is 56/80 against D144's 60/80 − 4.
+- **The wool series is the default.** The golden is `5de3d525bb23a427`, and map 3's spacing reference is now 56/80.
+- **Runs passing every check on seeds 41–80:** 25 / 35 / 20.
+
+**The note (`docs/proposals/land-per-worker.md`), decided.**
+- **The finding is accepted:** arable per head is flat through the plague (13–16 cells per 1,000 people) because cultivation claims to need, not to labour. In the record it rose 2.44 → 4.02 acres a head (1300 → 1450) and GDP per head rose 1.4–1.6 × (Broadberry et al.).
+- **1. D3's referent is GDP per head, not the real wage.** The correction is right; D3 measures income per head, and wages overstate it.
+  - So the reported check is 2.1–2.4 yd an adult in 1500, at e = 1, against Dyer's 3, which stays reported as the upper reference.
+  - e is not raised to 1.9 to reach Dyer: that would be fitting.
+  - Own food in income is counted uncapped.
+- **2. The labour-led land rule, not a Cobb–Douglas land share.** A place keeps or claims fields up to `acres_per_farmer` × its farmers. Pasture uses the same labour, and diminishing returns come from the terrain.
+  - It changes the rule where it is wrong (claiming to need) and keeps the structure; a production function would replace it.
+  - **`acres_per_farmer` is calibrated at the start only:** arable per head in 1300 unchanged. It is reported against the virgate bracket (about 6.7 arable acres a head) as a plausibility check. The rise to 1450 is the test (×1.5–1.65).
+- **3. Hatcher's path: neither (a) nor (b) is chosen before the numbers.**
+  - Build the land rule behind its switch (off) and run the 9-run exploration with endemic mortality as it is. Report:
+    - arable per head 1450/1300 and 1500/1300;
+    - output per head;
+    - Hatcher's 1450/1340 ratio;
+    - population in 1600 against the pre-plague peak;
+    - the share of villages at the full `r_grow`.
+  - **With it, a one-page sketch of (b), the preventive check:** fertility answering food or real income above need, with a lag. Give its sources (Hajnal 1965; Wrigley & Schofield 1981, the real-wage–nuptiality link), its parameters and what it would do to the 1600 overshoot (1.43–1.46 against about 0.85).
+  - I then decide between (a), one re-tune of endemic mortality against the same Hatcher target, and (b). The choice turns on whether (a) leaves the overshoot worse than now.
+
+**Order:**
+1. The land-rule exploration and the (b) sketch.
+2. My decision on Hatcher.
+3. The land rule's gate.
+4. D3's gate.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
