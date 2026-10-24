@@ -7,7 +7,7 @@
 //! In a famine year (D57) the harvest is cut by the famine's loss after the
 //! fields are chosen, and under local harvests (v6 W1) each field's yield is
 //! multiplied by its cell's multiplier for the year. Writes: owner, fields, forest, food_prod, mill,
-//! resource_out, sites' fuel_got.
+//! resource_out, sites' fuel_got; under `free_land_growth`, ever_owned (D170).
 
 use crate::params::Params;
 use crate::state::{State, NONE};
@@ -27,6 +27,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         1 => p.famine_loss_2,
         _ => p.famine_loss_3,
     };
+    if p.free_land_growth && state.ever_owned.len() != t.n() {
+        state.ever_owned = vec![false; t.n()];
+    }
     let State {
         settlements,
         owner,
@@ -34,6 +37,7 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         forest,
         sites,
         harvest,
+        ever_owned,
         ..
     } = state;
 
@@ -62,6 +66,9 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
                 let ci = c as usize;
                 if owner[ci] == NONE && t.is_land(ci) && t.food_yield[ci] >= p.min_field_yield {
                     owner[ci] = s.id;
+                    if let Some(e) = ever_owned.get_mut(ci) {
+                        *e = true;
+                    }
                     s.fields.push(c);
                     produce += t.food_yield[ci] * ppc;
                 }

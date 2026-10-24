@@ -611,6 +611,10 @@ pub struct State {
     /// the years summed; the reference y0 is their ratio.
     #[serde(default)]
     pub wealth_ref: (f32, u32),
+    /// Cells ever claimed as a field (D170): land never cleared is "free".
+    /// Written by cultivation under `free_land_growth`; empty otherwise.
+    #[serde(default)]
+    pub ever_owned: Vec<bool>,
     /// Grain relief this year (S2′, D80): deficit before relief, relief sent,
     /// relief arrived, surplus left above `food_cap × need` (lost), and own
     /// store drawn (S3).
@@ -799,6 +803,7 @@ impl State {
             cloth_stats: [0.0; 5],
             cloth_trace: [0.0; 19],
             wealth_ref: (0.0, 0),
+            ever_owned: Vec::new(),
             relief_stats: [0.0; 5],
             market_unmet: [0.0; 5],
             built: vec![NONE; n],

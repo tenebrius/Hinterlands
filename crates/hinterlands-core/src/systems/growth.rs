@@ -31,6 +31,23 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
     let m = state.settlements.len();
     // Pass 1: food ratios, natural change, and each place's Rihll–Wilson pull.
     let mut natural = vec![0f32; m];
+    // Read-only here; growth does not write it (D170).
+    let state_ever = std::mem::take(&mut state.ever_owned);
+    // The region's free share (D170 exploration): farmable land never cleared.
+    let region_free = if p.free_land_growth && p.free_land_region && !state_ever.is_empty() {
+        let (mut all, mut free) = (0u32, 0u32);
+        for c in 0..t.n() {
+            if t.is_land(c) && t.food_yield[c] >= p.min_field_yield {
+                all += 1;
+                if !state_ever[c] {
+                    free += 1;
+                }
+            }
+        }
+        Some(if all > 0 { free as f32 / all as f32 } else { 1.0 })
+    } else {
+        None
+    };
     let mut pull = vec![0f32; m];
     for (i, s) in state.settlements.iter_mut().enumerate() {
         let need = s.need(p).max(1e-6);
@@ -47,7 +64,29 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         // shortfall loss spread over `loss_years`.
         // D165: under `growth_ceiling` births answer the food ratio over ten
         // years, and natural growth is at most `r_grow_pc` a year.
-        let (ratio_g, r_max) = if p.growth_ceiling {
+        // D170: a frontier's rate on land never cleared, a settled country's
+        // where it has been taken, by the share of the place's reach still free.
+        let r_free = if let Some(share) = region_free {
+            Some(p.r_grow_pc + (p.r_grow - p.r_grow_pc) * share)
+        } else if p.free_land_growth && !state_ever.is_empty() {
+            let (mut all, mut free) = (0u32, 0u32);
+            for &c in &s.reach.field_order {
+                let ci = c as usize;
+                if t.is_land(ci) && t.food_yield[ci] >= p.min_field_yield {
+                    all += 1;
+                    if !state_ever[ci] {
+                        free += 1;
+                    }
+                }
+            }
+            let share = if all > 0 { free as f32 / all as f32 } else { 1.0 };
+            Some(p.r_grow_pc + (p.r_grow - p.r_grow_pc) * share)
+        } else {
+            None
+        };
+        let (ratio_g, r_max) = if let Some(r) = r_free {
+            (ratio, r)
+        } else if p.growth_ceiling {
             s.ratio_avg = if s.ratio_avg > 0.0 {
                 s.ratio_avg + (ratio - s.ratio_avg) / 10.0
             } else {
@@ -126,6 +165,8 @@ pub fn run(state: &mut State, t: &Terrain, p: &Params, _rng: &mut Rng) {
         pull[i] = (p.epsilon * (inflow - p.k_maint * p.food_per_person * urban))
             .min(p.max_growth * s.pop);
     }
+
+    state.ever_owned = state_ever;
 
     // Pass 2: towns that pull draw migrants from their partners, in proportion to
     // the partner's size and closeness; no source gives more than `migration_cap`.

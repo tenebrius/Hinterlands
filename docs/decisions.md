@@ -1027,3 +1027,17 @@ Kind: model mechanism, held off (designer's decision D165).
 - **Reading:** with the trough right (0.38), the over-fast recovery (0.91%) and the thinned 1400s fail spacing, roads and recovery. This argues for taking the recovery rule with the calendar.
 - **Not made the default.** Details: `docs/demand/d3d.md`. The recovery-rate note is `docs/proposals/recovery-rate.md`.
 Kind: model data, held off; validation finding (designer's decision D168).
+
+## D171 — D170: stability's exemptions fixed; the free-land growth rule built (off), exploration shows it would fail
+- **Validate:** stability now exempts every calendar outbreak and the year after (D58's principle; D170). Live.
+- **Built (off):**
+  - `ever_owned`;
+  - `free_land_growth` (D170's spec: the free share of each place's reach);
+  - the variant `free_land_region` (the region's free share).
+- **Exploration (9 runs; and validate at 10 seeds a map for the spec; not gates):**
+  - **the spec, with endemic 0.007:** colonisation −40% (1300: 32k against 54k), trough 0.29, and spacing 0–1/10 on every map;
+  - **the region variant:** with 0.007 the trough is 0.63; with 0.015 it is about the sourced calendar alone (trough 0.34, 1600 1.03, recovery 0.99%).
+- **Reading:** in this model the frontier's growth and the recovery share `r_grow`. A local free-land measure slows colonisation; a regional one does not bind after 1348.
+- **Proposed:** re-gate the sourced calendar with endemic 0.015 and the stability fix. The designer to reconsider the date switch, or accept the recovery rate as a known miss.
+- **Details:** `docs/demand/d3e.md`.
+Kind: validation fix, model mechanism held off (designer's decision D170).

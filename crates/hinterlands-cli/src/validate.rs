@@ -749,13 +749,26 @@ pub fn run_one(
             let y = sim.state.year;
             let fy = params.famine_year;
             let in_famine = y >= fy && y <= fy + params.famine_years + 1;
+            // Every calendar outbreak and the year after (D58; D170): the
+            // first three, and the later list in use.
+            let later: Vec<u32> = if params.plague_sourced {
+                hinterlands_core::systems::events::SOURCED_PLAGUES
+                    .iter()
+                    .map(|&(ad, _)| ad)
+                    .collect()
+            } else if params.plague_later {
+                hinterlands_core::systems::events::LATER_PLAGUES.to_vec()
+            } else {
+                Vec::new()
+            };
             let in_plague = [
                 params.plague_year,
                 params.plague_recur_1,
                 params.plague_recur_2,
             ]
-            .iter()
-            .any(|&py| y >= py && y <= py + params.plague_years + 1);
+            .into_iter()
+            .chain(later.iter().map(|&ad| (ad + params.plague_year).saturating_sub(1348)))
+            .any(|py| y >= py && y <= py + params.plague_years + 1);
             // A planting in year Y shows in the total read after it, Y + 1.
             let planting = params.plant_interval > 0
                 && y > 1
