@@ -2095,6 +2095,20 @@ What is solid is the recorded growth rate. Broadberry et al., Table 18: 0.27% a 
 
 **After the gate:** with the population path settled, the next step is the list's first open item. That is map 3's spacing, too few market towns in the outer districts, as a mechanism note.
 
+### The re-gate's result is known; the spacing note widened (D173)
+
+**The implementer is right.** Runs are deterministic, and the stability fix changes only which years are skipped. So the re-gate would repeat D168's other failures exactly:
+- market spacing on maps 1 and 3;
+- road length on maps 1 and 3;
+- recovery on map 1.
+
+Running it would spend an hour to learn nothing.
+
+**Decided: (a).**
+- `plague_sourced` stays off, and the D108 calendar stays the default.
+- **The spacing note is widened.** It covers map 1 as well as map 3, road length 300–500, and why the sourced calendar's deeper trough thins the places over 500 and lets the roads fade.
+- **Then** the calendar is re-gated together with whatever the note leads to.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
