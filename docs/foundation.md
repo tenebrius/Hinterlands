@@ -1647,6 +1647,24 @@ Population in 1600 has fallen (D2: 76k against D1's 96k), and the over-2,000 ban
 2. **Step 3 of D139:** the later cloth price (`cloth_price_late`, built and off), gated.
 3. **The putting-out design note** (the 40-year lag in the cloth share), before any code.
 
+### Resuming after the graphics merge (owner, 24 October 2026; D142)
+
+A separate graphics session is merging a large overhaul of the viewer with the implementer. Development resumes once that merge is on `main`.
+
+**Conditions on the merge (the hard rules):**
+- the core stays free of I/O and wasm dependencies;
+- the viewer reads only `Snapshot`;
+- the golden stays `2e6856056e73a1c6`, natively and in the browser selftest;
+- `just test` passes;
+- `just validate` on 40 seeds is unchanged, since rendering does not touch the model.
+
+If the merge changes the golden, the cause is found and reported before anything else.
+
+**Then the D141 order:**
+1. **Exports over output:** count cloth by value added (cloth less its wool), and re-read the medians.
+2. **The later cloth price** (`cloth_price_late`), gated on 40 seeds.
+3. **The putting-out design note,** to the designer before any code.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
