@@ -50,8 +50,8 @@ pub struct RunResult {
     pub exports_1300: f32,
     /// Exports over output (D139): grain, wool and cloth the ports paid for,
     /// over the region's output (the harvest at its price, the wool clip at
-    /// the port price, goods sold at their price, and cloth), the last year;
-    /// NaN with ports off.
+    /// the port price, goods sold at their price, and cloth by its value
+    /// added, D141), the last year; NaN with ports off.
     pub exports_output: f32,
     /// S2′ (D80): relief arrived per year, the share of deficit met outside
     /// and in the famine (1315–17), and surplus lost above `food_cap` per
@@ -923,9 +923,14 @@ pub fn run_one(
                     Some(x.sold * if p > 0.0 { p } else { 1.0 })
                 })
                 .sum();
-            let wool = st.cloth_stats[0] * st.cloth_trace[8] * to_coin;
+            // Wool is the whole clip at the port price; cloth counts by its
+            // value added, cloth less the wool it uses at the same price
+            // (D141), so milled wool is counted once.
+            let vw = st.cloth_trace[8] * to_coin;
+            let wool = st.cloth_stats[0] * vw;
+            let cloth_added = (l.cloth_in - st.cloth_stats[1] * vw).max(0.0);
             let exports = l.port_in + l.wool_in + l.cloth_in;
-            exports / (harvest + goods + wool + l.cloth_in).max(1e-6)
+            exports / (harvest + goods + wool + cloth_added).max(1e-6)
         } else {
             f32::NAN
         },
