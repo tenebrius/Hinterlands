@@ -21,6 +21,8 @@ All checks are taken on the final snapshot of a 500-year run (after year 499's t
 
 ## Pass rule
 
+**Spacing and roads (D182, from the growth-rule gate):** market spacing among market places is gated against Everitt's c. 1500–1640 market density, converted to hexagonal spacing, ±25%, with Bracton's 6⅔ miles as the floor; the band is computed from the source before S1. Roads are reported (persistence on routes, net length, abandonment), not gated.
+
 **Spacing and roads (D176, supersedes D174's bands):** both are paired no-worse checks against the accepted default until a band is sourced: spacing among market places (W ≥ `market_min`), and road persistence on routes with ±2 cells of tolerance, years 300 → 500. A candidate passes if its count is at least the default's minus 2 of 40 on the same seeds. Absolute values, the over-500 spacing and net road length are reported.
 
 **Market spacing (D174, superseded):** the median nearest-neighbour distance among market places (W ≥ `market_min`), 8–15 km. The old measure (places over 500) is reported.

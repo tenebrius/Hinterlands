@@ -166,6 +166,10 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D182:**
+  - Growth rule (C): a spin-up until the region reaches Domesday's share of 1290 (about 0.36), then the clock starts at 1100; births follow each place's food at most 1%/yr; endemic 0.007; calendar re-gated.
+  - Spacing gated absolutely on Everitt ±25% (computed from the source before S1); roads reported.
+  - S0, then S1 (explore), then S2 (gate).
 - **D180:** v8 released (golden `6db34602d4431473`, validate green, 17/28/10). Growth-rule note started (frontier by migration and founding, settled by a sourced rate). Wasm 92 ms a year noted.
 - **D178:**
   - Calendar parked (it fails paired roads and map 3 spacing; I won't change the rule a fourth time after seeing results).
@@ -329,4 +333,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — v8 released; growth-rule note started (D180).
+Last updated: 2026-10-24 — D182: growth rule (C) decided; S0 next.

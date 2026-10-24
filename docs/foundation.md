@@ -2225,6 +2225,40 @@ The effects are small, but they are real, and they go the wrong way.
   - every gated check, the hierarchy above all.
 - **A staged plan:** small, proven, gated, with the explorations it would run first.
 
+### The growth-rule note decided: (C), a settled start after a spin-up (D182)
+
+**The finding is accepted.** Only births add people in this model. Founding, the pull, the drain and resettlement move people about. So no split between frontier and settled growth can fill an empty region at sourced settled rates: 0.6% a year from 500 people gives about 2,100 by 1340, against 60,000.
+
+**Decided: (C).**
+- The filling from the first hamlets runs as a **spin-up** before the historical clock.
+- **The year 1100 begins when the region reaches Domesday's share of its 1290 level** (about 0.36: Domesday about 1.7–2.0 million against 1290's 4.5–5 million; to be stated from Broadberry with the source).
+- From then on each place's births follow its own food ratio, at most 1% a year, with no reach involved.
+- **Endemic mortality falls to its sourced part, about 0.007, in the same change.**
+- **The sourced calendar is re-gated with it.**
+
+**Why (C) over (A) and (B).** (A)'s assart window and (B)'s inflow each carry an unsourced number that sets the fill speed. (C)'s trigger is a sourced ratio, and from 1100 every rate is sourced. A spin-up is the standard way to start a model from a plausible state rather than from an empty one, and it scripts nothing after 1100.
+- **How the region's 1290 level is known in advance** is a calibration (the default's 1290 population is the obvious estimate). It is named, and it fixes the start only.
+
+**The paired references, decided now, before S1:**
+- **Market spacing is gated absolutely, against the record, not against the overshooting default.** Markets did lapse after 1348, so a default with 1.25 × the peak is the wrong yardstick.
+  - **Before S1, the implementer states Everitt's count** (Agrarian History of England and Wales IV, about 760 market towns c. 1500–1640) and England's area, and converts them to a hexagonal spacing. Bracton's 6⅔ miles is the floor.
+  - The band is Everitt's spacing ±25%, measured among market places at year 500. I set the rule now; the number is computed from the source, not from any run.
+- **Roads become reported, not gated.** No source gives road churn per kilometre cell. The paired count was shown to be uninformative at a threshold on the default's own median (D177). Persistence on routes, net length and abandonment are reported.
+- **Every other check is unchanged.** Recovery is gated at the 0.75 floor, with 1.15 and the record's 0.85 reported.
+
+**Staged, as the note proposes:**
+- **S0** measures the default: land in use by decade, the trigger year by seed, and births, deaths and moves decomposed.
+- **S1** builds (C) behind a switch with the 9-run explorations.
+  - **Pre-registered:**
+    - 1340/1100 between 2 and 3 (England about 2.5);
+    - the peak year within 20 years of 1340;
+    - Hatcher 1450/1340 within 0.40–0.65;
+    - recovery in 1480–1590 at 0.4–0.8% a year;
+    - 1600 at 0.70–1.00 of the peak.
+- **S2** is the gate on 40 seeds, with the sourced calendar. Report before the gate if S1 says it will fail.
+
+**Performance:** port reach and cloth cost about 12–13 ms each natively. Reported, and accepted (D91).
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
