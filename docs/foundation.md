@@ -1732,6 +1732,33 @@ Exploration runs (screens, attribution, traces, trial settings) use at most 20 s
 
    It should prefer the mechanism with the stronger source and the fewer calibrations. I decide before any code.
 
+### The raw-wool note decided: wool grades within the clip, then putting-out re-gated with them (D150)
+
+**The attribution (20 seeds, exploration):** the cloth boom flattens map 1's hierarchy, not the payment split.
+- Frozen capacity with the making cost paid to the farms: rank-size 19/20, the same as D144.
+- f = 1.0 under the boom: 6/20.
+
+The making cost going to rural households is therefore accepted as built. The task is to bound the boom.
+
+**Decided (`docs/proposals/raw-wool.md`): (a) wool grades.** It has the stronger source, and no calibration that sets the outcome. (b) would feed the customs series into the share it is tested on. (b)'s events (the Flemish bans and the Hanse war) are noted for a later v4-style calendar, not scheduled.
+
+1. **Grades within the clip only, not by land.** There are three grades, good, middle and refuse, at Munro's within-district ratios 100 : 70 : 49 (Leominster, 1499).
+   - The model's port price, Lloyd's mean, stays the clip's mean. The grade prices are set so that the weighted mean is unchanged, and so nothing already calibrated on wool moves.
+2. **The grade shares of a clip come from a source** if one is found: Munro 1978, Lloyd 1977, or the sorting proportions of the Staple.
+   - If none is found, use equal thirds as a neutral prior, named as such.
+   - **The shares are not set from any path,** neither the start nor the share's rise. The share's path is the test, and the good grade's share sets how much raw wool can always leave. Fitting it would fit the result.
+3. **Cloth's netback is the same for every grade.** No grade-to-cloth-value source has been found, and the standard reading is that English export cloth used middling wool.
+4. **Order:**
+   1. Build grades with `putting_out` off and report: the hash, the cloth share and raw wool by grade. The absorbing mechanism comes first (rule 8).
+   2. Then gate grades and putting-out together on 40 seeds, every check. If it passes, both become the default. If it fails, stop and report per check.
+
+**Pre-registered for the combined gate, reported only.** Each names its mechanism (rules 5 and 12).
+- **The cloth share stays below 0.95 in every decade.** The good grade's port price is above cloth's netback, so it leaves raw whatever the capacity.
+- **The cloth share is 0.35–0.65 in 1440–60 and 0.55–0.85 in 1490–1510.** This rests on prices taking more grades under the netback: Clark's fall, then Munro's rise.
+- **Map 1's rank-size is back to 30/40 or better.** This rests on the boom being bounded by the clip below the netback.
+- **The coin stock in 1600 is at most 1.5 times D144's,** for the same reason.
+- **Raw wool leaves in every decade, at no less than the good grade's share of the clip.**
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
