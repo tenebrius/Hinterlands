@@ -9,8 +9,12 @@ The entries below are numbered R1, R2… so they do not take decision numbers on
 This section describes what is waiting to be merged; it is rewritten each time.
 
 - **R1–R8 are merged** (D36, D37, D42, D43, D45, D46, D47, D68).
-- **Building, not yet for handover:** the real-scale overhaul below. Stage 1 is R9, stage 2 is R10 and stage 3 is R11. By the owner's decision the stages are handed to the implementer as one batch, only after the current development stops; nothing has been sent.
-- **Next step:** the owner's further changes to the look of roads and towns; stage 4 is set aside for now (23 October). See `docs/rendering-handoff.md`.
+- **Up for merging (the owner's decision, 24 October): R9–R32**, the real-scale overhaul (stages 1–3), the map style, towns and roads (R12–R27), and the optimisation stage (R28–R32; R30 and R31 were tried and reverted). They are on `claude/elegant-ride-g0sr1h`, with `main` merged in (24 October). They take the next free D numbers when they merge.
+- **Checked on the merged tree:**
+  - `just test` passes.
+  - `just validate` passes (3 maps, 40 seeds).
+  - The golden hash is `main`'s own `2e6856056e73a1c6`, from the CLI and from `?selftest=500`. The entries below quote `65aee272c30de1f9`, the golden before `main`'s later engine work; the overhaul changes neither.
+- **Not doing:** stage 4 (set aside by the owner). See `docs/rendering-handoff.md` for what is open.
 
 ## R1 — Smooth relief drawn by a shader
 
