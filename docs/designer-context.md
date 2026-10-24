@@ -166,6 +166,11 @@ The owner is Divish. He has had projects of this kind fail before from over-ambi
   - Spec error 14 (mine): the duties were counted twice. The wool port price is Lloyd's and Clark's English price, observed after the duties; D123 took them off again, halving wool's value and causing the coin drain (map 3 at 61k against 89k in 1600).
   - Fixed: no duties in the model; making cost 2.7 d from Munro (inside the corrected bracket 2.4–3.2, so the cloth share is a real test); home wool elasticity 0.3; capacity the largest value giving a start of 0.10 or less.
   - Over-2,000 band to be decided on sources if map 3 still fails with population restored (urban share requested).
+- **D153 (dcac01e), D154:**
+  - Clark's wool falls against wheat (0.49 by 1500); Munro's cloth rises (×1.37–1.66). Spec error 16: I asserted a series' direction unseen.
+  - Putting-out set aside (explored, not adopted): on sourced prices it takes the whole clip from 1490; the residual raw trade was institutional (the Staple).
+  - Now: grades and the wool series gated with capacity tied to W (exploration first, per the implementer's new report-before-run rule). Then D3 (wealth), note first.
+- **Implementer rule (Divish):** when an instruction looks likely to fail, the implementer reports before the run and gates only on confirmation.
 - **Grades and putting-out (78edbaf) failed, D152:**
   - Grades work to 1480 (share 0.55); from 1490 the later cloth price outbids every grade (share 1.00, boom back).
   - Spec error 15 (mine): cloth followed its price series while wool was frozen after 1400.
@@ -237,6 +242,8 @@ Ten of my specification choices have been wrong, all caught by the real-terrain 
 
 15. **I moved one price and froze its rival.** D137 put cloth on Munro's later price series, but wool stayed flat after Clark's fall ended in 1400. From 1490 cloth outbid every grade of wool, and the boom came back. Rule: when one price follows its historical series, every price it competes with follows its own series over the same years.
 
+16. **I asserted a series I had not seen.** D152 said English wool prices rose in the sixteenth century. Against wheat, Clark's series falls (0.49 by 1500, 0.35 by 1590). The implementer caught it before a run. Rule: before a decision rests on what a series does, have the series in hand.
+
 Judgement rules that now stand:
 
 - **Pass rates, not single runs.** Each check passes in at least 75 % of 20 seeds on every map. A single seed on a range edge is noise.
@@ -278,4 +285,4 @@ Messages go by the channel rules in `CLAUDE.md`.
 
 This file lives in the repo at `docs/designer-context.md` and is the designer's working memory between sessions. Update it in the same commit as any designer decision, brief revision or judgement on an implementer report: the state of the project, the agreed next steps, and any new rule. Rewrite stale sections rather than appending.
 
-Last updated: 2026-10-24 — D152 sent: wool on Clark's series for the whole run; grades, putting-out and series gated together.
+Last updated: 2026-10-24 — D154 sent: putting-out set aside; grades and the wool series gated with capacity tied to W; then D3.

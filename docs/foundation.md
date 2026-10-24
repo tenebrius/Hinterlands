@@ -1789,6 +1789,38 @@ They rest on wool and cloth prices both following their own series, which the im
 - each grade's port price against cloth's netback by decade;
 - home wool against need.
 
+### The wool series in hand (dcac01e): putting-out is set aside; grades and the wool series are gated with capacity tied to W; then D3 (D154)
+
+**The implementer held the gate and reported first** (Divish's new rule), and was right to.
+- My D152 premise was wrong. Against wheat, Clark's wool price does not rise in the sixteenth century; it keeps falling: 0.54 by 1450, 0.49 by 1500 and 0.35 by 1590, with 1290–1309 = 1.
+- Munro's cloth, on the same deflator, rises 1.37–1.66 from 1490.
+- **So on sourced prices cloth's price against wool's roughly triples from 1450 to 1500.** That is the record's own reason for the turn to cloth.
+
+**Specification error 16, mine.** I asserted the direction of a series I had not seen. Rule: before a decision rests on what a series does, have the series in hand.
+
+**What follows.**
+- **Any capacity that answers returns takes the whole clip from about 1490.** Under putting-out the cloth boom then flattens the hierarchy and triples coin, and no grade ratio in Munro's lists (the best wools at about twice the mean) keeps up with a tripled relative price.
+- **The record's remaining raw trade was institutional.** About a sixth of the wool leaving still left raw in the 1540s, through the Staple's monopoly of raw export at Calais and licences, and the finest wools went to Italian and Flemish luxury cloth.
+- The model has no institutions, and I will not script one to rescue the share.
+
+**Decided:**
+1. **Putting-out is set aside: built, off, not adopted.** It is recorded as explored.
+   - It reproduces the record's pace in 1360–1470 (share 0.49–0.60).
+   - After 1480 it sends the whole clip to cloth, on sourced prices, and the boom breaks the hierarchy.
+   - The making cost paid to the farms stays a correct reading for whenever cloth labour is revisited.
+2. **Gate grades and the wool series with putting-out off,** so capacity stays tied to W, as in the default (D144). Rule 15 requires the wool series: cloth follows its series, so wool follows its own.
+   - Under the implementer's new rule, run the 9-run exploration first.
+   - If it is likely to fail, report before the gate. Otherwise gate on 40 seeds. If it passes, both become the default.
+3. **Pre-registered, reported only:**
+   - the cloth share by decade rises against D144's, because wool is cheaper against cloth and capacity is tied to W;
+   - map 1's rank-size holds at 30/40 or better, because capacity is still bound by mill-town W, so there is no boom;
+   - raw good wool keeps leaving while capacity binds.
+4. **Then D3, wealth:** stocks per person rise with income per head.
+   - It starts with a short note from the implementer: the income measure from the purses, the elasticity and its source (Engel; Dyer's evidence for living standards after 1348).
+   - Its check is Dyer's three yards a person in 1500, against the constant 1.5 now.
+
+The cloth lag stays a reported miss. The model's direction is right and its pace is short after 1420 while capacity is tied to W.
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
