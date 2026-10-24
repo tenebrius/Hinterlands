@@ -925,3 +925,18 @@ Kind: model mechanism, held off (designer's decision D145).
   - bounded demand would feed the customs series into the cloth share it is tested on.
 - **Details:** `docs/demand/d2j.md`.
 Kind: exploration and design note (designer's decision D148).
+
+## D151 — D150 wool grades built; gate with putting-out failed on rank-size (maps 1 and 2), stopped
+- **Built per D150, behind `wool_grades` (off):**
+  - three grades within the clip at 100 : 70 : 49, scaled to Lloyd's mean;
+  - equal thirds as a named prior (no sorting shares found; Slavin 2020 confirms the contracts specified them);
+  - one cloth netback for all grades.
+- **Grades alone:** hash `2484e8b2439e29b4`. Good wool leaves raw in every decade, and the cloth share stays near D144's.
+- **The gate on 40 seeds, grades with putting-out, failed:** rank-size slope 19/40 (map 1) and 23/40 (map 2). Map 3 is 30/40; every other check is 31/40 or better.
+- **Pre-registered:**
+  - the cloth share is 0.55–0.56 in 1440–60: met;
+  - the cloth share is 1.0 from 1500, raw wool stops, and coin in 1600 is 2.6 × D144's: missed;
+  - map 1's rank-size: missed.
+- **Reading:** to 1480 the grades keep good wool raw. From 1490 Munro's later cloth price lifts the single cloth netback (about 6 d a lb) above good wool's price (about 3.3 d), and every grade goes to cloth.
+- **Not made the default.** The golden stays `fc16de69c1855b30`. Details: `docs/demand/d2k.md`.
+Kind: model mechanism, held off (designer's decision D150).
