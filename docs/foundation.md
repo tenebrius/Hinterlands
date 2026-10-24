@@ -1835,6 +1835,24 @@ The 9-run exploration shows the cloth share above D144's to 1500 and below it af
 
 **Then D3,** with the note first (D154).
 
+### Correction received: the cap is the grades; the wool series goes in alone (D156, replacing D155)
+
+The implementer corrects the attribution. Grades alone also hold the cloth share at about 0.4 after 1510 (0.38–0.39 against D144's 0.40–0.58). So the post-1500 cap comes from the grades, and specifically from the good grade's share, which is the equal-thirds prior. It does not come from Clark's series.
+
+**Decided (D155 is replaced):**
+- **Grades are dropped. They stay built and off, and are recorded as explored.**
+  - Their purpose was to keep raw wool leaving under putting-out's boom, and putting-out is set aside (D154). With capacity tied to W, binding capacity already keeps raw wool leaving.
+  - Their decisive parameter, the good share, is an unsourced prior, and it would set the post-1500 share. A mechanism whose reason is gone, and whose key value is unsourced, is cut ("when in doubt, cut").
+- **The wool series goes in alone,** under rule 15: cloth follows its own series, so wool follows its own.
+  - Run the 9-run exploration of `wool_series` alone first. If it looks likely to fail, report before the gate. Otherwise gate on 40 seeds and make it the default if it passes.
+- **Pre-registered, reported only:**
+  - the cloth share after 1500 at or above D144's, minus 0.05, since cheaper wool against cloth does not cut capacity;
+  - map 1's rank-size at 30/40 or better;
+  - raw wool leaving in every decade while capacity binds.
+
+  If the share falls well below D144's, the shrinkage of the mill towns found in the grades-and-series run is the series' own effect. Then it is reported, and I decide.
+- **Then the D3 note.**
+
 ## Future versions
 
 Each version adds one layer, on the extension point already left for it, and only after the gate before it. The research footing weakens with each step: v2 and v3 still rest on recognised models, v4 is mostly heuristic, v5 is design. That is acceptable because every later layer sits on a validated v1.
