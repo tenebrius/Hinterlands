@@ -930,6 +930,35 @@ The second step, for the frames R28's cache cannot save: those while the camera 
 
 Kind: rendering.
 
+## R30 — Optimisation 3, tried and reverted: shorter town shape lists
+
+The owner approved trying it after R29: towns cost about 3.5 s of Liningbourne's redraw, and each town pixel scans every shape listed for its 62.5 m square.
+
+- **What was tried** (commit `c269001`, reverted in `e485e0f`).
+  - **Sub-squares:** each square was cut into 4 × 4 sub-squares of about 15.6 m. Each listed, in the square's order, only the shapes that could change a pixel in it:
+    - shapes within half a 15 m pixel plus their shadow's offset;
+    - shapes within the distances the shader compares the nearest building with (20 m × tree size, 14 m × building size);
+    - every ground shape that could become the nearest-so-far somewhere in the sub-square, which keeps the rank taken from the nearest plot.
+  - **Why not simply smaller squares:** the 62.5 m squares stay, because their built share and town land are smoothed between squares. Smaller squares would have moved those edges.
+- **Result.**
+  - **Picture:** unchanged. Ten views (with Dewermouth at 1 m, both looks) differ from R29 only in smoke.
+  - **No old list was cut off:** the longest old list was 93 shapes (Dewermouth, true scale), under the shader's 160.
+- **Frame time:** within noise (ms, `?redraw=1`, R29 against R30):
+
+  | View | Look | R29 | R30 |
+  |---|---|---|---|
+  | Liningbourne, 1 m | storybook | 7,966 | 7,466 |
+  | Liningbourne, 1 m | true scale | 8,633 | 8,783 |
+  | Liningbourne, 4 m | storybook | 6,550 | 6,700 |
+  | Liningbourne, 4 m | true scale | 6,250 | 5,850 |
+  | Dewermouth, 1 m | storybook | 8,083 | 7,150 |
+  | Dewermouth, 1 m | true scale | 8,133 | 7,900 |
+  | Wood by a stream, 1 m | storybook | 7,833 | 7,533 |
+
+  The longest list fell only from 93 to 64 shapes: the reach the shader needs (20 m × tree size) keeps most of a square's shapes in each sub-square. The scan's length is not where the towns' time goes. The step added about 100 lines for no measured gain, so it was reverted.
+
+Kind: rendering.
+
 ## Screenshots
 
 Map 1, seed 1, year 450. The files are in `docs/screenshots/overhaul/` as before/after pairs:
