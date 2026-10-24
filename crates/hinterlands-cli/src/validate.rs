@@ -32,6 +32,15 @@ pub struct RunResult {
     /// v3 (traffic roads, D54): change in road length from year 300 to the
     /// last year, as a share; NaN with traffic roads off.
     pub road_change: f32,
+    /// D174: the share of year-300 road cells still road at the end; NaN with
+    /// traffic roads off.
+    pub road_persist: f32,
+    /// The same, counting a year-300 road cell kept if it or a neighbour is
+    /// road at the end (reported, D174).
+    pub road_persist_near: f32,
+    /// D174: median nearest-neighbour distance among market places (W at
+    /// least `market_min`), km, at the end.
+    pub market_spacing_km: f32,
     /// Share of cells ever road that are no longer road at the end.
     pub road_abandoned: f32,
     /// v3 (D55, D56): bridges built; share of places of 1,000 or more, and of
@@ -286,7 +295,9 @@ pub const CHECKS: &[Check] = &[
     Check {
         name: "market spacing",
         target: "8-15 km",
-        ok: |r| (8.0..=15.0).contains(&r.m.spacing_median_km),
+        // D174: among market places (W at least market_min), not places of
+        // more than 500 people; the old measure is reported.
+        ok: |r| (8.0..=15.0).contains(&r.market_spacing_km),
     },
     Check {
         name: "siting",
@@ -407,10 +418,12 @@ pub const CHECKS: &[Check] = &[
         ok: |r| r.waste.is_nan() || r.waste <= 0.10,
     },
     // v3 gate (D54; passes trivially with traffic roads off).
+    // D174: persistence, not length: the year-300 road cells still road at
+    // the end; new roads are allowed. Net length change is reported.
     Check {
-        name: "road length 300-500",
-        target: "<10%",
-        ok: |r| r.road_change.is_nan() || r.road_change < 0.10,
+        name: "road persistence",
+        target: ">=0.90",
+        ok: |r| r.road_persist.is_nan() || r.road_persist >= 0.90,
     },
 ];
 
@@ -427,6 +440,7 @@ pub fn run_one(
     let mut max_change = 0f32;
     let mut ever = sim.state.road.clone();
     let mut road_300 = f32::NAN;
+    let mut roads_300: Vec<bool> = Vec::new();
     let road_len = |s: &Sim| s.state.road.iter().filter(|&&r| r).count() as f32;
     let shocks = params.events_mode == 1;
     let mut totals: Vec<f32> = vec![sim.state.total_pop()];
@@ -737,6 +751,7 @@ pub fn run_one(
         }
         if sim.state.year == 300 {
             road_300 = road_len(&sim);
+            roads_300 = sim.state.road.clone();
             top_300 = ranks(&sim).into_iter().take(10).collect();
         }
         if sim.state.year == 200 {
@@ -888,6 +903,63 @@ pub fn run_one(
             sh.planted = planted_alive;
             sh
         }),
+        road_persist: if params.traffic_roads && !roads_300.is_empty() {
+            let was = roads_300.iter().filter(|&&r| r).count();
+            let kept = roads_300
+                .iter()
+                .zip(&sim.state.road)
+                .filter(|(&a, &b)| a && b)
+                .count();
+            kept as f32 / was.max(1) as f32
+        } else {
+            f32::NAN
+        },
+        road_persist_near: if params.traffic_roads && !roads_300.is_empty() {
+            let g = t.grid;
+            let road = &sim.state.road;
+            let (mut was, mut kept) = (0usize, 0usize);
+            for (c, &r) in roads_300.iter().enumerate() {
+                if !r {
+                    continue;
+                }
+                was += 1;
+                let (x, y) = g.xy(c);
+                let mut near = false;
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+                        if nx >= 0 && ny >= 0 && (nx as u32) < g.w && (ny as u32) < g.h {
+                            near |= road[(ny as u32 * g.w + nx as u32) as usize];
+                        }
+                    }
+                }
+                kept += near as usize;
+            }
+            kept as f32 / was.max(1) as f32
+        } else {
+            f32::NAN
+        },
+        market_spacing_km: {
+            let g = t.grid;
+            let mk: Vec<usize> = sim
+                .state
+                .settlements
+                .iter()
+                .filter(|s| s.market >= params.market_min)
+                .map(|s| s.anchor as usize)
+                .collect();
+            let mut nn: Vec<f32> = mk
+                .iter()
+                .filter_map(|&a| {
+                    mk.iter()
+                        .filter(|&&b| b != a)
+                        .map(|&b| g.dist_km(a, b))
+                        .min_by(|x, y| x.total_cmp(y))
+                })
+                .collect();
+            nn.sort_by(|a, b| a.total_cmp(b));
+            nn.get(nn.len() / 2).copied().unwrap_or(f32::NAN)
+        },
         road_change: if params.traffic_roads {
             (road_len(&sim) - road_300).abs() / road_300.max(1.0)
         } else {
@@ -1081,7 +1153,7 @@ fn near_bridge(snap: &hinterlands_core::Snapshot, t: &Terrain, min_pop: f32) -> 
 /// The accepted model's counts on 40 seeds where it is itself below 30/40
 /// (D120): (map seed, check, runs passing). A stage passes such a check if it
 /// is no worse. From R's two halves (`docs/retune/r.md`).
-const NO_WORSE: &[(u64, &str, usize)] = &[(1, "road length 300-500", 29)];
+const NO_WORSE: &[(u64, &str, usize)] = &[];
 
 fn passes(r: &RunResult) -> bool {
     CHECKS.iter().all(|c| (c.ok)(r))
@@ -1178,7 +1250,7 @@ pub fn cmd_validate(args: &Args) {
                     "over 5,000" => r.m.over_5000 as f32,
                     "largest share" => r.m.largest_share,
                     "rank-size slope" => r.m.rank_slope,
-                    "market spacing" => r.m.spacing_median_km,
+                    "market spacing" => r.market_spacing_km,
                     "siting" => r.m.siting_share,
                     "failure rate" => r.m.failure_rate,
                     "forest near cities" => r.m.forest_near_cities,
@@ -1197,7 +1269,7 @@ pub fn cmd_validate(args: &Args) {
                             1.0
                         }
                     }
-                    "road length 300-500" => r.road_change,
+                    "road persistence" => r.road_persist,
                     "exports / output" => r.exports_output,
                     "unsold at markets" => r.waste,
                     "pasture outward" => r.pasture_cost.0 - r.pasture_cost.1,
@@ -1326,6 +1398,47 @@ pub fn cmd_validate(args: &Args) {
             "",
             ""
         );
+        // D174: the old measures, reported.
+        {
+            let med = |mut v: Vec<f32>| {
+                v.retain(|x| x.is_finite());
+                v.sort_by(|a, b| a.total_cmp(b));
+                v.get(v.len() / 2).copied().unwrap_or(f32::NAN)
+            };
+            let old_sp: Vec<f32> = rs.iter().map(|r| r.m.spacing_median_km).collect();
+            let old_ok = old_sp.iter().filter(|x| (8.0..=15.0).contains(*x)).count();
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
+                "spacing, over 500",
+                "(rep. 8-15)",
+                canon.map_or(f32::NAN, |r| r.m.spacing_median_km),
+                med(old_sp),
+                old_ok,
+                rs.len(),
+                ""
+            );
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>10} {:>8}",
+                "road persist ±1",
+                "(reported)",
+                canon.map_or(f32::NAN, |r| r.road_persist_near),
+                med(rs.iter().map(|r| r.road_persist_near).collect()),
+                "",
+                ""
+            );
+            let rc: Vec<f32> = rs.iter().map(|r| r.road_change).collect();
+            let rc_ok = rc.iter().filter(|x| **x < 0.10).count();
+            println!(
+                "{:<20} {:>12} {:>10.3} {:>10.3} {:>7}/{:<2} {:>8}",
+                "road length 300-500",
+                "(rep. <10%)",
+                canon.map_or(f32::NAN, |r| r.road_change),
+                med(rc),
+                rc_ok,
+                rs.len(),
+                ""
+            );
+        }
         // The share of market inflow, gated 3-50% from D126 to D139; reported.
         if rs.iter().any(|r| r.outside_share.is_finite()) {
             let mut v: Vec<f32> = rs.iter().map(|r| r.outside_share).collect();

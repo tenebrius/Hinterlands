@@ -1041,3 +1041,17 @@ Kind: model data, held off; validation finding (designer's decision D168).
 - **Proposed:** re-gate the sourced calendar with endemic 0.015 and the stability fix. The designer to reconsider the date switch, or accept the recovery rate as a known miss.
 - **Details:** `docs/demand/d3e.md`.
 Kind: validation fix, model mechanism held off (designer's decision D170).
+
+## D175 — D174: re-founded spacing and road persistence fail on the default; stopped
+- **Validate (D174):**
+  - market spacing is gated on market places (W ≥ 100), with the old over-500 measure reported;
+  - road persistence (year-300 road cells still road at 500) is gated at ≥ 0.90, with net length and a ±1-cell persistence reported;
+  - D120's no-worse entry is removed.
+- **The default, 3 seeds a map (exploration):**
+  - road persistence 0.56–0.59 (±1 cell: 0.78–0.81) on every map, 0/3;
+  - market spacing on market places 1/3 on map 1 (16.1 km);
+  - recovery by 500, 1–2/3 (1600 at 1.15–1.29 × peak).
+- **Reading:** v3(b)'s roads move with the trading pairs and decay by design. The network keeps its length (3–6%) but not its cells.
+- **My error:** D168's recovery band was not re-read on the default, which fails it.
+- **Not run:** the 40-seed re-read and the calendar gate. Details: `docs/demand/d3f.md`.
+Kind: validation measure; stopped for the designer (D174).
